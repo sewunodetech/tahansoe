@@ -38,7 +38,7 @@ export function RiskDisclosure() {
         {/* Header */}
         <div className="mb-12">
           <h2 className="text-4xl md:text-5xl font-medium leading-[1.1] tracking-[-0.02em] text-white mb-4">
-            What Custos cannot do.
+            What Tahansoe cannot do.
           </h2>
           <p className="text-[15px] leading-[1.6] text-[#a1a1aa] max-w-[500px]">
             Risk automation is not a liquidation guarantee. These limitations are not in
@@ -82,9 +82,9 @@ export function RiskDisclosure() {
 
         {/* Footnote */}
         <p className="mt-6 text-[12px] text-[#71717a] max-w-[600px]">
-          Custos is risk automation. No system can prevent liquidation caused by an
+          Tahansoe is risk automation. No system can prevent liquidation caused by an
           intra-block flash crash, oracle heartbeat delay, or gas limit breach.
-          Always maintain a conservative Health Factor buffer independent of Custos.
+          Always maintain a conservative Health Factor buffer independent of Tahansoe.
         </p>
       </div>
     </section>

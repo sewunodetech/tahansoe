@@ -2,12 +2,12 @@ const steps = [
   {
     index: "01",
     title: "Connect your position",
-    body: "Link your Aave V3 or Morpho Blue position. Custos reads Health Factor directly from Chainlink oracles, the same source the protocol uses.",
+    body: "Link your Aave V3 or Morpho Blue position. Tahansoe reads Health Factor directly from Chainlink oracles, the same source the protocol uses.",
   },
   {
     index: "02",
     title: "Set your thresholds",
-    body: "Define your trigger threshold (default 1.30) and target recovery HF (default 1.60). Custos translates your intent into deterministic policy parameters.",
+    body: "Define your trigger threshold (default 1.30) and target recovery HF (default 1.60). Tahansoe translates your intent into deterministic policy parameters.",
   },
   {
     index: "03",

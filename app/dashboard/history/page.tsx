@@ -67,7 +67,7 @@ export default function HistoryPage() {
       <div>
         <h1 className="text-[18px] font-semibold text-white tracking-[-0.02em]">Execution History</h1>
         <p className="text-[12px] text-white/30 mt-0.5">
-          All Custos interventions and monitoring events · {history.length} entries
+          All Tahansoe interventions and monitoring events · {history.length} entries
         </p>
       </div>
 

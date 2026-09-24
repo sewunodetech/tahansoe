@@ -49,7 +49,7 @@ export function Architecture() {
               The AI never signs a transaction. It translates your intent into policy parameters. A deterministic rule engine handles everything that runs live.
             </p>
             <div className="space-y-1">
-              <InvariantRow text="Compromise of Custos cannot drain user funds" />
+              <InvariantRow text="Compromise of Tahansoe cannot drain user funds" />
               <InvariantRow text="Worst case: attacker pays your debt for you" />
               <InvariantRow text="All executions are dry-run simulatable before going live" />
             </div>

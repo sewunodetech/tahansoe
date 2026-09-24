@@ -17,9 +17,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Custos — Liquidation Risk Automation",
+  title: "Tahansoe — Liquidation Risk Automation",
   description:
-    "Custos monitors your Health Factor 24/7 and executes automatic remediation before liquidation strikes.",
+    "Tahansoe monitors your Health Factor 24/7 and executes automatic remediation before liquidation strikes.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

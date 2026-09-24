@@ -274,7 +274,7 @@ function DashboardInner() {
               </button>
               <div className="w-px h-4 mx-1" style={{ background: "var(--border)" }} />
               <div className="flex items-center gap-1.5">
-                <span className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>Custos</span>
+                <span className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>Tahansoe</span>
                 <span style={{ color: "var(--border-strong)" }} className="text-[12px]">/</span>
                 <span className="text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>{pageTitle}</span>
               </div>

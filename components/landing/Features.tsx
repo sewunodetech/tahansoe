@@ -10,19 +10,19 @@ const TAG_STYLES: Record<string, { color: string; bg: string; border: string }> 
 const features = [
   {
     title: "Non-custodial by design",
-    body: "Your funds never move to Custos. The Guardian Module can only repay debt or add collateral. Even a full compromise of Custos cannot drain your wallet.",
+    body: "Your funds never move to Tahansoe. The Guardian Module can only repay debt or add collateral. Even a full compromise of Tahansoe cannot drain your wallet.",
     tag: "Security",
     wide: true,
   },
   {
     title: "Flash loan fallback",
-    body: "No idle reserve needed. Custos uses flash loans to remediate any position atomically, charging only ~0.05% fee.",
+    body: "No idle reserve needed. Tahansoe uses flash loans to remediate any position atomically, charging only ~0.05% fee.",
     tag: "Capital efficiency",
     wide: false,
   },
   {
     title: "Chainlink-identical oracles",
-    body: "Custos reads the same Chainlink Data Feeds as Aave V3. No divergence. No late detection.",
+    body: "Tahansoe reads the same Chainlink Data Feeds as Aave V3. No divergence. No late detection.",
     tag: "Reliability",
     wide: false,
   },
@@ -56,7 +56,7 @@ export function Features() {
             Built for the worst case, not the average case.
           </h2>
           <p className="text-[15px] leading-[1.6] text-[#a1a1aa] max-w-[360px] md:mb-1">
-            Every architectural decision in Custos starts from the question: what happens when the market crashes 40% in one block?
+            Every architectural decision in Tahansoe starts from the question: what happens when the market crashes 40% in one block?
           </p>
         </div>
 

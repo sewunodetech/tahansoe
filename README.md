@@ -1,10 +1,10 @@
-# Custos
+# Tahansoe
 
 **Liquidation risk automation agent untuk posisi borrow di protokol lending on-chain (Aave V3, Morpho).**
 
-Custos memantau **Health Factor (HF)** posisi pinjaman kamu secara terus-menerus, dan menjalankan aksi remediasi — *repay*, *top-up collateral*, atau *deleverage* — **sebelum** posisi mencapai ambang likuidasi.
+Tahansoe memantau **Health Factor (HF)** posisi pinjaman kamu secara terus-menerus, dan menjalankan aksi remediasi — *repay*, *top-up collateral*, atau *deleverage* — **sebelum** posisi mencapai ambang likuidasi.
 
-> ⚠️ Custos adalah **risk automation**, bukan jaminan anti-likuidasi. Lihat [Risk Disclosure](#risk-disclosure).
+> ⚠️ Tahansoe adalah **risk automation**, bukan jaminan anti-likuidasi. Lihat [Risk Disclosure](#risk-disclosure).
 
 ---
 
@@ -16,7 +16,7 @@ Kalau kamu pinjam stablecoin dengan jaminan aset volatil (ETH, WBTC, LST), ada t
 2. **Reaksi manual selalu telat.** Saat kamu sadar HF turun, bot liquidator sudah lebih dulu.
 3. **Likuidasi itu mahal.** Penalti likuidasi Aave V3 sekitar 5–10% dari posisi yang dilikuidasi.
 
-Custos mengotomasi langkah pencegahannya, dan bersifat **non-custodial** — dana tidak pernah berpindah ke kustodi Custos.
+Tahansoe mengotomasi langkah pencegahannya, dan bersifat **non-custodial** — dana tidak pernah berpindah ke kustodi Tahansoe.
 
 ---
 
@@ -28,7 +28,7 @@ HF = (nilai collateral × liquidationThreshold) / total utang
 HF < 1.0  →  posisi bisa dilikuidasi
 ```
 
-Custos bertindak saat `HF < triggerHF` (default **1.30**) dan memulihkan posisi ke `targetHF` (default **1.60**).
+Tahansoe bertindak saat `HF < triggerHF` (default **1.30**) dan memulihkan posisi ke `targetHF` (default **1.60**).
 
 Alurnya empat lapis:
 
@@ -50,7 +50,7 @@ Detail lengkap ada di [prd.md](prd.md).
 
 ## Status saat ini
 
-Repo ini berisi **aplikasi web Custos** (Next.js). Yang sudah jalan:
+Repo ini berisi **aplikasi web Tahansoe** (Next.js). Yang sudah jalan:
 
 - ✅ Landing page + dashboard (positions, history, bot, chat, settings)
 - ✅ Login wallet via **SIWE** (Sign-In With Ethereum) + session cookie
@@ -186,7 +186,7 @@ DESIGN.md             design token & referensi visual
 
 ## Risk Disclosure
 
-Custos **tidak** menjamin posisi kamu bebas dari likuidasi. Custos mengurangi probabilitas likuidasi dengan bertindak lebih awal, tetapi tetap ada kondisi di luar kendali:
+Tahansoe **tidak** menjamin posisi kamu bebas dari likuidasi. Tahansoe mengurangi probabilitas likuidasi dengan bertindak lebih awal, tetapi tetap ada kondisi di luar kendali:
 
 - Crash harga yang sangat cepat (gap turun dalam satu blok)
 - Kongesti jaringan / gas spike yang membuat transaksi remediasi telat masuk

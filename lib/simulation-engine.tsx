@@ -345,7 +345,7 @@ export function SimulationEngine() {
             triggerAt:     policy.triggerHF,
             type:          "warning",
             strategy:      null,
-            message:       `⚠️ WARNING — ${pos.protocol} (${pos.chain})\nHF ${pos.hf.toFixed(2)} — ${(pos.hf - policy.triggerHF).toFixed(2)} above trigger ${policy.triggerHF.toFixed(2)}\nCustos is watching.`,
+            message:       `⚠️ WARNING — ${pos.protocol} (${pos.chain})\nHF ${pos.hf.toFixed(2)} — ${(pos.hf - policy.triggerHF).toFixed(2)} above trigger ${policy.triggerHF.toFixed(2)}\nTahansoe is watching.`,
             timestamp:     now,
             dismissed:     false,
             sentToTelegram: false,

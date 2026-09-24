@@ -39,7 +39,7 @@ export default function ChatPage() {
       {/* Subtitle */}
       <p className="text-[13px] text-white/35 text-center max-w-[360px] leading-relaxed">
         Ask questions about your positions, execution history, and protocol behaviour in plain language.
-        Powered by live Custos context.
+        Powered by live Tahansoe context.
       </p>
 
       {/* Feature list */}

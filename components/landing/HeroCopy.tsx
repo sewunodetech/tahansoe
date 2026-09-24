@@ -54,7 +54,7 @@ export function HeroCopy() {
         animate={reduce ? undefined : { opacity: 1, y: 0 }}
         transition={{ duration: 0.65, delay: 0.35, ease: EASE }}
       >
-        Custos monitors your Health Factor 24/7 and executes automatic repay
+        Tahansoe monitors your Health Factor 24/7 and executes automatic repay
         or collateral top-up before liquidation strikes. Non-custodial. No
         reserve required.
       </motion.p>

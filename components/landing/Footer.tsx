@@ -20,7 +20,7 @@ export function Footer() {
                 strokeLinejoin="round"
               />
             </svg>
-            <span className="text-[14px] font-medium text-white tracking-[-0.01em]">Custos</span>
+            <span className="text-[14px] font-medium text-white tracking-[-0.01em]">Tahansoe</span>
           </div>
 
           {/* Links */}
@@ -47,7 +47,7 @@ export function Footer() {
 
         <div className="mt-8 pt-6 border-t border-[#27272a] flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <p className="font-mono text-[11px] text-[#52525b]">
-            Custos - Pre-development. Testnet only.
+            Tahansoe - Pre-development. Testnet only.
           </p>
           <p className="font-mono text-[11px] text-[#52525b]">
             Non-custodial. Smart contract audit pending.

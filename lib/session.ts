@@ -9,7 +9,7 @@ export interface SessionData {
 export async function getSession() {
   const session = await getIronSession<SessionData>(await cookies(), {
     password: process.env.SESSION_SECRET!,
-    cookieName: "custos-session",
+    cookieName: "tahansoe-session",
     cookieOptions: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,

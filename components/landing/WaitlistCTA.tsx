@@ -33,7 +33,7 @@ export function WaitlistCTA() {
               Get early access.
             </h2>
             <p className="text-[15px] leading-[1.6] text-[#a1a1aa] max-w-[420px]">
-              Custos is in pre-development. Join the waitlist to be notified when the
+              Tahansoe is in pre-development. Join the waitlist to be notified when the
               testnet demo goes live.
             </p>
           </div>

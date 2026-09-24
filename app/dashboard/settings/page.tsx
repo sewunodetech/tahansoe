@@ -173,7 +173,7 @@ export default function SettingsPage() {
           {/* Protection thresholds */}
           <SectionCard
             title="Protection thresholds"
-            description={`Custos acts when HF ≤ trigger and restores to target. Formula: HF = (collateral × 0.825) ÷ debt`}
+            description={`Tahansoe acts when HF ≤ trigger and restores to target. Formula: HF = (collateral × 0.825) ÷ debt`}
           >
             <FieldRow
               label="Trigger HF"
@@ -208,7 +208,7 @@ export default function SettingsPage() {
           {/* Execution policy */}
           <SectionCard
             title="Execution policy"
-            description="Which strategies Custos can use. Priority: hot reserve → flash loan → deleverage."
+            description="Which strategies Tahansoe can use. Priority: hot reserve → flash loan → deleverage."
           >
             <FieldRow
               label="Flash loan (repay debt)"
@@ -241,7 +241,7 @@ export default function SettingsPage() {
                 style={{ background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.2)" }}>
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: "#f87171" }} strokeWidth={1.5} />
                 <p className="text-[11px]" style={{ color: "rgba(248,113,113,0.8)" }}>
-                  No strategy enabled. Custos will alert but cannot act when HF reaches trigger.
+                  No strategy enabled. Tahansoe will alert but cannot act when HF reaches trigger.
                 </p>
               </div>
             )}
@@ -443,7 +443,7 @@ export default function SettingsPage() {
             <Info className="w-3.5 h-3.5 text-white/20 shrink-0 mt-0.5" strokeWidth={1.5} />
             <p className="text-[11px] text-white/25 leading-relaxed">
               Deleverage sells collateral at current market price — this realises a loss.
-              Custos acts at HF {policy.triggerHF.toFixed(2)}, well before liquidators can enter at HF 1.0.
+              Tahansoe acts at HF {policy.triggerHF.toFixed(2)}, well before liquidators can enter at HF 1.0.
               The loss is always smaller than a full liquidation penalty (5–10%).
             </p>
           </div>

@@ -29,7 +29,7 @@ export function Navbar() {
               <path d="M8 11L10.5 13.5L14.5 9" stroke="#2dd4bf" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <span className="text-white text-[14px] font-semibold tracking-[-0.01em]">Custos</span>
+          <span className="text-white text-[14px] font-semibold tracking-[-0.01em]">Tahansoe</span>
         </div>
 
         {/* Center nav */}

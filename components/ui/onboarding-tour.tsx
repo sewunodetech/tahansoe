@@ -38,8 +38,8 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id:          "welcome",
     targetId:    "tour-logo",
-    title:       "Welcome to Custos",
-    description: "Custos is your autonomous DeFi risk manager. It monitors your lending positions 24/7 and automatically executes protective actions — repays, collateral top-ups, flash loans — the moment your Health Factor approaches liquidation territory.",
+    title:       "Welcome to Tahansoe",
+    description: "Tahansoe is your autonomous DeFi risk manager. It monitors your lending positions 24/7 and automatically executes protective actions — repays, collateral top-ups, flash loans — the moment your Health Factor approaches liquidation territory.",
     icon:        ShieldCheck,
     badge:       "Start here",
     action:      "Take the tour",
@@ -49,7 +49,7 @@ export const TOUR_STEPS: TourStep[] = [
     id:          "overview",
     targetId:    "tour-nav-home",
     title:       "Overview",
-    description: "Your command center. At a glance you'll see total collateral, active debt, Health Factor trends for the last 24 hours, and a real-time feed of recent Custos executions.",
+    description: "Your command center. At a glance you'll see total collateral, active debt, Health Factor trends for the last 24 hours, and a real-time feed of recent Tahansoe executions.",
     icon:        LayoutDashboard,
     badge:       "Dashboard",
     placement:   "right",
@@ -58,7 +58,7 @@ export const TOUR_STEPS: TourStep[] = [
     id:          "positions",
     targetId:    "tour-nav-positions",
     title:       "Positions",
-    description: "Every Aave V3 and Morpho Blue position you own is listed here with a live Health Factor bar. The yellow marker shows your trigger threshold — when HF touches it, Custos fires automatically. Click any position for a detailed HF trend chart.",
+    description: "Every Aave V3 and Morpho Blue position you own is listed here with a live Health Factor bar. The yellow marker shows your trigger threshold — when HF touches it, Tahansoe fires automatically. Click any position for a detailed HF trend chart.",
     icon:        Activity,
     badge:       "Core feature",
     placement:   "right",
@@ -67,7 +67,7 @@ export const TOUR_STEPS: TourStep[] = [
     id:          "hf-chart",
     targetId:    "tour-hf-chart",
     title:       "Live Health Factor Chart",
-    description: "This chart updates in real time as ETH price moves. The dashed yellow line is your trigger threshold (1.30 by default). Watch both positions drift — when either line hits the threshold, Custos intervenes automatically.",
+    description: "This chart updates in real time as ETH price moves. The dashed yellow line is your trigger threshold (1.30 by default). Watch both positions drift — when either line hits the threshold, Tahansoe intervenes automatically.",
     icon:        Activity,
     badge:       "Live",
     placement:   "bottom",
@@ -76,7 +76,7 @@ export const TOUR_STEPS: TourStep[] = [
     id:          "history",
     targetId:    "tour-nav-history",
     title:       "Execution History",
-    description: "Every action Custos has taken — repays, collateral supplies, flash loans — is logged here with before/after Health Factors, gas used, and on-chain tx hashes. This is your full audit trail.",
+    description: "Every action Tahansoe has taken — repays, collateral supplies, flash loans — is logged here with before/after Health Factors, gas used, and on-chain tx hashes. This is your full audit trail.",
     icon:        Clock,
     placement:   "right",
   },
@@ -84,7 +84,7 @@ export const TOUR_STEPS: TourStep[] = [
     id:          "telegram",
     targetId:    "tour-nav-bot",
     title:       "Telegram Alerts",
-    description: "Connect your Telegram account to receive instant push notifications whenever Custos detects a warning, fires a trigger, or completes an execution. This is the most important step for staying safe — do it now.",
+    description: "Connect your Telegram account to receive instant push notifications whenever Tahansoe detects a warning, fires a trigger, or completes an execution. This is the most important step for staying safe — do it now.",
     icon:        Bot,
     badge:       "Recommended",
     action:      "Connect Telegram →",
@@ -103,14 +103,14 @@ export const TOUR_STEPS: TourStep[] = [
     id:          "settings",
     targetId:    "tour-nav-settings",
     title:       "Settings & Thresholds",
-    description: "Customize your trigger HF (when Custos fires), target HF (what it restores to), and execution strategy — flash loans, hot reserve, deleverage. Set these once and Custos handles the rest autonomously.",
+    description: "Customize your trigger HF (when Tahansoe fires), target HF (what it restores to), and execution strategy — flash loans, hot reserve, deleverage. Set these once and Tahansoe handles the rest autonomously.",
     icon:        Settings,
     action:      "You're all set!",
     placement:   "right",
   },
 ];
 
-const STORAGE_KEY = "custos:tour:completed";
+const STORAGE_KEY = "tahansoe:tour:completed";
 
 /* ─────────────────────────────────────────────
    Tour context

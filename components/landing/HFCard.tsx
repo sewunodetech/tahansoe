@@ -149,7 +149,7 @@ export function HFCard() {
           <div className="w-2 h-2 rounded-full bg-[#3f3f46]" />
           <div className="w-2 h-2 rounded-full bg-[#3f3f46]" />
           <span className="ml-2 font-mono text-[11px] text-[#52525b]">
-            custos-agent
+            tahansoe-agent
           </span>
           <div className="ml-auto flex items-center gap-2">
             <span className="font-mono text-[10px] text-[#52525b]">

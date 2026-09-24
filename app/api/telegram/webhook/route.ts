@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     await sendTelegramMessage(
       message.chat.id,
-      "Your Custos account has been linked successfully. You will now receive liquidation risk notifications here."
+      "Your Tahansoe account has been linked successfully. You will now receive liquidation risk notifications here."
     );
 
     return NextResponse.json({ ok: true });

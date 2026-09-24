@@ -56,7 +56,7 @@ const NOTIF_DEFS: NotifDef[] = [
   {
     key:         "notifTriggerFired",
     label:       "Trigger fired",
-    description: "Instant alert when Custos detects HF ≤ trigger and begins remediation.",
+    description: "Instant alert when Tahansoe detects HF ≤ trigger and begins remediation.",
     icon:        Zap,
     color:       "#f87171",
   },
@@ -77,7 +77,7 @@ const NOTIF_DEFS: NotifDef[] = [
   {
     key:         "notifPositionSafe",
     label:       "Position restored",
-    description: "Notify when HF returns above target after Custos intervention.",
+    description: "Notify when HF returns above target after Tahansoe intervention.",
     icon:        ShieldCheck,
     color:       "#34d399",
   },

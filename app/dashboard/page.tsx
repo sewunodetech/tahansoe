@@ -148,7 +148,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3 px-4 py-3 rounded-[8px] bg-yellow-400/[0.06] border border-yellow-400/20">
           <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0 animate-pulse" strokeWidth={1.5} />
           <p className="text-[12px] text-yellow-400/80 flex-1">
-            {atRisk} position{atRisk > 1 ? "s" : ""} near trigger threshold — Custos is monitoring.
+            {atRisk} position{atRisk > 1 ? "s" : ""} near trigger threshold — Tahansoe is monitoring.
           </p>
           <button className="flex items-center gap-1 text-[11px] text-yellow-400/50 hover:text-yellow-400 transition-colors">
             View <ArrowRight className="w-3 h-3" strokeWidth={2} />

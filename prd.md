@@ -1,4 +1,4 @@
-# Custos — Product Requirements Document
+# Tahansoe — Product Requirements Document
 
 **Version:** 0.1 (Draft)
 **Last updated:** 19 Agustus 2026
@@ -9,13 +9,13 @@
 
 ## 1. Ringkasan
 
-Custos adalah **liquidation risk automation agent** untuk posisi borrow di protokol lending on-chain (Aave V3, Morpho). Custos memantau Health Factor (HF) posisi user secara terus-menerus dan mengeksekusi aksi remediasi otomatis — repay, top-up collateral, atau deleverage — sebelum posisi mencapai ambang likuidasi.
+Tahansoe adalah **liquidation risk automation agent** untuk posisi borrow di protokol lending on-chain (Aave V3, Morpho). Tahansoe memantau Health Factor (HF) posisi user secara terus-menerus dan mengeksekusi aksi remediasi otomatis — repay, top-up collateral, atau deleverage — sebelum posisi mencapai ambang likuidasi.
 
-Custos bersifat **non-custodial**. Dana user tidak pernah berpindah ke kustodi Custos. Eksekusi dilakukan lewat module dengan scope terbatas yang di-approve user.
+Tahansoe bersifat **non-custodial**. Dana user tidak pernah berpindah ke kustodi Tahansoe. Eksekusi dilakukan lewat module dengan scope terbatas yang di-approve user.
 
 ### Positioning statement
 
-> Custos adalah risk automation, **bukan** jaminan anti-likuidasi.
+> Tahansoe adalah risk automation, **bukan** jaminan anti-likuidasi.
 
 Framing ini wajib konsisten di seluruh produk, dokumentasi, dan materi marketing. Lihat §9 (Non-Goals) dan §11 (Risk Disclosure).
 
@@ -39,7 +39,7 @@ Solusi eksisting umumnya berupa notifikasi (DeFi Saver alerts, Hypernative) yang
 |---|------|---------------------|
 | G1 | Deteksi penurunan HF secara andal | Deteksi < 1 block setelah harga oracle update |
 | G2 | Eksekusi remediasi otomatis | HF pulih di atas target buffer dalam 1 transaksi |
-| G3 | Non-custodial | Dana user tidak pernah dapat ditransfer keluar oleh Custos |
+| G3 | Non-custodial | Dana user tidak pernah dapat ditransfer keluar oleh Tahansoe |
 | G4 | Multi-protokol | Aave V3 + Morpho Blue dengan interface adapter terpadu |
 | G5 | Bekerja tanpa modal cadangan | Flash loan fallback untuk user tanpa reserve |
 
@@ -47,18 +47,18 @@ Solusi eksisting umumnya berupa notifikasi (DeFi Saver alerts, Hypernative) yang
 
 ## 4. Konsep Inti & Klarifikasi
 
-**Custos tidak mengendalikan harga.** Harga collateral ditentukan pasar global. Oracle hanyalah *sumber data* untuk mengetahui kapan posisi berbahaya, bukan alat untuk menjaga harga.
+**Tahansoe tidak mengendalikan harga.** Harga collateral ditentukan pasar global. Oracle hanyalah *sumber data* untuk mengetahui kapan posisi berbahaya, bukan alat untuk menjaga harga.
 
-Yang dijaga Custos adalah **Health Factor**:
+Yang dijaga Tahansoe adalah **Health Factor**:
 
 ```
 HF = (Σ collateral × liquidationThreshold) / totalDebt
 HF < 1.0 → posisi dapat dilikuidasi
 ```
 
-Custos bertindak pada `HF < triggerThreshold` (default 1.30), memulihkan ke `targetHF` (default 1.60).
+Tahansoe bertindak pada `HF < triggerThreshold` (default 1.30), memulihkan ke `targetHF` (default 1.60).
 
-**Aturan oracle kritis:** Custos WAJIB membaca oracle yang sama persis dengan yang digunakan protokol target. Aave V3 menggunakan Chainlink Data Feeds. Membaca harga dari sumber lain (CEX, DEX spot) berisiko menghasilkan divergensi akibat deviation threshold dan heartbeat, sehingga deteksi terlambat.
+**Aturan oracle kritis:** Tahansoe WAJIB membaca oracle yang sama persis dengan yang digunakan protokol target. Aave V3 menggunakan Chainlink Data Feeds. Membaca harga dari sumber lain (CEX, DEX spot) berisiko menghasilkan divergensi akibat deviation threshold dan heartbeat, sehingga deteksi terlambat.
 
 ---
 
@@ -166,7 +166,7 @@ Safe Module dengan **allowlist ketat**:
 | `Morpho.repay()` | Perubahan owner/module Safe |
 | Swap via router allowlist | Withdraw ke luar Safe |
 
-Invariant keamanan: **kompromi terhadap Custos tidak boleh memungkinkan penarikan dana user.** Skenario terburuk yang dapat dilakukan attacker adalah membayar utang user.
+Invariant keamanan: **kompromi terhadap Tahansoe tidak boleh memungkinkan penarikan dana user.** Skenario terburuk yang dapat dilakukan attacker adalah membayar utang user.
 
 ### 6.4 Funding Sources
 

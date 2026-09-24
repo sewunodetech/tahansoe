@@ -118,7 +118,7 @@ export default function ConnectPage() {
             <ShieldCheck className="w-6 h-6 text-white/80" strokeWidth={1.5} />
           </div>
           <h1 className="text-[20px] font-semibold text-white tracking-[-0.02em] mb-1">
-            {step === "connect" ? "Connect to Custos" : "Sign in"}
+            {step === "connect" ? "Connect to Tahansoe" : "Sign in"}
           </h1>
           <p className="text-[13px] text-white/35 text-center max-w-[280px]">
             {step === "connect"
@@ -242,7 +242,7 @@ export default function ConnectPage() {
           <span className="underline underline-offset-2 cursor-pointer hover:text-white/40 transition-colors">
             terms
           </span>
-          . Custos never has custody of your funds.
+          . Tahansoe never has custody of your funds.
         </p>
       </div>
     </div>

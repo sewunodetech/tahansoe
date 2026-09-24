@@ -36,7 +36,7 @@ export function useAuth() {
       const message = new SiweMessage({
         domain,
         address,
-        statement: "Sign in to Custos to enable liquidation risk protection.",
+        statement: "Sign in to Tahansoe to enable liquidation risk protection.",
         uri: origin,
         version: "1",
         chainId,

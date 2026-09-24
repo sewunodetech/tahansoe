@@ -42,7 +42,7 @@ function buildMessage(p: NotifyPayload): string {
         `Position: *${pos}*\n` +
         `Current HF: *${p.hf.toFixed(2)}*\n` +
         `Trigger at: *${p.triggerAt?.toFixed(2) ?? "—"}*\n\n` +
-        `HF is approaching your trigger threshold. Custos is monitoring every block.`
+        `HF is approaching your trigger threshold. Tahansoe is monitoring every block.`
       );
 
     case "trigger_fired":
@@ -50,7 +50,7 @@ function buildMessage(p: NotifyPayload): string {
         `🚨 *Trigger Fired*\n\n` +
         `Position: *${pos}*\n` +
         `HF dropped to *${p.hf.toFixed(2)}* ≤ trigger *${p.triggerAt?.toFixed(2) ?? "—"}*\n\n` +
-        `Custos is executing automatic remediation via flash loan now.`
+        `Tahansoe is executing automatic remediation via flash loan now.`
       );
 
     case "execution_success":
@@ -67,7 +67,7 @@ function buildMessage(p: NotifyPayload): string {
         `❌ *Execution Failed*\n\n` +
         `Position: *${pos}*\n` +
         `Current HF: *${p.hf.toFixed(2)}*\n\n` +
-        `Custos could not execute the remediation transaction ` +
+        `Tahansoe could not execute the remediation transaction ` +
         `(possible causes: gas spike, slippage exceeded, flash loan reverted). ` +
         `*Manual review required immediately.*`
       );

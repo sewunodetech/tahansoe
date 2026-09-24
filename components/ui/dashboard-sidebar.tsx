@@ -273,7 +273,7 @@ export function SidebarNav({
                 className="text-[13px] font-semibold leading-none tracking-[-0.02em]"
                 style={{ color: "var(--text-primary)" }}
               >
-                Custos
+                Tahansoe
               </span>
               <span
                 className="text-[10px] leading-none mt-0.5 font-mono"

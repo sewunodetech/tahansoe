@@ -8,7 +8,7 @@
  * directly from this context so every settings change takes effect immediately.
  *
  * Persistence: policy, isPaused, and telegramEnabled are written to
- * localStorage under "custos:settings" on every relevant action and
+ * localStorage under "tahansoe:settings" on every relevant action and
  * hydrated back on first render — so settings survive relog and refresh.
  *
  * Formula used throughout:
@@ -28,7 +28,7 @@ import { POSITIONS, HISTORY, HF_TREND } from "@/lib/mock-data";
 /* ─────────────────────────────────────────────
    localStorage helpers
 ───────────────────────────────────────────── */
-const STORAGE_KEY = "custos:settings";
+const STORAGE_KEY = "tahansoe:settings";
 
 type PersistedSettings = {
   policy:          PolicySettings;
