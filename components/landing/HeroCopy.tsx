@@ -29,7 +29,7 @@ export function HeroCopy() {
         <span
           className="block"
           style={{
-            background: "linear-gradient(90deg, #ffffff 0%, #2dd4bf 100%)",
+            background: "linear-gradient(90deg, #fdf1e1 0%, #4ab5e0 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
@@ -70,7 +70,7 @@ export function HeroCopy() {
           /* Already connected — go straight to dashboard */
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 h-10 px-6 rounded-[6px] bg-white text-[#080808] text-[13px] font-semibold tracking-[-0.01em] select-none hover:bg-white/90 transition-colors"
+            className="inline-flex items-center gap-2 h-10 px-6 rounded-[6px] bg-white text-[#0b1110] text-[13px] font-semibold tracking-[-0.01em] select-none hover:bg-white/90 transition-colors"
           >
             <LayoutDashboard className="w-4 h-4" strokeWidth={2} />
             Open Dashboard
@@ -81,8 +81,8 @@ export function HeroCopy() {
               href="/connect"
               className="inline-flex items-center justify-center h-10 px-6 rounded-[6px] text-[13px] font-semibold tracking-[-0.01em] select-none transition-colors"
               style={{
-                background: "linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%)",
-                color: "#042f2e",
+                background: "linear-gradient(135deg, #4ab5e0 0%, #2f8fb8 100%)",
+                color: "#0e2a36",
               }}
             >
               Launch app

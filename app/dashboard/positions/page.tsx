@@ -26,7 +26,7 @@ function HF_COLOR_HEX(status: string) {
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-[8px] border border-white/[0.08] px-3 py-2" style={{ background: "#111113" }}>
+    <div className="rounded-[8px] border border-white/[0.08] px-3 py-2" style={{ background: "#0b1110" }}>
       <p className="text-[10px] font-mono text-white/30 mb-1">{label}</p>
       {payload.map((p: any) => (
         <p key={p.name} className="text-[12px] font-mono" style={{ color: p.color }}>
@@ -49,7 +49,7 @@ export default function PositionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[18px] font-semibold text-white tracking-[-0.02em]">Positions</h1>
+          <h1 className="font-display text-[30px] font-normal text-white leading-none">Positions</h1>
           <p className="text-[12px] text-white/30 mt-0.5">
             {positions.length} active · monitored every block
           </p>
@@ -176,12 +176,12 @@ export default function PositionsPage() {
                     </defs>
                     <XAxis
                       dataKey="t"
-                      tick={{ fontSize: 8, fill: "rgba(255,255,255,0.18)", fontFamily: "monospace" }}
+                      tick={{ fontSize: 8, fill: "rgba(253,241,225,0.18)", fontFamily: "monospace" }}
                       axisLine={false} tickLine={false} interval={3}
                     />
                     <YAxis
                       domain={[1.0, 2.2]}
-                      tick={{ fontSize: 8, fill: "rgba(255,255,255,0.18)", fontFamily: "monospace" }}
+                      tick={{ fontSize: 8, fill: "rgba(253,241,225,0.18)", fontFamily: "monospace" }}
                       axisLine={false} tickLine={false}
                     />
                     <Tooltip content={<ChartTooltip />} />

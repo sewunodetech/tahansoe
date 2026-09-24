@@ -134,7 +134,7 @@ export function HFCard() {
 
       {/* Main card */}
       <motion.div
-        className="relative rounded-[10px] border bg-[#0d0d0f] overflow-hidden"
+        className="relative rounded-[10px] border bg-[#0b1110] overflow-hidden"
         animate={{
           borderColor: isCritical
             ? "rgba(239,68,68,0.4)"
@@ -144,15 +144,15 @@ export function HFCard() {
         style={{ borderWidth: 1 }}
       >
         {/* Terminal bar */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-[#27272a] bg-[#050505]/80">
-          <div className="w-2 h-2 rounded-full bg-[#3f3f46]" />
-          <div className="w-2 h-2 rounded-full bg-[#3f3f46]" />
-          <div className="w-2 h-2 rounded-full bg-[#3f3f46]" />
-          <span className="ml-2 font-mono text-[11px] text-[#52525b]">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-[#26332f] bg-[#050505]/80">
+          <div className="w-2 h-2 rounded-full bg-[#34423d]" />
+          <div className="w-2 h-2 rounded-full bg-[#34423d]" />
+          <div className="w-2 h-2 rounded-full bg-[#34423d]" />
+          <span className="ml-2 font-mono text-[11px] text-[#5b6660]">
             tahansoe-agent
           </span>
           <div className="ml-auto flex items-center gap-2">
-            <span className="font-mono text-[10px] text-[#52525b]">
+            <span className="font-mono text-[10px] text-[#5b6660]">
               #{formatBlockNumber(blockNum)}
             </span>
             <span className="flex items-center gap-1 font-mono text-[11px]" style={{ color: statusColor }}>
@@ -170,14 +170,14 @@ export function HFCard() {
         <div className="p-5 space-y-5">
           {/* HF number */}
           <div>
-            <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-[#52525b] mb-1.5">
+            <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-[#5b6660] mb-1.5">
               Health Factor
             </p>
             <div className="flex items-baseline gap-3">
               <motion.span
                 className="text-[52px] font-medium leading-none tracking-[-0.03em] tabular-nums"
-                style={{ color: isCritical ? "#ef4444" : "#ffffff" }}
-                animate={{ color: isCritical ? "#ef4444" : "#ffffff" }}
+                style={{ color: isCritical ? "#ef4444" : "#fdf1e1" }}
+                animate={{ color: isCritical ? "#ef4444" : "#fdf1e1" }}
                 transition={{ duration: 0.4 }}
               >
                 {displayHF.toFixed(2)}
@@ -197,7 +197,7 @@ export function HFCard() {
 
           {/* HF bar */}
           <div className="space-y-2">
-            <div className="relative h-1.5 rounded-full bg-[#1c1c1f] overflow-hidden">
+            <div className="relative h-1.5 rounded-full bg-[#15201d] overflow-hidden">
               {/* Fill */}
               <motion.div
                 className="absolute left-0 top-0 h-full rounded-full"
@@ -207,7 +207,7 @@ export function HFCard() {
                     ? "#ef4444"
                     : current.status === "warning"
                     ? "#eab308"
-                    : "#ffffff",
+                    : "#fdf1e1",
                 }}
                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] as const }}
               />
@@ -217,7 +217,7 @@ export function HFCard() {
                 style={{ left: "30%", backgroundColor: "#eab308" }}
               />
             </div>
-            <div className="flex justify-between font-mono text-[9px] text-[#52525b]">
+            <div className="flex justify-between font-mono text-[9px] text-[#5b6660]">
               <span>1.00 liq.</span>
               <span style={{ color: "#eab308" }}>1.30 trigger</span>
               <span>2.00+</span>
@@ -233,7 +233,7 @@ export function HFCard() {
           </div>
 
           {/* Action log */}
-          <div className="border-t border-[#1c1c1f] pt-3 min-h-[48px]">
+          <div className="border-t border-[#15201d] pt-3 min-h-[48px]">
             <AnimatePresence mode="popLayout">
               {current.action ? (
                 <motion.div
@@ -265,13 +265,13 @@ export function HFCard() {
                   exit={{ opacity: 0 }}
                   className="flex gap-4"
                 >
-                  <span className="font-mono text-[10px] text-[#52525b]">
+                  <span className="font-mono text-[10px] text-[#5b6660]">
                     next check{" "}
-                    <span className="text-[#71717a]">1 block</span>
+                    <span className="text-[#8f897c]">1 block</span>
                   </span>
-                  <span className="font-mono text-[10px] text-[#52525b]">
+                  <span className="font-mono text-[10px] text-[#5b6660]">
                     last action{" "}
-                    <span className="text-[#71717a]">none needed</span>
+                    <span className="text-[#8f897c]">none needed</span>
                   </span>
                 </motion.div>
               )}
@@ -296,11 +296,11 @@ export function HFCard() {
 
       {/* Ghost depth card */}
       <div
-        className="absolute -bottom-2 -right-2 w-full h-full rounded-[10px] border border-[#27272a]/30 bg-[#0d0d0f]/30 -z-10"
+        className="absolute -bottom-2 -right-2 w-full h-full rounded-[10px] border border-[#26332f]/30 bg-[#0b1110]/30 -z-10"
         aria-hidden="true"
       />
       <div
-        className="absolute -bottom-4 -right-4 w-full h-full rounded-[10px] border border-[#27272a]/15 bg-[#0d0d0f]/15 -z-20"
+        className="absolute -bottom-4 -right-4 w-full h-full rounded-[10px] border border-[#26332f]/15 bg-[#0b1110]/15 -z-20"
         aria-hidden="true"
       />
     </div>
@@ -309,9 +309,9 @@ export function HFCard() {
 
 function StatCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[6px] bg-[#0a0a0c] px-3 py-2 border border-[#1c1c1f]">
-      <p className="font-mono text-[9px] text-[#52525b] mb-0.5">{label}</p>
-      <p className="font-mono text-[12px] text-[#a1a1aa] font-medium">{value}</p>
+    <div className="rounded-[6px] bg-[#0b1110] px-3 py-2 border border-[#15201d]">
+      <p className="font-mono text-[9px] text-[#5b6660] mb-0.5">{label}</p>
+      <p className="font-mono text-[12px] text-[#c8bca9] font-medium">{value}</p>
     </div>
   );
 }

@@ -54,9 +54,9 @@ function NumberInput({ value, onChange, min, max, step = 0.01 }: {
         if (!isNaN(v)) onChange(v);
       }}
       className="w-24 h-8 px-3 rounded-[6px] text-[12px] font-mono text-white/70 outline-none text-right transition-colors"
-      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-      onFocus={(e) => { e.currentTarget.style.border = "1px solid rgba(45,212,191,0.4)"; e.currentTarget.style.background = "rgba(45,212,191,0.04)"; }}
-      onBlur={(e)  => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.08)"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+      style={{ background: "rgba(253,241,225,0.04)", border: "1px solid rgba(253,241,225,0.08)" }}
+      onFocus={(e) => { e.currentTarget.style.border = "1px solid rgba(74,181,224,0.4)"; e.currentTarget.style.background = "rgba(74,181,224,0.04)"; }}
+      onBlur={(e)  => { e.currentTarget.style.border = "1px solid rgba(253,241,225,0.08)"; e.currentTarget.style.background = "rgba(253,241,225,0.04)"; }}
     />
   );
 }
@@ -65,7 +65,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
   return (
     <button onClick={() => onChange(!on)} className="flex items-center transition-colors" aria-pressed={on}>
       {on
-        ? <ToggleRight style={{ width: 32, height: 32, color: "#2dd4bf" }}    strokeWidth={1.5} />
+        ? <ToggleRight style={{ width: 32, height: 32, color: "#4ab5e0" }}    strokeWidth={1.5} />
         : <ToggleLeft  style={{ width: 32, height: 32 }} className="text-white/20" strokeWidth={1.5} />
       }
     </button>
@@ -112,7 +112,7 @@ export default function SettingsPage() {
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-[18px] font-semibold text-white tracking-[-0.02em]">Settings</h1>
+          <h1 className="font-display text-[30px] font-normal text-white leading-none">Settings</h1>
           <p className="text-[12px] text-white/30 mt-0.5">
             Protection thresholds · execution policy · simulation
           </p>
@@ -123,7 +123,7 @@ export default function SettingsPage() {
           style={
             flash
               ? { background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.3)", color: "#34d399" }
-              : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.25)" }
+              : { background: "rgba(253,241,225,0.04)", border: "1px solid rgba(253,241,225,0.08)", color: "rgba(253,241,225,0.25)" }
           }
         >
           {flash
@@ -142,8 +142,8 @@ export default function SettingsPage() {
           <SectionCard title="Wallet" description="Connected wallet and active network.">
             <FieldRow label="Address" hint="Used to read positions and sign Guardian Module approval.">
               <div className="flex items-center gap-2 h-8 px-3 rounded-[6px]"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <ShieldCheck style={{ width: 13, height: 13, color: "#2dd4bf" }} strokeWidth={1.5} />
+                style={{ background: "rgba(253,241,225,0.03)", border: "1px solid rgba(253,241,225,0.06)" }}>
+                <ShieldCheck style={{ width: 13, height: 13, color: "#4ab5e0" }} strokeWidth={1.5} />
                 <span className="font-mono text-[11px] text-white/45">{short}</span>
                 <button onClick={handleCopy} className="text-white/20 hover:text-white/50 transition-colors ml-1">
                   {copied
@@ -155,7 +155,7 @@ export default function SettingsPage() {
             </FieldRow>
             <FieldRow label="Network" hint="Chain where your positions are active.">
               <div className="flex items-center gap-2 h-8 px-3 rounded-[6px]"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                style={{ background: "rgba(253,241,225,0.03)", border: "1px solid rgba(253,241,225,0.06)" }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: "#34d399" }} />
                 <span className="font-mono text-[11px] text-white/45">{chain?.name ?? "—"}</span>
               </div>
@@ -261,8 +261,8 @@ export default function SettingsPage() {
                 className="inline-flex items-center gap-2 h-8 px-3.5 rounded-[7px] text-[12px] font-medium transition-all"
                 style={
                   telegramEnabled
-                    ? { background: "rgba(45,212,191,0.1)",   border: "1px solid rgba(45,212,191,0.3)",  color: "#2dd4bf" }
-                    : { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.35)" }
+                    ? { background: "rgba(74,181,224,0.1)",   border: "1px solid rgba(74,181,224,0.3)",  color: "#4ab5e0" }
+                    : { background: "rgba(253,241,225,0.05)", border: "1px solid rgba(253,241,225,0.1)", color: "rgba(253,241,225,0.35)" }
                 }
               >
                 {telegramEnabled
@@ -287,7 +287,7 @@ export default function SettingsPage() {
                 className="inline-flex items-center gap-2 h-8 px-3.5 rounded-[7px] text-[12px] font-medium transition-all"
                 style={
                   isPaused
-                    ? { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)" }
+                    ? { background: "rgba(253,241,225,0.05)", border: "1px solid rgba(253,241,225,0.1)", color: "rgba(253,241,225,0.45)" }
                     : { background: "rgba(52,211,153,0.1)",   border: "1px solid rgba(52,211,153,0.3)",  color: "#34d399" }
                 }
               >
@@ -304,9 +304,9 @@ export default function SettingsPage() {
               <button
                 onClick={() => { updatePolicy(DEFAULT_POLICY); setFlash(true); setTimeout(() => setFlash(false), 1_200); }}
                 className="inline-flex items-center gap-2 h-8 px-3.5 rounded-[7px] text-[12px] font-medium transition-all"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.35)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "rgba(255,255,255,0.35)"; }}
+                style={{ background: "rgba(253,241,225,0.04)", border: "1px solid rgba(253,241,225,0.08)", color: "rgba(253,241,225,0.35)" }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(253,241,225,0.15)"; e.currentTarget.style.color = "rgba(253,241,225,0.6)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(253,241,225,0.08)"; e.currentTarget.style.color = "rgba(253,241,225,0.35)"; }}
               >
                 <RefreshCw style={{ width: 12, height: 12 }} strokeWidth={2} /> Reset
               </button>
@@ -314,7 +314,7 @@ export default function SettingsPage() {
 
             {/* Status strip */}
             <div className="mt-1 flex items-center flex-wrap gap-3 px-3 py-2.5 rounded-[8px]"
-              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              style={{ background: "rgba(253,241,225,0.02)", border: "1px solid rgba(253,241,225,0.05)" }}>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full shrink-0"
                   style={{ backgroundColor: isPaused ? "#94a3b8" : "#34d399", animation: isPaused ? "none" : "pulse 2s infinite" }} />
@@ -327,7 +327,7 @@ export default function SettingsPage() {
                 {new Date(lastTick).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </span>
               <div className="ml-auto flex items-center gap-1.5">
-                <span className="text-[11px] font-mono" style={{ color: telegramEnabled ? "#2dd4bf" : "rgba(255,255,255,0.2)" }}>
+                <span className="text-[11px] font-mono" style={{ color: telegramEnabled ? "#4ab5e0" : "rgba(253,241,225,0.2)" }}>
                   Telegram {telegramEnabled ? "on" : "off"}
                 </span>
               </div>
@@ -340,16 +340,16 @@ export default function SettingsPage() {
         <div className="space-y-4">
 
           {/* Threshold preview */}
-          <div className="rounded-[10px] p-5" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(45,212,191,0.12)" }}>
+          <div className="rounded-[10px] p-5" style={{ background: "rgba(253,241,225,0.015)", border: "1px solid rgba(74,181,224,0.12)" }}>
             <p className="text-[10px] font-mono text-white/30 tracking-[0.12em] uppercase mb-4">Threshold preview</p>
 
-            <div className="relative h-2 rounded-full mb-3" style={{ background: "rgba(255,255,255,0.06)" }}>
+            <div className="relative h-2 rounded-full mb-3" style={{ background: "rgba(253,241,225,0.06)" }}>
               <div className="absolute left-0 top-0 h-full rounded-full transition-all duration-300"
-                style={{ width: `${targetPct}%`, background: "linear-gradient(90deg, rgba(248,113,113,0.4) 0%, rgba(251,191,36,0.5) 30%, rgba(45,212,191,0.5) 100%)" }} />
+                style={{ width: `${targetPct}%`, background: "linear-gradient(90deg, rgba(248,113,113,0.4) 0%, rgba(251,191,36,0.5) 30%, rgba(74,181,224,0.5) 100%)" }} />
               <div className="absolute top-[-3px] bottom-[-3px] w-0.5 rounded-full transition-all duration-300"
                 style={{ left: `${triggerPct}%`, backgroundColor: "#fbbf24" }} />
               <div className="absolute top-[-3px] bottom-[-3px] w-0.5 rounded-full transition-all duration-300"
-                style={{ left: `${targetPct}%`, backgroundColor: "#2dd4bf" }} />
+                style={{ left: `${targetPct}%`, backgroundColor: "#4ab5e0" }} />
             </div>
 
             <div className="flex justify-between text-[9px] font-mono text-white/25 mb-5">
@@ -359,7 +359,7 @@ export default function SettingsPage() {
             <div className="space-y-2.5">
               {[
                 { color: "#fbbf24", label: "Trigger",          value: policy.triggerHF.toFixed(2) },
-                { color: "#2dd4bf", label: "Target",           value: policy.targetHF.toFixed(2) },
+                { color: "#4ab5e0", label: "Target",           value: policy.targetHF.toFixed(2) },
                 { color: "#818cf8", label: "Effective target", value: (policy.targetHF * (1 + policy.bufferPct / 100)).toFixed(2) },
                 { color: "#ffffff40", label: "Buffer",         value: `${policy.bufferPct}%` },
               ].map((r) => (
@@ -391,24 +391,24 @@ export default function SettingsPage() {
           </div>
 
           {/* Active strategies summary */}
-          <div className="rounded-[10px] p-5" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="rounded-[10px] p-5" style={{ background: "rgba(253,241,225,0.015)", border: "1px solid rgba(253,241,225,0.06)" }}>
             <p className="text-[10px] font-mono text-white/30 tracking-[0.12em] uppercase mb-4">Active strategies</p>
             <div className="space-y-2">
               {[
-                { label: "Hot reserve",  on: policy.hotReserveEnabled, icon: Shield,      color: "#2dd4bf",  priority: "1" },
+                { label: "Hot reserve",  on: policy.hotReserveEnabled, icon: Shield,      color: "#4ab5e0",  priority: "1" },
                 { label: "Flash loan",   on: policy.flashLoanEnabled,  icon: Zap,         color: "#fbbf24",  priority: "2" },
                 { label: "Deleverage",   on: policy.deleverageEnabled, icon: TrendingDown, color: "#f87171", priority: "3" },
               ].map((s) => (
                 <div key={s.label} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-[9px] font-mono text-white/15 w-3">{s.priority}</span>
-                    <s.icon style={{ width: 12, height: 12, color: s.on ? s.color : "rgba(255,255,255,0.15)" }} strokeWidth={1.5} />
-                    <span className="text-[11.5px]" style={{ color: s.on ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)" }}>
+                    <s.icon style={{ width: 12, height: 12, color: s.on ? s.color : "rgba(253,241,225,0.15)" }} strokeWidth={1.5} />
+                    <span className="text-[11.5px]" style={{ color: s.on ? "rgba(253,241,225,0.6)" : "rgba(253,241,225,0.2)" }}>
                       {s.label}
                     </span>
                   </div>
                   <span className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded-[3px]"
-                    style={{ color: s.on ? s.color : "rgba(255,255,255,0.2)", background: s.on ? `${s.color}18` : "rgba(255,255,255,0.04)" }}>
+                    style={{ color: s.on ? s.color : "rgba(253,241,225,0.2)", background: s.on ? `${s.color}18` : "rgba(253,241,225,0.04)" }}>
                     {s.on ? "ON" : "OFF"}
                   </span>
                 </div>
@@ -417,19 +417,19 @@ export default function SettingsPage() {
           </div>
 
           {/* Slippage bar */}
-          <div className="rounded-[10px] p-4" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="rounded-[10px] p-4" style={{ background: "rgba(253,241,225,0.015)", border: "1px solid rgba(253,241,225,0.06)" }}>
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] font-mono text-white/30 tracking-[0.12em] uppercase">Max slippage</span>
               <span className="font-mono text-[12px] font-semibold"
-                style={{ color: policy.slippageBps > 200 ? "#f87171" : policy.slippageBps > 100 ? "#fbbf24" : "#2dd4bf" }}>
+                style={{ color: policy.slippageBps > 200 ? "#f87171" : policy.slippageBps > 100 ? "#fbbf24" : "#4ab5e0" }}>
                 {policy.slippageBps} bps
               </span>
             </div>
-            <div className="relative h-1 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+            <div className="relative h-1 rounded-full" style={{ background: "rgba(253,241,225,0.06)" }}>
               <div className="absolute left-0 top-0 h-full rounded-full transition-all duration-300"
                 style={{
                   width: `${Math.min(100, (policy.slippageBps / 500) * 100)}%`,
-                  backgroundColor: policy.slippageBps > 200 ? "#f87171" : policy.slippageBps > 100 ? "#fbbf24" : "#2dd4bf",
+                  backgroundColor: policy.slippageBps > 200 ? "#f87171" : policy.slippageBps > 100 ? "#fbbf24" : "#4ab5e0",
                 }} />
             </div>
             <p className="text-[10px] text-white/20 mt-1.5">
@@ -439,7 +439,7 @@ export default function SettingsPage() {
 
           {/* Risk notice */}
           <div className="flex items-start gap-3 px-4 py-3.5 rounded-[9px]"
-            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            style={{ background: "rgba(253,241,225,0.02)", border: "1px solid rgba(253,241,225,0.05)" }}>
             <Info className="w-3.5 h-3.5 text-white/20 shrink-0 mt-0.5" strokeWidth={1.5} />
             <p className="text-[11px] text-white/25 leading-relaxed">
               Deleverage sells collateral at current market price — this realises a loss.

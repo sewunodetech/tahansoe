@@ -167,8 +167,8 @@ function TourTrigger() {
         color:      "var(--text-tertiary)",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "rgba(45,212,191,0.3)";
-        e.currentTarget.style.color       = "#2dd4bf";
+        e.currentTarget.style.borderColor = "rgba(74,181,224,0.3)";
+        e.currentTarget.style.color       = "#4ab5e0";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.borderColor = "var(--border)";

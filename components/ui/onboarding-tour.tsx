@@ -257,7 +257,7 @@ function SpotlightOverlay({
       <rect
         x={x} y={y} width={w} height={h} rx={r}
         fill="none"
-        stroke="rgba(45,212,191,0.5)"
+        stroke="rgba(74,181,224,0.5)"
         strokeWidth={1.5}
       />
       {/* click-through blocker outside spotlight */}
@@ -305,9 +305,9 @@ function TourCard({
         ...cardStyle,
         width:    320,
         background: "rgba(13,14,17,0.97)",
-        border:   "1px solid rgba(45,212,191,0.2)",
+        border:   "1px solid rgba(74,181,224,0.2)",
         borderRadius: 14,
-        boxShadow: "0 0 0 1px rgba(45,212,191,0.06), 0 24px 64px rgba(0,0,0,0.7), 0 0 40px rgba(45,212,191,0.08)",
+        boxShadow: "0 0 0 1px rgba(74,181,224,0.06), 0 24px 64px rgba(0,0,0,0.7), 0 0 40px rgba(74,181,224,0.08)",
       }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -315,7 +315,7 @@ function TourCard({
       <div
         className="h-[3px] rounded-t-[14px] transition-all duration-500"
         style={{
-          background: `linear-gradient(90deg, #2dd4bf 0%, #0d9488 ${pct}%, rgba(255,255,255,0.06) ${pct}%)`,
+          background: `linear-gradient(90deg, #4ab5e0 0%, #2f8fb8 ${pct}%, rgba(253,241,225,0.06) ${pct}%)`,
         }}
       />
 
@@ -325,11 +325,11 @@ function TourCard({
           <div
             className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
             style={{
-              background: "rgba(45,212,191,0.1)",
-              border:     "1px solid rgba(45,212,191,0.25)",
+              background: "rgba(74,181,224,0.1)",
+              border:     "1px solid rgba(74,181,224,0.25)",
             }}
           >
-            <Icon style={{ width: 17, height: 17, color: "#2dd4bf" }} strokeWidth={1.5} />
+            <Icon style={{ width: 17, height: 17, color: "#4ab5e0" }} strokeWidth={1.5} />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -340,9 +340,9 @@ function TourCard({
                 <span
                   className="text-[9px] font-bold font-mono px-1.5 py-0.5 rounded-[4px] tracking-wide"
                   style={{
-                    background: "rgba(45,212,191,0.12)",
-                    border:     "1px solid rgba(45,212,191,0.25)",
-                    color:      "#2dd4bf",
+                    background: "rgba(74,181,224,0.12)",
+                    border:     "1px solid rgba(74,181,224,0.25)",
+                    color:      "#4ab5e0",
                   }}
                 >
                   {step.badge}
@@ -379,10 +379,10 @@ function TourCard({
               width:  i === stepIdx ? 16 : 5,
               height: 5,
               background: i === stepIdx
-                ? "#2dd4bf"
+                ? "#4ab5e0"
                 : i < stepIdx
-                ? "rgba(45,212,191,0.3)"
-                : "rgba(255,255,255,0.1)",
+                ? "rgba(74,181,224,0.3)"
+                : "rgba(253,241,225,0.1)",
             }}
           />
         ))}
@@ -406,8 +406,8 @@ function TourCard({
             onClick={onClose}
             className="flex items-center gap-1.5 h-8 px-4 rounded-[7px] text-[12px] font-semibold transition-all"
             style={{
-              background: "linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%)",
-              color:      "#042f2e",
+              background: "linear-gradient(135deg, #4ab5e0 0%, #2f8fb8 100%)",
+              color:      "#0e2a36",
             }}
           >
             <CheckCircle style={{ width: 13, height: 13 }} strokeWidth={2.5} />
@@ -418,8 +418,8 @@ function TourCard({
             onClick={step.action ? onAction : onNext}
             className="flex items-center gap-1.5 h-8 px-4 rounded-[7px] text-[12px] font-semibold transition-all"
             style={{
-              background: "linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%)",
-              color:      "#042f2e",
+              background: "linear-gradient(135deg, #4ab5e0 0%, #2f8fb8 100%)",
+              color:      "#0e2a36",
             }}
           >
             {step.action ?? "Next"}

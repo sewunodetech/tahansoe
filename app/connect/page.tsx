@@ -102,13 +102,13 @@ export default function ConnectPage() {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4"
-      style={{ background: "#080808" }}
+      style={{ background: "#0b1110" }}
     >
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255,255,255,0.05) 0%, transparent 100%)",
+            "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(253,241,225,0.05) 0%, transparent 100%)",
         }}
       />
 
@@ -117,7 +117,7 @@ export default function ConnectPage() {
           <div className="w-12 h-12 rounded-[10px] border border-white/10 bg-white/5 flex items-center justify-center mb-4">
             <ShieldCheck className="w-6 h-6 text-white/80" strokeWidth={1.5} />
           </div>
-          <h1 className="text-[20px] font-semibold text-white tracking-[-0.02em] mb-1">
+          <h1 className="font-display text-[32px] font-normal text-white leading-tight mb-1">
             {step === "connect" ? "Connect to Tahansoe" : "Sign in"}
           </h1>
           <p className="text-[13px] text-white/35 text-center max-w-[280px]">
@@ -226,7 +226,7 @@ export default function ConnectPage() {
                     </button>
                     <button
                       onClick={signIn}
-                      className="h-8 px-4 rounded-[6px] bg-white text-[#080808] text-[12px] font-semibold hover:bg-white/90 transition-colors"
+                      className="h-8 px-4 rounded-[6px] bg-white text-[#0b1110] text-[12px] font-semibold hover:bg-white/90 transition-colors"
                     >
                       Try again
                     </button>

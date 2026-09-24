@@ -27,7 +27,7 @@ const STATUS_BG    = {
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-[8px] border border-white/[0.08] px-3 py-2" style={{ background: "#111113" }}>
+    <div className="rounded-[8px] border border-white/[0.08] px-3 py-2" style={{ background: "#0b1110" }}>
       <p className="text-[10px] font-mono text-white/30 mb-1">{label}</p>
       {payload.map((p: any) => (
         <p key={p.dataKey} className="text-[11px] font-mono text-white/60">
@@ -65,7 +65,7 @@ export default function HistoryPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-[18px] font-semibold text-white tracking-[-0.02em]">Execution History</h1>
+        <h1 className="font-display text-[30px] font-normal text-white leading-none">Execution History</h1>
         <p className="text-[12px] text-white/30 mt-0.5">
           All Tahansoe interventions and monitoring events · {history.length} entries
         </p>
@@ -104,12 +104,12 @@ export default function HistoryPage() {
             <BarChart data={recoveryData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }} barCategoryGap="35%">
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 9, fill: "rgba(255,255,255,0.2)", fontFamily: "monospace" }}
+                tick={{ fontSize: 9, fill: "rgba(253,241,225,0.2)", fontFamily: "monospace" }}
                 axisLine={false} tickLine={false}
               />
               <YAxis
                 domain={[1.0, 1.8]}
-                tick={{ fontSize: 9, fill: "rgba(255,255,255,0.2)", fontFamily: "monospace" }}
+                tick={{ fontSize: 9, fill: "rgba(253,241,225,0.2)", fontFamily: "monospace" }}
                 axisLine={false} tickLine={false}
               />
               <Tooltip content={<ChartTooltip />} />

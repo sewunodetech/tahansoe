@@ -78,7 +78,7 @@ export function ParticleMesh() {
           const mda = Math.hypot(a.x - mX, a.y - mY);
           const boost = mda < 180 ? (1 - mda / 180) * 0.5 : 0;
           c.beginPath();
-          c.strokeStyle = `rgba(255,255,255,${(proximity * 0.15 + boost * proximity).toFixed(3)})`;
+          c.strokeStyle = `rgba(253,241,225,${(proximity * 0.15 + boost * proximity).toFixed(3)})`;
           c.lineWidth = 0.5;
           c.moveTo(a.x, a.y);
           c.lineTo(b.x, b.y);
@@ -94,7 +94,7 @@ export function ParticleMesh() {
         const alpha = Math.min(1, p.baseAlpha * pulse + boost);
         c.beginPath();
         c.arc(p.x, p.y, p.radius + boost * 1.5, 0, Math.PI * 2);
-        c.fillStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+        c.fillStyle = `rgba(253,241,225,${alpha.toFixed(3)})`;
         c.fill();
       }
 

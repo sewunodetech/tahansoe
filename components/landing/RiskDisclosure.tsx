@@ -33,55 +33,55 @@ const risks = [
 
 export function RiskDisclosure() {
   return (
-    <section id="risk" className="py-20 md:py-[80px] border-t border-[#27272a]">
+    <section id="risk" className="py-20 md:py-[80px] border-t border-[#26332f]">
       <div className="max-w-[1400px] mx-auto px-6">
         {/* Header */}
         <div className="mb-12">
-          <h2 className="text-4xl md:text-5xl font-medium leading-[1.1] tracking-[-0.02em] text-white mb-4">
+          <h2 className="text-4xl md:text-5xl font-display font-medium leading-[1.1] tracking-[-0.02em] text-[#fdf1e1] mb-4">
             What Tahansoe cannot do.
           </h2>
-          <p className="text-[15px] leading-[1.6] text-[#a1a1aa] max-w-[500px]">
+          <p className="text-[15px] leading-[1.6] text-[#c8bca9] max-w-[500px]">
             Risk automation is not a liquidation guarantee. These limitations are not in
             a footnote - they are a core part of the product.
           </p>
         </div>
 
         {/* Risk table */}
-        <div className="border border-[#27272a] rounded-[8px] overflow-hidden">
+        <div className="border border-[#fdf1e1]/10 rounded-[24px] overflow-hidden">
           {/* Header row */}
-          <div className="grid grid-cols-3 gap-px bg-[#27272a]">
-            <div className="bg-[#050505] px-5 py-3">
-              <span className="font-mono text-[11px] tracking-[0.12em] uppercase text-[#71717a]">Risk</span>
+          <div className="grid grid-cols-3 gap-px bg-[#26332f]">
+            <div className="bg-[#15201d] px-6 py-4">
+              <span className="text-[12px] font-medium tracking-[0.08em] uppercase text-[#4ab5e0]">Risk</span>
             </div>
-            <div className="bg-[#050505] px-5 py-3">
-              <span className="font-mono text-[11px] tracking-[0.12em] uppercase text-[#71717a]">Impact</span>
+            <div className="bg-[#15201d] px-6 py-4">
+              <span className="text-[12px] font-medium tracking-[0.08em] uppercase text-[#4ab5e0]">Impact</span>
             </div>
-            <div className="bg-[#050505] px-5 py-3">
-              <span className="font-mono text-[11px] tracking-[0.12em] uppercase text-[#71717a]">Mitigation</span>
+            <div className="bg-[#15201d] px-6 py-4">
+              <span className="text-[12px] font-medium tracking-[0.08em] uppercase text-[#4ab5e0]">Mitigation</span>
             </div>
           </div>
 
           {/* Data rows */}
-          {risks.map((row, i) => (
+          {risks.map((row) => (
             <div
               key={row.risk}
-              className="grid grid-cols-3 gap-px bg-[#27272a] border-t border-[#27272a]"
+              className="grid grid-cols-3 gap-px bg-[#26332f] border-t border-[#26332f]"
             >
-              <div className="bg-[#050505] px-5 py-4">
-                <span className="text-[13px] text-white font-medium">{row.risk}</span>
+              <div className="bg-[#0b1110] px-6 py-4">
+                <span className="text-[13px] text-[#fdf1e1] font-medium">{row.risk}</span>
               </div>
-              <div className="bg-[#050505] px-5 py-4">
-                <span className="text-[13px] text-[#a1a1aa] leading-snug">{row.impact}</span>
+              <div className="bg-[#0b1110] px-6 py-4">
+                <span className="text-[13px] text-[#c8bca9] leading-snug">{row.impact}</span>
               </div>
-              <div className="bg-[#050505] px-5 py-4">
-                <span className="text-[13px] text-[#a1a1aa] leading-snug">{row.mitigation}</span>
+              <div className="bg-[#0b1110] px-6 py-4">
+                <span className="text-[13px] text-[#c8bca9] leading-snug">{row.mitigation}</span>
               </div>
             </div>
           ))}
         </div>
 
         {/* Footnote */}
-        <p className="mt-6 text-[12px] text-[#71717a] max-w-[600px]">
+        <p className="mt-6 text-[12px] text-[#8f897c] max-w-[600px]">
           Tahansoe is risk automation. No system can prevent liquidation caused by an
           intra-block flash crash, oracle heartbeat delay, or gas limit breach.
           Always maintain a conservative Health Factor buffer independent of Tahansoe.

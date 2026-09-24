@@ -104,7 +104,7 @@ export function HeroChrome() {
               width: i % 5 === 0 ? 14 : i % 2 === 0 ? 8 : 5,
               height: 1,
               marginBottom: 16,
-              backgroundColor: `rgba(255,255,255,${i % 5 === 0 ? 0.22 : 0.1})`,
+              backgroundColor: `rgba(253,241,225,${i % 5 === 0 ? 0.22 : 0.1})`,
             }}
           />
         ))}
@@ -119,7 +119,7 @@ export function HeroChrome() {
           bottom: 60,
           width: 1,
           backgroundImage:
-            "repeating-linear-gradient(180deg, rgba(255,255,255,0.25) 0px, rgba(255,255,255,0.25) 2px, transparent 2px, transparent 6px)",
+            "repeating-linear-gradient(180deg, rgba(253,241,225,0.25) 0px, rgba(253,241,225,0.25) 2px, transparent 2px, transparent 6px)",
         }}
         aria-hidden="true"
       />
@@ -140,7 +140,7 @@ export function HeroChrome() {
                   <motion.div
                     key={i}
                     className="rounded-[1px]"
-                    style={{ width: 2.5, backgroundColor: "rgba(255,255,255,0.35)" }}
+                    style={{ width: 2.5, backgroundColor: "rgba(253,241,225,0.35)" }}
                     animate={
                       reduce
                         ? undefined

@@ -32,7 +32,7 @@ export default function ChatPage() {
       </span>
 
       {/* Title */}
-      <h1 className="text-[20px] font-semibold text-white tracking-[-0.02em] mb-2 text-center">
+      <h1 className="font-display text-[32px] font-normal text-white leading-tight mb-2 text-center">
         AI Assistant
       </h1>
 
@@ -54,8 +54,8 @@ export default function ChatPage() {
             key={q}
             className="flex items-center gap-3 px-3.5 py-2.5 rounded-[8px]"
             style={{
-              background: "rgba(255,255,255,0.025)",
-              border:     "1px solid rgba(255,255,255,0.05)",
+              background: "rgba(253,241,225,0.025)",
+              border:     "1px solid rgba(253,241,225,0.05)",
             }}
           >
             <span

@@ -119,7 +119,7 @@ function NavRow({
         {isActive && !hasChildren && !collapsed && (
           <span
             className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full"
-            style={{ backgroundColor: "#2dd4bf" }}
+            style={{ backgroundColor: "#4ab5e0" }}
           />
         )}
 
@@ -127,7 +127,7 @@ function NavRow({
           style={{
             width: 15, height: 15,
             flexShrink: 0,
-            color: isActive && !hasChildren ? "#2dd4bf" : "var(--text-tertiary)",
+            color: isActive && !hasChildren ? "#4ab5e0" : "var(--text-tertiary)",
           }}
           strokeWidth={isActive && !hasChildren ? 2 : 1.5}
         />
@@ -251,33 +251,33 @@ export function SidebarNav({
             data-tour-id="tour-logo"
             className="w-7 h-7 rounded-[6px] flex items-center justify-center"
             style={{
-              background: "rgba(45,212,191,0.1)",
-              border: "1px solid rgba(45,212,191,0.25)",
+              background: "rgba(74,181,224,0.1)",
+              border: "1px solid rgba(74,181,224,0.25)",
             }}
           >
-            <ShieldCheck style={{ width: 14, height: 14, color: "#2dd4bf" }} strokeWidth={1.5} />
+            <ShieldCheck style={{ width: 14, height: 14, color: "#4ab5e0" }} strokeWidth={1.5} />
           </div>
         ) : (
           <div data-tour-id="tour-logo" className="flex items-center gap-2.5">
             <div
               className="w-[28px] h-[28px] rounded-[6px] flex items-center justify-center shrink-0"
               style={{
-                background: "rgba(45,212,191,0.1)",
-                border: "1px solid rgba(45,212,191,0.25)",
+                background: "rgba(74,181,224,0.1)",
+                border: "1px solid rgba(74,181,224,0.25)",
               }}
             >
-              <ShieldCheck style={{ width: 14, height: 14, color: "#2dd4bf" }} strokeWidth={1.5} />
+              <ShieldCheck style={{ width: 14, height: 14, color: "#4ab5e0" }} strokeWidth={1.5} />
             </div>
             <div className="flex flex-col">
               <span
-                className="text-[13px] font-semibold leading-none tracking-[-0.02em]"
+                className="font-display text-[19px] leading-none"
                 style={{ color: "var(--text-primary)" }}
               >
                 Tahansoe
               </span>
               <span
                 className="text-[10px] leading-none mt-0.5 font-mono"
-                style={{ color: "#2dd4bf", opacity: 0.6 }}
+                style={{ color: "#4ab5e0", opacity: 0.6 }}
               >
                 Risk Automation
               </span>

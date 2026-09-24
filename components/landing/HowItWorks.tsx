@@ -23,17 +23,17 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-20 md:py-[80px]">
+    <section id="how-it-works" className="py-20 md:py-[80px] border-t border-[#26332f]">
       <div className="max-w-[1400px] mx-auto px-6">
         {/* Section header */}
         <div className="mb-14">
-          <h2 className="text-4xl md:text-5xl font-medium leading-[1.1] tracking-[-0.02em] text-white max-w-[480px]">
+          <h2 className="text-4xl md:text-5xl font-display font-medium leading-[1.1] tracking-[-0.02em] text-[#fdf1e1] max-w-[480px]">
             From setup to protection in four steps.
           </h2>
         </div>
 
         {/* Steps */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[#27272a]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {steps.map((step) => (
             <StepCard key={step.index} {...step} />
           ))}
@@ -53,14 +53,14 @@ function StepCard({
   body: string;
 }) {
   return (
-    <div className="bg-[#050505] p-8 md:p-10 group transition-colors duration-200 hover:bg-[#18181b]/60">
-      <p className="font-mono text-[11px] tracking-[0.14em] text-[#71717a] mb-6">
+    <div className="rounded-[24px] border border-[#fdf1e1]/10 bg-[#15201d] p-8 md:p-10 transition-colors duration-200 hover:border-[#fdf1e1]/25">
+      <p className="font-display text-[44px] leading-none text-[#4ab5e0] mb-6">
         {index}
       </p>
-      <h3 className="text-[20px] font-medium text-white tracking-[-0.015em] mb-3 leading-snug">
+      <h3 className="text-[20px] font-medium text-[#fdf1e1] tracking-[-0.015em] mb-3 leading-snug">
         {title}
       </h3>
-      <p className="text-[14px] leading-[1.65] text-[#a1a1aa] max-w-[380px]">{body}</p>
+      <p className="text-[14px] leading-[1.65] text-[#c8bca9] max-w-[380px]">{body}</p>
     </div>
   );
 }

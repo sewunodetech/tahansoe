@@ -24,15 +24,15 @@ export function WaitlistCTA() {
   }
 
   return (
-    <section id="waitlist" className="py-20 md:py-[80px] border-t border-[#27272a]">
+    <section id="waitlist" className="py-20 md:py-[80px] border-t border-[#26332f]">
       <div className="max-w-[1400px] mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           {/* Left: copy */}
           <div>
-            <h2 className="text-4xl md:text-5xl font-medium leading-[1.1] tracking-[-0.02em] text-white mb-5">
+            <h2 className="text-4xl md:text-5xl font-display font-medium leading-[1.1] tracking-[-0.02em] text-[#fdf1e1] mb-5">
               Get early access.
             </h2>
-            <p className="text-[15px] leading-[1.6] text-[#a1a1aa] max-w-[420px]">
+            <p className="text-[15px] leading-[1.6] text-[#c8bca9] max-w-[420px]">
               Tahansoe is in pre-development. Join the waitlist to be notified when the
               testnet demo goes live.
             </p>
@@ -41,7 +41,7 @@ export function WaitlistCTA() {
           {/* Right: form */}
           <div>
             {submitted ? (
-              <div className="rounded-[8px] border border-[#27272a] bg-[#18181b] px-8 py-7">
+              <div className="rounded-[24px] border border-[#fdf1e1]/10 bg-[#15201d] px-8 py-7">
                 <div className="flex items-center gap-3 mb-2">
                   <svg
                     width="16"
@@ -50,26 +50,26 @@ export function WaitlistCTA() {
                     fill="none"
                     aria-hidden="true"
                   >
-                    <circle cx="8" cy="8" r="7" stroke="#22c55e" strokeWidth="1.2" />
+                    <circle cx="8" cy="8" r="7" stroke="#4ab5e0" strokeWidth="1.2" />
                     <path
                       d="M5 8L7 10L11 6"
-                      stroke="#22c55e"
+                      stroke="#4ab5e0"
                       strokeWidth="1.4"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
                   </svg>
-                  <span className="text-[15px] font-medium text-white">You're on the list.</span>
+                  <span className="text-[15px] font-medium text-[#fdf1e1]">You&apos;re on the list.</span>
                 </div>
-                <p className="text-[13px] text-[#a1a1aa]">
-                  We'll reach out when the testnet demo is ready.
+                <p className="text-[13px] text-[#c8bca9]">
+                  We&apos;ll reach out when the testnet demo is ready.
                 </p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} noValidate>
                 <div className="space-y-3">
                   <label className="block">
-                    <span className="font-mono text-[11px] tracking-[0.12em] uppercase text-[#71717a] block mb-2">
+                    <span className="text-[12px] font-medium tracking-[0.08em] uppercase text-[#4ab5e0] block mb-2 pl-5">
                       Email address
                     </span>
                     <input
@@ -80,19 +80,19 @@ export function WaitlistCTA() {
                         if (error) setError("");
                       }}
                       placeholder="you@example.com"
-                      className="w-full h-11 rounded-[8px] bg-[#18181b] border border-[#27272a] px-4 text-[14px] text-white placeholder:text-[#52525b] outline-none focus:border-[#52525b] transition-colors duration-150"
+                      className="w-full h-12 rounded-full bg-[#15201d] border border-[#26332f] px-5 text-[14px] text-[#fdf1e1] placeholder:text-[#5b6660] outline-none focus:border-[#5b6660] transition-colors duration-150"
                     />
                     {error && (
-                      <p className="mt-2 text-[12px] text-red-400">{error}</p>
+                      <p className="mt-2 text-[12px] text-[#f87171] pl-5">{error}</p>
                     )}
                   </label>
                   <button
                     type="submit"
-                    className="w-full h-11 rounded-[8px] bg-white text-[#050505] text-[14px] font-semibold tracking-[-0.01em] transition-all duration-150 hover:bg-[#e4e4e7] active:scale-[0.98]"
+                    className="w-full h-12 rounded-full bg-[#fdf1e1] text-[#111411] text-[14px] font-semibold tracking-[-0.01em] transition-all duration-150 hover:bg-[#f0e2cc] active:scale-[0.98]"
                   >
                     Join waitlist
                   </button>
-                  <p className="text-[11px] text-[#71717a] text-center">
+                  <p className="text-[11px] text-[#8f897c] text-center">
                     No spam. Unsubscribe anytime.
                   </p>
                 </div>

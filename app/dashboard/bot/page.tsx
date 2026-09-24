@@ -21,15 +21,15 @@ function Step({ n, title, done, active }: {
       <div
         className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0 transition-colors"
         style={{
-          background: done ? "rgba(52,211,153,0.15)" : active ? "rgba(45,212,191,0.1)" : "rgba(255,255,255,0.04)",
-          border:     done ? "1px solid rgba(52,211,153,0.3)" : active ? "1px solid rgba(45,212,191,0.35)" : "1px solid rgba(255,255,255,0.08)",
-          color:      done ? "#34d399" : active ? "#2dd4bf" : "rgba(255,255,255,0.2)",
+          background: done ? "rgba(52,211,153,0.15)" : active ? "rgba(74,181,224,0.1)" : "rgba(253,241,225,0.04)",
+          border:     done ? "1px solid rgba(52,211,153,0.3)" : active ? "1px solid rgba(74,181,224,0.35)" : "1px solid rgba(253,241,225,0.08)",
+          color:      done ? "#34d399" : active ? "#4ab5e0" : "rgba(253,241,225,0.2)",
         }}
       >
         {done ? <Check style={{ width: 13, height: 13 }} strokeWidth={2.5} /> : n}
       </div>
       <span className="text-[13px] font-medium"
-        style={{ color: done || active ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.25)" }}>
+        style={{ color: done || active ? "rgba(253,241,225,0.8)" : "rgba(253,241,225,0.25)" }}>
         {title}
       </span>
     </div>
@@ -88,7 +88,7 @@ function NotifRow({ def, enabled, onChange }: {
 }) {
   return (
     <div className="flex items-start justify-between gap-4 py-4 border-b last:border-0"
-      style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+      style={{ borderColor: "rgba(253,241,225,0.05)" }}>
       <div className="flex items-start gap-3">
         <div className="w-8 h-8 rounded-[8px] flex items-center justify-center shrink-0 mt-0.5"
           style={{ background: `${def.color}14`, border: `1px solid ${def.color}30` }}>
@@ -102,7 +102,7 @@ function NotifRow({ def, enabled, onChange }: {
       <button onClick={() => onChange(!enabled)} className="shrink-0 mt-0.5 transition-colors"
         aria-label={enabled ? "Disable" : "Enable"} aria-pressed={enabled}>
         {enabled
-          ? <ToggleRight style={{ width: 32, height: 32, color: "#2dd4bf" }} strokeWidth={1.5} />
+          ? <ToggleRight style={{ width: 32, height: 32, color: "#4ab5e0" }} strokeWidth={1.5} />
           : <ToggleLeft  style={{ width: 32, height: 32 }} className="text-white/20" strokeWidth={1.5} />
         }
       </button>
@@ -172,7 +172,7 @@ export default function BotPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-[18px] font-semibold text-white tracking-[-0.02em]">Telegram Bot</h1>
+        <h1 className="font-display text-[30px] font-normal text-white leading-none">Telegram Bot</h1>
         <p className="text-[12px] text-white/30 mt-0.5">
           Connect @cuustos_bot for real-time alerts on every position event.
         </p>
@@ -185,13 +185,13 @@ export default function BotPage() {
 
           {/* Connection card */}
           <div className="rounded-[10px] overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.015)", border: isConnected ? "1px solid rgba(52,211,153,0.2)" : "1px solid rgba(255,255,255,0.06)" }}>
+            style={{ background: "rgba(253,241,225,0.015)", border: isConnected ? "1px solid rgba(52,211,153,0.2)" : "1px solid rgba(253,241,225,0.06)" }}>
             <div className="flex items-center justify-between px-5 py-4"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              style={{ borderBottom: "1px solid rgba(253,241,225,0.05)" }}>
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-[8px] flex items-center justify-center"
-                  style={{ background: isConnected ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.05)", border: isConnected ? "1px solid rgba(52,211,153,0.25)" : "1px solid rgba(255,255,255,0.08)" }}>
-                  <Bot style={{ width: 16, height: 16, color: isConnected ? "#34d399" : "rgba(255,255,255,0.3)" }} strokeWidth={1.5} />
+                  style={{ background: isConnected ? "rgba(52,211,153,0.1)" : "rgba(253,241,225,0.05)", border: isConnected ? "1px solid rgba(52,211,153,0.25)" : "1px solid rgba(253,241,225,0.08)" }}>
+                  <Bot style={{ width: 16, height: 16, color: isConnected ? "#34d399" : "rgba(253,241,225,0.3)" }} strokeWidth={1.5} />
                 </div>
                 <div>
                   <p className="text-[13px] font-medium text-white/80">@cuustos_bot</p>
@@ -203,9 +203,9 @@ export default function BotPage() {
               {isConnected && (
                 <button onClick={handleDisconnect}
                   className="flex items-center gap-1.5 h-7 px-3 rounded-[6px] text-[11.5px] transition-colors"
-                  style={{ border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.35)" }}
+                  style={{ border: "1px solid rgba(253,241,225,0.08)", color: "rgba(253,241,225,0.35)" }}
                   onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(248,113,113,0.3)"; e.currentTarget.style.color = "#f87171"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "rgba(255,255,255,0.35)"; }}>
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(253,241,225,0.08)"; e.currentTarget.style.color = "rgba(253,241,225,0.35)"; }}>
                   <Unlink style={{ width: 12, height: 12 }} strokeWidth={1.5} /> Disconnect
                 </button>
               )}
@@ -235,7 +235,7 @@ export default function BotPage() {
                       { label: "Last alert",    value: lastAlertTime },
                     ].map((s) => (
                       <div key={s.label} className="rounded-[8px] px-3 py-2.5"
-                        style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        style={{ background: "rgba(253,241,225,0.02)", border: "1px solid rgba(253,241,225,0.06)" }}>
                         <p className="text-[10px] font-mono text-white/25 uppercase tracking-[0.1em] mb-1">{s.label}</p>
                         <p className="text-[18px] font-semibold text-white tracking-[-0.02em]">{s.value}</p>
                       </div>
@@ -244,9 +244,9 @@ export default function BotPage() {
 
                   <button onClick={() => window.open("https://t.me/cuustos_bot", "_blank")}
                     className="inline-flex items-center gap-2 h-9 px-4 rounded-[7px] text-[12.5px] transition-colors w-fit"
-                    style={{ border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.8)"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; e.currentTarget.style.background = ""; }}>
+                    style={{ border: "1px solid rgba(253,241,225,0.08)", color: "rgba(253,241,225,0.4)" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(253,241,225,0.8)"; e.currentTarget.style.background = "rgba(253,241,225,0.04)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(253,241,225,0.4)"; e.currentTarget.style.background = ""; }}>
                     <ExternalLink style={{ width: 13, height: 13 }} strokeWidth={1.5} /> Open in Telegram
                   </button>
                 </div>
@@ -263,7 +263,7 @@ export default function BotPage() {
                     <div className="flex flex-col gap-3">
                       <button onClick={generateCode} disabled={linkStatus === "loading"}
                         className="inline-flex items-center gap-2 h-9 px-5 rounded-[8px] text-[13px] font-semibold transition-opacity disabled:opacity-40 w-fit"
-                        style={{ background: "linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%)", color: "#042f2e" }}>
+                        style={{ background: "linear-gradient(135deg, #4ab5e0 0%, #2f8fb8 100%)", color: "#0e2a36" }}>
                         {linkStatus === "loading"
                           ? <><Loader2 style={{ width: 13, height: 13 }} className="animate-spin" strokeWidth={2} />Generating…</>
                           : <><Link2  style={{ width: 13, height: 13 }} strokeWidth={2} />Generate link code</>
@@ -284,14 +284,14 @@ export default function BotPage() {
                     <div className="flex flex-col gap-4">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 flex items-center gap-2 h-10 px-3.5 rounded-[7px]"
-                          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                          style={{ background: "rgba(253,241,225,0.04)", border: "1px solid rgba(253,241,225,0.08)" }}>
                           <span className="font-mono text-[14px] text-white/70 tracking-[0.2em] select-all">{linkCode}</span>
                         </div>
                         <button onClick={handleCopyLink}
                           className="flex items-center gap-1.5 h-10 px-3.5 rounded-[7px] text-[12px] transition-colors shrink-0"
-                          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)";  e.currentTarget.style.color = "rgba(255,255,255,0.7)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "rgba(255,255,255,0.5)"; }}>
+                          style={{ background: "rgba(253,241,225,0.06)", border: "1px solid rgba(253,241,225,0.08)", color: "rgba(253,241,225,0.5)" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(253,241,225,0.1)";  e.currentTarget.style.color = "rgba(253,241,225,0.7)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(253,241,225,0.06)"; e.currentTarget.style.color = "rgba(253,241,225,0.5)"; }}>
                           {copied
                             ? <><CheckCheck className="w-3.5 h-3.5" style={{ color: "#34d399" }} strokeWidth={2} />Copied</>
                             : <><Copy       className="w-3.5 h-3.5" strokeWidth={1.5} />Copy code</>
@@ -300,22 +300,22 @@ export default function BotPage() {
                       </div>
 
                       <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-[7px]"
-                        style={{ background: "rgba(45,212,191,0.06)", border: "1px solid rgba(45,212,191,0.15)" }}>
-                        <Send className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: "rgba(45,212,191,0.6)" }} strokeWidth={1.5} />
-                        <p className="text-[11px] leading-relaxed" style={{ color: "rgba(45,212,191,0.7)" }}>
+                        style={{ background: "rgba(74,181,224,0.06)", border: "1px solid rgba(74,181,224,0.15)" }}>
+                        <Send className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: "rgba(74,181,224,0.6)" }} strokeWidth={1.5} />
+                        <p className="text-[11px] leading-relaxed" style={{ color: "rgba(74,181,224,0.7)" }}>
                           Send this code to @cuustos_bot to complete linking.{" "}
                           <a href={deepLink} target="_blank" rel="noopener noreferrer"
                             className="inline-flex items-center gap-0.5 underline underline-offset-2 hover:no-underline"
-                            style={{ color: "rgba(45,212,191,0.9)" }}>
+                            style={{ color: "rgba(74,181,224,0.9)" }}>
                             Open in Telegram <ExternalLink className="w-2.5 h-2.5" strokeWidth={1.5} />
                           </a>
                         </p>
                       </div>
 
                       <button onClick={resetLink} className="text-[11px] w-fit transition-colors"
-                        style={{ color: "rgba(255,255,255,0.2)" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.2)"; }}>
+                        style={{ color: "rgba(253,241,225,0.2)" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(253,241,225,0.4)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(253,241,225,0.2)"; }}>
                         Cancel
                       </button>
                     </div>
@@ -327,9 +327,9 @@ export default function BotPage() {
 
           {/* Notification preferences — wired to simulation context */}
           <div className="rounded-[10px] overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            style={{ background: "rgba(253,241,225,0.015)", border: "1px solid rgba(253,241,225,0.06)" }}>
             <div className="flex items-center justify-between px-5 py-3.5"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              style={{ borderBottom: "1px solid rgba(253,241,225,0.05)" }}>
               <div>
                 <h2 className="text-[12.5px] font-semibold text-white/80">Notification preferences</h2>
                 <p className="text-[11px] text-white/25 mt-0.5">
@@ -343,8 +343,8 @@ export default function BotPage() {
                 className="flex items-center gap-1.5 h-7 px-2.5 rounded-[6px] text-[11px] font-mono transition-all shrink-0"
                 style={
                   telegramEnabled
-                    ? { background: "rgba(45,212,191,0.1)",   border: "1px solid rgba(45,212,191,0.25)",  color: "#2dd4bf" }
-                    : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.3)" }
+                    ? { background: "rgba(74,181,224,0.1)",   border: "1px solid rgba(74,181,224,0.25)",  color: "#4ab5e0" }
+                    : { background: "rgba(253,241,225,0.04)", border: "1px solid rgba(253,241,225,0.08)", color: "rgba(253,241,225,0.3)" }
                 }>
                 {telegramEnabled
                   ? <><Bell    style={{ width: 11, height: 11 }} strokeWidth={1.5} /> Alerts on</>
@@ -370,11 +370,11 @@ export default function BotPage() {
 
           {/* Bot summary */}
           <div className="rounded-[10px] p-5"
-            style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(45,212,191,0.12)" }}>
+            style={{ background: "rgba(253,241,225,0.015)", border: "1px solid rgba(74,181,224,0.12)" }}>
             <div className="flex items-center gap-2.5 mb-4">
               <div className="w-8 h-8 rounded-[8px] flex items-center justify-center"
-                style={{ background: "rgba(45,212,191,0.1)", border: "1px solid rgba(45,212,191,0.2)" }}>
-                <Bot style={{ width: 14, height: 14, color: "#2dd4bf" }} strokeWidth={1.5} />
+                style={{ background: "rgba(74,181,224,0.1)", border: "1px solid rgba(74,181,224,0.2)" }}>
+                <Bot style={{ width: 14, height: 14, color: "#4ab5e0" }} strokeWidth={1.5} />
               </div>
               <div>
                 <p className="text-[12px] font-semibold text-white/70">@cuustos_bot</p>
@@ -383,13 +383,13 @@ export default function BotPage() {
             </div>
 
             <div className="space-y-2 p-3 rounded-[8px] mb-4"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              style={{ background: "rgba(253,241,225,0.03)", border: "1px solid rgba(253,241,225,0.05)" }}>
               <p className="text-[10px] font-mono text-white/25 uppercase tracking-[0.1em]">Connection</p>
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse"
-                  style={{ backgroundColor: isConnected ? "#34d399" : "rgba(255,255,255,0.15)" }} />
+                  style={{ backgroundColor: isConnected ? "#34d399" : "rgba(253,241,225,0.15)" }} />
                 <span className="text-[12px] font-medium"
-                  style={{ color: isConnected ? "#34d399" : "rgba(255,255,255,0.25)" }}>
+                  style={{ color: isConnected ? "#34d399" : "rgba(253,241,225,0.25)" }}>
                   {isConnected ? "Connected" : "Not connected"}
                 </span>
               </div>
@@ -403,9 +403,9 @@ export default function BotPage() {
               {NOTIF_DEFS.map((d) => (
                 <div key={d.key} className="flex items-center gap-2">
                   <span className="w-1 h-1 rounded-full shrink-0"
-                    style={{ backgroundColor: policy[d.key] ? d.color : "rgba(255,255,255,0.1)" }} />
+                    style={{ backgroundColor: policy[d.key] ? d.color : "rgba(253,241,225,0.1)" }} />
                   <span className="text-[11px] truncate"
-                    style={{ color: policy[d.key] ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.15)" }}>
+                    style={{ color: policy[d.key] ? "rgba(253,241,225,0.45)" : "rgba(253,241,225,0.15)" }}>
                     {d.label}
                   </span>
                 </div>
@@ -415,7 +415,7 @@ export default function BotPage() {
 
           {/* Bot commands — not available yet, monitoring only */}
           <div className="rounded-[10px] p-4"
-            style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            style={{ background: "rgba(253,241,225,0.015)", border: "1px solid rgba(253,241,225,0.05)" }}>
             <div className="flex items-center gap-2 mb-2">
               <span
                 className="inline-flex items-center gap-1.5 h-5 px-2 rounded-full text-[9px] font-bold font-mono tracking-wider uppercase"

@@ -16,7 +16,7 @@ export function Hero() {
   return (
     <section
       className="relative min-h-[100dvh] flex flex-col overflow-hidden"
-      style={{ background: "#080808" }}
+      style={{ background: "#0b1110" }}
     >
       {/* Particle mesh — texture only, not the star */}
       <ParticleMesh />
@@ -27,7 +27,7 @@ export function Hero() {
         aria-hidden="true"
         style={{
           background:
-            "radial-gradient(ellipse 70% 50% at 50% -5%, rgba(255,255,255,0.07) 0%, transparent 100%)",
+            "radial-gradient(ellipse 70% 50% at 50% -5%, rgba(253,241,225,0.07) 0%, transparent 100%)",
         }}
       />
 
@@ -37,7 +37,7 @@ export function Hero() {
         aria-hidden="true"
         style={{
           background:
-            "radial-gradient(ellipse 55% 40% at 20% 60%, rgba(45,212,191,0.07) 0%, transparent 70%)",
+            "radial-gradient(ellipse 55% 40% at 20% 60%, rgba(74,181,224,0.07) 0%, transparent 70%)",
         }}
       />
 
@@ -57,7 +57,7 @@ export function Hero() {
         aria-hidden="true"
         style={{
           background:
-            "linear-gradient(to bottom, transparent, #080808)",
+            "linear-gradient(to bottom, transparent, #0b1110)",
         }}
       />
 

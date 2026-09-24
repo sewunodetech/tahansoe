@@ -18,7 +18,7 @@ export function HeroGlows() {
           left: "50%",
           x: "-50%",
           background:
-            "radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 50%, transparent 75%)",
+            "radial-gradient(ellipse at 50% 50%, rgba(253,241,225,0.08) 0%, rgba(253,241,225,0.02) 50%, transparent 75%)",
           filter: "blur(60px)",
         }}
         animate={reduce ? undefined : { scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] }}
@@ -83,7 +83,7 @@ export function HeroGlows() {
           style={{
             height: "1px",
             background:
-              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 20%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.04) 80%, transparent 100%)",
+              "linear-gradient(90deg, transparent 0%, rgba(253,241,225,0.04) 20%, rgba(253,241,225,0.15) 50%, rgba(253,241,225,0.04) 80%, transparent 100%)",
           }}
           initial={{ top: 0, opacity: 0 }}
           animate={{ top: "100%", opacity: [0, 1, 1, 0] }}

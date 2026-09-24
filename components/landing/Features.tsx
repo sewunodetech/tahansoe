@@ -1,12 +1,3 @@
-const TAG_STYLES: Record<string, { color: string; bg: string; border: string }> = {
-  Security:            { color: "#2dd4bf", bg: "rgba(45,212,191,0.08)", border: "rgba(45,212,191,0.18)" },
-  "Capital efficiency":{ color: "#fbbf24", bg: "rgba(251,191,36,0.08)", border: "rgba(251,191,36,0.18)" },
-  Reliability:         { color: "#818cf8", bg: "rgba(129,140,248,0.08)", border: "rgba(129,140,248,0.18)" },
-  "Multi-protocol":    { color: "#34d399", bg: "rgba(52,211,153,0.08)", border: "rgba(52,211,153,0.18)" },
-  Transparency:        { color: "#94a3b8", bg: "rgba(148,163,184,0.08)", border: "rgba(148,163,184,0.15)" },
-  Infrastructure:      { color: "#f97316", bg: "rgba(249,115,22,0.08)", border: "rgba(249,115,22,0.18)" },
-};
-
 const features = [
   {
     title: "Non-custodial by design",
@@ -48,26 +39,26 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" className="py-20 md:py-[80px] border-t border-[#27272a]">
+    <section id="features" className="py-20 md:py-[80px] border-t border-[#26332f]">
       <div className="max-w-[1400px] mx-auto px-6">
         {/* Header */}
         <div className="mb-14 flex flex-col md:flex-row md:items-end gap-6 md:gap-16">
-          <h2 className="text-4xl md:text-5xl font-medium leading-[1.1] tracking-[-0.02em] text-white max-w-[440px]">
+          <h2 className="text-4xl md:text-5xl font-display font-medium leading-[1.1] tracking-[-0.02em] text-[#fdf1e1] max-w-[440px]">
             Built for the worst case, not the average case.
           </h2>
-          <p className="text-[15px] leading-[1.6] text-[#a1a1aa] max-w-[360px] md:mb-1">
+          <p className="text-[15px] leading-[1.6] text-[#c8bca9] max-w-[360px] md:mb-1">
             Every architectural decision in Tahansoe starts from the question: what happens when the market crashes 40% in one block?
           </p>
         </div>
 
         {/* Bento grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[#27272a]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Wide card (spans 2 cols) */}
           <FeatureCard {...features[0]} className="md:col-span-2" />
 
           {/* Regular cards */}
-          {features.slice(1).map((f) => (
-            <FeatureCard key={f.title} {...f} />
+          {features.slice(1).map((f, i, rest) => (
+            <FeatureCard key={f.title} {...f} className={i === rest.length - 1 ? "md:col-span-3" : ""} />
           ))}
         </div>
       </div>
@@ -87,29 +78,20 @@ function FeatureCard({
   wide?: boolean;
   className?: string;
 }) {
-  const tagStyle = TAG_STYLES[tag] ?? { color: "#71717a", bg: "transparent", border: "transparent" };
-
   return (
     <div
-      className={`bg-[#050505] p-8 md:p-10 flex flex-col gap-8 group hover:bg-[#18181b]/50 transition-colors duration-200 ${className}`}
+      className={`rounded-[24px] border border-[#fdf1e1]/10 bg-[#15201d] p-8 md:p-10 flex flex-col gap-8 hover:border-[#fdf1e1]/25 transition-colors duration-200 ${className}`}
     >
       {/* Tag */}
-      <span
-        className="font-mono text-[11px] tracking-[0.14em] uppercase self-start px-2 py-0.5 rounded-[4px]"
-        style={{
-          color: tagStyle.color,
-          background: tagStyle.bg,
-          border: `1px solid ${tagStyle.border}`,
-        }}
-      >
+      <span className="self-start px-3.5 py-1.5 rounded-full border border-[#fdf1e1]/20 text-[12px] font-medium text-[#fdf1e1]/80">
         {tag}
       </span>
 
       <div>
-        <h3 className="text-[18px] md:text-[20px] font-medium text-white tracking-[-0.015em] mb-3 leading-snug">
+        <h3 className="text-[18px] md:text-[20px] font-medium text-[#fdf1e1] tracking-[-0.015em] mb-3 leading-snug">
           {title}
         </h3>
-        <p className="text-[14px] leading-[1.65] text-[#a1a1aa]">{body}</p>
+        <p className="text-[14px] leading-[1.65] text-[#c8bca9]">{body}</p>
       </div>
     </div>
   );

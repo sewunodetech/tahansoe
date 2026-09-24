@@ -31,7 +31,7 @@ const HF_LABEL = { safe: "Safe", warning: "Monitor", critical: "At risk" };
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-[8px] border border-white/[0.08] px-3 py-2" style={{ background: "#111113" }}>
+    <div className="rounded-[8px] border border-white/[0.08] px-3 py-2" style={{ background: "#0b1110" }}>
       <p className="text-[10px] font-mono text-white/30 mb-1">{label}</p>
       {payload.map((p: any) => (
         <p key={p.name} className="text-[12px] font-mono" style={{ color: p.color }}>
@@ -44,7 +44,7 @@ function ChartTooltip({ active, payload, label }: any) {
 
 // ── stat card ─────────────────────────────────────────────────────────────
 const STAT_COLORS = [
-  { icon: "#2dd4bf", bg: "rgba(45,212,191,0.08)",  border: "rgba(45,212,191,0.15)"  },
+  { icon: "#4ab5e0", bg: "rgba(74,181,224,0.08)",  border: "rgba(74,181,224,0.15)"  },
   { icon: "#f87171", bg: "rgba(248,113,113,0.08)", border: "rgba(248,113,113,0.15)" },
   { icon: "#818cf8", bg: "rgba(129,140,248,0.08)", border: "rgba(129,140,248,0.15)" },
   { icon: "#fbbf24", bg: "rgba(251,191,36,0.08)",  border: "rgba(251,191,36,0.15)"  },
@@ -137,7 +137,7 @@ export default function DashboardPage() {
 
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-[18px] font-semibold text-white tracking-[-0.02em]">Overview</h1>
+        <h1 className="font-display text-[30px] font-normal text-white leading-none">Overview</h1>
         <p className="text-[12px] text-white/30 mt-0.5">
           {positions.length} positions monitored · {chain?.name ?? "—"}
         </p>
@@ -181,9 +181,9 @@ export default function DashboardPage() {
             data-tour-id="tour-hf-chart"
             className="rounded-[10px] p-5"
             style={{
-              background: "rgba(255,255,255,0.015)",
-              border: "1px solid rgba(45,212,191,0.15)",
-              boxShadow: "0 0 0 1px rgba(45,212,191,0.05), inset 0 1px 0 rgba(45,212,191,0.05)",
+              background: "rgba(253,241,225,0.015)",
+              border: "1px solid rgba(74,181,224,0.15)",
+              boxShadow: "0 0 0 1px rgba(74,181,224,0.05), inset 0 1px 0 rgba(74,181,224,0.05)",
             }}
           >
             <div className="flex items-center justify-between mb-4">
@@ -208,12 +208,12 @@ export default function DashboardPage() {
               <LineChart data={hfTrend} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
                 <XAxis
                   dataKey="t"
-                  tick={{ fontSize: 9, fill: "rgba(255,255,255,0.2)", fontFamily: "monospace" }}
+                  tick={{ fontSize: 9, fill: "rgba(253,241,225,0.2)", fontFamily: "monospace" }}
                   axisLine={false} tickLine={false} interval={3}
                 />
                 <YAxis
                   domain={[1.0, 2.2]}
-                  tick={{ fontSize: 9, fill: "rgba(255,255,255,0.2)", fontFamily: "monospace" }}
+                  tick={{ fontSize: 9, fill: "rgba(253,241,225,0.2)", fontFamily: "monospace" }}
                   axisLine={false} tickLine={false}
                 />
                 <Tooltip content={<ChartTooltip />} />
