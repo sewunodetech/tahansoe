@@ -1,3 +1,5 @@
+import { MossBackdrop } from "./Scenery";
+
 const steps = [
   {
     index: "01",
@@ -23,7 +25,8 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-20 md:py-[80px] border-t border-[#26332f]">
+    <section id="how-it-works" className="relative isolate overflow-hidden py-20 md:py-[80px]">
+      <MossBackdrop position="top" />
       <div className="max-w-[1400px] mx-auto px-6">
         {/* Section header */}
         <div className="mb-14">
@@ -53,7 +56,7 @@ function StepCard({
   body: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-[#fdf1e1]/10 bg-[#15201d] p-8 md:p-10 transition-colors duration-200 hover:border-[#fdf1e1]/25">
+    <div className="glass-card rounded-[24px] p-8 md:p-10 transition-transform duration-300 hover:-translate-y-1">
       <p className="font-display text-[44px] leading-none text-[#4ab5e0] mb-6">
         {index}
       </p>

@@ -1,5 +1,7 @@
 "use client";
 
+import { MossBackdrop } from "./Scenery";
+
 import { useState } from "react";
 
 const LT = 0.825; // liquidation threshold used across the app
@@ -49,7 +51,8 @@ export function HealthFactorExplainer() {
   const gaugePct = Math.min(100, Math.max(0, ((Math.min(hf, 2.2) - 0.8) / 1.4) * 100));
 
   return (
-    <section id="health-factor" className="py-20 md:py-[80px]">
+    <section id="health-factor" className="relative isolate overflow-hidden py-20 md:py-[80px]">
+      <MossBackdrop position="bottom" />
       <div className="max-w-[1400px] mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-12 lg:gap-16 items-start">
           <div>
@@ -78,7 +81,7 @@ export function HealthFactorExplainer() {
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-[#fdf1e1]/10 bg-[#15201d] p-6 md:p-8">
+          <div className="glass-card rounded-[24px] p-6 md:p-8">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <NumberField label="Collateral (ETH)" value={collateralEth} step={0.5} min={0.1} onChange={setCollateralEth} />
               <NumberField label="ETH price ($)" value={ethPrice} step={50} min={1} onChange={setEthPrice} />

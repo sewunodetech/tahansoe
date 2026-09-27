@@ -172,6 +172,9 @@ export function SpotlightHero() {
         />
       </div>
 
+      {/* Fade into the next section so the moss doesn't end on a hard edge */}
+      <div className="absolute inset-x-0 bottom-0 z-[35] h-40 bg-gradient-to-b from-transparent to-[#0b1110] pointer-events-none" aria-hidden="true" />
+
       {/* Tagline */}
       <div className="absolute inset-x-0 bottom-10 z-40 px-6 flex flex-col items-center text-center gap-5 pointer-events-none">
         <p className="max-w-[520px] text-[15px] sm:text-[17px] leading-[1.45] text-white/80">

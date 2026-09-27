@@ -1,3 +1,5 @@
+import { MossBackdrop } from "./Scenery";
+
 const features = [
   {
     title: "Non-custodial by design",
@@ -39,7 +41,8 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" className="py-20 md:py-[80px] border-t border-[#26332f]">
+    <section id="features" className="relative isolate overflow-hidden py-20 md:py-[80px]">
+      <MossBackdrop position="bottom" />
       <div className="max-w-[1400px] mx-auto px-6">
         {/* Header */}
         <div className="mb-14 flex flex-col md:flex-row md:items-end gap-6 md:gap-16">
@@ -80,7 +83,7 @@ function FeatureCard({
 }) {
   return (
     <div
-      className={`rounded-[24px] border border-[#fdf1e1]/10 bg-[#15201d] p-8 md:p-10 flex flex-col gap-8 hover:border-[#fdf1e1]/25 transition-colors duration-200 ${className}`}
+      className={`glass-card rounded-[24px] p-8 md:p-10 flex flex-col gap-8 transition-transform duration-300 hover:-translate-y-1 ${className}`}
     >
       {/* Tag */}
       <span className="self-start px-3.5 py-1.5 rounded-full border border-[#fdf1e1]/20 text-[12px] font-medium text-[#fdf1e1]/80">

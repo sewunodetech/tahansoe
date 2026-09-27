@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { GlassBowl, MossBand } from "./Scenery";
 
 export function WaitlistCTA() {
   const [email, setEmail] = useState("");
@@ -24,9 +25,9 @@ export function WaitlistCTA() {
   }
 
   return (
-    <section id="waitlist" className="py-20 md:py-[80px] border-t border-[#26332f]">
+    <section id="waitlist" className="relative isolate overflow-hidden pt-20 md:pt-[80px]">
       <div className="max-w-[1400px] mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-end pb-12 lg:pb-0">
           {/* Left: copy */}
           <div>
             <h2 className="text-4xl md:text-5xl font-display font-medium leading-[1.1] tracking-[-0.02em] text-[#fdf1e1] mb-5">
@@ -36,12 +37,11 @@ export function WaitlistCTA() {
               Tahansoe is in pre-development. Join the waitlist to be notified when the
               testnet demo goes live.
             </p>
-          </div>
 
-          {/* Right: form */}
-          <div>
+            {/* Form */}
+            <div className="mt-10 max-w-[480px] lg:mb-28">
             {submitted ? (
-              <div className="rounded-[24px] border border-[#fdf1e1]/10 bg-[#15201d] px-8 py-7">
+              <div className="glass-card rounded-[24px] px-8 py-7">
                 <div className="flex items-center gap-3 mb-2">
                   <svg
                     width="16"
@@ -98,9 +98,14 @@ export function WaitlistCTA() {
                 </div>
               </form>
             )}
+            </div>
           </div>
+
+          {/* Right: the hero's glass bowl, resting on the moss below */}
+          <GlassBowl className="hidden lg:block w-full max-w-[620px] justify-self-center -mb-16 z-10" />
         </div>
       </div>
+      <MossBand grounded className="lg:-mt-32" />
     </section>
   );
 }

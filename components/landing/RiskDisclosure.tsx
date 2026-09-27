@@ -47,7 +47,7 @@ export function RiskDisclosure() {
         </div>
 
         {/* Risk table */}
-        <div className="border border-[#fdf1e1]/10 rounded-[24px] overflow-hidden">
+        <div className="glass-card rounded-[24px] overflow-hidden">
           {/* Header row */}
           <div className="grid grid-cols-3 gap-px bg-[#26332f]">
             <div className="bg-[#15201d] px-6 py-4">

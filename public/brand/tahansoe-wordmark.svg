@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+  <rect width="1200" height="400" fill="#0b1110"/>
+  <g transform="translate(100 64) scale(1)">
+    <path d="M 256 64 L 256 128 L 192.5 128 L 160 95 L 128 64 L 96 95 L 63.5 128 L 64 128 L 128 192 L 128 256 L 64.5 256 L 32 223 L 0 192 L 0 64 L 64 0 L 192 0 Z" fill="#fdf1e1"/>
+    <path d="M 256 192 L 256 256 L 192.5 256 L 160 223 L 128 192 L 128 128 L 192 128 Z" fill="#4ab5e0" transform="translate(12 12)"/>
+  </g>
+  <text x="430" y="252" font-family="'Instrument Serif', Georgia, 'Times New Roman', serif" font-size="160" fill="#fdf1e1">Tahansoe</text>
+</svg>

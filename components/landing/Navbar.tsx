@@ -14,8 +14,10 @@ const links = [
 
 function Logo() {
   return (
-    <svg width="28" height="28" viewBox="0 0 256 256" fill="white" aria-hidden="true">
-      <path d="M 256 64 L 256 128 L 192.5 128 L 160 95 L 128 64 L 96 95 L 63.5 128 L 64 128 L 128 192 L 128 256 L 64.5 256 L 32 223 L 0 192 L 0 64 L 64 0 L 192 0 Z M 256 192 L 256 256 L 192.5 256 L 160 223 L 128 192 L 128 128 L 192 128 Z" />
+    <svg width="28" height="28" viewBox="0 0 270 270" aria-hidden="true">
+      <path fill="#fdf1e1" d="M 256 64 L 256 128 L 192.5 128 L 160 95 L 128 64 L 96 95 L 63.5 128 L 64 128 L 128 192 L 128 256 L 64.5 256 L 32 223 L 0 192 L 0 64 L 64 0 L 192 0 Z" />
+      {/* Offset block: the buffer Tahansoe keeps between you and liquidation */}
+      <path fill="#4ab5e0" transform="translate(12 12)" d="M 256 192 L 256 256 L 192.5 256 L 160 223 L 128 192 L 128 128 L 192 128 Z" />
     </svg>
   );
 }
@@ -24,7 +26,15 @@ function Logo() {
 export function Navbar() {
   const { isConnected } = useAccount();
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const cta = { href: isConnected ? "/dashboard" : "/connect", label: isConnected ? "Dashboard" : "Connect wallet" };
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -33,7 +43,11 @@ export function Navbar() {
 
   return (
     <>
-      <header className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-5 sm:px-8 py-5">
+      <header
+        className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between px-5 sm:px-8 py-5 transition-[background-color,backdrop-filter,box-shadow] duration-300 ${
+          scrolled ? "bg-[#0b1110]/70 backdrop-blur-xl shadow-[0_1px_0_rgba(253,241,225,0.08)]" : ""
+        }`}
+      >
         <a href="#hero" aria-label="Tahansoe home" className="flex items-center gap-3">
           <Logo />
           <span className="hidden sm:inline font-display text-[22px] leading-none text-white">Tahansoe</span>

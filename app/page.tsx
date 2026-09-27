@@ -8,6 +8,7 @@ import { FAQ } from "@/components/landing/FAQ";
 import { RiskDisclosure } from "@/components/landing/RiskDisclosure";
 import { WaitlistCTA } from "@/components/landing/WaitlistCTA";
 import { Footer } from "@/components/landing/Footer";
+import { MossBand } from "@/components/landing/Scenery";
 
 export default function Home() {
   return (
@@ -16,8 +17,10 @@ export default function Home() {
       <main className="bg-[#0b1110]">
         <SpotlightHero />
         <HealthFactorExplainer />
+        <MossBand />
         <HowItWorks />
         <Features />
+        <MossBand />
         <Architecture />
         <FAQ />
         <RiskDisclosure />

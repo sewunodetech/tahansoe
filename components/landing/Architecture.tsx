@@ -35,7 +35,7 @@ const layers = [
 
 export function Architecture() {
   return (
-    <section className="py-20 md:py-[80px] border-t border-[#26332f]">
+    <section className="relative py-20 md:py-[80px]">
       <div className="max-w-[1400px] mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           {/* Left: description */}
@@ -86,7 +86,7 @@ function LayerRow({
   total: number;
 }) {
   return (
-    <div className="group flex gap-6 py-6 border-t border-[#26332f] hover:bg-[#15201d]/60 rounded-[24px] px-5 -mx-5 transition-colors duration-150">
+    <div className="group flex gap-6 py-6 border-t border-[#26332f] hover:bg-[#fdf1e1]/[0.04] rounded-[24px] px-5 -mx-5 transition-colors duration-150">
       {/* Left: connector */}
       <div className="flex flex-col items-center gap-1 pt-0.5">
         <div className="w-px flex-1 bg-[#26332f]" />

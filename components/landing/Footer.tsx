@@ -1,24 +1,13 @@
 export function Footer() {
   return (
-    <footer className="border-t border-[#26332f] py-10 bg-[#0b1110]">
+    <footer className="py-10 bg-[#0b1110]">
       <div className="max-w-[1400px] mx-auto px-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           {/* Brand */}
           <div className="flex items-center gap-3">
-            <svg width="18" height="18" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-              <path
-                d="M11 2L3 5.5V10.5C3 14.72 6.42 18.66 11 20C15.58 18.66 19 14.72 19 10.5V5.5L11 2Z"
-                stroke="#4ab5e0"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M8 11L10.5 13.5L14.5 9"
-                stroke="#4ab5e0"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+            <svg width="26" height="26" viewBox="0 0 270 270" aria-hidden="true">
+              <path fill="#fdf1e1" d="M 256 64 L 256 128 L 192.5 128 L 160 95 L 128 64 L 96 95 L 63.5 128 L 64 128 L 128 192 L 128 256 L 64.5 256 L 32 223 L 0 192 L 0 64 L 64 0 L 192 0 Z" />
+              <path fill="#4ab5e0" transform="translate(12 12)" d="M 256 192 L 256 256 L 192.5 256 L 160 223 L 128 192 L 128 128 L 192 128 Z" />
             </svg>
             <span className="font-display text-[28px] leading-none text-[#fdf1e1]">Tahansoe</span>
           </div>
