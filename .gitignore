@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# video production (teaser, deck explainer, voice-over sources) — kept local, not pushed
+/marketing/
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.m4v
+*.avi
