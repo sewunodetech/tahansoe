@@ -12,15 +12,20 @@ export async function POST(req: NextRequest) {
     const siweMessage = new SiweMessage(message);
     const { data: fields } = await siweMessage.verify({ signature });
 
-    const allowedDomain = process.env.NEXT_PUBLIC_APP_DOMAIN;
-    if (allowedDomain) {
-      const allowedHost = allowedDomain.replace(/^https?:\/\//, "").split(":")[0];
-      if (fields.domain !== allowedHost && fields.domain !== "localhost") {
-        return NextResponse.json(
-          { error: "Domain mismatch" },
-          { status: 400 }
-        );
-      }
+    const toHost = (value: string) =>
+      value.replace(/^https?:\/\//, "").split("/")[0].split(":")[0];
+    const allowedHosts = [
+      req.headers.get("x-forwarded-host"),
+      req.headers.get("host"),
+      process.env.NEXT_PUBLIC_APP_DOMAIN,
+    ]
+      .filter((v): v is string => !!v)
+      .map(toHost);
+    if (!allowedHosts.includes(toHost(fields.domain))) {
+      return NextResponse.json(
+        { error: "Domain mismatch" },
+        { status: 400 }
+      );
     }
 
     const [stored] = await db
