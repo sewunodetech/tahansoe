@@ -6,6 +6,7 @@ import {
   Search, MessageSquare, Bot, Hash, ChevronRight, X,
   Command, MoreHorizontal,
 } from "lucide-react";
+import { BrandMark } from "@/components/ui/brand-mark";
 
 /* ══════════════════════════════════════════════════════════════════════════
    TYPES
@@ -247,27 +248,12 @@ export function SidebarNav({
         style={{ borderBottom: "1px solid var(--sidebar-border)" }}
       >
         {collapsed ? (
-          <div
-            data-tour-id="tour-logo"
-            className="w-7 h-7 rounded-[6px] flex items-center justify-center"
-            style={{
-              background: "rgba(74,181,224,0.1)",
-              border: "1px solid rgba(74,181,224,0.25)",
-            }}
-          >
-            <ShieldCheck style={{ width: 14, height: 14, color: "#4ab5e0" }} strokeWidth={1.5} />
+          <div data-tour-id="tour-logo" className="w-7 h-7 flex items-center justify-center">
+            <BrandMark size={22} />
           </div>
         ) : (
           <div data-tour-id="tour-logo" className="flex items-center gap-2.5">
-            <div
-              className="w-[28px] h-[28px] rounded-[6px] flex items-center justify-center shrink-0"
-              style={{
-                background: "rgba(74,181,224,0.1)",
-                border: "1px solid rgba(74,181,224,0.25)",
-              }}
-            >
-              <ShieldCheck style={{ width: 14, height: 14, color: "#4ab5e0" }} strokeWidth={1.5} />
-            </div>
+            <BrandMark size={24} className="shrink-0" />
             <div className="flex flex-col">
               <span
                 className="font-display text-[19px] leading-none"

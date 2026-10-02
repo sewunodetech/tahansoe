@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useConnect, useDisconnect, useChainId } from "wagmi";
 import { useAuth } from "@/hooks/useAuth";
-import { ShieldCheck, Wallet, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
+import { Wallet, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
+import { BrandMark } from "@/components/ui/brand-mark";
 
 const WALLETS = [
   {
@@ -114,9 +115,8 @@ export default function ConnectPage() {
 
       <div className="relative z-10 w-full max-w-[400px]">
         <div className="flex flex-col items-center mb-10">
-          <div className="w-12 h-12 rounded-[10px] border border-white/10 bg-white/5 flex items-center justify-center mb-4">
-            <ShieldCheck className="w-6 h-6 text-white/80" strokeWidth={1.5} />
-          </div>
+          {/* Page is always dark, so pin the mark to the dark-theme colors */}
+          <BrandMark size={44} ink="#fdf1e1" accent="#4ab5e0" className="mb-5" />
           <h1 className="font-display text-[32px] font-normal text-white leading-tight mb-1">
             {step === "connect" ? "Connect to Tahansoe" : "Sign in"}
           </h1>
