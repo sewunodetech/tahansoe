@@ -1,8 +1,8 @@
 # Tahansoe
 
-**Liquidation risk automation agent untuk posisi borrow di protokol lending on-chain (Aave V3, Morpho).**
+**AI risk agent non-custodial untuk melindungi posisi borrow di protokol lending on-chain (Aave V3, lalu Morpho) dari likuidasi. Arbitrum-first, siap cross-chain.**
 
-Tahansoe memantau **Health Factor (HF)** posisi pinjaman kamu secara terus-menerus, dan menjalankan aksi remediasi — *repay*, *top-up collateral*, atau *deleverage* — **sebelum** posisi mencapai ambang likuidasi.
+Tahansoe memantau **Health Factor (HF)** posisi pinjaman kamu secara terus-menerus. Core Risk Engine membaca oracle, data teknikal, fundamental/on-chain, kalender makro, serta berita dan geopolitik untuk menebalkan buffer proteksi **sebelum** pasar bergerak. Saat HF melewati trigger, Tahansoe menjalankan remediasi — *repay*, *top-up collateral*, atau *deleverage* — sebelum posisi mencapai ambang likuidasi.
 
 > ⚠️ Tahansoe adalah **risk automation**, bukan jaminan anti-likuidasi. Lihat [Risk Disclosure](#risk-disclosure).
 
@@ -30,39 +30,42 @@ HF < 1.0  →  posisi bisa dilikuidasi
 
 Tahansoe bertindak saat `HF < triggerHF` (default **1.30**) dan memulihkan posisi ke `targetHF` (default **1.60**).
 
-Alurnya empat lapis:
+Alurnya lima lapis:
 
 | Layer | Isi | Fungsi |
 |-------|-----|--------|
-| 1. Data | Chainlink Data Feeds + protocol adapter | Baca harga & posisi (oracle **harus** sama dengan yang dipakai protokol target) |
-| 2. Policy | Rule engine deterministik | Ubah kondisi posisi jadi objek **Intent** (REPAY / SUPPLY_COLLATERAL / DELEVERAGE / NOOP) |
-| 3. Trigger | `checkUpkeep()` / `performUpkeep()` | Dev: cron + viem · Prod: Chainlink Automation |
-| 4. Execution | Guardian Module (Safe Module, scope terbatas) | Panggil `repay()` / `supply()` / `flashLoan()` |
+| 1. Data & signals | Chainlink feeds, posisi Aave/Morpho, data pasar, berita, makro | Bahan mentah (oracle eksekusi **harus** sama dengan yang dipakai protokol target) |
+| 2. Core Risk Engine (AI) | Oracle monitor, teknikal, fundamental/on-chain, makro, berita & sentimen | Menilai regime pasar dan merekomendasikan buffer/trigger beserta alasannya |
+| 3. Policy | Rule engine deterministik | Ubah posisi + policy user + risk assessment jadi **Intent** (REPAY / SUPPLY_COLLATERAL / DELEVERAGE / NOOP) |
+| 4. Trigger | Keeper: `checkUpkeep()` / `performUpkeep()` | Dev: cron + viem · Prod: Chainlink Automation |
+| 5. Execution | `TahansoeGuardian` (tanpa admin, per chain) | Panggil `repay()` (v1) · `supply()` / flash loan (v2) |
 
 Dua prinsip penting:
 
-- **LLM authoring, deterministic execution.** LLM hanya menerjemahkan niat user jadi parameter policy — dan wajib dikonfirmasi user. LLM tidak pernah memicu atau menandatangani transaksi.
+- **AI advises, rules decide, contract enforces.** AI tidak pernah menandatangani transaksi yang memindahkan dana; pengaruhnya hanya menggeser trigger di dalam band yang disetujui user. Jika AI mati, proteksi kembali ke policy statis.
 - **Intent ≠ transaksi.** Rule engine mengeluarkan Intent terstruktur, sehingga bisa di-*dry run*, disimulasi, dan diaudit sebelum dieksekusi.
 
-Detail lengkap ada di [prd.md](prd.md).
+Detail lengkap ada di [docs/prd.md](docs/prd.md). Semua dokumentasi (PRD, BRD, arsitektur, security, ADR) ada di [docs/](docs/README.md). Agent/kontributor: mulai dari [AGENTS.md](AGENTS.md).
 
 ---
 
 ## Status saat ini
 
-Repo ini berisi **aplikasi web Tahansoe** (Next.js). Yang sudah jalan:
+Repo ini berisi **aplikasi web Tahansoe** (Next.js) dan **kontrak Guardian** (Foundry). Status detail ada di [docs/status.md](docs/status.md). Yang sudah jalan:
 
 - ✅ Landing page + dashboard (positions, history, bot, chat, settings)
 - ✅ Login wallet via **SIWE** (Sign-In With Ethereum) + session cookie
 - ✅ **Simulation engine** — mensimulasikan drift harga ETH, penurunan HF, dan pemilihan strategi remediasi secara live di dashboard
 - ✅ Notifikasi & linking akun **Telegram** (webhook + link code)
 - ✅ Skema database (users, positions, intents, notifications, dll.) via Drizzle
+- ✅ Kontrak **TahansoeGuardian v1** (hot reserve repay) — live di Arbitrum Sepolia, lihat [contracts/README.md](contracts/README.md)
 
 Yang **belum**:
 
-- ⏳ Smart contract Guardian Module
-- ⏳ Protocol adapter on-chain sungguhan (Aave V3 / Morpho Blue)
-- ⏳ Eksekusi transaksi live & Chainlink Automation
+- ⏳ Integrasi web app ↔ kontrak (approve + setPolicy, baca posisi asli)
+- ⏳ Keeper & notifikasi dari server
+- ⏳ Core Risk Engine (AI: oracle, teknikal, fundamental, makro, berita/geopolitik) — branch `core-dev`
+- ⏳ Guardian v2 (dynamic trigger band, flash loan), Morpho Blue, chain tambahan
 
 Artinya: angka dan posisi di dashboard saat ini berasal dari **simulasi**, bukan posisi on-chain nyata.
 
@@ -177,9 +180,11 @@ lib/
   wagmi-config.ts     konfigurasi chain & connector
   simulation-*.tsx    engine + context simulasi HF
   mock-data.ts        data contoh posisi
+contracts/            Foundry: TahansoeGuardian, test, deploy
 scripts/              utilitas database
-prd.md                Product Requirements Document
-DESIGN.md             design token & referensi visual
+docs/                 PRD, BRD, architecture, security, status, ADR, specs
+AGENTS.md             panduan & workflow untuk agent/kontributor
+DESIGN.md             design system (token, tipografi, komponen)
 ```
 
 ---

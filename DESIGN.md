@@ -1,76 +1,107 @@
 ---
-version: "neuform-staff-featured-2026-05-22"
-name: "Nexus - Engineered for Infinity"
-description: "Nexus Engineered Login Section is designed for authenticating users through a focused access flow. Key features include reusable structure, responsive behavior, and production-ready presentation. It is suitable for authentication screens in web products."
+version: "tahansoe-2026-10-07"
+name: "Tahansoe — Mostar"
+description: "Design system Tahansoe. Dark mode 'Mostar night' (permukaan hijau-sungai gelap, tinta krem) dan light mode 'Mostar day' (kertas krem, tinta gelap). Sumber kebenaran token: app/globals.css."
 colors:
-  primary: "#FFFFFF"
-  secondary: "#050505"
-  accent: "#FFFFFF"
-  background: "#050505"
-  surface: "#18181B"
-  text-primary: "#FFFFFF"
-  text-secondary: "#A1A1AA"
-  border: "#27272A"
+  background: "#0b1110"
+  surface: "#15201d"
+  border: "#26332f"
+  text-primary: "#fdf1e1"
+  text-secondary: "#c8bca9"
+  brand: "#4ab5e0"
+  accent2: "#fbbf24"
+  safe: "#34d399"
+  warning: "#fbbf24"
+  danger: "#f87171"
 typography:
-  display-lg:
-    fontFamily: "Inter"
-    fontSize: "64px"
-    fontWeight: 500
-    lineHeight: "1.04"
-    letterSpacing: "0"
-  body-md:
-    fontFamily: "Inter"
-    fontSize: "16px"
-    fontWeight: 400
-    lineHeight: "1.6"
-  label-md:
-    fontFamily: "JetBrains Mono"
-    fontSize: "12px"
-    fontWeight: 600
-    lineHeight: "1.2"
-spacing:
-  base: "8px"
-  gap: "16px"
-  card-padding: "24px"
-  section-padding: "80px"
-rounded:
-  card: "8px"
-  control: "8px"
-  pill: "9999px"
-components:
-  card:
-    background: "Use the surface token with subtle borders and HTML-matched shadow depth"
-    radius: "Match the declared card radius token"
-  button:
-    background: "Use primary or accent colors for the main action"
-    radius: "Use the control or pill radius based on the source HTML"
+  display: "Instrument Serif (var --font-display)"
+  body: "Inter (var --font-sans)"
+  mono: "JetBrains Mono (var --font-mono)"
 ---
-# Nexus - Engineered for Infinity
-Source: Neuform staff featured templates. Author: Sourasith Phomhome (@madebysourasith). Views: 193; favorites: 11; remixes: 0.
-Tags: login, animated, webgl, input, validation, effect, security.
-## Overview
-Nexus Engineered Login Section is designed for authenticating users through a focused access flow. Key features include reusable structure, responsive behavior, and production-ready presentation. It is suitable for authentication screens in web products.
 
-Nexus Ecosystem Architecture Solutions Guides Sign in Get Started Decentralized processing, engineered for infinity. Launch borderless workloads across a hyper-resilient network. Nexus delivers edge-optimized execution…
-## Composition
-Use the attached HTML reference as the source of truth. Preserve the visible hierarchy, first-screen composition, section rhythm, density, and interaction tone before adapting copy or content.
-Key visible headings include: Decentralized processing, engineered for infinity..
-## Colors
-Anchor the palette in primary #FFFFFF, secondary #050505, accent #FFFFFF, background #050505, surface #18181B, text-primary #FFFFFF. Keep background, surface, text, and border roles distinct so generated layouts retain the same contrast pattern as the source.
-## Typography
-Use Inter for display moments and Inter for body copy unless the HTML clearly demands a compatible fallback. Labels and technical metadata should use JetBrains Mono or an equivalent mono face.
-## Layout
-Keep spacing deliberate and stable. Favor the same grid direction, max-width behavior, card density, and responsive stacking seen in the HTML. Do not replace distinctive source structures with generic SaaS sections.
-## Components
-Authentication and CTA controls should preserve the source button hierarchy, input density, and focused conversion path.
-## Motion
-Preserve existing motion cues such as masked reveals, staggered entrance, hover lift, scroll-triggered transitions, and ambient movement. Keep easing smooth and restrained.
-## WebGL & Effects
+# Tahansoe Design System
 
-If the source includes canvas, WebGL, Three.js, gradients, particles, or atmospheric effects, rebuild them as supporting layers behind the content. Keep effects performant, responsive, and secondary to the interface.
+Sumber kebenaran token adalah **`app/globals.css`**. Dokumen ini menjelaskan cara memakainya. Jika keduanya berbeda, perbarui dokumen ini mengikuti CSS (atau sebaliknya lewat perubahan yang disengaja).
 
-## Guardrails
-- Do not flatten the source into a generic card grid.
-- Do not swap the color mode unless the source clearly supports it.
-- Preserve the first viewport signal, focal object, and visual density.
-- Keep buttons, cards, and badges aligned to the same radius and border language.
+## 1. Karakter
+
+- **Tenang dan tepercaya.** Produk ini menjaga uang orang. Hindari visual "degen" (neon berlebihan, hype, angka berkedip).
+- **Data dulu.** HF, harga, dan status harus terbaca dalam satu lirikan.
+- **Jujur soal risiko.** Status bahaya selalu jelas; disclosure tidak disembunyikan.
+- **Nuansa Mostar.** Hijau sungai gelap, krem hangat, biru langit Neretva sebagai aksen utama.
+
+## 2. Tema
+
+Tema dikendalikan `next-themes` lewat atribut `data-theme` (`dark` / `light`) di `<html>`. Selalu pakai CSS variable, jangan hardcode hex di komponen baru.
+
+### Permukaan & teks
+
+| Token | Dark | Light | Pakai untuk |
+|-------|------|-------|-------------|
+| `--bg` | `#0b1110` | `#fdf1e1` | Latar halaman |
+| `--bg-subtle` | `#101816` | `#f6e8d3` | Area sekunder |
+| `--bg-elevated` | `#15201d` | `#fffaf2` | Card, panel |
+| `--bg-overlay` | `#1a2623` | `#fffaf2` | Modal, popover |
+| `--border` | `#26332f` | `#e6d5bb` | Garis default |
+| `--border-strong` | `#34423d` | `#d6c1a2` | Garis penekanan |
+| `--text-primary` | `#fdf1e1` | `#111411` | Teks utama |
+| `--text-secondary` | `#c8bca9` | `#4c4a42` | Teks pendukung |
+| `--text-tertiary` | `#8f897c` | `#8a8272` | Label, metadata |
+| `--accent-bg` / `--accent-text` | krem / gelap | gelap / krem | Tombol utama |
+
+### Brand & status
+
+| Token | Dark | Light | Makna |
+|-------|------|-------|-------|
+| `--brand` | `#4ab5e0` | `#1f86b3` | Aksen utama, link, fokus |
+| `--accent2` | `#fbbf24` | `#d97706` | Aksen sekunder |
+| `--safe` | `#34d399` | `#059669` | HF aman |
+| `--warning` | `#fbbf24` | `#d97706` | HF mendekati trigger |
+| `--danger` | `#f87171` | `#dc2626` | HF di bawah trigger / gagal |
+
+Setiap status punya pasangan `-bg` dan `-border` untuk badge/card.
+
+### Pemetaan status HF
+
+| Kondisi | Status | Token |
+|---------|--------|-------|
+| HF > trigger + 0.25 | Safe | `--safe` |
+| trigger < HF ≤ trigger + 0.25 | Warning | `--warning` |
+| HF ≤ trigger | Critical | `--danger` |
+
+Regime Risk Engine (CALM / ELEVATED / STRESSED / CRISIS) memakai skala yang sama: `--safe`, `--brand`, `--warning`, `--danger`.
+
+## 3. Tipografi
+
+| Peran | Font | Catatan |
+|-------|------|---------|
+| Display (judul besar, angka hero) | Instrument Serif (`font-display`) | Weight normal, tracking sedikit rapat |
+| Body & UI | Inter (`font-sans`) | 13–16px di dashboard |
+| Angka, alamat, label teknis | JetBrains Mono (`font-mono`) | HF, harga, tx hash, badge uppercase |
+
+## 4. Layout & komponen
+
+- Radius: kontrol & card kecil 8–10px, card besar/landing hingga 24px, pill `9999px`.
+- Dashboard: sidebar + topbar (`--sidebar-*`, `--topbar-*`), konten dengan padding 24px.
+- Komponen dasar: `components/ui/` (shadcn/base-ui). Gunakan ulang sebelum membuat yang baru.
+- Ikon: `lucide-react`, stroke 1.5–2.
+- Grafik: Recharts; warna seri memakai token di atas.
+
+## 5. Motion
+
+- Library: `motion`. Gerak halus dan pendek (150–300ms) untuk hover/transisi.
+- Efek ambient (partikel, glow, scenery) hanya di landing, di belakang konten, dan harus ringan.
+- Jangan menganimasikan angka risiko secara dramatis; perubahan HF boleh transisi halus, bukan efek mencolok.
+
+## 6. Copy & bahasa
+
+- Selalu konsisten dengan positioning: "memperkecil peluang rugi", bukan "anti-likuidasi" atau "prediksi harga".
+- Alasan dari Risk Engine ditampilkan apa adanya, singkat, dengan sumber.
+- Risk disclosure tampil jelas di landing dan saat user mengaktifkan proteksi.
+
+## 7. Guardrails
+
+- Jangan hardcode warna baru; tambahkan token di `app/globals.css` bila perlu.
+- Pastikan kedua tema terbaca (kontras teks minimal WCAG AA).
+- Layout harus bekerja di lebar ponsel.
+- Skill desain pihak ketiga (`.claude/skills/design-taste-frontend`, `brandkit`) boleh dipakai untuk eksplorasi, tetapi token dan karakter di dokumen ini yang berlaku.
