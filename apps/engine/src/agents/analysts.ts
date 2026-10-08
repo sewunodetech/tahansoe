@@ -39,6 +39,10 @@ export interface AnalystOutcome {
   reason?: string;
   /** Status HTTP bila kegagalan dari API (400/401/403 = non-retryable). */
   status?: number;
+  /** Pemakaian token (audit G7). */
+  usage?: { inputTokens: number; outputTokens: number };
+  /** "provider:model" yang akhirnya dipakai (setelah fallback), bila diketahui. */
+  usedModel?: string;
 }
 
 /**
@@ -61,11 +65,16 @@ export async function runAnalyst(
     output: AnalystReport,
     outputName: "AnalystReport",
   });
+  const usage = {
+    inputTokens: result.usage.inputTokens,
+    outputTokens: result.usage.outputTokens,
+  };
+  const usedModel = result.providerUsed ?? result.usage.model;
   if (result.stopReason !== "ok" || !result.data) {
     const reason = result.error
       ? `${result.stopReason}: ${result.error}`
       : result.stopReason;
-    return { domain, report: null, reason, status: result.status };
+    return { domain, report: null, reason, status: result.status, usage, usedModel };
   }
-  return { domain, report: result.data };
+  return { domain, report: result.data, usage, usedModel };
 }

@@ -179,16 +179,19 @@ export function makeProvider(
 export class RoleRouter implements LlmProvider {
   private readonly entries: RoleEntry[];
   private readonly providers: LlmProvider[];
+  private readonly retryBackoffMs: number;
 
   constructor(
     entries: RoleEntry[],
     budget: Budget = defaultBudget,
     fetchImpl?: FetchLike,
     providers?: LlmProvider[],
+    retryBackoffMs = 2500,
   ) {
     this.entries = entries;
     this.providers =
       providers ?? entries.map((e) => makeProvider(e, budget, fetchImpl));
+    this.retryBackoffMs = retryBackoffMs;
   }
 
   get chain(): RoleEntry[] {
@@ -210,31 +213,44 @@ export class RoleRouter implements LlmProvider {
 
     for (let i = 0; i < this.providers.length; i++) {
       const entry = this.entries[i]!;
-      // Entri membawa model-nya sendiri; timpa req.model.
-      const result = await this.providers[i]!.structured({ ...req, model: entry.model });
-      last = result;
-
-      if (result.stopReason === "ok" && result.data !== null) return result;
-
-      // Refusal/max_tokens/schema invalid: bukan masalah ketersediaan provider →
-      // kembalikan apa adanya (jangan fallback; perilaku ini sama antar provider).
-      if (result.stopReason === "refusal" || result.stopReason === "max_tokens") {
-        return result;
-      }
-      if (result.stopReason === "ok" && result.data === null) {
-        // schema invalid / empty: dibuang (spec §3.4), tanpa fallback.
-        return result;
-      }
-
-      // stopReason "error": catat & tentukan fallback.
       const label = `${entry.provider}:${entry.model}`;
-      failures.push(`${label} → ${result.error ?? "error"}`);
-      if (isNonRetryableStatus(result.status)) {
-        // Non-retryable: jangan ulang ke provider sama; lanjut ke entri berikutnya.
-        continue;
+
+      // Satu entri boleh dicoba 2x bila error RETRYABLE (429/5xx/network): backoff
+      // singkat lalu ulang ke provider yang SAMA sebelum pindah ke fallback.
+      let result: LlmResult<T> | null = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        // Entri membawa model-nya sendiri; timpa req.model.
+        result = await this.providers[i]!.structured({ ...req, model: entry.model });
+        last = result;
+
+        if (result.stopReason === "ok" && result.data !== null) {
+          return { ...result, providerUsed: label };
+        }
+        // Refusal/max_tokens/schema invalid/empty: bukan masalah ketersediaan →
+        // kembalikan apa adanya (tanpa retry & tanpa fallback; sama antar provider).
+        if (
+          result.stopReason === "refusal" ||
+          result.stopReason === "max_tokens" ||
+          (result.stopReason === "ok" && result.data === null)
+        ) {
+          return { ...result, providerUsed: label };
+        }
+
+        // stopReason "error".
+        if (isNonRetryableStatus(result.status)) {
+          // Non-retryable: jangan ulang entri yang sama; langsung fallback.
+          break;
+        }
+        // Retryable: ulang sekali setelah backoff; attempt kedua lanjut ke fallback.
+        if (attempt === 0) {
+          failures.push(`${label} → ${result.error ?? "error"} (retry)`);
+          if (this.retryBackoffMs > 0) await delay(this.retryBackoffMs);
+          continue;
+        }
       }
-      // Retryable (429/5xx/network): lanjut ke entri berikutnya.
-      continue;
+
+      if (result) failures.push(`${label} → ${result.error ?? "error"}`);
+      // Lanjut ke entri (fallback) berikutnya.
     }
 
     const combined = `semua provider gagal: ${failures.join(" | ")}`;
@@ -246,6 +262,11 @@ export class RoleRouter implements LlmProvider {
       status: last?.status,
     };
   }
+}
+
+/** Jeda singkat (ms) untuk backoff retry. */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** Buat RoleRouter untuk peran dari resolusi env/default. */

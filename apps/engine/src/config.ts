@@ -60,8 +60,12 @@ export const env = {
   geminiApiKey: () => optionalEnv("GEMINI_API_KEY", ""),
   openrouterApiKey: () => optionalEnv("OPENROUTER_API_KEY", ""),
   groqApiKey: () => optionalEnv("GROQ_API_KEY", ""),
-  /** Ollama lokal: tanpa API key; baseURL default localhost. */
-  ollamaBaseUrl: () => optionalEnv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
+  /**
+   * Ollama lokal: tanpa API key. KOSONG jika tak diset → provider dianggap TIDAK
+   * tersedia (server lokal mungkin tidak berjalan). Set eksplisit untuk mengaktifkan,
+   * mis. OLLAMA_BASE_URL=http://localhost:11434/v1
+   */
+  ollamaBaseUrl: () => optionalEnv("OLLAMA_BASE_URL", ""),
 
   // --- Pemilihan provider:model per peran (ADR 0008 §2–§3). Format:
   // "provider:model,provider:model" (daftar fallback dipisah koma). Kosong = default.

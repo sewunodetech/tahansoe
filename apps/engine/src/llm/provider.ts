@@ -72,6 +72,8 @@ export interface LlmResult<T> {
    * mendeteksi error non-retryable (auth/kredit) agar run berhenti lebih awal.
    */
   status?: number;
+  /** Label "provider:model" yang akhirnya menghasilkan hasil ini (diisi router). */
+  providerUsed?: string;
 }
 
 /** Kontrak provider. Satu metode: structured output tervalidasi. */

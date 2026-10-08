@@ -21,9 +21,17 @@ export interface AssessorInput {
   lessons: Lesson[];
 }
 
+/** Hasil assessor: report bila sukses + diagnostik (usage/model/reason). */
+export interface AssessorOutcome {
+  report: ResearchReport | null;
+  reason?: string;
+  usage?: { inputTokens: number; outputTokens: number };
+  usedModel?: string;
+}
+
 /**
- * Hasilkan ResearchReport. Mengembalikan null jika refusal / schema invalid
- * (run dibatalkan tanpa sinyal, spec §3.2).
+ * Hasilkan ResearchReport. `report` null jika refusal / schema invalid / error
+ * (run dibatalkan tanpa sinyal, spec §3.2); diagnostik selalu diisi (audit G7).
  *
  * Lesson disisipkan sebagai DATA (≤5); confidence TIDAK dipaksa di sini — cap 0.6
  * dilakukan di to-signal.ts.
@@ -31,7 +39,7 @@ export interface AssessorInput {
 export async function runAssessor(
   provider: LlmProvider,
   input: AssessorInput,
-): Promise<ResearchReport | null> {
+): Promise<AssessorOutcome> {
   const { ctx, reports, debate, lessons } = input;
 
   const analystBlock = reports
@@ -80,6 +88,16 @@ export async function runAssessor(
     outputName: "ResearchReport",
   });
 
-  if (result.stopReason !== "ok" || !result.data) return null;
-  return result.data;
+  const usage = {
+    inputTokens: result.usage.inputTokens,
+    outputTokens: result.usage.outputTokens,
+  };
+  const usedModel = result.providerUsed ?? result.usage.model;
+  if (result.stopReason !== "ok" || !result.data) {
+    const reason = result.error
+      ? `${result.stopReason}: ${result.error}`
+      : result.stopReason;
+    return { report: null, reason, usage, usedModel };
+  }
+  return { report: result.data, usage, usedModel };
 }

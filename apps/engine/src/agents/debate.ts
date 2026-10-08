@@ -16,6 +16,17 @@ export interface DebateResult {
   turns: DebateTurn[];
   /** True jika ada ronde yang gagal (refusal/schema) — assessor tetap bisa jalan. */
   degraded: boolean;
+  /** Diagnostik per giliran (hawk/dove): ok/gagal, model, usage, alasan (audit G7). */
+  diagnostics: DebateTurnDiag[];
+}
+
+/** Diagnostik satu giliran debat. */
+export interface DebateTurnDiag {
+  side: "hawk" | "dove";
+  ok: boolean;
+  reason?: string;
+  usage?: { inputTokens: number; outputTokens: number };
+  usedModel?: string;
 }
 
 /**
@@ -36,6 +47,7 @@ export async function runDebate(
   );
   const analystData = renderAnalystReports(analystReports);
   const turns: DebateTurn[] = [];
+  const diagnostics: DebateTurnDiag[] = [];
   let degraded = false;
 
   for (let round = 0; round < rounds; round++) {
@@ -56,15 +68,28 @@ export async function runDebate(
         output: DebateTurn,
         outputName: "DebateTurn",
       });
+      const usage = {
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
+      };
+      const usedModel = result.providerUsed ?? result.usage.model;
       if (result.stopReason !== "ok" || !result.data) {
         degraded = true;
+        diagnostics.push({
+          side,
+          ok: false,
+          reason: result.error ? `${result.stopReason}: ${result.error}` : result.stopReason,
+          usage,
+          usedModel,
+        });
         continue;
       }
       turns.push(result.data);
+      diagnostics.push({ side, ok: true, usage, usedModel });
     }
   }
 
-  return { turns, degraded };
+  return { turns, degraded, diagnostics };
 }
 
 /** Ringkasan laporan analyst untuk disisipkan sebagai data. */

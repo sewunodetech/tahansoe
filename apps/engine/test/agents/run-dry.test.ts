@@ -87,6 +87,21 @@ test("dry + fake: menulis report.json, analysts.json, debate.json, report.md (of
     assert.match(md, /crypto:CoinDesk: 1/);
     assert.match(md, /Source warnings/);
     assert.match(md, /FRED/);
+
+    // --- Run diagnostics (audit G7) ---
+    assert.ok(reportJson.diagnostics, "report.json memuat diagnostics");
+    const roles = reportJson.diagnostics.roles.map((r: { role: string }) => r.role);
+    // 4 analyst + hawk + dove + assessor.
+    for (const role of ["analyst:geopolitics", "analyst:macro", "analyst:market", "analyst:onchain", "hawk", "dove", "assessor"]) {
+      assert.ok(roles.includes(role), `diagnostics memuat peran ${role}`);
+    }
+    // Semua peran ok di fixture; usage terkumpul (FakeProvider = 1000/200 per call).
+    assert.ok(reportJson.diagnostics.roles.every((r: { ok: boolean }) => r.ok), "semua peran ok");
+    assert.ok(reportJson.diagnostics.totalInputTokens > 0, "total input tokens terkumpul");
+    assert.ok(reportJson.diagnostics.totalOutputTokens > 0, "total output tokens terkumpul");
+    assert.equal(typeof reportJson.diagnostics.durationMs, "number");
+    assert.match(md, /## Run diagnostics/);
+    assert.match(md, /Total tokens/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -116,6 +131,15 @@ test("dry + fake: < 3 analyst sukses → report null, tidak menulis file (offlin
     // Alasan harus menyebut jumlah analyst sukses & kegagalan per peran.
     assert.match(result.reason ?? "", /analyst sukses/);
     assert.match(result.reason ?? "", /refusal/);
+    // Diagnostics mencatat peran yang GAGAL beserta alasannya + usage terkumpul.
+    assert.ok(result.diagnostics, "diagnostics ada walau run gagal");
+    const failed = result.diagnostics!.roles.filter((r) => !r.ok);
+    assert.ok(failed.length >= 1, "ada peran gagal tercatat");
+    assert.ok(failed.every((r) => typeof r.reason === "string" && r.reason!.length > 0), "alasan tercatat");
+    assert.ok(
+      result.diagnostics!.roles.some((r) => r.inputTokens > 0),
+      "usage terkumpul walau sebagian gagal",
+    );
     // Tidak ada file ditulis.
     await assert.rejects(() => access(join(dir, "report.json")));
   } finally {

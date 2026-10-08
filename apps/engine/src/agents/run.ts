@@ -25,7 +25,7 @@ import { budget as defaultBudget, type Budget } from "../llm/budget.ts";
 import { env, config, type ResearchTrigger } from "../config.ts";
 import { ANALYSTS, runAnalyst, type AnalystOutcome } from "./analysts.ts";
 import { runDebate, type DebateResult } from "./debate.ts";
-import { runAssessor } from "./assessor.ts";
+import { runAssessor, type AssessorOutcome } from "./assessor.ts";
 import { toSignal } from "./to-signal.ts";
 import { buildContext } from "./context.ts";
 import type { ResearchInputCollector, ResearchContext } from "./context.ts";
@@ -62,6 +62,75 @@ export interface RunResult {
    * gagal). Kosong bila sukses. JANGAN memuat secret (API key tidak pernah dicetak).
    */
   reason?: string;
+  /** Diagnostik per peran + usage + durasi (audit G7). */
+  diagnostics?: RunDiagnostics;
+}
+
+/** Diagnostik satu peran LLM (audit G7). */
+export interface RoleDiag {
+  role: string; // analyst:geopolitics | hawk | dove | assessor | ...
+  ok: boolean;
+  usedModel?: string;
+  reason?: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** Diagnostik satu run: per peran, total token, durasi. */
+export interface RunDiagnostics {
+  roles: RoleDiag[];
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  durationMs: number;
+}
+
+function buildDiagnostics(args: {
+  startedAtMs: number;
+  analystOutcomes: AnalystOutcome[];
+  debate?: DebateResult;
+  assessor?: AssessorOutcome;
+}): RunDiagnostics {
+  const roles: RoleDiag[] = [];
+  for (const o of args.analystOutcomes) {
+    roles.push({
+      role: `analyst:${o.domain.toLowerCase()}`,
+      ok: o.report !== null,
+      usedModel: o.usedModel,
+      reason: o.report === null ? o.reason : undefined,
+      inputTokens: o.usage?.inputTokens ?? 0,
+      outputTokens: o.usage?.outputTokens ?? 0,
+    });
+  }
+  if (args.debate) {
+    for (const d of args.debate.diagnostics) {
+      roles.push({
+        role: d.side,
+        ok: d.ok,
+        usedModel: d.usedModel,
+        reason: d.ok ? undefined : d.reason,
+        inputTokens: d.usage?.inputTokens ?? 0,
+        outputTokens: d.usage?.outputTokens ?? 0,
+      });
+    }
+  }
+  if (args.assessor) {
+    roles.push({
+      role: "assessor",
+      ok: args.assessor.report !== null,
+      usedModel: args.assessor.usedModel,
+      reason: args.assessor.report === null ? args.assessor.reason : undefined,
+      inputTokens: args.assessor.usage?.inputTokens ?? 0,
+      outputTokens: args.assessor.usage?.outputTokens ?? 0,
+    });
+  }
+  const totalInputTokens = roles.reduce((s, r) => s + r.inputTokens, 0);
+  const totalOutputTokens = roles.reduce((s, r) => s + r.outputTokens, 0);
+  return {
+    roles,
+    totalInputTokens,
+    totalOutputTokens,
+    durationMs: Date.now() - args.startedAtMs,
+  };
 }
 
 /**
@@ -71,6 +140,7 @@ export interface RunResult {
 export async function runResearch(params: RunParams): Promise<RunResult> {
   const { trigger, chainId, assets, dry, collector } = params;
   const budget = params.budget ?? defaultBudget;
+  const startedAtMs = Date.now();
 
   // Guard 1: kill switch & budget. Mode dry melewati kill switch (dijalankan
   // manual oleh dev), tetapi tetap menghormati budget.
@@ -103,7 +173,11 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
       `semua panggilan kemungkinan gagal: analyst ${ANALYSTS[0]!.toLowerCase()} ` +
       `gagal dengan error non-retryable (${first.reason}). Menghentikan run lebih awal ` +
       `tanpa memanggil peran lain.`;
-    return { report: null, reason };
+    return {
+      report: null,
+      reason,
+      diagnostics: buildDiagnostics({ startedAtMs, analystOutcomes: outcomes }),
+    };
   }
 
   // Sisanya paralel; satu gagal tidak membatalkan yang lain.
@@ -126,24 +200,50 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
     const reason =
       `hanya ${reports.length}/${ANALYSTS.length} analyst sukses ` +
       `(butuh ${config.minAnalystsRequired}). Kegagalan: ${failures.join("; ")}`;
-    return { report: null, reason };
+    return {
+      report: null,
+      reason,
+      diagnostics: buildDiagnostics({ startedAtMs, analystOutcomes: outcomes }),
+    };
   }
 
   const debate = await runDebate(debateProvider, reports, { rounds: config.debateRounds });
   const lessons = await selectLessons(reports).catch(() => []);
-  const report = await runAssessor(assessorProvider, { ctx, reports, debate, lessons });
+  const assessorOutcome = await runAssessor(assessorProvider, { ctx, reports, debate, lessons });
+  const report = assessorOutcome.report;
+
+  // Rakit diagnostik run (audit G7): status per peran, model terpakai, usage, durasi.
+  const diagnostics = buildDiagnostics({
+    startedAtMs,
+    analystOutcomes: outcomes,
+    debate,
+    assessor: assessorOutcome,
+  });
 
   // Guard 3: assessor gagal (refusal/schema) → tidak ada sinyal.
   if (!report) {
-    return { report: null, reason: "risk assessor gagal (refusal / schema invalid / error)" };
+    return {
+      report: null,
+      reason: `risk assessor gagal: ${assessorOutcome.reason ?? "unknown"}`,
+      diagnostics,
+    };
   }
 
   const signal = toSignal(report);
 
   if (dry) {
     const outDir = params.outDir ?? defaultOutDir();
-    await saveReportToFiles(outDir, { trigger, chainId, report, reports, debate, signal, ctx });
-    return { report, outDir };
+    await saveReportToFiles(outDir, {
+      trigger,
+      chainId,
+      report,
+      reports,
+      debate,
+      signal,
+      ctx,
+      diagnostics,
+    });
+    return { report, outDir, diagnostics };
   }
 
   // TODO(dev): persist ke research_reports + tulis signal ke tabel signals
@@ -212,6 +312,7 @@ async function saveReportToFiles(
     debate: DebateResult;
     signal: ResearchSignal;
     ctx: ResearchContext;
+    diagnostics: RunDiagnostics;
   },
 ): Promise<void> {
   await mkdir(outDir, { recursive: true });
@@ -226,6 +327,7 @@ async function saveReportToFiles(
           report: args.report,
           signal: args.signal,
           inputs,
+          diagnostics: args.diagnostics,
         },
         null,
         2,
@@ -233,7 +335,10 @@ async function saveReportToFiles(
     ),
     writeFile(join(outDir, "analysts.json"), JSON.stringify(args.reports, null, 2)),
     writeFile(join(outDir, "debate.json"), JSON.stringify(args.debate, null, 2)),
-    writeFile(join(outDir, "report.md"), renderReportMarkdown(args.report, args.signal, inputs)),
+    writeFile(
+      join(outDir, "report.md"),
+      renderReportMarkdown(args.report, args.signal, inputs, args.diagnostics),
+    ),
   ]);
 }
 
@@ -242,6 +347,7 @@ export function renderReportMarkdown(
   report: ResearchReport,
   signal: ResearchSignal,
   inputs?: InputsSummary,
+  diagnostics?: RunDiagnostics,
 ): string {
   const lines: string[] = [];
   lines.push(`# Research Report`);
@@ -300,6 +406,26 @@ export function renderReportMarkdown(
     lines.push(`### Source warnings (skipped / failed)`);
     if (inputs.warnings.length === 0) lines.push("(none)");
     else for (const w of inputs.warnings) lines.push(`- ${w}`);
+  }
+
+  if (diagnostics) {
+    lines.push("");
+    lines.push(`## Run diagnostics`);
+    lines.push("");
+    lines.push(`- Duration: ${(diagnostics.durationMs / 1000).toFixed(1)}s`);
+    lines.push(
+      `- Total tokens: ${diagnostics.totalInputTokens} in / ${diagnostics.totalOutputTokens} out`,
+    );
+    lines.push("");
+    lines.push(`| Role | Status | Model used | Tokens (in/out) | Reason |`);
+    lines.push(`|------|--------|------------|-----------------|--------|`);
+    for (const r of diagnostics.roles) {
+      const status = r.ok ? "ok" : "FAILED";
+      const model = r.usedModel ?? "-";
+      const toks = `${r.inputTokens}/${r.outputTokens}`;
+      const reason = r.reason ? r.reason.replace(/\|/g, "/").slice(0, 160) : "-";
+      lines.push(`| ${r.role} | ${status} | ${model} | ${toks} | ${reason} |`);
+    }
   }
 
   return lines.join("\n") + "\n";

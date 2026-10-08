@@ -42,10 +42,15 @@ export const Evidence = z.object({
   source: z
     .enum(["NEWS", "MACRO", "SIGNAL", "ONCHAIN", "MARKET"])
     .describe("Type of context source this evidence comes from."),
-  /** Referensi opsional ke id item konteks (mis. signals.id, market_events.id). */
+  /**
+   * Referensi opsional ke item konteks. Field non-kritis (audit); batas longgar
+   * karena provider yang menolak `maxLength` di wire (strict mode) kadang mengisi
+   * `ref` lebih panjang — batas ketat 120 sebelumnya menyebabkan analyst gagal
+   * validasi & diam-diam hilang (audit G7). Tetap dibatasi sebagai higiene data.
+   */
   ref: z
     .string()
-    .max(120)
+    .max(500)
     .optional()
     .describe("Optional reference to a context item id (e.g. signals.id, market_events.id)."),
 });
