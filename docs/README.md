@@ -11,6 +11,7 @@ Indeks semua dokumen proyek. Untuk agent: mulai dari [`../AGENTS.md`](../AGENTS.
 5. [`security.md`](security.md) — apa yang tidak boleh terjadi
 6. [`decisions/`](decisions/) — keputusan penting dan alasannya
 7. [`glossary.md`](glossary.md) — istilah
+8. [`knowledge/`](knowledge/) — pengetahuan domain (jalur risiko, katalog event, catatan chain)
 
 ## Jenis dokumen
 
@@ -22,6 +23,7 @@ Indeks semua dokumen proyek. Untuk agent: mulai dari [`../AGENTS.md`](../AGENTS.
 | Security | `security.md` | Engineering | Saat ada komponen baru yang menyentuh dana, auth, atau input eksternal |
 | ADR | `decisions/NNNN-*.md` | Siapa pun yang mengusulkan | Satu file per keputusan; tidak diedit setelah `Accepted` (buat ADR baru) |
 | Spec fitur | `specs/*.md` | Pengerja fitur | Sebelum dan selama implementasi |
+| Pengetahuan domain | `knowledge/*.md` | Engineering | Saat fakta pasar/protokol/chain baru terverifikasi |
 | Status | `status.md` | Setiap kontributor | Di akhir setiap pekerjaan |
 | Design system | [`../DESIGN.md`](../DESIGN.md) | Design/frontend | Saat token atau pola UI berubah |
 | Kontrak | [`../contracts/README.md`](../contracts/README.md) | Engineering | Saat kontrak, deploy, atau alamat berubah |

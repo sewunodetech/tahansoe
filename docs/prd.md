@@ -1,7 +1,7 @@
 # Tahansoe — Product Requirements Document
 
-**Version:** 0.2 (Draft)
-**Last updated:** 7 Oktober 2026
+**Version:** 0.3 (Draft)
+**Last updated:** 8 Oktober 2026
 **Owner:** Rakyavara Artomily (@rakaalts)
 **Dokumen terkait:** [BRD](brd.md) · [Architecture](architecture.md) · [Security](security.md) · [Status](status.md) · [ADR](decisions/)
 **Status:** Development — kontrak Guardian v1 live di Arbitrum Sepolia; Core Risk Engine dalam pengembangan (branch `core-dev`)
@@ -10,6 +10,7 @@
 
 | Versi | Perubahan |
 |-------|-----------|
+| 0.3 | Research agents multi-agent (§6.6, [ADR 0004](decisions/0004-multi-agent-research-layer.md)) dan reflection loop (§6.4, [ADR 0005](decisions/0005-reflection-loop.md)) — *Accepted*. Model bisnis: informasi (termasuk research agents) gratis untuk semua user, otomasi berbayar, tanpa fee on-chain di v1 ([ADR 0006](decisions/0006-business-model-free-info-paid-automation.md)). Teknikal dari on-chain; fundamental/berita/makro dari jenis sumber yang sama dengan TradingAgents. Default band user 1.25–1.60. Temuan Arbitrum One: harga USDC di Aave memakai adapter ber-cap; Aave tidak memasang PriceOracleSentinel (tanpa grace period). |
 | 0.2 | Fokus chain dipindah ke **Arbitrum** dengan arsitektur chain-agnostic (siap cross-chain). AI dinaikkan dari "fitur fase akhir" menjadi **Core Risk Engine**: oracle monitoring, analisa teknikal, fundamental/on-chain, makro, dan sentimen (news, geopolitik). Ditambah spesifikasi Guardian v2 (dynamic trigger band). |
 | 0.1 | Draft awal: Aave V3 + Morpho, Base, rule engine statis. |
 
@@ -105,7 +106,7 @@ Untuk posisi yang collateral dan utangnya berkorelasi (mis. wstETH/ETH), yang di
 
 ### 4.3 Aturan oracle kritis
 
-Keputusan eksekusi WAJIB memakai oracle yang sama persis dengan yang digunakan protokol target (Aave V3: Chainlink Data Feeds melalui `AaveOracle`). Sumber lain (CEX, DEX, Pyth, RedStone) hanya boleh dipakai sebagai **sinyal peringatan dini** — tidak pernah sebagai dasar menghitung HF yang dieksekusi.
+Keputusan eksekusi WAJIB memakai oracle yang sama persis dengan yang digunakan protokol target (Aave V3: Chainlink Data Feeds melalui `AaveOracle`). Baca harga lewat `AaveOracle.getAssetPrice(asset)`, bukan proxy Chainlink langsung: untuk sebagian aset Aave memasang adapter di atas Chainlink (di Arbitrum One, sumber harga USDC adalah `Capped USDC/USD` — lihat [knowledge §4](knowledge/risk-transmission.md#4-catatan-khusus-arbitrum-one)). Sumber lain (CEX, DEX, Pyth, RedStone) hanya boleh dipakai sebagai **sinyal peringatan dini** — tidak pernah sebagai dasar menghitung HF yang dieksekusi.
 
 ---
 
@@ -172,7 +173,7 @@ Engine adalah service TypeScript (viem) terpisah dari web app, berjalan terus-me
 | Modul | Sumber | Contoh sinyal |
 |-------|--------|---------------|
 | **Oracle Monitor** | Chainlink feeds (via AaveOracle), Arbitrum Sequencer Uptime Feed, Pyth/RedStone, harga CEX/DEX | Feed basi (melewati heartbeat), deviasi oracle vs pasar mendekati deviation threshold (oracle akan "melompat"), sequencer down/baru pulih, depeg stablecoin |
-| **Technical** | OHLCV CEX, derivatives data | Realized volatility (EWMA/GARCH), ATR, tren & level support, funding rate ekstrem, open interest, cluster likuidasi, kedalaman orderbook, korelasi antar aset |
+| **Technical** | **On-chain:** riwayat harga AaveOracle/Chainlink, pool DEX Arbitrum, OI & funding perp DEX on-chain (CEX hanya pembanding opsional) | Realized volatility (EWMA/GARCH), ATR, tren & level support, funding rate ekstrem, open interest, cluster likuidasi, kedalaman orderbook, korelasi antar aset |
 | **Fundamental / On-chain** | RPC, indexer, data protokol | Utilization reserve Aave (likuiditas repay/withdraw), inflow besar ke exchange, supply & peg stablecoin, rasio LST/LRT (wstETH/ETH), token unlock, insiden bridge/exploit |
 | **Macro & Calendar** | Kalender ekonomi | FOMC, CPI, NFP, keputusan bank sentral besar, jadwal regulasi — event terjadwal dengan volatilitas tinggi |
 | **News & Geopolitics** | Feed berita, GDELT, rilis resmi, crypto news | Perang/eskalasi konflik, sanksi, tarif dagang, kebijakan regulator, kebangkrutan/insolvensi institusi, exploit protokol |
@@ -202,7 +203,8 @@ type Regime = "CALM" | "ELEVATED" | "STRESSED" | "CRISIS";
 
 interface Signal {
   id: string;
-  module: "ORACLE" | "TECHNICAL" | "ONCHAIN" | "MACRO" | "NEWS" | "SOCIAL";
+  module: "ORACLE" | "TECHNICAL" | "ONCHAIN" | "MACRO" | "NEWS" | "SOCIAL" | "RESEARCH";
+  paths?: TransmissionPath[];   // T1..T10, lihat knowledge/risk-transmission.md
   assets: string[];             // mis. ["ETH", "WBTC"]
   direction: "DOWN" | "UP" | "VOLATILITY";
   severity: number;             // 0..1
@@ -243,8 +245,10 @@ Mapping regime ke buffer (default, dapat dikalibrasi):
 |--------|----------------|----------------------------|
 | CALM | Volatilitas rendah, tanpa event | 1.15 – 1.25 |
 | ELEVATED | Event makro terjadwal, funding ekstrem | 1.30 – 1.40 |
-| STRESSED | Eskalasi geopolitik terkonfirmasi, oracle deviasi tinggi | 1.45 – 1.60 |
+| STRESSED | Eskalasi geopolitik terkonfirmasi, oracle deviasi tinggi, sequencer L2 down / baru pulih | 1.45 – 1.60 |
 | CRISIS | Depeg, exploit besar, crash berjalan | Batas atas band user |
+
+Trigger efektif selalu di-clamp ke band user (§7.3). Default band untuk user baru adalah **1.25–1.60**, sehingga dengan setelan default trigger tidak turun di bawah 1.25 meskipun regime `CALM`. User yang ingin buffer lebih tipis saat pasar tenang menurunkan batas bawah band secara sadar.
 
 ### 6.4 Backtest & evaluasi
 
@@ -252,13 +256,37 @@ Engine harus bisa me-replay periode historis untuk membandingkan **dynamic trigg
 
 - Maret 2020 (COVID crash), Mei 2022 (Terra/LUNA), Juni 2022 (stETH discount/3AC), November 2022 (FTX), Maret 2023 (depeg USDC/SVB), Agustus 2024 (yen carry unwind), Oktober 2025 (crash akibat pengumuman tarif AS–China).
 
-Metrik per skenario: posisi yang tercegah dari likuidasi, total biaya repay/deleverage yang tidak perlu, dan lead time (berapa jam sebelum crash buffer sudah naik).
+Metrik per skenario: posisi yang tercegah dari likuidasi, total biaya repay/deleverage yang tidak perlu, dan lead time (berapa jam sebelum crash buffer sudah naik). Backtest juga menyertakan **periode tenang** agar false positive terukur.
+
+**Bias lookahead untuk komponen LLM.** Model mungkin sudah "tahu" akhir event historis dari data pelatihannya, sehingga hasil backtest komponen LLM dilaporkan terpisah dari komponen deterministik, dan bobot keputusannya diambil dari evaluasi live.
+
+**Reflection loop ([ADR 0005](decisions/0005-reflection-loop.md)).** Setiap `RiskAssessment` dan `ResearchReport` dilabeli setelah horizonnya (`TRUE_POSITIVE` / `FALSE_POSITIVE` / `MISSED` / `TRUE_NEGATIVE` + lead time). Hasilnya dipakai untuk: (1) pelajaran singkat yang disisipkan sebagai konteks ke research agents, dan (2) scorecard mingguan yang menjadi dasar review manusia. Perubahan aturan fusion, mapping regime, prompt, atau model **hanya** lewat PR + backtest + eval, tidak pernah otomatis. Sebelum berdampak ke user, engine melewati shadow mode bertahap. Detail: [spec m3-research-agents](specs/m3-research-agents.md).
 
 ### 6.5 Explainability & notifikasi
 
 Setiap perubahan regime dan setiap Intent disimpan beserta `drivers` dan `explanation`, lalu dikirim ke Telegram, misalnya:
 
 > ⚠️ Regime ETH: ELEVATED → STRESSED. Trigger kamu naik 1.30 → 1.48 (band kamu: 1.25–1.60). Alasan: eskalasi konflik di Timur Tengah (3 sumber), funding ETH −0.08%, oracle ETH/USD tertinggal 0.9% dari pasar.
+
+### 6.6 Research agents (multi-agent)
+
+Status: *Accepted* — [ADR 0004](decisions/0004-multi-agent-research-layer.md), detail di [spec m3-research-agents](specs/m3-research-agents.md). **Akses: gratis untuk semua user**; otomasi berbasis hasilnya (dynamic trigger) adalah fitur Pro (spec §3.11, ADR 0006). Sumber data fundamental/berita/makro mengikuti jenis sumber TradingAgents (FRED, Polymarket, berita & sentimen, Reddit), dengan verifikasi lisensi komersial (spec §3.10).
+
+Modul sinyal mendeteksi kejadian satu per satu. Research agents menalar **kombinasi** konteks dan menjelaskannya, dengan pola yang terinspirasi [TradingAgents](https://github.com/TauricResearch/TradingAgents):
+
+```
+signals + market_events + kalender + regime kini + lessons (dari DB)
+   → 4 analyst paralel: Geopolitics/News · Macro · Market/Technical · On-chain/Protocol
+   → debat Hawk ⇄ Dove (1–2 ronde)
+   → Risk Assessor → ResearchReport
+   → Signal { module: "RESEARCH", confidence ≤ 0.6 } → Risk Fusion
+```
+
+- Output **hanya** berupa `Signal`. Fusion dan rule engine deterministik yang memutuskan (ADR 0002). Peran "risk team / portfolio manager" versi LLM dari TradingAgents tidak diadopsi.
+- Sinyal `RESEARCH` tunduk pada aturan konfirmasi yang sama dengan `NEWS` (§6.2): sendirian tidak bisa menaikkan regime ke `STRESSED`/`CRISIS`.
+- Agent tanpa tools: semua data diambil kode lebih dulu. Output schema-only.
+- Berjalan tiap 1–2 jam dan saat fusion menaikkan regime. Tidak berada di jalur kritis deteksi crash.
+- TypeScript di `engine/src/agents/`, provider LLM di balik interface (implementasi pertama: Anthropic). Argumen Hawk dan Dove menjadi bahan penjelasan untuk user (G6).
 
 ---
 
@@ -325,7 +353,7 @@ user `approve` debt asset ke Guardian + `setPolicy(debtAsset, triggerHF, targetH
 
 | Fitur | Spesifikasi |
 |-------|-------------|
-| Risk band | User menetapkan `minTriggerHF` dan `maxTriggerHF`. Trigger efektif selalu di dalam band ini. |
+| Risk band | User menetapkan `minTriggerHF` dan `maxTriggerHF`. Trigger efektif selalu di dalam band ini. Default untuk user baru: **1.25–1.60**. |
 | Risk agent per user | User memilih alamat agent yang dipercaya (`setRiskAgent(agent)`) dan bisa mencabutnya kapan saja. Tidak ada admin global. |
 | `setDynamicTrigger(user, triggerHF, validUntil)` | Hanya bisa dipanggil oleh agent milik user; di-clamp ke band; perubahan per update dibatasi; ada `validUntil`. |
 | Fallback | Jika dynamic trigger kedaluwarsa, Guardian memakai trigger statis user. |
@@ -418,13 +446,17 @@ User menyatakan niat ("jaga posisiku konservatif, tahan drop 30%"). LLM menerjem
 - [ ] Macro calendar
 - [ ] Risk Fusion v1 (aturan + kuantitatif) → `RiskAssessment` + explanation
 - [ ] Dry-run: tampilkan rekomendasi trigger di dashboard & Telegram tanpa mengubah on-chain
-- [ ] Framework backtest + skenario historis §6.4
+- [ ] Framework backtest + skenario historis §6.4 (+ periode tenang)
+- [ ] Settlement deterministik + scorecard mingguan untuk `RiskAssessment` (ADR 0005)
 
 ### Milestone 3 — Intelligence
 - [ ] News & geopolitics ingestion + klasifikasi LLM (structured output, multi-source confirmation)
 - [ ] Social sentiment
 - [ ] Fundamental/on-chain module (utilization, exchange flow, depeg, LST ratio)
 - [ ] Kalibrasi regime → buffer via backtest
+- [ ] Research agents multi-agent → sinyal `RESEARCH` (ADR 0004, [spec](specs/m3-research-agents.md))
+- [ ] Reflection loop (lessons) + set eval (berita berlabel, injection, skenario)
+- [ ] Shadow mode bertahap: shadow → notify → dry-run rekomendasi
 
 ### Milestone 4 — Guardian v2
 - [ ] Risk band + risk agent per user + `setDynamicTrigger`
@@ -464,6 +496,9 @@ User menyatakan niat ("jaga posisiku konservatif, tahan drop 30%"). LLM menerjem
 | Lead time regime | Buffer sudah naik sebelum drawdown utama pada mayoritas skenario event terjadwal/terkonfirmasi |
 | False positive (aksi tak perlu) | < 5% |
 | Ketersediaan engine | Jika down, fallback statis aktif 100% |
+| Recall event (settlement) | TP / (TP + MISSED) ≥ 70% |
+| Presisi regime ≥ STRESSED (settlement) | ≥ 50% pada 3 bulan pertama, dievaluasi ulang setelahnya |
+| Waktu di regime ≥ STRESSED | < 10% (agent yang terus "panik" akan dimatikan user) |
 | Insiden kehilangan dana | 0 (invariant absolut) |
 
 ---
@@ -479,7 +514,7 @@ Batasan berikut wajib dikomunikasikan secara eksplisit di UI, bukan disembunyika
 | **Berita palsu / manipulasi sentimen** | Deleverage massal yang tidak perlu | Kredibilitas sumber, konfirmasi multi-sumber, konfirmasi pasar, rate limit perubahan trigger |
 | **Prompt injection dari konten berita** | Output LLM dibajak | Output schema-only, konten eksternal diperlakukan sebagai data |
 | **Oracle lag** | Harga oracle tertinggal | Eksekusi pakai oracle protokol; Pyth/RedStone/CEX sebagai early warning |
-| **Sequencer L2 down** | Tidak ada transaksi masuk; setelah pulih, harga bisa melompat | Pantau sequencer uptime feed; grace period; alert ke user |
+| **Sequencer L2 down** | Tidak ada transaksi masuk; setelah pulih, harga bisa melompat. Aave di Arbitrum One **tidak** memasang PriceOracleSentinel, jadi tidak ada grace period: likuidasi bisa langsung terjadi di blok pertama setelah pulih | Pantau sequencer uptime feed; sequencer down → regime minimal `STRESSED` agar trigger sudah tinggi sebelum sequencer pulih; alert ke user |
 | **Kegagalan likuiditas reserve** | Reserve tidak dapat ditarik saat utilization tinggi | Pisahkan venue; cek `maxWithdraw()`; pantau utilization |
 | **Kegagalan flash loan** | Slippage melampaui batas, revert | Simulasi sebelum eksekusi; batas slippage; retry ukuran lebih kecil |
 | **Batas gas `performUpkeep`** | Repay + swap + flash loan melampaui limit | Pisahkan deteksi dari eksekusi |
@@ -490,10 +525,14 @@ Batasan berikut wajib dikomunikasikan secara eksplisit di UI, bukan disembunyika
 
 ## 14. Pertanyaan Terbuka
 
-- Model biaya: subscription untuk Risk Engine premium, fee per eksekusi (bps dari jumlah repay), atau kombinasi? Siapa membayar gas keeper/LINK?
+- ~~Model biaya~~ → [ADR 0006](decisions/0006-business-model-free-info-paid-automation.md): subscription Pro (otomasi) + B2B, tanpa fee on-chain di v1. Tersisa: harga Pro, dan batas gas keeper yang ditanggung untuk user Free.
 - Threshold & band per-posisi atau global per-akun?
 - Bagaimana menangani multi-posisi lintas protokol/chain yang memperebutkan reserve yang sama?
-- Sumber data berita & sosial mana yang dipakai (biaya lisensi, rate limit, kredibilitas)?
+- ~~Sumber data berita & sosial~~ → spec m3-research-agents §3.10; tersisa verifikasi lisensi komersial.
 - Seberapa sering engine boleh menggeser dynamic trigger (rate limit on-chain vs biaya gas)?
 - Apakah agent yang menulis `setDynamicTrigger` dioperasikan Tahansoe, atau user bisa membawa agent sendiri?
 - Fallback jika Chainlink Automation gagal — cron sekunder tetap dipertahankan?
+- Research agents: model final per peran — prinsip sudah ditetapkan (termurah yang lolos eval, mulai dari Haiku 5.5), nilai final menunggu hasil eval R&D ([spec §3.4](specs/m3-research-agents.md#34-aturan-llm)).
+- Bahasa notifikasi & penjelasan research ke user.
+- ~~Alert kritis deterministik untuk user Free~~ → ya, untuk semua user ([spec §3.11](specs/m3-research-agents.md#311-akses-free-vs-pro)).
+- ~~Fee untuk aksi preemptif~~ → tidak ada fee eksekusi on-chain di v1 (ADR 0006).

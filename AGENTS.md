@@ -46,6 +46,7 @@ Detail lengkap di [`docs/security.md`](docs/security.md). Ringkasnya:
 | [`docs/decisions/`](docs/decisions/) | ADR — keputusan arsitektur beserta alasannya | Sebelum mengusulkan perubahan arah |
 | [`docs/specs/`](docs/specs/) | Spec per fitur | Sebelum dan selama implementasi fitur |
 | [`docs/glossary.md`](docs/glossary.md) | Istilah (HF, Intent, Regime, Band, dll.) | Saat ragu istilah |
+| [`docs/knowledge/`](docs/knowledge/) | Pengetahuan domain: jalur event → likuidasi, katalog event historis, alamat & catatan Arbitrum terverifikasi | Saat mendesain sinyal, fusion, research agents, atau backtest |
 | [`DESIGN.md`](DESIGN.md) | Design system UI (token, tipografi, komponen) | Setiap perubahan UI |
 | [`contracts/README.md`](contracts/README.md) | Kontrak, test, deploy, alamat | Setiap perubahan di `contracts/` |
 

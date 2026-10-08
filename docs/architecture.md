@@ -1,6 +1,6 @@
 # Tahansoe — Architecture
 
-**Last updated:** 7 Oktober 2026
+**Last updated:** 8 Oktober 2026
 **Dokumen terkait:** [PRD](prd.md) · [Security](security.md) · [ADR](decisions/)
 
 Dokumen ini menjelaskan *bagaimana* sistem dibangun. Bagian bertanda **(rencana)** belum ada di kode; detail finalnya dikunci di spec masing-masing di `docs/specs/`.
@@ -59,7 +59,9 @@ engine/                 (rencana) Core Risk Engine — service Node.js terpisah
       macro/            Kalender ekonomi
       news/             Ingestion + klasifikasi LLM
       social/           Sentimen sosial
-    llm/                Interface provider-agnostic + schema output
+    llm/                Interface provider-agnostic + schema output + budget harian
+    agents/             Research agents: analyst → debat Hawk/Dove → assessor (ADR 0004)
+    reflection/         Settlement, reflection, scorecard (ADR 0005)
     fusion/             Signals → RiskAssessment (regime, drawdown, trigger)
     policy/             Rule engine deterministik → Intent
     keeper/             Loop needsProtection → protect; (v2) setDynamicTrigger
@@ -126,6 +128,10 @@ Interval awal (dapat dikalibrasi):
 | Social | 5 menit |
 | Macro calendar | Harian + pengingat menjelang event |
 | Fusion | Saat ada sinyal baru, minimal tiap 5 menit |
+| Research agents | Tiap 2 jam (CALM), tiap 1 jam (≥ ELEVATED), + saat regime naik (cooldown 30 menit) |
+| Settlement | Tiap jam; reflection harian (batch) |
+
+Research agents membaca dari DB dan menulis satu `Signal` (`module: "RESEARCH"`) per run. Sinyal itu masuk fusion seperti sinyal lain. Detail: [spec m3-research-agents](specs/m3-research-agents.md).
 
 ---
 
@@ -152,6 +158,8 @@ Alamat Aave diambil dari `bgd-labs/aave-address-book`. Menambah chain = menambah
 
 Chain aktif saat ini: **Arbitrum Sepolia (421614)**. Berikutnya: Arbitrum One (42161).
 
+Alamat Arbitrum One yang sudah diverifikasi on-chain (8 Okt 2026), beserta dua temuan yang memengaruhi desain (harga USDC ber-cap di AaveOracle; tanpa PriceOracleSentinel): [knowledge/risk-transmission.md §4](knowledge/risk-transmission.md#4-catatan-khusus-arbitrum-one).
+
 ---
 
 ## 5. Data model
@@ -171,6 +179,9 @@ Skema saat ini di `lib/schema.ts`.
 | `signals` | Sinyal dari semua modul | **(rencana)** |
 | `risk_assessments` | Output fusion | **(rencana)** |
 | `market_events` | Event berita/geopolitik yang sudah dideduplikasi | **(rencana)** |
+| `research_reports` | Output research agents (report, laporan analyst, debat, versi prompt/model, usage) | **(rencana)** — ADR 0004 |
+| `risk_settlements` | Label TP/FP/MISSED/TN + lead time + outcome mentah | **(rencana)** — ADR 0005 |
+| `research_lessons` | Pelajaran hasil reflection (≤ 600 karakter, bisa dinonaktifkan) | **(rencana)** — ADR 0005 |
 
 Kolom `chainId` wajib ada di setiap tabel yang menyimpan data on-chain (positions, policies, intents).
 
@@ -196,7 +207,7 @@ Konvensi angka:
 | Engine | Node.js + TypeScript, viem, dijalankan sebagai long-running worker **(rencana)** |
 | DB | Neon Postgres + Drizzle |
 | Kontrak | Foundry, Solidity 0.8.26, OpenZeppelin v5 |
-| LLM | Provider-agnostic interface; output divalidasi schema **(rencana)** |
+| LLM | Provider-agnostic interface; output divalidasi schema. Implementasi pertama: Anthropic (`@anthropic-ai/sdk` + zod) — [ADR 0004](decisions/0004-multi-agent-research-layer.md) **(rencana)** |
 | Notifikasi | Telegram Bot API |
 | Automation (prod) | Chainlink Automation + cron cadangan |
 
@@ -213,3 +224,8 @@ Konvensi angka:
 | `ARB_SEPOLIA_RPC_URL`, `ARBISCAN_API_KEY` | contracts, engine |
 | `KEEPER_PRIVATE_KEY` atau signer eksternal | engine/keeper **(rencana)** — hanya di environment server |
 | API key data/LLM | engine **(rencana)** |
+| `ANTHROPIC_API_KEY` | engine — research agents & klasifikasi berita **(rencana)** |
+| `LLM_DAILY_BUDGET_USD` | engine — batas biaya LLM harian; jika terlampaui, jalur LLM berhenti, modul lain tetap jalan **(rencana)** |
+| `RESEARCH_ENABLED` | engine — kill switch research agents (default `false`) **(rencana)** |
+| `FRED_API_KEY`, `ALPHA_VANTAGE_API_KEY` | engine — data makro & berita untuk research agents **(rencana)** |
+| `ARBITRUM_RPC_URL` | engine — RPC Arbitrum One berbayar untuk polling on-chain **(rencana)** |
