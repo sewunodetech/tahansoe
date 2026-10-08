@@ -18,6 +18,7 @@
 - Guardian v1 ter-deploy di Arbitrum Sepolia: `0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E`
 - Dokumentasi & workflow agent (PRD v0.2, BRD, architecture, security, ADR)
 - Struktur repo & runtime: ADR 0007 (*Accepted*) — npm workspaces, Next.js + worker terpisah, tanpa indexer dulu. Fase 0–2 selesai: `.gitattributes`, CI, `packages/domain`, `packages/db` (skema tunggal, termasuk tabel research yang belum dimigrasi), web di `apps/web`, engine di `apps/engine` (typecheck, test 22+16, build hijau)
+- Spec draft (menunggu persetujuan): [M1 integrasi web on-chain](specs/m1-web-onchain-integration.md), [M2 kerangka engine](specs/m2-engine-skeleton.md)
 - Prompt LLM engine berbahasa Inggris (`promptVersion` 2026.10.1)
 - Lint web 0 error; UI menampilkan chain Arbitrum; `arbitrumSepolia` ada di wagmi
 - Model bisnis: ADR 0006 (*Accepted*) — informasi gratis, otomasi Pro, tanpa fee on-chain di v1
@@ -64,9 +65,9 @@ Lihat [security.md §3](security.md#3-temuan-terbuka).
 
 ## Next steps (urutan disarankan)
 
-1. Spec M2: kerangka `engine/` (chain registry, AaveAdapter read, scheduler, tabel signals/risk_assessments)
+1. Setujui spec M1 & M2, lalu implementasi [M2 kerangka engine](specs/m2-engine-skeleton.md) (chain registry, AaveAdapter read, scheduler, event sync, Oracle Monitor, tabel signals/risk_assessments)
 2. Keeper v1 di engine: `needsProtection` → `protect` + log `intents` + Telegram dari server
-3. Web: Settings → `approve` + `setPolicy`, dashboard baca posisi asli (simulasi jadi "demo mode")
+3. Web: implementasi [spec M1](specs/m1-web-onchain-integration.md) — Settings → `approve` + `setPolicy`, dashboard baca posisi asli, demo mode
 4. Oracle monitor + technical module + macro calendar → RiskAssessment dry-run
 5. CI
 6. Verifikasi lisensi komersial sumber data research (FRED, Polymarket, Alpha Vantage, Yahoo, Reddit, GDELT) dan cara baca OI/funding perp DEX on-chain di Arbitrum
