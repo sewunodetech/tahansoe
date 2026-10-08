@@ -115,6 +115,7 @@ describe("Data Sources: RSS Feed Adapter", () => {
   });
 
   it("memfilter relevansi risiko pasar untuk feed geopolitik umum", () => {
+    // 1. Kasus positif kuat
     assert.equal(
       isGeopoliticsRiskRelevant("Middle East ceasefire talks stall amid missile strikes"),
       true,
@@ -124,8 +125,51 @@ describe("Data Sources: RSS Feed Adapter", () => {
       true,
     );
     assert.equal(
+      isGeopoliticsRiskRelevant("Drone attack damages crude oil tanker in Red Sea"),
+      true,
+    );
+    assert.equal(
+      isGeopoliticsRiskRelevant("US presidential election race tightens amid tariff and inflation debate"),
+      true,
+    );
+    assert.equal(
+      isGeopoliticsRiskRelevant("Stock market plunges into bear market territory amid rate hike fears"),
+      true,
+      "frasa bear market tidak boleh digugurkan oleh filter hewan bear",
+    );
+
+    // 2. Kasus negatif pengecualian (contoh nyata non-pasar yang sebelumnya lolos)
+    assert.equal(
+      isGeopoliticsRiskRelevant("Bear kills man in home attack near Mongolian capital"),
+      false,
+      "harus digugurkan oleh kata pengecualian bear dan home attack",
+    );
+    assert.equal(
+      isGeopoliticsRiskRelevant("Housing protest held across major cities in Spain"),
+      false,
+      "harus digugurkan oleh kata pengecualian housing",
+    );
+    assert.equal(
       isGeopoliticsRiskRelevant("Celebrity couple announces wedding plans in Venice"),
       false,
+      "harus digugurkan oleh kata pengecualian celebrity",
+    );
+    assert.equal(
+      isGeopoliticsRiskRelevant("Football championship tournament final ends in penalty shootout"),
+      false,
+      "harus digugurkan oleh kata pengecualian olahraga",
+    );
+
+    // 3. Kasus kata generik tanpa kualifikasi pasar/geopolitik kuat
+    assert.equal(
+      isGeopoliticsRiskRelevant("Local election in rural district chooses municipal council"),
+      false,
+      "election tanpa kualifikasi ekonomi besar / pasar harus digugurkan",
+    );
+    assert.equal(
+      isGeopoliticsRiskRelevant("School district suffers sudden ransomware attack"),
+      false,
+      "attack tanpa konteks militer/konflik/energi harus digugurkan",
     );
   });
 
@@ -583,6 +627,10 @@ describe("Data Sources: collectResearchInputs Orchestrator", () => {
         result.macroEvents.some((e) => e.id.includes("cpi") || e.id.includes("nfp")),
         "harus berisi event CPI atau NFP",
       );
+      assert.ok(
+        result.macroEvents.some((e) => e.id.includes("fomc")),
+        "harus berisi event FOMC 27-28 Okt (jendela default 30 hari)",
+      );
 
       assert.ok(
         result.signals.some((s) => s.id.includes("defillama")),
@@ -609,17 +657,21 @@ describe("Data Sources: Macro Calendar Adapter", () => {
     assert.equal(edtBls.toISOString(), "2026-10-14T12:30:00.000Z");
   });
 
-  it("menyaring event FOMC mendatang dalam batas rentang lookahead", () => {
-    // 20 Okt 2026: Rapat FOMC berikutnya adalah 27-28 Okt 2026
-    const now = new Date("2026-10-20T00:00:00.000Z");
-    const events = getScheduledFomcEvents(now, 14);
+  it("menyaring event FOMC mendatang dengan jendela default 30 hari (FOMC 27-28 Okt masuk dari 8 Okt)", () => {
+    // 8 Okt 2026: Rapat FOMC berikutnya adalah 27-28 Okt 2026 (~20 hari ke depan)
+    const now = new Date("2026-10-08T12:00:00.000Z");
+    const defaultEvents = getScheduledFomcEvents(now);
 
-    assert.equal(events.length, 1, "harus menemukan tepat 1 rapat FOMC dalam 14 hari");
-    const fomc = events[0]!;
+    assert.equal(defaultEvents.length, 1, "default 30 hari harus memuat rapat FOMC 27-28 Okt 2026");
+    const fomc = defaultEvents[0]!;
     assert.equal(fomc.id, "macro-fomc-2026-10-28");
     assert.equal(fomc.name, "FOMC Rate Decision");
     assert.equal(fomc.importance, "HIGH");
     assert.equal(fomc.scheduledAt.toISOString(), "2026-10-28T18:00:00.000Z");
+
+    // Bila jendela dipersempit menjadi 14 hari, rapat 20 hari ke depan tidak boleh lolos
+    const tightEvents = getScheduledFomcEvents(now, 14);
+    assert.equal(tightEvents.length, 0, "jendela 14 hari tidak boleh memuat rapat FOMC 20 hari ke depan");
   });
 
   it("mengambil tanggal rilis FRED (CPI/NFP) dan memfilter horizon waktu", async () => {
@@ -649,7 +701,7 @@ describe("Data Sources: Macro Calendar Adapter", () => {
     assert.equal(cpiEvent.scheduledAt.toISOString(), "2026-10-14T12:30:00.000Z");
   });
 
-  it("menggabungkan FOMC dan FRED kalender secara terurut", async () => {
+  it("menggabungkan FOMC (30 hari) dan FRED kalender (14 hari) secara terurut", async () => {
     const fixture = loadFixture<FredReleaseDatesResponse>("fred-releases.json");
     const mockFetch: typeof fetch = async () =>
       new Response(JSON.stringify(fixture), {
@@ -657,15 +709,20 @@ describe("Data Sources: Macro Calendar Adapter", () => {
         headers: { "Content-Type": "application/json" },
       });
 
-    const now = new Date("2026-10-20T00:00:00.000Z");
+    // 8 Okt 2026: FOMC 28 Okt masuk (30 hari) dan CPI 14 Okt masuk (14 hari)
+    const now = new Date("2026-10-08T12:00:00.000Z");
     const res = await fetchMacroCalendarEvents({
       apiKey: "test-key",
       now,
-      lookaheadDays: 14,
       fetchFn: mockFetch,
     });
 
-    assert.ok(res.events.length >= 1);
+    assert.ok(res.events.length >= 2, "harus memuat CPI dan FOMC");
+    const fomcEvent = res.events.find((e) => e.id.includes("fomc"));
+    const cpiEvent = res.events.find((e) => e.id.includes("cpi"));
+    assert.ok(fomcEvent, "FOMC harus masuk");
+    assert.ok(cpiEvent, "CPI harus masuk");
+
     // Verifikasi urutan waktu ascending
     for (let i = 1; i < res.events.length; i++) {
       const prev = res.events[i - 1]!;
@@ -743,7 +800,7 @@ describe("Data Sources: DefiLlama Adapter", () => {
     assert.ok(sig.summary.includes("USDe depeg detected"));
   });
 
-  it("menyaring insiden hack 7 hari terakhir dan mengelompokkan severity berbasis nominal (T9)", async () => {
+  it("menyaring insiden hack 7 hari terakhir, menerapkan skala nominal dan boost relevansi Tahansoe", async () => {
     const fixture = loadFixture<DefiLlamaHackEntry[]>("defillama-hacks.json");
     const mockFetch: typeof fetch = async () =>
       new Response(JSON.stringify(fixture), {
@@ -757,17 +814,43 @@ describe("Data Sources: DefiLlama Adapter", () => {
       fetchFn: mockFetch,
     });
 
-    assert.equal(res.signals.length, 2, "hanya 2 insiden dalam 7 hari terakhir");
-
+    // 1. MegaBridge Network ($65M, Arbitrum) -> >= $50M boosted ke 0.9
     const bridgeHack = res.signals.find((s) => s.id.includes("megabridge"));
     assert.ok(bridgeHack, "MegaBridge hack harus ada");
-    assert.equal(bridgeHack.severity, 1.0, "hack $65M harus memiliki severity 1.0");
+    assert.equal(bridgeHack.severity, 0.9, "hack $65M di Arbitrum harus di-boost ke 0.9");
     assert.deepEqual(bridgeHack.paths, ["T9"]);
+    assert.ok(bridgeHack.summary.includes("[Tahansoe-relevant]"));
 
+    // 2. DeFi Protocol Alpha ($15M, Arbitrum) -> $1M-$50M boosted ke 0.7
     const alphaHack = res.signals.find((s) => s.id.includes("protocol-alpha"));
     assert.ok(alphaHack, "Protocol Alpha hack harus ada");
-    assert.equal(alphaHack.severity, 0.6, "hack $15M harus memiliki severity 0.6");
+    assert.equal(alphaHack.severity, 0.7, "hack $15M di Arbitrum harus di-boost ke 0.7");
     assert.deepEqual(alphaHack.paths, ["T9"]);
+    assert.ok(alphaHack.summary.includes("[Tahansoe-relevant]"));
+
+    // 3. Unrelated Protocol Beta ($300k, Solana) -> $100k-$1M base 0.15
+    const betaHack = res.signals.find((s) => s.id.includes("protocol-beta"));
+    assert.ok(betaHack, "Unrelated Protocol Beta hack harus ada");
+    assert.equal(betaHack.severity, 0.15, "hack $300k di Solana harus severity base 0.15");
+    assert.deepEqual(betaHack.paths, ["T9"]);
+    assert.ok(!betaHack.summary.includes("[Tahansoe-relevant]"));
+
+    // 4. Tiny Arbitrum App ($18k, Arbitrum) -> < $100k boosted ke 0.15 karena Arbitrum
+    const tinyArbHack = res.signals.find((s) => s.id.includes("tiny-arbitrum-app"));
+    assert.ok(tinyArbHack, "Tiny Arbitrum App hack harus ada");
+    assert.equal(tinyArbHack.severity, 0.15, "hack $18k di Arbitrum harus di-boost ke 0.15");
+    assert.deepEqual(tinyArbHack.paths, ["T9"]);
+    assert.ok(tinyArbHack.summary.includes("[Tahansoe-relevant]"));
+
+    // 5. Tiny Protocol Gamma ($25k, Base) -> < $100k tak terkait diringkas ke sinyal agregat
+    const gammaIndividual = res.signals.find((s) => s.id.includes("protocol-gamma"));
+    assert.equal(gammaIndividual, undefined, "hack <$100k tak terkait tidak boleh jadi sinyal individual");
+
+    const minorAggregate = res.signals.find((s) => s.id === "defillama-hacks-minor-aggregate");
+    assert.ok(minorAggregate, "harus ada sinyal agregat untuk minor unrelated hacks");
+    assert.equal(minorAggregate.severity, 0.05);
+    assert.deepEqual(minorAggregate.paths, ["T9"]);
+    assert.ok(minorAggregate.summary.includes("1 minor exploit(s)"));
   });
 
   it("menggabungkan sinyal depeg dan hack secara aman dengan graceful degradation", async () => {
@@ -783,3 +866,4 @@ describe("Data Sources: DefiLlama Adapter", () => {
     assert.ok(res.warnings.length > 0, "harus mencatat warning saat network error");
   });
 });
+

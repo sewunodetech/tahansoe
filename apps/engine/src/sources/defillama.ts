@@ -54,6 +54,107 @@ export interface DefiLlamaHackEntry {
 }
 
 /**
+ * Ambang batas nominal USD untuk pengelompokan exploit DefiLlama.
+ */
+export const HACK_AMOUNT_THRESHOLDS = {
+  LARGE_USD: 50_000_000, // >= $50M
+  MEDIUM_USD: 1_000_000, // $1M - $50M
+  SMALL_USD: 100_000, // $100k - $1M
+} as const;
+
+/**
+ * Nilai severity dasar exploit DefiLlama untuk protokol umum.
+ */
+export const HACK_BASE_SEVERITIES = {
+  TIER_LARGE: 0.7,
+  TIER_MEDIUM: 0.4,
+  TIER_SMALL: 0.15,
+  TIER_MINOR: 0.05,
+} as const;
+
+/**
+ * Nilai severity yang dinaikkan satu tingkat (maks 0.9) jika menyangkut posisi user Tahansoe
+ * (Aave, Arbitrum, atau stablecoin utama).
+ */
+export const HACK_BOOSTED_SEVERITIES = {
+  TIER_LARGE: 0.9,
+  TIER_MEDIUM: 0.7,
+  TIER_SMALL: 0.4,
+  TIER_MINOR: 0.15,
+} as const;
+
+/**
+ * Memeriksa apakah exploit menyangkut komponen kritis Tahansoe:
+ *  - Chain: Arbitrum
+ *  - Lending Protocol: Aave
+ *  - Stablecoin utama: USDT, USDC, DAI, USDS, USDe (serta MakerDAO, Ethena, Tether)
+ */
+export function isTahansoeRelevantHack(hack: DefiLlamaHackEntry): boolean {
+  const chains = (hack.chain || []).map((c) => c.toLowerCase());
+  if (chains.some((c) => c.includes("arbitrum"))) {
+    return true;
+  }
+
+  const textToCheck = `${hack.name} ${hack.classification || ""} ${hack.technique || ""}`.toLowerCase();
+
+  if (/\baave\b/i.test(textToCheck)) return true;
+  if (/\barbitrum\b/i.test(textToCheck)) return true;
+
+  const stableKeywords = [
+    "usdt",
+    "usdc",
+    "dai",
+    "usds",
+    "usde",
+    "tether",
+    "makerdao",
+    "ethena",
+  ];
+  return stableKeywords.some((kw) => {
+    return new RegExp(`\\b${kw}\\b`, "i").test(textToCheck);
+  });
+}
+
+/**
+ * Hitung severity exploit berdasarkan jumlah nominal dan relevansinya terhadap Tahansoe.
+ */
+export function evaluateHackSeverity(
+  amount: number,
+  isRelevant: boolean,
+): { severity: number; tier: "LARGE" | "MEDIUM" | "SMALL" | "MINOR" } {
+  if (amount >= HACK_AMOUNT_THRESHOLDS.LARGE_USD) {
+    return {
+      severity: isRelevant
+        ? HACK_BOOSTED_SEVERITIES.TIER_LARGE
+        : HACK_BASE_SEVERITIES.TIER_LARGE,
+      tier: "LARGE",
+    };
+  }
+  if (amount >= HACK_AMOUNT_THRESHOLDS.MEDIUM_USD) {
+    return {
+      severity: isRelevant
+        ? HACK_BOOSTED_SEVERITIES.TIER_MEDIUM
+        : HACK_BASE_SEVERITIES.TIER_MEDIUM,
+      tier: "MEDIUM",
+    };
+  }
+  if (amount >= HACK_AMOUNT_THRESHOLDS.SMALL_USD) {
+    return {
+      severity: isRelevant
+        ? HACK_BOOSTED_SEVERITIES.TIER_SMALL
+        : HACK_BASE_SEVERITIES.TIER_SMALL,
+      tier: "SMALL",
+    };
+  }
+  return {
+    severity: isRelevant
+      ? HACK_BOOSTED_SEVERITIES.TIER_MINOR
+      : HACK_BASE_SEVERITIES.TIER_MINOR,
+    tier: "MINOR",
+  };
+}
+
+/**
  * Evaluasi deviasi harga terhadap target $1.00 dan kembalikan tingkat keparahan (severity).
  */
 export function evaluateStablecoinDeviation(price: number): number {
@@ -187,6 +288,7 @@ export async function fetchDefiLlamaHacks(
     }
 
     const sevenDaysAgoMs = now.getTime() - 7 * 24 * 3600 * 1000;
+    const unrelatedMinorHacks: DefiLlamaHackEntry[] = [];
 
     for (const hack of hacks) {
       if (!hack.date || !hack.name) continue;
@@ -195,11 +297,13 @@ export async function fetchDefiLlamaHacks(
       // Filter insiden dalam 7 hari terakhir
       if (hackMs >= sevenDaysAgoMs && hackMs <= now.getTime()) {
         const amount = hack.amount ?? 0;
-        let severity = 0.3;
-        if (amount >= 50_000_000) {
-          severity = 1.0;
-        } else if (amount >= 1_000_000) {
-          severity = 0.6;
+        const isRelevant = isTahansoeRelevantHack(hack);
+        const { severity, tier } = evaluateHackSeverity(amount, isRelevant);
+
+        // Exploit kecil (<$100k) di protokol tak terkait dikumpulkan untuk diringkas menjadi 1 sinyal agregat
+        if (tier === "MINOR" && !isRelevant) {
+          unrelatedMinorHacks.push(hack);
+          continue;
         }
 
         const safeSlug = hack.name
@@ -216,17 +320,42 @@ export async function fetchDefiLlamaHacks(
               ? `$${Math.round(amount).toLocaleString()}`
               : "undisclosed";
 
+        const relevanceBadge = isRelevant ? " [Tahansoe-relevant]" : "";
+
         signals.push({
           id: `defillama-hack-${safeSlug}-${hack.date}`,
           module: "ONCHAIN",
           severity,
-          confidence: 0.9,
+          confidence: isRelevant ? 0.95 : 0.9,
           paths: ["T9"],
-          summary: `DefiLlama: Exploit on ${hack.name} (~${amountStr}, chains: ${chains})`,
+          summary: `DefiLlama: Exploit on ${hack.name} (~${amountStr}, chains: ${chains})${relevanceBadge}`,
           createdAt: new Date(hackMs),
           expiresAt: new Date(hackMs + 7 * 24 * 3600 * 1000),
         });
       }
+    }
+
+    // Buat satu sinyal agregat untuk exploit kecil yang tidak relevan langsung
+    if (unrelatedMinorHacks.length > 0) {
+      const totalAmount = unrelatedMinorHacks.reduce(
+        (acc, h) => acc + (h.amount ?? 0),
+        0,
+      );
+      const totalStr =
+        totalAmount >= 1_000_000
+          ? `$${(totalAmount / 1_000_000).toFixed(2)}M`
+          : `$${Math.round(totalAmount).toLocaleString()}`;
+
+      signals.push({
+        id: "defillama-hacks-minor-aggregate",
+        module: "ONCHAIN",
+        severity: HACK_BASE_SEVERITIES.TIER_MINOR,
+        confidence: 0.85,
+        paths: ["T9"],
+        summary: `DefiLlama: ${unrelatedMinorHacks.length} minor exploit(s) (<$100k) on unrelated protocols in past 7 days (total ~${totalStr})`,
+        createdAt: now,
+        expiresAt: new Date(now.getTime() + 7 * 24 * 3600 * 1000),
+      });
     }
 
     return { signals, warnings };

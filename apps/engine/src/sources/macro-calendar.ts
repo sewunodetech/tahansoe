@@ -34,9 +34,16 @@ export interface FomcDataFile {
   meetings: FomcMeetingRaw[];
 }
 
+/** Jendela waktu kalender makro per jenis event. */
+export const DEFAULT_FOMC_LOOKAHEAD_DAYS = 30;
+export const DEFAULT_BLS_LOOKAHEAD_DAYS = 14;
+
 export interface MacroCalendarOptions {
   apiKey?: string;
   timeoutMs?: number;
+  fomcLookaheadDays?: number;
+  blsLookaheadDays?: number;
+  /** Override tunggal opsional untuk menjaga kompatibilitas ke belakang. */
   lookaheadDays?: number;
   now?: Date;
   fetchFn?: typeof fetch;
@@ -111,12 +118,12 @@ export function loadFomcMeetings(): FomcMeetingRaw[] {
 }
 
 /**
- * Dapatkan event FOMC yang terjadwal dalam rentang ke depan (default 14 hari).
+ * Dapatkan event FOMC yang terjadwal dalam rentang ke depan (default: DEFAULT_FOMC_LOOKAHEAD_DAYS / 30 hari).
  * Keputusan suku bunga dirilis pukul 14:00 New York Time pada hari kedua rapat.
  */
 export function getScheduledFomcEvents(
   now: Date = new Date(),
-  lookaheadDays: number = 14,
+  lookaheadDays: number = DEFAULT_FOMC_LOOKAHEAD_DAYS,
 ): ContextMacroEvent[] {
   const meetings = loadFomcMeetings();
   const maxTime = now.getTime() + lookaheadDays * 24 * 3600 * 1000;
@@ -232,23 +239,28 @@ export async function fetchMacroCalendarEvents(
   const {
     apiKey = process.env.FRED_API_KEY,
     timeoutMs = 10_000,
-    lookaheadDays = 14,
+    fomcLookaheadDays = DEFAULT_FOMC_LOOKAHEAD_DAYS,
+    blsLookaheadDays = DEFAULT_BLS_LOOKAHEAD_DAYS,
+    lookaheadDays,
     now = new Date(),
     fetchFn = fetch,
   } = opts;
 
+  const effectiveFomcDays = lookaheadDays ?? fomcLookaheadDays;
+  const effectiveBlsDays = lookaheadDays ?? blsLookaheadDays;
+
   const warnings: string[] = [];
   const events: ContextMacroEvent[] = [];
 
-  // 1. FOMC dari dataset statis terverifikasi (tidak memerlukan network)
+  // 1. FOMC dari dataset statis terverifikasi (default: 30 hari ke depan)
   try {
-    const fomcEvents = getScheduledFomcEvents(now, lookaheadDays);
+    const fomcEvents = getScheduledFomcEvents(now, effectiveFomcDays);
     events.push(...fomcEvents);
   } catch (err) {
     warnings.push(`FOMC calendar error: ${String(err)}`);
   }
 
-  // 2. CPI (Release ID 10) & NFP (Release ID 50) via FRED API
+  // 2. CPI (Release ID 10) & NFP (Release ID 50) via FRED API (default: 14 hari ke depan)
   const fredJobs = [
     fetchFredReleaseDates({
       releaseId: 10,
@@ -256,7 +268,7 @@ export async function fetchMacroCalendarEvents(
       eventPrefix: "cpi",
       apiKey,
       timeoutMs,
-      lookaheadDays,
+      lookaheadDays: effectiveBlsDays,
       now,
       fetchFn,
     }),
@@ -266,7 +278,7 @@ export async function fetchMacroCalendarEvents(
       eventPrefix: "nfp",
       apiKey,
       timeoutMs,
-      lookaheadDays,
+      lookaheadDays: effectiveBlsDays,
       now,
       fetchFn,
     }),

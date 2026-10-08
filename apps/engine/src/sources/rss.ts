@@ -77,25 +77,135 @@ export const RSS_FEEDS: readonly RssFeedConfig[] = [
 ] as const;
 
 /**
- * Kata kunci relevansi risiko pasar untuk feed geopolitik umum.
+ * Kata kunci pengecualian yang menggugurkan item dari feed geopolitik umum (non-pasar / non-geopolitik sistemik).
  */
-export const GEOPOLITICS_RISK_KEYWORDS: readonly string[] = [
+export const GEOPOLITICS_EXCLUSION_KEYWORDS: readonly string[] = [
+  "bear",
+  "wildlife",
+  "shark",
+  "lion",
+  "tiger",
+  "elephant",
+  "snake",
+  "dog",
+  "pet",
+  "zoo",
+  "poaching",
+  "celebrity",
+  "actor",
+  "actress",
+  "hollywood",
+  "oscar",
+  "grammy",
+  "box office",
+  "album",
+  "pop star",
+  "football",
+  "soccer",
+  "tennis",
+  "basketball",
+  "cricket",
+  "rugby",
+  "olympic",
+  "tournament",
+  "championship",
+  "premier league",
+  "nba",
+  "fifa",
+  "housing",
+  "burglary",
+  "home attack",
+  "traffic accident",
+  "car crash",
+  "hit and run",
+] as const;
+
+/**
+ * Kata kunci pelengkap wajib untuk kata generik "attack" (militer, konflik antar-negara, energi).
+ */
+export const ATTACK_QUALIFIER_KEYWORDS: readonly string[] = [
+  "missile",
+  "drone",
+  "strike",
+  "military",
+  "oil",
+  "tanker",
+  "ceasefire",
+  "iran",
+  "israel",
+  "russia",
+  "ukraine",
+  "china",
+  "taiwan",
+  "houthi",
+  "hezbollah",
+  "gaza",
+  "naval",
+  "air strike",
+  "army",
+  "war",
+  "pipeline",
+  "refinery",
+  "red sea",
+  "strait of hormuz",
+  "air defense",
+  "troops",
+  "artillery",
+] as const;
+
+/**
+ * Kata kunci pelengkap wajib untuk kata generik "election" (negara/ekonomi besar atau kebijakan pasar).
+ */
+export const ELECTION_QUALIFIER_KEYWORDS: readonly string[] = [
+  "us",
+  "usa",
+  "united states",
+  "presidential",
+  "congress",
+  "senate",
+  "fed",
+  "federal",
+  "china",
+  "taiwan",
+  "russia",
+  "ukraine",
+  "eu",
+  "european",
+  "germany",
+  "france",
+  "uk",
+  "britain",
+  "japan",
+  "india",
+  "market",
+  "economy",
+  "tariff",
+  "tax",
+  "policy",
+  "sanctions",
+  "trade",
+] as const;
+
+/**
+ * Kata kunci geopolitik dan makro kuat yang mandiri (cukup satu untuk lolos jika tanpa pengecualian).
+ */
+export const GEOPOLITICS_STRONG_KEYWORDS: readonly string[] = [
   "war",
   "conflict",
   "strike",
   "missile",
   "sanctions",
   "tariff",
-  "trade",
+  "trade war",
   "oil",
-  "election",
   "central bank",
   "rates",
+  "rate hike",
+  "interest rate",
   "inflation",
-  "bank",
+  "bear market",
   "default",
   "crisis",
-  "attack",
   "ceasefire",
   "nuclear",
   "iran",
@@ -104,6 +214,20 @@ export const GEOPOLITICS_RISK_KEYWORDS: readonly string[] = [
   "ukraine",
   "china",
   "taiwan",
+  "houthi",
+  "hezbollah",
+  "blockade",
+  "red sea",
+  "strait of hormuz",
+] as const;
+
+/**
+ * Kata kunci warisan untuk kompatibilitas ke belakang.
+ */
+export const GEOPOLITICS_RISK_KEYWORDS: readonly string[] = [
+  ...GEOPOLITICS_STRONG_KEYWORDS,
+  "attack",
+  "election",
 ] as const;
 
 export const DEFAULT_MAX_TOTAL_EVENTS = 60;
@@ -172,21 +296,61 @@ export function parseFeedDate(dateStr?: string, fallback = new Date()): Date {
 }
 
 /**
- * Memeriksa apakah teks memuat kata kunci risiko pasar geopolitik.
+ * Memeriksa apakah teks memuat kata kunci risiko pasar geopolitik dengan penyaringan ketat.
+ * Menggugurkan item bertopik alam/hiburan/olahraga/kriminal lokal, serta memvalidasi konteks untuk kata generik.
  */
 export function isGeopoliticsRiskRelevant(
   text: string,
   keywords: readonly string[] = GEOPOLITICS_RISK_KEYWORDS,
 ): boolean {
   const lower = text.toLowerCase();
-  return keywords.some((kw) => {
-    const kwLower = kw.toLowerCase();
-    if (kwLower.includes(" ")) {
-      return lower.includes(kwLower);
+
+  // 1. Cek kata pengecualian (gugur langsung, kecuali frasa pasar seperti "bear market")
+  for (const excl of GEOPOLITICS_EXCLUSION_KEYWORDS) {
+    if (excl === "bear" && lower.includes("bear market")) {
+      continue;
     }
-    const regex = new RegExp(`\\b${kwLower}\\b`, "i");
+    const exclRegex = new RegExp(`\\b${excl}\\b`, "i");
+    if (exclRegex.test(lower)) {
+      return false;
+    }
+  }
+
+  // 2. Cek kata kunci kuat mandiri
+  const hasStrongKeyword = GEOPOLITICS_STRONG_KEYWORDS.some((kw) => {
+    if (kw.includes(" ")) {
+      return lower.includes(kw);
+    }
+    const regex = new RegExp(`\\b${kw}\\b`, "i");
     return regex.test(lower);
   });
+  if (hasStrongKeyword) {
+    return true;
+  }
+
+  // 3. Evaluasi kata generik "attack": wajib disertai kualifikasi militer/konflik/energi
+  if (/\battacks?\b|\battacked\b/i.test(lower)) {
+    const hasAttackQualifier = ATTACK_QUALIFIER_KEYWORDS.some((q) => {
+      if (q.includes(" ")) return lower.includes(q);
+      return new RegExp(`\\b${q}\\b`, "i").test(lower);
+    });
+    if (hasAttackQualifier) {
+      return true;
+    }
+  }
+
+  // 4. Evaluasi kata generik "election": wajib disertai negara besar atau konteks pasar/kebijakan
+  if (/\belections?\b/i.test(lower)) {
+    const hasElectionQualifier = ELECTION_QUALIFIER_KEYWORDS.some((q) => {
+      if (q.includes(" ")) return lower.includes(q);
+      return new RegExp(`\\b${q}\\b`, "i").test(lower);
+    });
+    if (hasElectionQualifier) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**

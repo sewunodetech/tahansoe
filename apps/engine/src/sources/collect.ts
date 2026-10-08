@@ -34,7 +34,11 @@ export interface CollectOptions {
   assets: string[];
   /** Jendela berita/event ke belakang, dalam jam (default 24). */
   lookbackHours?: number;
-  /** Horizon kalender makro ke depan, dalam hari (default 14). */
+  /** Horizon kalender FOMC ke depan, dalam hari (default: DEFAULT_FOMC_LOOKAHEAD_DAYS / 30). */
+  fomcLookaheadDays?: number;
+  /** Horizon kalender CPI/NFP ke depan, dalam hari (default: DEFAULT_BLS_LOOKAHEAD_DAYS / 14). */
+  blsLookaheadDays?: number;
+  /** Horizon kalender makro ke depan seragam (fallback opsional). */
   macroLookaheadDays?: number;
   /** Batas waktu per sumber, dalam ms (default 10_000). */
   timeoutMs?: number;
@@ -65,7 +69,6 @@ export async function collectResearchInputs(
 ): Promise<ResearchInputs> {
   const {
     lookbackHours = 24,
-    macroLookaheadDays = 14,
     timeoutMs = 10_000,
     now = new Date(),
     fetchFn = fetch,
@@ -90,7 +93,13 @@ export async function collectResearchInputs(
     fetchRssEvents({ lookbackHours, timeoutMs, now, fetchFn }),
     fetchFredSignals({ timeoutMs, now, fetchFn }),
     fetchOnchainSnapshot({ timeoutMs, now }),
-    fetchMacroCalendarEvents({ timeoutMs, lookaheadDays: macroLookaheadDays, now, fetchFn }),
+    fetchMacroCalendarEvents({
+      timeoutMs,
+      fomcLookaheadDays: opts.fomcLookaheadDays ?? opts.macroLookaheadDays,
+      blsLookaheadDays: opts.blsLookaheadDays ?? opts.macroLookaheadDays,
+      now,
+      fetchFn,
+    }),
     fetchDefiLlamaSignals({ timeoutMs, now, fetchFn }),
   ];
 
