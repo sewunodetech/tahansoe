@@ -1,0 +1,65 @@
+/**
+ * 4 analyst paralel (spec §3.1/§3.4, ADR 0004).
+ *
+ * Masing-masing membaca konteks yang sama lalu menghasilkan AnalystReport.
+ * Dijalankan dengan Promise.allSettled oleh run.ts; satu analyst gagal/refusal
+ * tidak membatalkan yang lain. Run butuh ≥ minAnalystsRequired sukses.
+ */
+
+import type { LlmProvider } from "../llm/provider.ts";
+import { loadPrompt, type PromptRole } from "../llm/prompts/index.ts";
+import { AnalystReport } from "./schemas.ts";
+import type { ResearchContext } from "./context.ts";
+import { renderContextAsData } from "./context.ts";
+import { config } from "../config.ts";
+
+export type AnalystDomain = "GEOPOLITICS" | "MACRO" | "MARKET" | "ONCHAIN";
+
+/** Pemetaan domain → peran prompt. */
+const PROMPT_BY_DOMAIN: Record<AnalystDomain, PromptRole> = {
+  GEOPOLITICS: "analyst-geopolitics",
+  MACRO: "analyst-macro",
+  MARKET: "analyst-market",
+  ONCHAIN: "analyst-onchain",
+};
+
+/** Daftar analyst yang dijalankan tiap run (spec §3.2 ANALYSTS). */
+export const ANALYSTS: AnalystDomain[] = [
+  "GEOPOLITICS",
+  "MACRO",
+  "MARKET",
+  "ONCHAIN",
+];
+
+/**
+ * Jalankan satu analyst. Mengembalikan null jika refusal / schema invalid /
+ * stopReason bukan "ok" (analyst dianggap gagal untuk run itu, spec §3.4).
+ *
+ * TODO(dev):
+ *  - Pilih model: config.models.analyst atau analystCheap (diputuskan via eval).
+ *  - system = loadPrompt(PROMPT_BY_DOMAIN[domain]); data = renderContextAsData(ctx)
+ *    sebagai message user terakhir.
+ *  - effort = config.effort.analyst ("low").
+ *  - Cek result.stopReason; hanya kembalikan result.data jika "ok".
+ */
+export async function runAnalyst(
+  provider: LlmProvider,
+  domain: AnalystDomain,
+  ctx: ResearchContext,
+): Promise<AnalystReport | null> {
+  const system = loadPrompt(PROMPT_BY_DOMAIN[domain]);
+  const data = renderContextAsData(ctx);
+  const result = await provider.structured({
+    model: config.models.analyst,
+    effort: config.effort.analyst,
+    system,
+    messages: [{ role: "user", content: data }],
+    output: AnalystReport,
+    outputName: "AnalystReport",
+  });
+  if (result.stopReason !== "ok" || !result.data) {
+    // TODO(dev): log result.stopReason / result.error untuk audit; jangan throw.
+    return null;
+  }
+  return result.data;
+}
