@@ -10,6 +10,8 @@ import "./agents/to-signal.test.ts";
 import "./agents/run-dry.test.ts";
 import "./llm/anthropic.test.ts";
 import "./llm/budget.test.ts";
+import "./llm/openai-compatible.test.ts";
+import "./llm/registry.test.ts";
 import "./reflection/settle.test.ts";
 import "./reflection/lessons.test.ts";
 import "./reflection/scorecard.test.ts";

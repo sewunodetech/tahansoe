@@ -43,8 +43,6 @@ function optionalEnv(name: string, fallback: string): string {
 export const env = {
   /** Koneksi Neon Postgres. Dipakai context builder, settlement, reflection. */
   databaseUrl: () => requireEnv("DATABASE_URL"),
-  /** Server-only. Jangan pernah log nilai ini (security.md I8). */
-  anthropicApiKey: () => requireEnv("ANTHROPIC_API_KEY"),
   /** Batas biaya LLM harian (USD). Jika terlampaui, lapis riset berhenti sampai besok. */
   llmDailyBudgetUsd: () => Number(optionalEnv("LLM_DAILY_BUDGET_USD", "5")),
   /** Kill switch research agents. Default false (spec §3.9). */
@@ -55,6 +53,22 @@ export const env = {
   alphaVantageApiKey: () => optionalEnv("ALPHA_VANTAGE_API_KEY", ""),
   /** RPC Arbitrum untuk data teknikal on-chain (AaveOracle, reserve, perp DEX). */
   arbitrumRpcUrl: () => optionalEnv("ARBITRUM_RPC_URL", ""),
+
+  // --- Kunci LLM per provider (ADR 0008). KOSONG = provider dianggap tidak tersedia.
+  // Server-only; JANGAN pernah di-log (security.md I8).
+  anthropicApiKey: () => optionalEnv("ANTHROPIC_API_KEY", ""),
+  geminiApiKey: () => optionalEnv("GEMINI_API_KEY", ""),
+  openrouterApiKey: () => optionalEnv("OPENROUTER_API_KEY", ""),
+  groqApiKey: () => optionalEnv("GROQ_API_KEY", ""),
+  /** Ollama lokal: tanpa API key; baseURL default localhost. */
+  ollamaBaseUrl: () => optionalEnv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
+
+  // --- Pemilihan provider:model per peran (ADR 0008 §2–§3). Format:
+  // "provider:model,provider:model" (daftar fallback dipisah koma). Kosong = default.
+  llmAnalyst: () => optionalEnv("LLM_ANALYST", ""),
+  llmDebate: () => optionalEnv("LLM_DEBATE", ""),
+  llmAssessor: () => optionalEnv("LLM_ASSESSOR", ""),
+  llmReflector: () => optionalEnv("LLM_REFLECTOR", ""),
 } as const;
 
 /**

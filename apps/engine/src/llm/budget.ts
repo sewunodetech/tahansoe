@@ -20,6 +20,14 @@ const PRICE_PER_MTOK: Record<string, { input: number; output: number }> = {
   "claude-opus-5-5": { input: 4, output: 20 },
   "claude-sonnet-5-5": { input: 2, output: 10 },
   "claude-haiku-5-5": { input: 0.1, output: 0.5 },
+  // Gemini free tier (R&D, ADR 0008 §5): biaya $0, tetapi token tetap DICATAT
+  // (inputTokens/outputTokens di usage) agar pemakaian terlihat di scorecard.
+  // Model tak dikenal tetap konservatif memakai harga opus (lihat costOf).
+  "gemini-flash-lite-latest": { input: 0, output: 0 },
+  "gemini-flash-latest": { input: 0, output: 0 },
+  "gemini-pro-latest": { input: 0, output: 0 },
+  "gemini-2.5-flash": { input: 0, output: 0 },
+  "gemini-2.5-flash-lite": { input: 0, output: 0 },
 };
 
 /**

@@ -20,6 +20,7 @@ import { dirname } from "node:path";
 
 import type { LlmProvider } from "../llm/provider.ts";
 import { isNonRetryableStatus } from "../llm/provider.ts";
+import { routerForRole } from "../llm/registry.ts";
 import { budget as defaultBudget, type Budget } from "../llm/budget.ts";
 import { env, config, type ResearchTrigger } from "../config.ts";
 import { ANALYSTS, runAnalyst, type AnalystOutcome } from "./analysts.ts";
@@ -35,7 +36,11 @@ export interface RunParams {
   trigger: ResearchTrigger;
   chainId: number;
   assets: string[];
-  provider: LlmProvider;
+  /**
+   * Provider tunggal untuk SEMUA peran (dipakai test & mode --fake). Bila tidak
+   * diberikan, provider dipilih per peran dari env/default via router (ADR 0008).
+   */
+  provider?: LlmProvider;
   budget?: Budget;
   /** MODE DRY: jangan sentuh DB; tulis hasil ke file. */
   dry?: boolean;
@@ -64,7 +69,7 @@ export interface RunResult {
  * untuk mode dry, direktori output yang ditulis.
  */
 export async function runResearch(params: RunParams): Promise<RunResult> {
-  const { trigger, chainId, assets, provider, dry, collector } = params;
+  const { trigger, chainId, assets, dry, collector } = params;
   const budget = params.budget ?? defaultBudget;
 
   // Guard 1: kill switch & budget. Mode dry melewati kill switch (dijalankan
@@ -79,13 +84,19 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
     };
   }
 
+  // Provider per peran: jika params.provider diberikan (test/--fake), pakai untuk
+  // semua peran; selain itu bangun router dari env/default (ADR 0008).
+  const analystProvider = params.provider ?? routerForRole("analyst", budget);
+  const debateProvider = params.provider ?? routerForRole("debate", budget);
+  const assessorProvider = params.provider ?? routerForRole("assessor", budget);
+
   const ctx = await buildContext({ chainId, assets, dry, collector });
 
   // Jalankan analyst dengan FAIL-FAST: coba analyst pertama lebih dulu. Jika gagal
   // dengan status non-retryable (400/401/403 — auth/kredit/request salah), error
   // yang sama pasti terulang di peran lain, jadi hentikan tanpa memanggil sisanya.
   const outcomes: AnalystOutcome[] = [];
-  const first = await runAnalyst(provider, ANALYSTS[0]!, ctx);
+  const first = await runAnalyst(analystProvider, ANALYSTS[0]!, ctx);
   outcomes.push(first);
   if (first.report === null && isNonRetryableStatus(first.status)) {
     const reason =
@@ -97,7 +108,7 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
 
   // Sisanya paralel; satu gagal tidak membatalkan yang lain.
   const restSettled = await Promise.allSettled(
-    ANALYSTS.slice(1).map((domain) => runAnalyst(provider, domain, ctx)),
+    ANALYSTS.slice(1).map((domain) => runAnalyst(analystProvider, domain, ctx)),
   );
   for (const r of restSettled) {
     if (r.status === "fulfilled") outcomes.push(r.value);
@@ -118,9 +129,9 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
     return { report: null, reason };
   }
 
-  const debate = await runDebate(provider, reports, { rounds: config.debateRounds });
+  const debate = await runDebate(debateProvider, reports, { rounds: config.debateRounds });
   const lessons = await selectLessons(reports).catch(() => []);
-  const report = await runAssessor(provider, { ctx, reports, debate, lessons });
+  const report = await runAssessor(assessorProvider, { ctx, reports, debate, lessons });
 
   // Guard 3: assessor gagal (refusal/schema) → tidak ada sinyal.
   if (!report) {
@@ -316,7 +327,7 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
-  let provider: LlmProvider;
+  let provider: LlmProvider | undefined;
   let collector: ResearchInputCollector | undefined;
   if (fake) {
     provider = await makeFakeProvider();
@@ -326,8 +337,14 @@ async function main(argv: string[]): Promise<void> {
       collector = fixtureCollector;
     }
   } else {
-    const { AnthropicProvider } = await import("../llm/anthropic.ts");
-    provider = new AnthropicProvider();
+    // Provider nyata dipilih per peran via router (ADR 0008). Log ketersediaan
+    // provider (tanpa nilai key) untuk diagnosa.
+    const { providerAvailability, resolveRole } = await import("../llm/registry.ts");
+    console.error(`[engine] provider availability: ${JSON.stringify(providerAvailability())}`);
+    for (const role of ["analyst", "debate", "assessor", "reflector"] as const) {
+      const chain = resolveRole(role).map((e) => `${e.provider}:${e.model}`).join(" → ");
+      console.error(`[engine] role ${role}: ${chain || "(none available)"}`);
+    }
   }
 
   const result = await runResearch({
