@@ -97,14 +97,29 @@ export function fakeScript(): ScriptedResponse[] {
  */
 export const fixtureCollector: ResearchInputCollector = async (opts) => {
   const now = opts.now ?? new Date();
+  const hoursAgo = (h: number) => new Date(now.getTime() - h * 60 * 60 * 1000);
   return {
     marketEvents: [
       {
         id: "fx-evt-1",
-        headline: "Risk-off headlines across markets (fixture).",
-        category: "MARKET",
-        publishedAt: new Date(now.getTime() - 3 * 60 * 60 * 1000),
-        excerpt: "Fixture market event excerpt (treated as DATA).",
+        headline: "Geopolitical tension escalates (fixture).",
+        category: "geopolitics:BBC",
+        publishedAt: hoursAgo(3),
+        excerpt: "Fixture geopolitics event excerpt (treated as DATA).",
+      },
+      {
+        id: "fx-evt-2",
+        headline: "Another geopolitics wire update (fixture).",
+        category: "geopolitics:BBC",
+        publishedAt: hoursAgo(5),
+        excerpt: "Fixture geopolitics event excerpt 2 (treated as DATA).",
+      },
+      {
+        id: "fx-evt-3",
+        headline: "Crypto market risk-off (fixture).",
+        category: "crypto:CoinDesk",
+        publishedAt: hoursAgo(2),
+        excerpt: "Fixture crypto event excerpt (treated as DATA).",
       },
     ],
     macroEvents: [
@@ -123,11 +138,22 @@ export const fixtureCollector: ResearchInputCollector = async (opts) => {
         confidence: 0.5,
         paths: ["T4"],
         summary: "Fixture on-chain observation.",
-        createdAt: new Date(now.getTime() - 60 * 60 * 1000),
+        createdAt: hoursAgo(1),
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      },
+      {
+        id: "fx-sig-2",
+        module: "ORACLE",
+        severity: 0.3,
+        confidence: 0.5,
+        paths: ["T8"],
+        summary: "Fixture oracle staleness observation.",
+        createdAt: hoursAgo(1),
         expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
       },
     ],
     chainNotes: ["fixture: USDC capped at AaveOracle; no PriceOracleSentinel"],
-    warnings: [],
+    // Warning sumber disimpan terpisah dari chainNotes (audit, G7).
+    warnings: ["FRED: FRED_API_KEY tidak dikonfigurasi"],
   };
 };

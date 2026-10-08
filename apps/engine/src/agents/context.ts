@@ -60,6 +60,8 @@ export interface ResearchContext {
   macroEvents: ContextMacroEvent[];
   /** Catatan chain (mis. Arbitrum: USDC ber-cap, tanpa PriceOracleSentinel). */
   chainNotes: string[];
+  /** Sumber yang dilewati / gagal (audit, G7). Disimpan TERPISAH dari chainNotes. */
+  warnings: string[];
   builtAt: Date;
 }
 
@@ -100,8 +102,9 @@ export async function buildContext(params: {
       signals: inputs.signals,
       marketEvents: inputs.marketEvents,
       macroEvents: inputs.macroEvents,
-      // Simpan warnings sumber sebagai catatan chain agar terlihat di report.
-      chainNotes: [...inputs.chainNotes, ...inputs.warnings.map((w) => `warning: ${w}`)],
+      // chainNotes bersih; warnings sumber disimpan terpisah untuk audit (G7).
+      chainNotes: [...inputs.chainNotes],
+      warnings: [...inputs.warnings],
       builtAt: now,
     };
   }

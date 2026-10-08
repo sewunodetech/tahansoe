@@ -26,7 +26,7 @@ import { runDebate, type DebateResult } from "./debate.ts";
 import { runAssessor } from "./assessor.ts";
 import { toSignal } from "./to-signal.ts";
 import { buildContext } from "./context.ts";
-import type { ResearchInputCollector } from "./context.ts";
+import type { ResearchInputCollector, ResearchContext } from "./context.ts";
 import { selectLessons } from "../reflection/lessons.ts";
 import type { AnalystReport, ResearchReport, ResearchSignal } from "./schemas.ts";
 
@@ -91,7 +91,7 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
 
   if (dry) {
     const outDir = params.outDir ?? defaultOutDir();
-    await saveReportToFiles(outDir, { trigger, chainId, report, reports, debate, signal });
+    await saveReportToFiles(outDir, { trigger, chainId, report, reports, debate, signal, ctx });
     return { report, outDir };
   }
 
@@ -110,6 +110,46 @@ function defaultOutDir(now: Date = new Date()): string {
   return join(engineRoot, "out", stamp);
 }
 
+/**
+ * Ringkasan INPUT untuk audit (spec m3-research-agents, G7): dari mana analisis
+ * berasal dan sumber mana yang gagal/dilewati. Deterministik (urutan stabil).
+ */
+export interface InputsSummary {
+  /** Jumlah market/news event per category (mis. "geopolitics:BBC"). */
+  marketEventsByCategory: Record<string, number>;
+  /** Jumlah signal per module (ORACLE/ONCHAIN/MACRO/...). */
+  signalsByModule: Record<string, number>;
+  /** Catatan chain (mis. USDC capped, no sentinel). */
+  chainNotes: string[];
+  /** Sumber yang gagal / dilewati (mis. "FRED: FRED_API_KEY tidak dikonfigurasi"). */
+  warnings: string[];
+}
+
+/** Hitung ringkasan input dari konteks (counts per category/module, catatan, warnings). */
+export function summarizeInputs(ctx: ResearchContext): InputsSummary {
+  const marketEventsByCategory: Record<string, number> = {};
+  for (const e of ctx.marketEvents) {
+    marketEventsByCategory[e.category] = (marketEventsByCategory[e.category] ?? 0) + 1;
+  }
+  const signalsByModule: Record<string, number> = {};
+  for (const s of ctx.signals) {
+    signalsByModule[s.module] = (signalsByModule[s.module] ?? 0) + 1;
+  }
+  return {
+    marketEventsByCategory: sortRecord(marketEventsByCategory),
+    signalsByModule: sortRecord(signalsByModule),
+    chainNotes: [...ctx.chainNotes].sort(),
+    warnings: [...ctx.warnings].sort(),
+  };
+}
+
+/** Record dengan kunci terurut (output deterministik). */
+function sortRecord(rec: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const k of Object.keys(rec).sort()) out[k] = rec[k]!;
+  return out;
+}
+
 /** Tulis 4 file hasil run ke outDir (mode dry). */
 async function saveReportToFiles(
   outDir: string,
@@ -120,9 +160,11 @@ async function saveReportToFiles(
     reports: AnalystReport[];
     debate: DebateResult;
     signal: ResearchSignal;
+    ctx: ResearchContext;
   },
 ): Promise<void> {
   await mkdir(outDir, { recursive: true });
+  const inputs = summarizeInputs(args.ctx);
   await Promise.all([
     writeFile(
       join(outDir, "report.json"),
@@ -132,6 +174,7 @@ async function saveReportToFiles(
           chainId: args.chainId,
           report: args.report,
           signal: args.signal,
+          inputs,
         },
         null,
         2,
@@ -139,7 +182,7 @@ async function saveReportToFiles(
     ),
     writeFile(join(outDir, "analysts.json"), JSON.stringify(args.reports, null, 2)),
     writeFile(join(outDir, "debate.json"), JSON.stringify(args.debate, null, 2)),
-    writeFile(join(outDir, "report.md"), renderReportMarkdown(args.report, args.signal)),
+    writeFile(join(outDir, "report.md"), renderReportMarkdown(args.report, args.signal, inputs)),
   ]);
 }
 
@@ -147,6 +190,7 @@ async function saveReportToFiles(
 export function renderReportMarkdown(
   report: ResearchReport,
   signal: ResearchSignal,
+  inputs?: InputsSummary,
 ): string {
   const lines: string[] = [];
   lines.push(`# Research Report`);
@@ -180,6 +224,32 @@ export function renderReportMarkdown(
   lines.push(`**Hawk:** ${report.hawkCase}`);
   lines.push("");
   lines.push(`**Dove:** ${report.doveCase}`);
+
+  if (inputs) {
+    lines.push("");
+    lines.push(`## Inputs`);
+    lines.push("");
+    lines.push(`### Market / news events by category`);
+    const cats = Object.entries(inputs.marketEventsByCategory);
+    if (cats.length === 0) lines.push("(none)");
+    else for (const [cat, n] of cats) lines.push(`- ${cat}: ${n}`);
+
+    lines.push("");
+    lines.push(`### Signals by module`);
+    const mods = Object.entries(inputs.signalsByModule);
+    if (mods.length === 0) lines.push("(none)");
+    else for (const [mod, n] of mods) lines.push(`- ${mod}: ${n}`);
+
+    lines.push("");
+    lines.push(`### Chain notes`);
+    if (inputs.chainNotes.length === 0) lines.push("(none)");
+    else for (const n of inputs.chainNotes) lines.push(`- ${n}`);
+
+    lines.push("");
+    lines.push(`### Source warnings (skipped / failed)`);
+    if (inputs.warnings.length === 0) lines.push("(none)");
+    else for (const w of inputs.warnings) lines.push(`- ${w}`);
+  }
 
   return lines.join("\n") + "\n";
 }

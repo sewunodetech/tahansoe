@@ -60,10 +60,33 @@ test("dry + fake: menulis report.json, analysts.json, debate.json, report.md (of
     const analysts = JSON.parse(await readFile(join(dir, "analysts.json"), "utf8"));
     assert.equal(analysts.length, 4, "4 analyst report tersimpan");
 
+    // --- Inputs (audit, G7) ---
+    // report.json.inputs: counts per category/module + chainNotes + warnings terpisah.
+    assert.ok(reportJson.inputs, "report.json memuat field inputs");
+    assert.equal(reportJson.inputs.marketEventsByCategory["geopolitics:BBC"], 2);
+    assert.equal(reportJson.inputs.marketEventsByCategory["crypto:CoinDesk"], 1);
+    assert.equal(reportJson.inputs.signalsByModule["ONCHAIN"], 1);
+    assert.equal(reportJson.inputs.signalsByModule["ORACLE"], 1);
+    // Warnings disimpan TERPISAH (bukan di chainNotes dengan prefix "warning:").
+    assert.ok(
+      reportJson.inputs.warnings.some((w: string) => w.includes("FRED")),
+      "warning FRED ada di inputs.warnings",
+    );
+    assert.ok(
+      reportJson.inputs.chainNotes.every((n: string) => !n.startsWith("warning:")),
+      "chainNotes tidak lagi memuat warning berprefix",
+    );
+
     const md = await readFile(join(dir, "report.md"), "utf8");
     assert.match(md, /# Research Report/);
     assert.match(md, /Proposed regime/);
     assert.match(md, /Hawk vs Dove/);
+    // Bagian Inputs di report.md.
+    assert.match(md, /## Inputs/);
+    assert.match(md, /geopolitics:BBC: 2/);
+    assert.match(md, /crypto:CoinDesk: 1/);
+    assert.match(md, /Source warnings/);
+    assert.match(md, /FRED/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
