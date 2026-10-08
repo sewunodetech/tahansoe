@@ -2,9 +2,10 @@
  * Kontrak antara sumber data (src/sources/**) dan context builder (src/agents/context.ts).
  *
  * Mengumpulkan input research dari sumber data yang kredibel:
- *  - GDELT DOC 2.0 (berita geopolitik & makro)
+ *  - RSS Feeds langsung dari outlet kredibel (BBC, Al Jazeera, Guardian, CNBC, Fed, CoinDesk, The Block)
  *  - FRED API (indikator ekonomi makro AS)
  *  - Onchain snapshot via viem (AaveOracle, Chainlink, Sequencer feed)
+ *  - GDELT DOC 2.0 (opsional, dinonaktifkan secara default via RESEARCH_GDELT_ENABLED)
  *
  * Aturan & Invarian:
  *  - Semua fetch dilakukan KODE di sini; LLM tidak pernah fetch (ADR 0004 §6).
@@ -19,6 +20,7 @@ import type {
   ContextMarketEvent,
   ContextSignal,
 } from "../agents/context.ts";
+import { fetchRssEvents } from "./rss.ts";
 import { fetchGdeltEvents, DEFAULT_GDELT_TIMEOUT_MS } from "./gdelt.ts";
 import { fetchFredSignals } from "./fred.ts";
 import { fetchOnchainSnapshot, ARBITRUM_STATIC_CHAIN_NOTES } from "./onchain.ts";
@@ -70,27 +72,28 @@ export async function collectResearchInputs(
   const signals: ContextSignal[] = [];
   let chainNotes: string[] = [...ARBITRUM_STATIC_CHAIN_NOTES];
 
-  // Jalankan ke-3 adapter secara paralel dan terisolasi dengan Promise.allSettled
-  const results = await Promise.allSettled([
-    fetchGdeltEvents({
-      lookbackHours,
-      timeoutMs: Math.max(timeoutMs, DEFAULT_GDELT_TIMEOUT_MS),
-      now,
-      fetchFn,
-    }),
+  const isGdeltEnabled = process.env.RESEARCH_GDELT_ENABLED === "true";
+
+  // Jalankan adapter utama secara paralel dengan Promise.allSettled
+  const mainPromises: [
+    ReturnType<typeof fetchRssEvents>,
+    ReturnType<typeof fetchFredSignals>,
+    ReturnType<typeof fetchOnchainSnapshot>,
+  ] = [
+    fetchRssEvents({ lookbackHours, timeoutMs, now, fetchFn }),
     fetchFredSignals({ timeoutMs, now, fetchFn }),
     fetchOnchainSnapshot({ timeoutMs, now }),
-  ]);
+  ];
 
-  // 1. GDELT
-  const gdeltRes = results[0];
-  if (gdeltRes && gdeltRes.status === "fulfilled") {
-    marketEvents.push(...gdeltRes.value.events);
-    if (gdeltRes.value.warning) {
-      warnings.push(gdeltRes.value.warning);
-    }
-  } else if (gdeltRes && gdeltRes.status === "rejected") {
-    warnings.push(`GDELT adapter crash: ${String(gdeltRes.reason)}`);
+  const results = await Promise.allSettled(mainPromises);
+
+  // 1. RSS (sumber berita utama)
+  const rssRes = results[0];
+  if (rssRes && rssRes.status === "fulfilled") {
+    marketEvents.push(...rssRes.value.events);
+    warnings.push(...rssRes.value.warnings);
+  } else if (rssRes && rssRes.status === "rejected") {
+    warnings.push(`RSS adapter crash: ${String(rssRes.reason)}`);
   }
 
   // 2. FRED
@@ -116,6 +119,24 @@ export async function collectResearchInputs(
     }
   } else if (onchainRes && onchainRes.status === "rejected") {
     warnings.push(`Onchain adapter crash: ${String(onchainRes.reason)}`);
+  }
+
+  // 4. GDELT (opsional, hanya dijalankan jika flag aktif)
+  if (isGdeltEnabled) {
+    try {
+      const gdeltRes = await fetchGdeltEvents({
+        lookbackHours,
+        timeoutMs: Math.max(timeoutMs, DEFAULT_GDELT_TIMEOUT_MS),
+        now,
+        fetchFn,
+      });
+      marketEvents.push(...gdeltRes.events);
+      if (gdeltRes.warning) {
+        warnings.push(gdeltRes.warning);
+      }
+    } catch (err) {
+      warnings.push(`GDELT adapter crash: ${String(err)}`);
+    }
   }
 
   return {

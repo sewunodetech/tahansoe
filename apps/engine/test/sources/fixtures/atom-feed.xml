@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Global Market News</title>
+  <link href="https://example.com/feed" rel="self"/>
+  <updated>2026-10-08T12:00:00Z</updated>
+  <entry>
+    <title>Central bank keeps interest rates unchanged amid inflation risks</title>
+    <link href="https://example.com/news/entry-1" rel="alternate"/>
+    <id>urn:uuid:12345678-1111-2222-3333-444444444441</id>
+    <published>2026-10-08T12:15:00Z</published>
+    <summary>Policy committee votes to maintain benchmark rates as economic indicators show stubborn inflation.</summary>
+  </entry>
+  <entry>
+    <title>Middle East ceasefire talks stall amid missile strikes</title>
+    <link href="https://example.com/news/entry-2" rel="alternate"/>
+    <id>urn:uuid:12345678-1111-2222-3333-444444444442</id>
+    <published>2026-10-08T12:10:00Z</published>
+    <summary>Negotiators pause discussions after military attacks in border regions.</summary>
+  </entry>
+</feed>

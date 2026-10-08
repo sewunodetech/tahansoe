@@ -22,6 +22,11 @@ export const DEFAULT_GDELT_TIMEOUT_MS = 35_000;
 /** Jeda retry jika terkena rate limit (minimal 6s). */
 export const GDELT_RATE_LIMIT_DELAY_MS = 6_500;
 
+/** Menentukan apakah pemanggilan GDELT diaktifkan (default: false, RSS sebagai sumber utama). */
+export function isGdeltEnabled(): boolean {
+  return process.env.RESEARCH_GDELT_ENABLED === "true";
+}
+
 let dispatcherConfigured = false;
 function ensureUndiciConnectTimeout(): void {
   if (!dispatcherConfigured && typeof setGlobalDispatcher === "function") {

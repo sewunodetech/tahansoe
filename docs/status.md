@@ -77,6 +77,8 @@ Lihat [security.md §3](security.md#3-temuan-terbuka).
 
 ## Backlog / ide
 
+- Perketat filter relevansi berita RSS (`apps/engine/src/sources/rss.ts`): kata kunci umum seperti "attack" dan "election" masih meloloskan berita non-pasar (mis. kriminal lokal, kebijakan perumahan)
+
 - EIP-7702 untuk kemampuan smart account tanpa migrasi wallet
 - `repayWithATokens` sebagai sumber dana tanpa modal idle
 - API risk score untuk partner B2B

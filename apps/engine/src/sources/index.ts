@@ -17,6 +17,7 @@
  */
 
 export * from "./collect.ts";
+export * from "./rss.ts";
 export * from "./gdelt.ts";
 export * from "./fred.ts";
 export * from "./onchain.ts";

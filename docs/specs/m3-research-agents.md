@@ -204,10 +204,10 @@ Keputusan tim (8 Okt 2026): fundamental, berita, dan makro memakai jenis sumber 
 | Harga & volatilitas (teknikal) | **On-chain:** `AaveOracle` + proxy Chainlink di Arbitrum | Gratis | Tertinggi — sama dengan oracle eksekusi (I5) | Wave aktif |
 | Status jaringan | **On-chain:** Sequencer Uptime Feed, `eth_feeHistory` | Gratis | Tertinggi | Wave aktif |
 | Makro (suku bunga, CPI, kurva yield) | FRED API | Gratis (API key gratis) | Data resmi | Wave aktif |
-| Berita geopolitik & makro | GDELT DOC 2.0 | Gratis, tanpa key | Agregator berita global; butuh konfirmasi multi-sumber | Wave aktif |
+| Berita geopolitik, makro & crypto (**utama**) | RSS langsung dari outlet kredibel: BBC World, Al Jazeera, The Guardian World, CNBC Economy, Federal Reserve (siaran pers), CoinDesk, The Block | Gratis, tanpa key, tanpa rate limit ketat | Tinggi — hanya outlet terpilih | Wave aktif |
+| Berita global (cadangan, **mati secara default**) | GDELT DOC 2.0, 1 request per run + cache, filter domain di kode | Gratis, tanpa key | Agregator; rate limit per IP sangat ketat (praktis tidak andal untuk dev/run berulang) | Opsional |
 | Kalender makro terjadwal | Jadwal FOMC (federalreserve.gov), jadwal rilis CPI/NFP (BLS) — disimpan sebagai file data di repo, diperbarui tahunan | Gratis | Resmi | Berikutnya |
 | Peg stablecoin & insiden protokol (T4, T9) | DefiLlama API (stablecoins, hacks) | Gratis, tanpa key | Rujukan utama industri DeFi | Berikutnya |
-| Konfirmasi kebijakan moneter | RSS siaran pers Federal Reserve | Gratis | Resmi | Berikutnya |
 | Likuiditas & leverage on-chain | `Pool.getReserveData` Aave, perp DEX Arbitrum (mis. GMX) | Gratis | Tinggi; cara baca perp DEX *perlu verifikasi* | Nanti |
 | Sentimen sosial | Reddit | Gratis dengan batas | Rendah — spec Social Sentiment terpisah | Nanti |
 | ~~Berita Yahoo Finance~~ | — | — | Endpoint tidak resmi | **Tidak dipakai** |
