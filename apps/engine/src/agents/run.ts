@@ -19,9 +19,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname } from "node:path";
 
 import type { LlmProvider } from "../llm/provider.ts";
+import { isNonRetryableStatus } from "../llm/provider.ts";
 import { budget as defaultBudget, type Budget } from "../llm/budget.ts";
 import { env, config, type ResearchTrigger } from "../config.ts";
-import { ANALYSTS, runAnalyst } from "./analysts.ts";
+import { ANALYSTS, runAnalyst, type AnalystOutcome } from "./analysts.ts";
 import { runDebate, type DebateResult } from "./debate.ts";
 import { runAssessor } from "./assessor.ts";
 import { toSignal } from "./to-signal.ts";
@@ -51,6 +52,11 @@ export interface RunResult {
   report: ResearchReport | null;
   /** Direktori output bila mode dry menulis file. */
   outDir?: string;
+  /**
+   * Alasan run menghasilkan null (kill switch / budget / analyst gagal / assessor
+   * gagal). Kosong bila sukses. JANGAN memuat secret (API key tidak pernah dicetak).
+   */
+  reason?: string;
 }
 
 /**
@@ -63,29 +69,63 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
 
   // Guard 1: kill switch & budget. Mode dry melewati kill switch (dijalankan
   // manual oleh dev), tetapi tetap menghormati budget.
-  if ((!dry && !env.researchEnabled()) || budget.exceeded()) {
-    return { report: null };
+  if (!dry && !env.researchEnabled()) {
+    return { report: null, reason: "RESEARCH_ENABLED=false (kill switch aktif)" };
+  }
+  if (budget.exceeded()) {
+    return {
+      report: null,
+      reason: `budget harian habis (terpakai $${budget.spentToday().toFixed(4)})`,
+    };
   }
 
   const ctx = await buildContext({ chainId, assets, dry, collector });
 
-  // 4 analyst paralel; satu gagal tidak membatalkan yang lain.
-  const settled = await Promise.allSettled(
-    ANALYSTS.map((domain) => runAnalyst(provider, domain, ctx)),
-  );
-  const reports = settled.flatMap((r) =>
-    r.status === "fulfilled" && r.value ? [r.value] : [],
-  );
+  // Jalankan analyst dengan FAIL-FAST: coba analyst pertama lebih dulu. Jika gagal
+  // dengan status non-retryable (400/401/403 — auth/kredit/request salah), error
+  // yang sama pasti terulang di peran lain, jadi hentikan tanpa memanggil sisanya.
+  const outcomes: AnalystOutcome[] = [];
+  const first = await runAnalyst(provider, ANALYSTS[0]!, ctx);
+  outcomes.push(first);
+  if (first.report === null && isNonRetryableStatus(first.status)) {
+    const reason =
+      `semua panggilan kemungkinan gagal: analyst ${ANALYSTS[0]!.toLowerCase()} ` +
+      `gagal dengan error non-retryable (${first.reason}). Menghentikan run lebih awal ` +
+      `tanpa memanggil peran lain.`;
+    return { report: null, reason };
+  }
 
-  // Guard 2: terlalu banyak gagal → jangan menilai (spec §3.2).
-  if (reports.length < config.minAnalystsRequired) return { report: null };
+  // Sisanya paralel; satu gagal tidak membatalkan yang lain.
+  const restSettled = await Promise.allSettled(
+    ANALYSTS.slice(1).map((domain) => runAnalyst(provider, domain, ctx)),
+  );
+  for (const r of restSettled) {
+    if (r.status === "fulfilled") outcomes.push(r.value);
+    // Promise ditolak (bug tak terduga) diabaikan di penghitungan sukses.
+  }
+
+  const reports = outcomes.flatMap((o) => (o.report ? [o.report] : []));
+
+  // Guard 2: terlalu banyak gagal → jangan menilai (spec §3.2). Sertakan alasan
+  // per peran yang gagal (pesan error pertama), tanpa pernah mencetak API key.
+  if (reports.length < config.minAnalystsRequired) {
+    const failures = outcomes
+      .filter((o) => o.report === null)
+      .map((o) => `analyst ${o.domain.toLowerCase()}: ${o.reason ?? "unknown"}`);
+    const reason =
+      `hanya ${reports.length}/${ANALYSTS.length} analyst sukses ` +
+      `(butuh ${config.minAnalystsRequired}). Kegagalan: ${failures.join("; ")}`;
+    return { report: null, reason };
+  }
 
   const debate = await runDebate(provider, reports, { rounds: config.debateRounds });
   const lessons = await selectLessons(reports).catch(() => []);
   const report = await runAssessor(provider, { ctx, reports, debate, lessons });
 
   // Guard 3: assessor gagal (refusal/schema) → tidak ada sinyal.
-  if (!report) return { report: null };
+  if (!report) {
+    return { report: null, reason: "risk assessor gagal (refusal / schema invalid / error)" };
+  }
 
   const signal = toSignal(report);
 
@@ -300,7 +340,9 @@ async function main(argv: string[]): Promise<void> {
   });
 
   if (!result.report) {
-    console.error("[engine] run menghasilkan null (skip/gagal). Tidak ada file ditulis.");
+    console.error(
+      `[engine] run menghasilkan null (skip/gagal). Alasan: ${result.reason ?? "tidak diketahui"}`,
+    );
     process.exitCode = 1;
     return;
   }

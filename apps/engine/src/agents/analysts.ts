@@ -31,22 +31,26 @@ export const ANALYSTS: AnalystDomain[] = [
   "ONCHAIN",
 ];
 
+/** Hasil satu analyst: report bila sukses, atau alasan + status bila gagal. */
+export interface AnalystOutcome {
+  domain: AnalystDomain;
+  report: AnalystReport | null;
+  /** Alasan gagal (stopReason/error) untuk audit. Kosong bila sukses. */
+  reason?: string;
+  /** Status HTTP bila kegagalan dari API (400/401/403 = non-retryable). */
+  status?: number;
+}
+
 /**
- * Jalankan satu analyst. Mengembalikan null jika refusal / schema invalid /
- * stopReason bukan "ok" (analyst dianggap gagal untuk run itu, spec §3.4).
- *
- * TODO(dev):
- *  - Pilih model: config.models.analyst atau analystCheap (diputuskan via eval).
- *  - system = loadPrompt(PROMPT_BY_DOMAIN[domain]); data = renderContextAsData(ctx)
- *    sebagai message user terakhir.
- *  - effort = config.effort.analyst ("low").
- *  - Cek result.stopReason; hanya kembalikan result.data jika "ok".
+ * Jalankan satu analyst. Mengembalikan `AnalystOutcome`: `report` terisi jika
+ * sukses; bila gagal (refusal / schema invalid / error), `report` null dan
+ * `reason` (+ `status`) menjelaskan penyebabnya untuk audit dan deteksi fail-fast.
  */
 export async function runAnalyst(
   provider: LlmProvider,
   domain: AnalystDomain,
   ctx: ResearchContext,
-): Promise<AnalystReport | null> {
+): Promise<AnalystOutcome> {
   const system = loadPrompt(PROMPT_BY_DOMAIN[domain]);
   const data = renderContextAsData(ctx);
   const result = await provider.structured({
@@ -58,8 +62,10 @@ export async function runAnalyst(
     outputName: "AnalystReport",
   });
   if (result.stopReason !== "ok" || !result.data) {
-    // TODO(dev): log result.stopReason / result.error untuk audit; jangan throw.
-    return null;
+    const reason = result.error
+      ? `${result.stopReason}: ${result.error}`
+      : result.stopReason;
+    return { domain, report: null, reason, status: result.status };
   }
-  return result.data;
+  return { domain, report: result.data };
 }

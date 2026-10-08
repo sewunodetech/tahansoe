@@ -67,9 +67,23 @@ export interface LlmResult<T> {
   usage: LlmUsage;
   /** Pesan kesalahan untuk logging (schema gagal, refusal, dsb.). */
   error?: string;
+  /**
+   * Status HTTP bila kegagalan berasal dari API (mis. 400/401/403). Dipakai untuk
+   * mendeteksi error non-retryable (auth/kredit) agar run berhenti lebih awal.
+   */
+  status?: number;
 }
 
 /** Kontrak provider. Satu metode: structured output tervalidasi. */
 export interface LlmProvider {
   structured<T>(req: LlmRequest<T>): Promise<LlmResult<T>>;
+}
+
+/**
+ * True jika status HTTP menandakan kegagalan non-retryable yang akan terulang di
+ * semua peran (auth, kredit, request salah): 400 Bad Request, 401 Unauthorized,
+ * 403 Forbidden. Dipakai run untuk berhenti lebih awal alih-alih memanggil sisa peran.
+ */
+export function isNonRetryableStatus(status: number | undefined): boolean {
+  return status === 400 || status === 401 || status === 403;
 }

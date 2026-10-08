@@ -136,11 +136,18 @@ export class AnthropicProvider implements LlmProvider {
       return { stopReason: "ok", data: check.data, usage };
     } catch (err) {
       // Kegagalan jaringan/SDK: data null, biaya tak tercatat (tidak ada usage).
+      // Ekspos status HTTP bila ada (Anthropic APIError.status) agar run bisa
+      // mendeteksi error non-retryable (400/401/403) dan berhenti lebih awal.
+      const status =
+        typeof (err as { status?: unknown })?.status === "number"
+          ? (err as { status: number }).status
+          : undefined;
       return {
         stopReason: "error",
         data: null,
         usage: { model: req.model, inputTokens: 0, outputTokens: 0 },
         error: err instanceof Error ? err.message : String(err),
+        status,
       };
     }
   }

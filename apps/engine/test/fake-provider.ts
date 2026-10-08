@@ -18,6 +18,8 @@ export interface ScriptedResponse {
   /** Data mentah; akan divalidasi dengan req.output. Jika undefined → data null. */
   data?: unknown;
   error?: string;
+  /** Status HTTP simulasi (mis. 400) untuk menguji deteksi non-retryable. */
+  status?: number;
 }
 
 /**
@@ -49,7 +51,7 @@ export class FakeProvider implements LlmProvider {
     };
 
     if (stopReason !== "ok") {
-      return { stopReason, data: null, usage, error: scripted.error };
+      return { stopReason, data: null, usage, error: scripted.error, status: scripted.status };
     }
 
     // Validasi data terprogram dengan schema asli (meniru perilaku provider nyata).

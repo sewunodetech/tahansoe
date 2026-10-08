@@ -113,9 +113,38 @@ test("dry + fake: < 3 analyst sukses → report null, tidak menulis file (offlin
       outDir: dir,
     });
     assert.equal(result.report, null);
+    // Alasan harus menyebut jumlah analyst sukses & kegagalan per peran.
+    assert.match(result.reason ?? "", /analyst sukses/);
+    assert.match(result.reason ?? "", /refusal/);
     // Tidak ada file ditulis.
     await assert.rejects(() => access(join(dir, "report.json")));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("dry + fake: error 400 non-retryable → berhenti setelah panggilan pertama, alasan jelas", async () => {
+  // Semua panggilan mengembalikan error 400 (mis. kredit habis). Fail-fast:
+  // run harus berhenti setelah analyst PERTAMA, tanpa memanggil peran lain.
+  const provider = new FakeProvider([], {
+    stopReason: "error",
+    error: "400 Your credit balance is too low to access the Anthropic API",
+    status: 400,
+  });
+  const result = await runResearch({
+    trigger: "SCHEDULED",
+    chainId: 42161,
+    assets: ["ETH", "USDC"],
+    provider,
+    collector: fixtureCollector,
+    budget: new Budget(1000),
+    dry: true,
+  });
+  assert.equal(result.report, null);
+  // Hanya SATU panggilan LLM (analyst pertama) sebelum berhenti.
+  assert.equal(provider.calls.length, 1, "berhenti setelah panggilan pertama");
+  // Alasan menyebut error non-retryable + pesan asli (tanpa API key).
+  assert.match(result.reason ?? "", /non-retryable/);
+  assert.match(result.reason ?? "", /credit balance is too low/);
+  assert.doesNotMatch(result.reason ?? "", /sk-ant|api[_-]?key/i);
 });
