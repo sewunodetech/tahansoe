@@ -1,9 +1,10 @@
 /**
  * Sumber data untuk context builder (spec §3.10).
  *
- * Keputusan tim (8 Okt 2026): fundamental/berita/makro memakai jenis sumber yang
- * sama dengan TradingAgents; TEKNIKAL diambil langsung dari ON-CHAIN (satu-satunya
- * sumber harga yang juga dipakai untuk eksekusi — invariant I5).
+ * Keputusan tim (8 Okt 2026): fundamental/berita/makro memakai sumber kredibel & gratis
+ * (FRED, GDELT); TEKNIKAL diambil langsung dari ON-CHAIN (satu-satunya sumber harga
+ * yang juga dipakai untuk eksekusi — invariant I5).
+ * Platform prediksi/gambling dikeluarkan dari scope.
  *
  * INVARIAN:
  *  - Semua fetch dilakukan KODE (bukan LLM/tools). Hasil disisipkan sebagai data.
@@ -13,14 +14,16 @@
  *    produk komersial, jadi tiap sumber harus mengizinkan penggunaan komersial
  *    sebelum produksi. Sumber yang tidak lolos diganti; agent tetap jalan
  *    dengan sumber tersisa.
- *
- * STATUS: scaffold interface. Implementasi tiap adapter ditandai TODO per file.
  */
+
+export * from "./collect.ts";
+export * from "./gdelt.ts";
+export * from "./fred.ts";
+export * from "./onchain.ts";
 
 /** Kelas sumber data (spec §3.10). */
 export type SourceKind =
   | "MACRO_FRED"
-  | "PREDICTION_POLYMARKET"
   | "NEWS_ALPHA_VANTAGE"
   | "NEWS_YAHOO"
   | "NEWS_GDELT"
@@ -39,11 +42,9 @@ export interface SourceLicense {
 
 /**
  * Catatan lisensi awal (spec §3.10). WAJIB diverifikasi sebelum shadow mode berakhir.
- * TODO(dev): konfirmasi tiap entri dengan ketentuan resmi vendor.
  */
 export const SOURCE_LICENSES: SourceLicense[] = [
   { kind: "MACRO_FRED", commercialAllowed: null, note: "Gratis dengan API key; cek ToS." },
-  { kind: "PREDICTION_POLYMARKET", commercialAllowed: null, note: "API publik; pasar tipis bisa menyesatkan." },
   { kind: "NEWS_ALPHA_VANTAGE", commercialAllowed: null, note: "Tier gratis sangat terbatas; cek lisensi komersial." },
   { kind: "NEWS_YAHOO", commercialAllowed: null, note: "Endpoint tidak resmi — risiko lisensi komersial tinggi." },
   { kind: "NEWS_GDELT", commercialAllowed: null, note: "Gratis; cakupan geopolitik luas." },

@@ -1,0 +1,44 @@
+{
+  "articles": [
+    {
+      "url": "https://www.bbc.co.uk/news/world-middle-east-12345678",
+      "title": "Every day there is killing : Gazans face Israeli strikes despite ceasefire as peace deal stalls",
+      "seendate": "20261008T103000Z",
+      "domain": "bbc.co.uk",
+      "language": "English",
+      "sourcecountry": "United Kingdom"
+    },
+    {
+      "url": "https://www.berchtesgadener-anzeiger.de/nachrichten/trump-texas-98765432",
+      "title": "Trumps Kampf um Texas : Es ist entscheidend",
+      "seendate": "20261008T101500Z",
+      "domain": "berchtesgadener-anzeiger.de",
+      "language": "German",
+      "sourcecountry": "Germany"
+    },
+    {
+      "url": "https://www.eenadu.net/telugu-news/world/nana-patekar-kargil-war-54321",
+      "title": "Nana Patekar in military service during border conflict",
+      "seendate": "20261008T094500Z",
+      "domain": "eenadu.net",
+      "language": "Telugu",
+      "sourcecountry": "India"
+    },
+    {
+      "url": "https://www.bbc.co.uk/news/world-middle-east-12345678",
+      "title": "Every day there is killing : Gazans face Israeli strikes despite ceasefire as peace deal stalls",
+      "seendate": "20261008T103000Z",
+      "domain": "bbc.co.uk",
+      "language": "English",
+      "sourcecountry": "United Kingdom"
+    },
+    {
+      "url": "https://syndicate.example.com/reprint-123",
+      "title": "Every day there is killing : Gazans face Israeli strikes despite ceasefire as peace deal stalls!",
+      "seendate": "20261008T103500Z",
+      "domain": "syndicate.example.com",
+      "language": "English",
+      "sourcecountry": "United Kingdom"
+    }
+  ]
+}
