@@ -1,0 +1,26 @@
+[
+  {
+    "date": 1791288000,
+    "name": "DeFi Protocol Alpha",
+    "amount": 15000000,
+    "chain": ["Arbitrum"],
+    "classification": "Flash Loan Attack",
+    "technique": "Price Manipulation"
+  },
+  {
+    "date": 1790942400,
+    "name": "MegaBridge Network",
+    "amount": 65000000,
+    "chain": ["Ethereum", "Arbitrum"],
+    "classification": "Bridge Exploit",
+    "technique": "Validator Signature Compromise"
+  },
+  {
+    "date": 1790164800,
+    "name": "Old Yield Vault",
+    "amount": 500000,
+    "chain": ["Arbitrum"],
+    "classification": "Reentrancy",
+    "technique": "Read-only reentrancy"
+  }
+]

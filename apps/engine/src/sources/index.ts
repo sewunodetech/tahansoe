@@ -20,11 +20,15 @@ export * from "./collect.ts";
 export * from "./rss.ts";
 export * from "./gdelt.ts";
 export * from "./fred.ts";
+export * from "./macro-calendar.ts";
+export * from "./defillama.ts";
 export * from "./onchain.ts";
 
 /** Kelas sumber data (spec §3.10). */
 export type SourceKind =
   | "MACRO_FRED"
+  | "MACRO_CALENDAR"
+  | "RISK_DEFILLAMA"
   | "NEWS_ALPHA_VANTAGE"
   | "NEWS_YAHOO"
   | "NEWS_GDELT"
@@ -46,6 +50,8 @@ export interface SourceLicense {
  */
 export const SOURCE_LICENSES: SourceLicense[] = [
   { kind: "MACRO_FRED", commercialAllowed: null, note: "Gratis dengan API key; cek ToS." },
+  { kind: "MACRO_CALENDAR", commercialAllowed: true, note: "FOMC public domain (Federal Reserve), BLS public domain via FRED." },
+  { kind: "RISK_DEFILLAMA", commercialAllowed: true, note: "Endpoint publik DefiLlama (CC BY 4.0 / Open Data)." },
   { kind: "NEWS_ALPHA_VANTAGE", commercialAllowed: null, note: "Tier gratis sangat terbatas; cek lisensi komersial." },
   { kind: "NEWS_YAHOO", commercialAllowed: null, note: "Endpoint tidak resmi — risiko lisensi komersial tinggi." },
   { kind: "NEWS_GDELT", commercialAllowed: null, note: "Gratis; cakupan geopolitik luas." },

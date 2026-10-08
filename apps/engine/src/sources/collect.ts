@@ -23,6 +23,8 @@ import type {
 import { fetchRssEvents } from "./rss.ts";
 import { fetchGdeltEvents, DEFAULT_GDELT_TIMEOUT_MS } from "./gdelt.ts";
 import { fetchFredSignals } from "./fred.ts";
+import { fetchMacroCalendarEvents } from "./macro-calendar.ts";
+import { fetchDefiLlamaSignals } from "./defillama.ts";
 import { fetchOnchainSnapshot, ARBITRUM_STATIC_CHAIN_NOTES } from "./onchain.ts";
 
 export interface CollectOptions {
@@ -32,6 +34,8 @@ export interface CollectOptions {
   assets: string[];
   /** Jendela berita/event ke belakang, dalam jam (default 24). */
   lookbackHours?: number;
+  /** Horizon kalender makro ke depan, dalam hari (default 14). */
+  macroLookaheadDays?: number;
   /** Batas waktu per sumber, dalam ms (default 10_000). */
   timeoutMs?: number;
   now?: Date;
@@ -44,7 +48,7 @@ export interface ResearchInputs {
   marketEvents: ContextMarketEvent[];
   /** Event makro terjadwal mendatang. */
   macroEvents: ContextMacroEvent[];
-  /** Observasi terukur (on-chain snapshot, makro FRED) dalam bentuk sinyal ringkas. */
+  /** Observasi terukur (on-chain snapshot, makro FRED, DefiLlama) dalam bentuk sinyal ringkas. */
   signals: ContextSignal[];
   /** Catatan chain (mis. USDC capped, tanpa PriceOracleSentinel, status sequencer). */
   chainNotes: string[];
@@ -61,6 +65,7 @@ export async function collectResearchInputs(
 ): Promise<ResearchInputs> {
   const {
     lookbackHours = 24,
+    macroLookaheadDays = 14,
     timeoutMs = 10_000,
     now = new Date(),
     fetchFn = fetch,
@@ -79,10 +84,14 @@ export async function collectResearchInputs(
     ReturnType<typeof fetchRssEvents>,
     ReturnType<typeof fetchFredSignals>,
     ReturnType<typeof fetchOnchainSnapshot>,
+    ReturnType<typeof fetchMacroCalendarEvents>,
+    ReturnType<typeof fetchDefiLlamaSignals>,
   ] = [
     fetchRssEvents({ lookbackHours, timeoutMs, now, fetchFn }),
     fetchFredSignals({ timeoutMs, now, fetchFn }),
     fetchOnchainSnapshot({ timeoutMs, now }),
+    fetchMacroCalendarEvents({ timeoutMs, lookaheadDays: macroLookaheadDays, now, fetchFn }),
+    fetchDefiLlamaSignals({ timeoutMs, now, fetchFn }),
   ];
 
   const results = await Promise.allSettled(mainPromises);
@@ -121,7 +130,25 @@ export async function collectResearchInputs(
     warnings.push(`Onchain adapter crash: ${String(onchainRes.reason)}`);
   }
 
-  // 4. GDELT (opsional, hanya dijalankan jika flag aktif)
+  // 4. Macro Calendar (FOMC, CPI, NFP)
+  const macroRes = results[3];
+  if (macroRes && macroRes.status === "fulfilled") {
+    macroEvents.push(...macroRes.value.events);
+    warnings.push(...macroRes.value.warnings);
+  } else if (macroRes && macroRes.status === "rejected") {
+    warnings.push(`Macro calendar adapter crash: ${String(macroRes.reason)}`);
+  }
+
+  // 5. DefiLlama (Stablecoin depeg T4, Hack exploit T9)
+  const defillamaRes = results[4];
+  if (defillamaRes && defillamaRes.status === "fulfilled") {
+    signals.push(...defillamaRes.value.signals);
+    warnings.push(...defillamaRes.value.warnings);
+  } else if (defillamaRes && defillamaRes.status === "rejected") {
+    warnings.push(`DefiLlama adapter crash: ${String(defillamaRes.reason)}`);
+  }
+
+  // 6. GDELT (opsional, hanya dijalankan jika flag aktif)
   if (isGdeltEnabled) {
     try {
       const gdeltRes = await fetchGdeltEvents({

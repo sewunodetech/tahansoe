@@ -1,0 +1,34 @@
+{
+  "peggedAssets": [
+    {
+      "id": "1",
+      "name": "Tether USD",
+      "symbol": "USDT",
+      "price": 1.0002
+    },
+    {
+      "id": "2",
+      "name": "USD Coin",
+      "symbol": "USDC",
+      "price": 0.9998
+    },
+    {
+      "id": "3",
+      "name": "Dai",
+      "symbol": "DAI",
+      "price": 0.9995
+    },
+    {
+      "id": "4",
+      "name": "USDS",
+      "symbol": "USDS",
+      "price": 1.0001
+    },
+    {
+      "id": "5",
+      "name": "Ethena USDe",
+      "symbol": "USDe",
+      "price": 0.9992
+    }
+  ]
+}

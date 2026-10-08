@@ -34,6 +34,21 @@ import {
   fetchOnchainSnapshot,
   type OnchainRawSnapshot,
 } from "../../src/sources/onchain.ts";
+import {
+  parseNewYorkDateTime,
+  getScheduledFomcEvents,
+  fetchFredReleaseDates,
+  fetchMacroCalendarEvents,
+  type FredReleaseDatesResponse,
+} from "../../src/sources/macro-calendar.ts";
+import {
+  evaluateStablecoinDeviation,
+  fetchDefiLlamaStablecoins,
+  fetchDefiLlamaHacks,
+  fetchDefiLlamaSignals,
+  type DefiLlamaStablecoinsResponse,
+  type DefiLlamaHackEntry,
+} from "../../src/sources/defillama.ts";
 import { collectResearchInputs } from "../../src/sources/collect.ts";
 
 // Helper untuk membaca file fixture JSON
@@ -506,5 +521,265 @@ describe("Data Sources: collectResearchInputs Orchestrator", () => {
     } finally {
       delete process.env.RESEARCH_GDELT_ENABLED;
     }
+  });
+
+  it("mengisi macroEvents dan sinyal DefiLlama secara paralel", async () => {
+    const bbcXml = loadTextFixture("rss-bbc.xml");
+    const fredRel = loadFixture<FredReleaseDatesResponse>("fred-releases.json");
+    const stablecoinsFixture = loadFixture<DefiLlamaStablecoinsResponse>(
+      "defillama-stablecoins.json",
+    );
+    const hacksFixture = loadFixture<DefiLlamaHackEntry[]>("defillama-hacks.json");
+
+    const mockFetch: typeof fetch = async (url) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fred/release/dates")) {
+        return new Response(JSON.stringify(fredRel), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (urlStr.includes("stablecoins.llama.fi")) {
+        return new Response(JSON.stringify(stablecoinsFixture), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (urlStr.includes("api.llama.fi/hacks")) {
+        return new Response(JSON.stringify(hacksFixture), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (urlStr.includes("bbci.co.uk") || urlStr.includes("rss.xml") || urlStr.includes("xml")) {
+        return new Response(bbcXml, {
+          status: 200,
+          headers: { "Content-Type": "application/xml" },
+        });
+      }
+      return new Response(JSON.stringify({ observations: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    process.env.FRED_API_KEY = "test-fred-key";
+    try {
+      const now = new Date("2026-10-08T12:00:00.000Z");
+      const result = await collectResearchInputs({
+        chainId: 42161,
+        assets: ["ETH", "USDC"],
+        timeoutMs: 1000,
+        now,
+        fetchFn: mockFetch,
+      });
+
+      assert.ok(Array.isArray(result.macroEvents), "macroEvents harus berupa array");
+      assert.ok(
+        result.macroEvents.length > 0,
+        "macroEvents harus terisi event makro mendatang",
+      );
+      assert.ok(
+        result.macroEvents.some((e) => e.id.includes("cpi") || e.id.includes("nfp")),
+        "harus berisi event CPI atau NFP",
+      );
+
+      assert.ok(
+        result.signals.some((s) => s.id.includes("defillama")),
+        "signals harus memuat sinyal dari DefiLlama",
+      );
+    } finally {
+      delete process.env.FRED_API_KEY;
+    }
+  });
+});
+
+describe("Data Sources: Macro Calendar Adapter", () => {
+  it("mengonversi waktu New York ke UTC secara presisi untuk EDT dan EST", () => {
+    // 28 Okt 2026 adalah EDT (UTC-4), 14:00 New York = 18:00 UTC
+    const edtFomc = parseNewYorkDateTime("2026-10-28", "14:00");
+    assert.equal(edtFomc.toISOString(), "2026-10-28T18:00:00.000Z");
+
+    // 9 Des 2026 adalah EST (UTC-5), 14:00 New York = 19:00 UTC
+    const estFomc = parseNewYorkDateTime("2026-12-09", "14:00");
+    assert.equal(estFomc.toISOString(), "2026-12-09T19:00:00.000Z");
+
+    // Rilis BLS 08:30 pada EDT (14 Okt 2026): 08:30 + 4 = 12:30 UTC
+    const edtBls = parseNewYorkDateTime("2026-10-14", "08:30");
+    assert.equal(edtBls.toISOString(), "2026-10-14T12:30:00.000Z");
+  });
+
+  it("menyaring event FOMC mendatang dalam batas rentang lookahead", () => {
+    // 20 Okt 2026: Rapat FOMC berikutnya adalah 27-28 Okt 2026
+    const now = new Date("2026-10-20T00:00:00.000Z");
+    const events = getScheduledFomcEvents(now, 14);
+
+    assert.equal(events.length, 1, "harus menemukan tepat 1 rapat FOMC dalam 14 hari");
+    const fomc = events[0]!;
+    assert.equal(fomc.id, "macro-fomc-2026-10-28");
+    assert.equal(fomc.name, "FOMC Rate Decision");
+    assert.equal(fomc.importance, "HIGH");
+    assert.equal(fomc.scheduledAt.toISOString(), "2026-10-28T18:00:00.000Z");
+  });
+
+  it("mengambil tanggal rilis FRED (CPI/NFP) dan memfilter horizon waktu", async () => {
+    const fixture = loadFixture<FredReleaseDatesResponse>("fred-releases.json");
+    const mockFetch: typeof fetch = async () =>
+      new Response(JSON.stringify(fixture), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+
+    const now = new Date("2026-10-08T12:00:00.000Z");
+    const res = await fetchFredReleaseDates({
+      releaseId: 10,
+      releaseName: "US Consumer Price Index (CPI) Release",
+      eventPrefix: "cpi",
+      apiKey: "test-api-key",
+      now,
+      lookaheadDays: 14,
+      fetchFn: mockFetch,
+    });
+
+    assert.equal(res.events.length, 1, "hanya tanggal 2026-10-14 yang dalam 14 hari");
+    const cpiEvent = res.events[0]!;
+    assert.equal(cpiEvent.id, "macro-cpi-2026-10-14");
+    assert.equal(cpiEvent.name, "US Consumer Price Index (CPI) Release");
+    assert.equal(cpiEvent.importance, "HIGH");
+    assert.equal(cpiEvent.scheduledAt.toISOString(), "2026-10-14T12:30:00.000Z");
+  });
+
+  it("menggabungkan FOMC dan FRED kalender secara terurut", async () => {
+    const fixture = loadFixture<FredReleaseDatesResponse>("fred-releases.json");
+    const mockFetch: typeof fetch = async () =>
+      new Response(JSON.stringify(fixture), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+
+    const now = new Date("2026-10-20T00:00:00.000Z");
+    const res = await fetchMacroCalendarEvents({
+      apiKey: "test-key",
+      now,
+      lookaheadDays: 14,
+      fetchFn: mockFetch,
+    });
+
+    assert.ok(res.events.length >= 1);
+    // Verifikasi urutan waktu ascending
+    for (let i = 1; i < res.events.length; i++) {
+      const prev = res.events[i - 1]!;
+      const curr = res.events[i]!;
+      assert.ok(
+        prev.scheduledAt.getTime() <= curr.scheduledAt.getTime(),
+        "event harus terurut secara ascending",
+      );
+    }
+  });
+});
+
+describe("Data Sources: DefiLlama Adapter", () => {
+  it("mengevaluasi deviasi stablecoin sesuai ambang batas bertingkat", () => {
+    assert.equal(evaluateStablecoinDeviation(1.0001), 0.05); // aman
+    assert.equal(evaluateStablecoinDeviation(0.994), 0.4); // 0.6% deviasi >= 0.5%
+    assert.equal(evaluateStablecoinDeviation(0.988), 0.7); // 1.2% deviasi >= 1.0%
+    assert.equal(evaluateStablecoinDeviation(0.965), 1.0); // 3.5% deviasi >= 3.0%
+  });
+
+  it("menghasilkan sinyal baseline saat semua stablecoin termonitor aman", async () => {
+    const fixture = loadFixture<DefiLlamaStablecoinsResponse>(
+      "defillama-stablecoins.json",
+    );
+    const mockFetch: typeof fetch = async () =>
+      new Response(JSON.stringify(fixture), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+
+    const now = new Date("2026-10-08T12:00:00.000Z");
+    const res = await fetchDefiLlamaStablecoins({
+      now,
+      fetchFn: mockFetch,
+    });
+
+    assert.equal(res.signals.length, 1);
+    const sig = res.signals[0]!;
+    assert.equal(sig.id, "defillama-stablecoin-pegs");
+    assert.equal(sig.module, "ONCHAIN");
+    assert.deepEqual(sig.paths, ["T4"]);
+    assert.equal(sig.severity, 0.05);
+    assert.equal(sig.confidence, 0.9);
+  });
+
+  it("mendeteksi anomali depeg dengan severity tinggi dan jalur T4 saat harga menyimpang", async () => {
+    const depeggedData: DefiLlamaStablecoinsResponse = {
+      peggedAssets: [
+        { id: "1", name: "Tether USD", symbol: "USDT", price: 1.0 },
+        { id: "2", name: "USD Coin", symbol: "USDC", price: 1.0 },
+        { id: "3", name: "Dai", symbol: "DAI", price: 1.0 },
+        { id: "4", name: "USDS", symbol: "USDS", price: 1.0 },
+        { id: "5", name: "Ethena USDe", symbol: "USDe", price: 0.978 }, // deviasi 2.2% -> severity 0.7
+      ],
+    };
+    const mockFetch: typeof fetch = async () =>
+      new Response(JSON.stringify(depeggedData), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+
+    const now = new Date("2026-10-08T12:00:00.000Z");
+    const res = await fetchDefiLlamaStablecoins({
+      now,
+      fetchFn: mockFetch,
+    });
+
+    assert.equal(res.signals.length, 1);
+    const sig = res.signals[0]!;
+    assert.equal(sig.id, "defillama-depeg-usde");
+    assert.equal(sig.module, "ONCHAIN");
+    assert.deepEqual(sig.paths, ["T4"]);
+    assert.equal(sig.severity, 0.7);
+    assert.equal(sig.confidence, 0.95);
+    assert.ok(sig.summary.includes("USDe depeg detected"));
+  });
+
+  it("menyaring insiden hack 7 hari terakhir dan mengelompokkan severity berbasis nominal (T9)", async () => {
+    const fixture = loadFixture<DefiLlamaHackEntry[]>("defillama-hacks.json");
+    const mockFetch: typeof fetch = async () =>
+      new Response(JSON.stringify(fixture), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+
+    const now = new Date("2026-10-08T12:00:00.000Z");
+    const res = await fetchDefiLlamaHacks({
+      now,
+      fetchFn: mockFetch,
+    });
+
+    assert.equal(res.signals.length, 2, "hanya 2 insiden dalam 7 hari terakhir");
+
+    const bridgeHack = res.signals.find((s) => s.id.includes("megabridge"));
+    assert.ok(bridgeHack, "MegaBridge hack harus ada");
+    assert.equal(bridgeHack.severity, 1.0, "hack $65M harus memiliki severity 1.0");
+    assert.deepEqual(bridgeHack.paths, ["T9"]);
+
+    const alphaHack = res.signals.find((s) => s.id.includes("protocol-alpha"));
+    assert.ok(alphaHack, "Protocol Alpha hack harus ada");
+    assert.equal(alphaHack.severity, 0.6, "hack $15M harus memiliki severity 0.6");
+    assert.deepEqual(alphaHack.paths, ["T9"]);
+  });
+
+  it("menggabungkan sinyal depeg dan hack secara aman dengan graceful degradation", async () => {
+    const mockFetch: typeof fetch = async () => {
+      throw new Error("DefiLlama network unreachable");
+    };
+
+    const res = await fetchDefiLlamaSignals({
+      fetchFn: mockFetch,
+    });
+
+    assert.equal(res.signals.length, 0);
+    assert.ok(res.warnings.length > 0, "harus mencatat warning saat network error");
   });
 });
