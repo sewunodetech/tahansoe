@@ -3,6 +3,6 @@
  * Hanya untuk kode server (route handler, engine, script); jangan di-import
  * dari komponen client.
  */
-export { db } from "./client";
+export { db, getDb, type Db } from "./client";
 export * from "./schema";
 export * from "./research";
