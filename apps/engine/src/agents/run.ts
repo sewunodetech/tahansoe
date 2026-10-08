@@ -26,6 +26,7 @@ import { runDebate, type DebateResult } from "./debate.ts";
 import { runAssessor } from "./assessor.ts";
 import { toSignal } from "./to-signal.ts";
 import { buildContext } from "./context.ts";
+import type { ResearchInputCollector } from "./context.ts";
 import { selectLessons } from "../reflection/lessons.ts";
 import type { AnalystReport, ResearchReport, ResearchSignal } from "./schemas.ts";
 
@@ -39,6 +40,11 @@ export interface RunParams {
   dry?: boolean;
   /** Direktori output untuk mode dry (default: apps/engine/out/<ISO>). */
   outDir?: string;
+  /**
+   * Pengumpul input dapat di-inject (default: collectResearchInputs via buildContext).
+   * Test & mode --fake memakai collector fixture agar tidak menyentuh jaringan.
+   */
+  collector?: ResearchInputCollector;
 }
 
 export interface RunResult {
@@ -52,7 +58,7 @@ export interface RunResult {
  * untuk mode dry, direktori output yang ditulis.
  */
 export async function runResearch(params: RunParams): Promise<RunResult> {
-  const { trigger, chainId, assets, provider, dry } = params;
+  const { trigger, chainId, assets, provider, dry, collector } = params;
   const budget = params.budget ?? defaultBudget;
 
   // Guard 1: kill switch & budget. Mode dry melewati kill switch (dijalankan
@@ -61,7 +67,7 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
     return { report: null };
   }
 
-  const ctx = await buildContext({ chainId, assets, dry });
+  const ctx = await buildContext({ chainId, assets, dry, collector });
 
   // 4 analyst paralel; satu gagal tidak membatalkan yang lain.
   const settled = await Promise.allSettled(
@@ -187,6 +193,10 @@ async function main(argv: string[]): Promise<void> {
   // flag tak dikenal menjadi env `npm_config_fake`. Dukung keduanya.
   const dry = argv.includes("--dry") || process.env.npm_config_dry === "true";
   const fake = argv.includes("--fake") || process.env.npm_config_fake === "true";
+  // Secara default --fake juga memakai sumber fixture (offline). Pakai
+  // --live-sources untuk fake LLM + sumber data LIVE (menyentuh jaringan).
+  const liveSources =
+    argv.includes("--live-sources") || process.env.npm_config_live_sources === "true";
 
   if (!dry) {
     console.error(
@@ -197,8 +207,14 @@ async function main(argv: string[]): Promise<void> {
   }
 
   let provider: LlmProvider;
+  let collector: ResearchInputCollector | undefined;
   if (fake) {
     provider = await makeFakeProvider();
+    // --fake default offline (fixture collector); --live-sources untuk sumber live.
+    if (!liveSources) {
+      const { fixtureCollector } = await import("../../test/fixtures/research-fixtures.ts");
+      collector = fixtureCollector;
+    }
   } else {
     const { AnthropicProvider } = await import("../llm/anthropic.ts");
     provider = new AnthropicProvider();
@@ -209,6 +225,7 @@ async function main(argv: string[]): Promise<void> {
     chainId: 42161,
     assets: ["ETH", "USDC"],
     provider,
+    collector,
     dry: true,
   });
 

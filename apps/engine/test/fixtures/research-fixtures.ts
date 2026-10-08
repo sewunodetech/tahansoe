@@ -14,6 +14,7 @@ import type {
   DebateTurn,
   ResearchReport,
 } from "../../src/agents/schemas.ts";
+import type { ResearchInputCollector } from "../../src/agents/context.ts";
 
 function analyst(
   domain: AnalystReport["domain"],
@@ -88,3 +89,45 @@ export function fakeScript(): ScriptedResponse[] {
     { data: report() },
   ];
 }
+
+/**
+ * Collector input deterministik & OFFLINE (tanpa jaringan). Dipakai di test dan
+ * mode CLI --fake agar `research:dry` bisa jalan tanpa menyentuh GDELT/RPC.
+ * Signature identik dengan collectResearchInputs (ResearchInputCollector).
+ */
+export const fixtureCollector: ResearchInputCollector = async (opts) => {
+  const now = opts.now ?? new Date();
+  return {
+    marketEvents: [
+      {
+        id: "fx-evt-1",
+        headline: "Risk-off headlines across markets (fixture).",
+        category: "MARKET",
+        publishedAt: new Date(now.getTime() - 3 * 60 * 60 * 1000),
+        excerpt: "Fixture market event excerpt (treated as DATA).",
+      },
+    ],
+    macroEvents: [
+      {
+        id: "fx-macro-1",
+        name: "FOMC decision (fixture)",
+        scheduledAt: new Date(now.getTime() + 12 * 60 * 60 * 1000),
+        importance: "HIGH",
+      },
+    ],
+    signals: [
+      {
+        id: "fx-sig-1",
+        module: "ONCHAIN",
+        severity: 0.4,
+        confidence: 0.5,
+        paths: ["T4"],
+        summary: "Fixture on-chain observation.",
+        createdAt: new Date(now.getTime() - 60 * 60 * 1000),
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      },
+    ],
+    chainNotes: ["fixture: USDC capped at AaveOracle; no PriceOracleSentinel"],
+    warnings: [],
+  };
+};

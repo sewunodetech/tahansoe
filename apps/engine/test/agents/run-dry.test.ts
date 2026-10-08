@@ -1,9 +1,13 @@
 /**
  * End-to-end test: runResearch mode dry + FakeProvider (tanpa API, tanpa DB).
  * Memverifikasi 4 file ditulis ke direktori sementara dan report valid.
+ *
+ * JARINGAN DILARANG: test ini menyuntik `fixtureCollector` (offline) dan
+ * mem-stub `globalThis.fetch` agar MELEMPAR. Jika ada kode yang mencoba fetch
+ * (mis. collector live), test gagal — membuktikan unit test tidak menyentuh jaringan.
  */
 
-import { test } from "node:test";
+import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -12,9 +16,20 @@ import { join } from "node:path";
 import { runResearch } from "../../src/agents/run.ts";
 import { Budget } from "../../src/llm/budget.ts";
 import { FakeProvider } from "../fake-provider.ts";
-import { fakeScript } from "../fixtures/research-fixtures.ts";
+import { fakeScript, fixtureCollector } from "../fixtures/research-fixtures.ts";
 
-test("dry + fake: menulis report.json, analysts.json, debate.json, report.md", async () => {
+// Stub fetch agar setiap panggilan jaringan gagal keras selama test ini.
+const originalFetch = globalThis.fetch;
+before(() => {
+  globalThis.fetch = (async () => {
+    throw new Error("NETWORK ACCESS FORBIDDEN in unit test");
+  }) as typeof fetch;
+});
+after(() => {
+  globalThis.fetch = originalFetch;
+});
+
+test("dry + fake: menulis report.json, analysts.json, debate.json, report.md (offline)", async () => {
   const dir = await mkdtemp(join(tmpdir(), "engine-dry-"));
   try {
     const provider = new FakeProvider(fakeScript());
@@ -23,6 +38,7 @@ test("dry + fake: menulis report.json, analysts.json, debate.json, report.md", a
       chainId: 42161,
       assets: ["ETH", "USDC"],
       provider,
+      collector: fixtureCollector,
       budget: new Budget(1000),
       dry: true,
       outDir: dir,
@@ -53,7 +69,7 @@ test("dry + fake: menulis report.json, analysts.json, debate.json, report.md", a
   }
 });
 
-test("dry + fake: < 3 analyst sukses → report null, tidak menulis file", async () => {
+test("dry + fake: < 3 analyst sukses → report null, tidak menulis file (offline)", async () => {
   const dir = await mkdtemp(join(tmpdir(), "engine-dry-fail-"));
   try {
     // Hanya 2 analyst sukses (2 refusal), sisanya tak terpakai.
@@ -68,6 +84,7 @@ test("dry + fake: < 3 analyst sukses → report null, tidak menulis file", async
       chainId: 42161,
       assets: ["ETH"],
       provider,
+      collector: fixtureCollector,
       budget: new Budget(1000),
       dry: true,
       outDir: dir,
