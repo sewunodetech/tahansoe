@@ -64,6 +64,10 @@ export interface RunResult {
   reason?: string;
   /** Diagnostik per peran + usage + durasi (audit G7). */
   diagnostics?: RunDiagnostics;
+  /** Id baris research_reports yang tersimpan (hanya mode non-dry). */
+  reportId?: string;
+  /** Id baris signals yang tersimpan (hanya mode non-dry). */
+  signalId?: string;
 }
 
 /** Diagnostik satu peran LLM (audit G7). */
@@ -231,26 +235,43 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
 
   const signal = toSignal(report);
 
-  if (dry) {
-    const outDir = params.outDir ?? defaultOutDir();
-    await saveReportToFiles(outDir, {
+  // Peta peran → model terpakai (dari diagnostics) untuk kolom models.
+  const models: Record<string, string> = {};
+  for (const r of diagnostics.roles) if (r.usedModel) models[r.role] = r.usedModel;
+
+  // NON-DRY: simpan ke DB (research_reports + signals) dulu, lalu tetap tulis file.
+  let reportId: string | undefined;
+  let signalId: string | undefined;
+  if (!dry) {
+    const { saveResearch } = await import("../db/store.ts");
+    const saved = await saveResearch({
       trigger,
       chainId,
       report,
-      reports,
+      analystReports: reports,
       debate,
       signal,
-      ctx,
       diagnostics,
+      models,
     });
-    return { report, outDir, diagnostics };
+    reportId = saved.reportId;
+    signalId = saved.signalId;
   }
 
-  // TODO(dev): persist ke research_reports + tulis signal ke tabel signals
-  // (module RESEARCH, expiresAt). Lihat spec m2-engine-skeleton & §3.8.
-  throw new Error(
-    "[engine/agents/run] persist non-dry (DB) belum diimplementasikan — jalankan dengan --dry.",
-  );
+  // Tulis salinan file ke out/ untuk dibaca manusia (dry MAUPUN non-dry).
+  const outDir = params.outDir ?? defaultOutDir();
+  await saveReportToFiles(outDir, {
+    trigger,
+    chainId,
+    report,
+    reports,
+    debate,
+    signal,
+    ctx,
+    diagnostics,
+  });
+
+  return { report, outDir, diagnostics, reportId, signalId };
 }
 
 /** apps/engine/out/<ISO-timestamp> dengan karakter aman untuk nama folder. */
@@ -445,14 +466,6 @@ async function main(argv: string[]): Promise<void> {
   const liveSources =
     argv.includes("--live-sources") || process.env.npm_config_live_sources === "true";
 
-  if (!dry) {
-    console.error(
-      "[engine] CLI run saat ini hanya mendukung --dry (jalur DB belum ada). Contoh: tsx src/agents/run.ts --dry --fake",
-    );
-    process.exitCode = 1;
-    return;
-  }
-
   let provider: LlmProvider | undefined;
   let collector: ResearchInputCollector | undefined;
   if (fake) {
@@ -466,6 +479,7 @@ async function main(argv: string[]): Promise<void> {
     // Provider nyata dipilih per peran via router (ADR 0008). Log ketersediaan
     // provider (tanpa nilai key) untuk diagnosa.
     const { providerAvailability, resolveRole } = await import("../llm/registry.ts");
+    console.error(`[engine] mode: ${dry ? "DRY (tanpa DB)" : "NON-DRY (simpan ke DB)"}`);
     console.error(`[engine] provider availability: ${JSON.stringify(providerAvailability())}`);
     for (const role of ["analyst", "debate", "assessor", "reflector"] as const) {
       const chain = resolveRole(role).map((e) => `${e.provider}:${e.model}`).join(" → ");
@@ -479,7 +493,7 @@ async function main(argv: string[]): Promise<void> {
     assets: ["ETH", "USDC"],
     provider,
     collector,
-    dry: true,
+    dry,
   });
 
   if (!result.report) {
@@ -489,7 +503,14 @@ async function main(argv: string[]): Promise<void> {
     process.exitCode = 1;
     return;
   }
-  console.log(`[engine] dry run selesai. Output: ${result.outDir}`);
+  if (!dry) {
+    console.log(
+      `[engine] tersimpan ke DB — research_reports.id=${result.reportId} signals.id=${result.signalId}`,
+    );
+  }
+  console.log(
+    `[engine] run selesai (regime=${result.report.proposedRegime}). Output: ${result.outDir}`,
+  );
 }
 
 /**

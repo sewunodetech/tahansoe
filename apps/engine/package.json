@@ -9,6 +9,8 @@
     "test": "tsx --test test/all.test.ts",
     "research:run": "tsx --env-file-if-exists=.env src/index.ts",
     "research:dry": "tsx --env-file-if-exists=.env src/agents/run.ts --dry",
+    "research:once": "tsx --env-file-if-exists=.env src/agents/run.ts",
+    "research:history": "tsx --env-file-if-exists=.env src/db/history.ts",
     "reflect:settle": "tsx --env-file-if-exists=.env src/reflection/settle.ts",
     "reflect:daily": "tsx --env-file-if-exists=.env src/reflection/reflect.ts",
     "scorecard": "tsx --env-file-if-exists=.env src/reflection/scorecard.ts"

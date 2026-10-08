@@ -20,6 +20,7 @@ import {
   uuid,
   text,
   integer,
+  numeric,
   boolean,
   timestamp,
   jsonb,
@@ -71,6 +72,8 @@ export const researchReports = pgTable(
     models: jsonb("models").notNull(),
     /** Akumulasi usage per peran (untuk biaya & scorecard). */
     usage: jsonb("usage").notNull(),
+    /** Diagnostik run (status per peran, model, token, durasi) — audit G7. */
+    diagnostics: jsonb("diagnostics"),
     /** createdAt + horizonHours; dipakai settlement. */
     horizonEndsAt: timestamp("horizon_ends_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -80,6 +83,39 @@ export const researchReports = pgTable(
   (t) => ({
     horizonIdx: index("research_reports_horizon_idx").on(t.horizonEndsAt),
     chainIdx: index("research_reports_chain_idx").on(t.chainId),
+  }),
+);
+
+/**
+ * Sinyal risiko dari modul mana pun (PRD §6.3). Minimal untuk M-research:
+ * research agents menulis satu baris `module = "RESEARCH"` per run; modul sinyal
+ * lain (M2) akan ikut memakai tabel ini.
+ */
+export const signals = pgTable(
+  "signals",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    chainId: integer("chain_id").notNull(),
+    module: signalModuleEnum("module").notNull(),
+    /** Jalur transmisi T1..T10 (opsional). */
+    paths: jsonb("paths"),
+    /** Aset terkait, mis. ["ETH","USDC"]. */
+    assets: jsonb("assets").notNull(),
+    direction: text("direction").notNull(), // DOWN | UP | VOLATILITY
+    severity: numeric("severity", { precision: 5, scale: 4 }).notNull(),
+    confidence: numeric("confidence", { precision: 5, scale: 4 }).notNull(),
+    horizonHours: integer("horizon_hours").notNull(),
+    observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    evidence: jsonb("evidence").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    moduleIdx: index("signals_module_idx").on(t.module),
+    expiresIdx: index("signals_expires_idx").on(t.expiresAt),
+    chainIdx: index("signals_chain_idx").on(t.chainId),
   }),
 );
 

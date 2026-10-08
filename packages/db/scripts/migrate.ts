@@ -14,7 +14,9 @@ async function migrate() {
     `;
     const [row] = exists as [{ exists: boolean }];
     if (!row.exists) {
-      await sql.unsafe(`CREATE TYPE ${name} AS ENUM (${values})`);
+      // Catatan: `sql.unsafe(...)` pada @neondatabase/serverless (HTTP) TIDAK
+      // mengeksekusi DDL ini secara andal (type tidak persist). Pakai `sql.query`.
+      await sql.query(`CREATE TYPE ${name} AS ENUM (${values})`);
       console.log(`  Type ${name} created.`);
     } else {
       console.log(`  Type ${name} already exists.`);
@@ -196,6 +198,89 @@ async function migrate() {
     CREATE INDEX IF NOT EXISTS notification_logs_user_idx ON notification_logs (user_id);
   `;
   console.log("  notification_logs");
+
+  // --- Research layer (ADR 0004/0005): signals, research_reports, settlements, lessons.
+  await createTypeIfNotExists(
+    "signal_module",
+    "'ORACLE', 'TECHNICAL', 'ONCHAIN', 'MACRO', 'NEWS', 'SOCIAL', 'RESEARCH'",
+  );
+  await createTypeIfNotExists("research_trigger", "'SCHEDULED', 'ESCALATION'");
+  await createTypeIfNotExists(
+    "settlement_label",
+    "'TRUE_POSITIVE', 'FALSE_POSITIVE', 'MISSED', 'TRUE_NEGATIVE'",
+  );
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS signals (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      chain_id INTEGER NOT NULL,
+      module signal_module NOT NULL,
+      paths JSONB,
+      assets JSONB NOT NULL,
+      direction TEXT NOT NULL,
+      severity NUMERIC(5,4) NOT NULL,
+      confidence NUMERIC(5,4) NOT NULL,
+      horizon_hours INTEGER NOT NULL,
+      observed_at TIMESTAMPTZ NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      evidence JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS signals_module_idx ON signals (module);`;
+  await sql`CREATE INDEX IF NOT EXISTS signals_expires_idx ON signals (expires_at);`;
+  await sql`CREATE INDEX IF NOT EXISTS signals_chain_idx ON signals (chain_id);`;
+  console.log("  signals");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS research_reports (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      chain_id INTEGER NOT NULL,
+      trigger research_trigger NOT NULL,
+      report JSONB NOT NULL,
+      analyst_reports JSONB NOT NULL,
+      debate JSONB NOT NULL,
+      prompt_version TEXT NOT NULL,
+      models JSONB NOT NULL,
+      usage JSONB NOT NULL,
+      diagnostics JSONB,
+      horizon_ends_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS research_reports_horizon_idx ON research_reports (horizon_ends_at);`;
+  await sql`CREATE INDEX IF NOT EXISTS research_reports_chain_idx ON research_reports (chain_id);`;
+  console.log("  research_reports");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS risk_settlements (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      chain_id INTEGER NOT NULL,
+      risk_assessment_id UUID,
+      research_report_id UUID REFERENCES research_reports (id) ON DELETE CASCADE,
+      label settlement_label NOT NULL,
+      lead_time_minutes INTEGER,
+      outcome JSONB NOT NULL,
+      model_version TEXT NOT NULL,
+      settled_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS risk_settlements_label_idx ON risk_settlements (label);`;
+  await sql`CREATE INDEX IF NOT EXISTS risk_settlements_report_idx ON risk_settlements (research_report_id);`;
+  console.log("  risk_settlements");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS research_lessons (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      settlement_id UUID NOT NULL REFERENCES risk_settlements (id) ON DELETE CASCADE,
+      paths JSONB NOT NULL,
+      lesson TEXT NOT NULL,
+      active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS research_lessons_active_idx ON research_lessons (active);`;
+  console.log("  research_lessons");
 
   console.log("\nMigration complete.");
 }

@@ -12,6 +12,7 @@ import "./llm/anthropic.test.ts";
 import "./llm/budget.test.ts";
 import "./llm/openai-compatible.test.ts";
 import "./llm/registry.test.ts";
+import "./db/history.test.ts";
 import "./reflection/settle.test.ts";
 import "./reflection/lessons.test.ts";
 import "./reflection/scorecard.test.ts";

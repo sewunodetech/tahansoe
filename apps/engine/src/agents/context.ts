@@ -87,33 +87,29 @@ export async function buildContext(params: {
   collector?: ResearchInputCollector;
 }): Promise<ResearchContext> {
   const now = params.now ?? new Date();
-  if (params.dry) {
-    const collect = params.collector ?? collectResearchInputs;
-    const inputs = await collect({
-      chainId: params.chainId,
-      assets: params.assets,
-      now,
-    });
-    return {
-      chainId: params.chainId,
-      assets: params.assets,
-      // TODO(dev): turunkan regime dari risk_assessments terbaru saat DB aktif.
-      currentRegime: "CALM",
-      signals: inputs.signals,
-      marketEvents: inputs.marketEvents,
-      macroEvents: inputs.macroEvents,
-      // chainNotes bersih; warnings sumber disimpan terpisah untuk audit (G7).
-      chainNotes: [...inputs.chainNotes],
-      warnings: [...inputs.warnings],
-      builtAt: now,
-    };
-  }
-
-  // TODO(dev): jalur DB — query signals aktif, market_events 24j, kalender makro,
-  // regime kini dari risk_assessments, chainNotes dari chain registry.
-  throw new Error(
-    "[engine/agents/context] buildContext non-dry belum diimplementasikan — lihat spec m2-engine-skeleton.",
-  );
+  // Input SELALU dirakit dari sumber (ADR 0004 §6: kode yang mengambil data).
+  // `dry` TIDAK memengaruhi pengumpulan input — ia hanya menentukan apakah hasil
+  // run disimpan ke DB (di run.ts). Membaca signals/market_events tersimpan dari
+  // DB adalah fitur M2 terpisah (spec m2-engine-skeleton), belum diaktifkan.
+  const collect = params.collector ?? collectResearchInputs;
+  const inputs = await collect({
+    chainId: params.chainId,
+    assets: params.assets,
+    now,
+  });
+  return {
+    chainId: params.chainId,
+    assets: params.assets,
+    // TODO(dev): turunkan regime dari risk_assessments terbaru saat DB-read M2 aktif.
+    currentRegime: "CALM",
+    signals: inputs.signals,
+    marketEvents: inputs.marketEvents,
+    macroEvents: inputs.macroEvents,
+    // chainNotes bersih; warnings sumber disimpan terpisah untuk audit (G7).
+    chainNotes: [...inputs.chainNotes],
+    warnings: [...inputs.warnings],
+    builtAt: now,
+  };
 }
 
 /**
