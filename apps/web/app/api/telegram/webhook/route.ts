@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq, and, isNull } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { linkNonces, telegramAccounts } from "@/lib/schema";
+import { db, linkNonces, telegramAccounts } from "@tahansoe/db";
 
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-telegram-bot-api-secret-token");

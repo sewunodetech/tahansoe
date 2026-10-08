@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { siweNonces } from "@/lib/schema";
+import { db, siweNonces } from "@tahansoe/db";
 import crypto from "crypto";
 
 export async function GET() {

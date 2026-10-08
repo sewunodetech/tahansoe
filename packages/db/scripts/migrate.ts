@@ -1,37 +1,36 @@
-import "dotenv/config";
+import "./env";
 import { neon } from "@neondatabase/serverless";
 
 const sql = neon(process.env.DATABASE_URL!);
 
-async function reset() {
-  console.log("Dropping all tables...");
-  await sql`DROP TABLE IF EXISTS notification_logs CASCADE`;
-  await sql`DROP TABLE IF EXISTS intents CASCADE`;
-  await sql`DROP TABLE IF EXISTS policies CASCADE`;
-  await sql`DROP TABLE IF EXISTS positions CASCADE`;
-  await sql`DROP TABLE IF EXISTS guardian_modules CASCADE`;
-  await sql`DROP TABLE IF EXISTS telegram_accounts CASCADE`;
-  await sql`DROP TABLE IF EXISTS link_nonces CASCADE`;
-  await sql`DROP TABLE IF EXISTS siwe_nonces CASCADE`;
-  await sql`DROP TABLE IF EXISTS users CASCADE`;
+async function migrate() {
+  console.log("Running migrations...\n");
 
-  console.log("Dropping old enums...");
-  await sql`DROP TYPE IF EXISTS notification_type CASCADE`;
-  await sql`DROP TYPE IF EXISTS intent_status CASCADE`;
-  await sql`DROP TYPE IF EXISTS funding_source CASCADE`;
-  await sql`DROP TYPE IF EXISTS intent_action CASCADE`;
-  await sql`DROP TYPE IF EXISTS protocol CASCADE`;
+  async function createTypeIfNotExists(name: string, values: string) {
+    const exists = await sql`
+      SELECT EXISTS (
+        SELECT 1 FROM pg_type WHERE typname = ${name}
+      ) AS exists;
+    `;
+    const [row] = exists as [{ exists: boolean }];
+    if (!row.exists) {
+      await sql.unsafe(`CREATE TYPE ${name} AS ENUM (${values})`);
+      console.log(`  Type ${name} created.`);
+    } else {
+      console.log(`  Type ${name} already exists.`);
+    }
+  }
 
-  console.log("Creating enums...");
-  await sql`CREATE TYPE protocol AS ENUM ('aave-v3', 'morpho-blue')`;
-  await sql`CREATE TYPE intent_action AS ENUM ('REPAY', 'SUPPLY_COLLATERAL', 'DELEVERAGE', 'NOOP')`;
-  await sql`CREATE TYPE funding_source AS ENUM ('HOT_RESERVE', 'WARM_RESERVE', 'FLASH_LOAN')`;
-  await sql`CREATE TYPE intent_status AS ENUM ('PENDING', 'SIMULATED', 'EXECUTED', 'FAILED', 'SKIPPED')`;
-  await sql`CREATE TYPE notification_type AS ENUM ('HF_WARNING', 'EXECUTION_SUCCESS', 'EXECUTION_FAILED', 'LINK_CONFIRMED', 'RESERVE_LOW')`;
+  await createTypeIfNotExists("protocol", "'aave-v3', 'morpho-blue'");
+  await createTypeIfNotExists("intent_action", "'REPAY', 'SUPPLY_COLLATERAL', 'DELEVERAGE', 'NOOP'");
+  await createTypeIfNotExists("funding_source", "'HOT_RESERVE', 'WARM_RESERVE', 'FLASH_LOAN'");
+  await createTypeIfNotExists("intent_status", "'PENDING', 'SIMULATED', 'EXECUTED', 'FAILED', 'SKIPPED'");
+  await createTypeIfNotExists("notification_type", "'HF_WARNING', 'EXECUTION_SUCCESS', 'EXECUTION_FAILED', 'LINK_CONFIRMED', 'RESERVE_LOW'");
 
-  console.log("Creating users...");
+  console.log("Enums ready.\n");
+
   await sql`
-    CREATE TABLE users (
+    CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       wallet_address TEXT NOT NULL,
       chain_id INTEGER NOT NULL,
@@ -40,11 +39,13 @@ async function reset() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
-  await sql`CREATE UNIQUE INDEX IF NOT EXISTS users_wallet_chain_unique ON users (wallet_address, chain_id);`;
-
-  console.log("Creating siwe_nonces...");
   await sql`
-    CREATE TABLE siwe_nonces (
+    CREATE UNIQUE INDEX IF NOT EXISTS users_wallet_chain_unique ON users (wallet_address, chain_id);
+  `;
+  console.log("  users");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS siwe_nonces (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       nonce TEXT NOT NULL,
       expires_at TIMESTAMPTZ NOT NULL,
@@ -52,11 +53,13 @@ async function reset() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
-  await sql`CREATE UNIQUE INDEX IF NOT EXISTS siwe_nonces_nonce_unique ON siwe_nonces (nonce);`;
-
-  console.log("Creating link_nonces...");
   await sql`
-    CREATE TABLE link_nonces (
+    CREATE UNIQUE INDEX IF NOT EXISTS siwe_nonces_nonce_unique ON siwe_nonces (nonce);
+  `;
+  console.log("  siwe_nonces");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS link_nonces (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       code TEXT NOT NULL,
@@ -65,11 +68,13 @@ async function reset() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
-  await sql`CREATE UNIQUE INDEX IF NOT EXISTS link_nonces_code_unique ON link_nonces (code);`;
-
-  console.log("Creating telegram_accounts...");
   await sql`
-    CREATE TABLE telegram_accounts (
+    CREATE UNIQUE INDEX IF NOT EXISTS link_nonces_code_unique ON link_nonces (code);
+  `;
+  console.log("  link_nonces");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS telegram_accounts (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       telegram_user_id BIGINT NOT NULL,
@@ -78,12 +83,16 @@ async function reset() {
       linked_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
-  await sql`CREATE UNIQUE INDEX IF NOT EXISTS telegram_accounts_tguser_unique ON telegram_accounts (telegram_user_id);`;
-  await sql`CREATE INDEX IF NOT EXISTS telegram_accounts_user_idx ON telegram_accounts (user_id);`;
-
-  console.log("Creating guardian_modules...");
   await sql`
-    CREATE TABLE guardian_modules (
+    CREATE UNIQUE INDEX IF NOT EXISTS telegram_accounts_tguser_unique ON telegram_accounts (telegram_user_id);
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS telegram_accounts_user_idx ON telegram_accounts (user_id);
+  `;
+  console.log("  telegram_accounts");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS guardian_modules (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       chain_id INTEGER NOT NULL,
@@ -93,11 +102,13 @@ async function reset() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
-  await sql`CREATE UNIQUE INDEX IF NOT EXISTS guardian_modules_user_chain_unique ON guardian_modules (user_id, chain_id);`;
-
-  console.log("Creating positions...");
   await sql`
-    CREATE TABLE positions (
+    CREATE UNIQUE INDEX IF NOT EXISTS guardian_modules_user_chain_unique ON guardian_modules (user_id, chain_id);
+  `;
+  console.log("  guardian_modules");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS positions (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       protocol protocol NOT NULL,
@@ -111,12 +122,16 @@ async function reset() {
       last_checked_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
-  await sql`CREATE INDEX IF NOT EXISTS positions_user_idx ON positions (user_id);`;
-  await sql`CREATE INDEX IF NOT EXISTS positions_protocol_market_idx ON positions (protocol, market_id);`;
-
-  console.log("Creating policies...");
   await sql`
-    CREATE TABLE policies (
+    CREATE INDEX IF NOT EXISTS positions_user_idx ON positions (user_id);
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS positions_protocol_market_idx ON positions (protocol, market_id);
+  `;
+  console.log("  positions");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS policies (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       position_id UUID REFERENCES positions (id) ON DELETE CASCADE,
@@ -129,11 +144,13 @@ async function reset() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
-  await sql`CREATE INDEX IF NOT EXISTS policies_user_idx ON policies (user_id);`;
-
-  console.log("Creating intents...");
   await sql`
-    CREATE TABLE intents (
+    CREATE INDEX IF NOT EXISTS policies_user_idx ON policies (user_id);
+  `;
+  console.log("  policies");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS intents (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       position_id UUID NOT NULL REFERENCES positions (id) ON DELETE CASCADE,
@@ -152,13 +169,19 @@ async function reset() {
       executed_at TIMESTAMPTZ
     );
   `;
-  await sql`CREATE INDEX IF NOT EXISTS intents_user_idx ON intents (user_id);`;
-  await sql`CREATE INDEX IF NOT EXISTS intents_position_idx ON intents (position_id);`;
-  await sql`CREATE INDEX IF NOT EXISTS intents_status_idx ON intents (status);`;
-
-  console.log("Creating notification_logs...");
   await sql`
-    CREATE TABLE notification_logs (
+    CREATE INDEX IF NOT EXISTS intents_user_idx ON intents (user_id);
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS intents_position_idx ON intents (position_id);
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS intents_status_idx ON intents (status);
+  `;
+  console.log("  intents");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS notification_logs (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       telegram_account_id UUID REFERENCES telegram_accounts (id) ON DELETE SET NULL,
@@ -169,11 +192,17 @@ async function reset() {
       sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
-  await sql`CREATE INDEX IF NOT EXISTS notification_logs_user_idx ON notification_logs (user_id);`;
+  await sql`
+    CREATE INDEX IF NOT EXISTS notification_logs_user_idx ON notification_logs (user_id);
+  `;
+  console.log("  notification_logs");
 
-  console.log("\nAll tables reset successfully.");
+  console.log("\nMigration complete.");
 }
 
-reset()
+migrate()
   .then(() => process.exit(0))
-  .catch((err) => { console.error("Reset failed:", err); process.exit(1); });
+  .catch((err) => {
+    console.error("Migration failed:", err);
+    process.exit(1);
+  });

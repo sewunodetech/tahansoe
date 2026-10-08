@@ -17,7 +17,7 @@
 - `TahansoeGuardian` v1: hot reserve repay, unit + fuzz test, fork test Aave V3 Arbitrum Sepolia
 - Guardian v1 ter-deploy di Arbitrum Sepolia: `0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E`
 - Dokumentasi & workflow agent (PRD v0.2, BRD, architecture, security, ADR)
-- Struktur repo & runtime: ADR 0007 (*Accepted*) — npm workspaces, Next.js + worker terpisah, tanpa indexer dulu. Fase 0 berjalan: `.gitattributes`, CI, `packages/domain`
+- Struktur repo & runtime: ADR 0007 (*Accepted*) — npm workspaces, Next.js + worker terpisah, tanpa indexer dulu. Fase 0 & 1 selesai: `.gitattributes`, CI, `packages/domain`, `packages/db`, web di `apps/web` (build hijau)
 - Model bisnis: ADR 0006 (*Accepted*) — informasi gratis, otomasi Pro, tanpa fee on-chain di v1
 - Desain research agents & reflection: ADR 0004/0005 (*Accepted*), [spec m3-research-agents](specs/m3-research-agents.md), [knowledge/risk-transmission](knowledge/risk-transmission.md), PRD v0.3
 
@@ -34,7 +34,7 @@
 ### Konsistensi
 - [ ] Copy Telegram "execution success" menyebut flash loan; v1 memakai hot reserve
 - [ ] FAQ/landing menyebut Safe Module; v1 memakai approve dari EOA (lihat ADR 0003)
-- [ ] `contracts/README.md` merujuk `.env.example` yang belum ada
+- [ ] `contracts/README.md` merujuk `.env.example` yang belum ada (`.gitignore` kini mengizinkan `.env.example`; file-nya belum dibuat)
 - [ ] Form waitlist tidak menyimpan email
 - [ ] UI masih menyebut chain "Base" (`components/landing/HFCard.tsx`, `components/ui/dashboard-sidebar.tsx`, `lib/mock-data.ts`); `base` jadi chain pertama di `lib/wagmi-config.ts`
 
@@ -43,7 +43,10 @@
 - [ ] Tabel `positions`, `policies`, `intents`, `notification_logs` belum dipakai
 - [ ] Tabel `guardian_modules` mengasumsikan Safe; tinjau ulang
 - [ ] CI baru ditambahkan (`.github/workflows/ci.yml`); belum terbukti hijau di GitHub
-- [ ] Migrasi struktur ADR 0007: fase 1 (`packages/db`, web → `apps/web`, ubah Root Directory Vercel), fase 2 (`engine/` → `apps/engine`), fase 3 (demo mode)
+- [ ] **Vercel: ubah Root Directory proyek ke `apps/web`** saat branch ini di-merge (web sudah pindah); env Vercel tidak berubah. Lokal: pindahkan `.env` ke `apps/web/.env`
+- [ ] Migrasi struktur ADR 0007: fase 2 (`engine/` → `apps/engine`, pakai `@tahansoe/db` & `@tahansoe/domain`, hapus `engine/src/db/schema.ts` duplikat), fase 3 (demo mode)
+- [ ] 11 error lint lama di web (CI lint sementara non-blocking): `no-explicit-any` di dashboard (7), `react-hooks/set-state-in-effect` (bot, HFCard), `react-hooks/purity` (bot), `react-hooks/refs` (`lib/simulation-engine.tsx`)
+- [ ] Konfigurasi npm mesin dev memakai `legacy-peer-deps=true`; `ethers` (peer dep `siwe`) kini dependensi eksplisit web
 - [ ] Host untuk engine (worker selalu hidup) belum dipilih
 - [ ] Belum ada test untuk web app
 

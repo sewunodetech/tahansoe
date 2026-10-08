@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { telegramAccounts } from "@/lib/schema";
+import { db, telegramAccounts } from "@tahansoe/db";
 import { getSession } from "@/lib/session";
 
 export async function GET() {

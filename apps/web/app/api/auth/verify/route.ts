@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SiweMessage } from "siwe";
 import { eq, and, isNull } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { siweNonces, users } from "@/lib/schema";
+import { db, siweNonces, users } from "@tahansoe/db";
 import { getSession } from "@/lib/session";
 
 export async function POST(req: NextRequest) {

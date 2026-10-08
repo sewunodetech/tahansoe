@@ -101,7 +101,7 @@ npm install
 
 ### 3. Environment
 
-Buat file `.env` di root:
+Buat file `apps/web/.env` (dipakai web app **dan** script database):
 
 ```bash
 DATABASE_URL=postgresql://user:password@host/dbname
@@ -125,17 +125,17 @@ openssl rand -base64 32
 ### 4. Siapkan database
 
 ```bash
-npx tsx scripts/migrate.ts
+npm run db:migrate
 ```
 
-Script bantuan lain di folder `scripts/`:
+Script database ada di `packages/db/scripts/` dan dijalankan dari root:
 
-| Script | Kegunaan |
-|--------|----------|
-| `migrate.ts` | Buat enum + tabel (idempotent, aman diulang) |
-| `check-db.ts` | Cek koneksi & isi tabel |
-| `reset-db.ts` | **Hapus** semua tabel lalu buat ulang |
-| `fix-telegram.ts` | Perbaiki data linking Telegram |
+| Perintah | Kegunaan |
+|----------|----------|
+| `npm run db:migrate` | Buat enum + tabel (idempotent, aman diulang) |
+| `npm run db:check` | Cek koneksi & isi tabel |
+| `npm run db:reset` | **Hapus** semua tabel lalu buat ulang |
+| `npm run db:fix-telegram` | Perbaiki data linking Telegram |
 
 ### 5. Jalankan
 
@@ -151,38 +151,39 @@ Buka [http://localhost:3000](http://localhost:3000), lalu connect wallet untuk m
 
 | Perintah | Fungsi |
 |----------|--------|
-| `npm run dev` | Development server |
-| `npm run build` | Build production |
+Semua perintah dijalankan dari root repo (npm workspaces).
+
+| Perintah | Fungsi |
+|----------|--------|
+| `npm run dev` | Development server web (`apps/web`) |
+| `npm run build` | Build production web |
 | `npm run start` | Jalankan hasil build |
-| `npm run lint` | ESLint |
+| `npm run lint` | ESLint web |
+| `npm run typecheck` | TypeScript untuk semua workspace |
+| `npm test` | Test semua workspace |
+| `npm run db:*` | Script database (lihat di atas) |
+
+Engine (`engine/`) dan kontrak (`contracts/`) punya perintah sendiri — lihat README masing-masing.
 
 ---
 
 ## Struktur folder
 
+Monorepo npm workspaces — lihat [ADR 0007](docs/decisions/0007-monorepo-structure-and-runtime.md).
+
 ```
-app/
-  page.tsx            landing page
-  connect/            halaman connect wallet
-  dashboard/          positions, history, bot, chat, settings
-  api/
-    auth/             SIWE: nonce → verify → me
-    telegram/         link-code, status, unlink, webhook
-    alerts/notify     kirim notifikasi
-components/
-  landing/            section-section landing page
-  ui/                 komponen UI reusable
-  providers/          Web3Provider, ThemeProvider
-lib/
-  schema.ts           skema database (Drizzle)
-  db.ts               koneksi Neon
-  session.ts          iron-session
-  wagmi-config.ts     konfigurasi chain & connector
-  simulation-*.tsx    engine + context simulasi HF
-  mock-data.ts        data contoh posisi
+apps/
+  web/                Next.js (landing, dashboard, API routes)
+    app/              halaman & route handler (auth SIWE, telegram, alerts)
+    components/       landing/, ui/, providers/
+    hooks/            useAuth, useAuthGuard, useTelegramLink
+    lib/              session, wagmi-config, utils, simulasi HF (demo)
+packages/
+  db/                 SATU skema Drizzle + koneksi Neon + script database
+  domain/             tipe kanonik (Signal, RiskAssessment, Intent, ...), chain registry, rumus HF
+engine/               Core Risk Engine — research agents & reflection (akan pindah ke apps/engine)
 contracts/            Foundry: TahansoeGuardian, test, deploy
-scripts/              utilitas database
-docs/                 PRD, BRD, architecture, security, status, ADR, specs
+docs/                 PRD, BRD, architecture, security, status, ADR, specs, knowledge
 AGENTS.md             panduan & workflow untuk agent/kontributor
 DESIGN.md             design system (token, tipografi, komponen)
 ```

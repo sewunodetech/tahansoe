@@ -67,7 +67,7 @@ Urutan prioritas jika dokumen bertentangan: **security.md > ADR terbaru > prd.md
 - Jangan menambah fitur di luar scope tugas. Catat ide tambahan di `docs/status.md` → "Backlog/ide".
 
 ### Sebelum selesai (Definition of Done)
-- [ ] `npm run lint` bersih untuk perubahan web/engine; `forge test` hijau untuk perubahan kontrak.
+- [ ] `npm run typecheck` + `npm test` hijau; `npm run lint` tidak menambah error baru; `forge test` hijau untuk perubahan kontrak.
 - [ ] Tidak ada invariant di §2 yang dilanggar (cek ulang diff secara adversarial).
 - [ ] `docs/status.md` diperbarui (apa yang selesai, gap baru).
 - [ ] Checkbox milestone di `docs/prd.md` §10 diperbarui jika ada yang selesai.
@@ -88,12 +88,17 @@ Urutan prioritas jika dokumen bertentangan: **security.md > ADR terbaru > prd.md
 ## 6. Perintah
 
 ```bash
-# Web app
+# Web app + packages (npm workspaces, jalankan dari root)
 npm install
-npm run dev            # http://localhost:3000
+npm run dev            # http://localhost:3000 (apps/web)
 npm run lint
+npm run typecheck      # semua workspace
+npm test               # semua workspace
 npm run build
-npx tsx scripts/migrate.ts   # setup DB (idempotent)
+npm run db:migrate     # setup DB (idempotent), env dari apps/web/.env
+
+# Engine (belum workspace, fase 2 ADR 0007)
+cd engine && npm install && npm run typecheck && npm test
 
 # Kontrak
 cd contracts

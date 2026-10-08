@@ -33,17 +33,17 @@ Dokumen ini menjelaskan *bagaimana* sistem dibangun. Bagian bertanda **(rencana)
 | Web app (landing, dashboard, API) | `app/`, `components/`, `hooks/`, `lib/` | Ada; dashboard masih memakai simulasi |
 | Auth (SIWE + iron-session) | `app/api/auth/`, `lib/session.ts` | Ada |
 | Telegram (link, webhook, alert) | `app/api/telegram/`, `app/api/alerts/` | Ada; alert dipicu dari browser |
-| Database | `lib/schema.ts`, `scripts/migrate.ts` | Ada; sebagian tabel belum dipakai |
+| Database | `packages/db/src/schema.ts`, `packages/db/scripts/migrate.ts` | Ada; sebagian tabel belum dipakai |
 | Guardian v1 | `contracts/src/TahansoeGuardian.sol` | Live di Arbitrum Sepolia |
 | Core Risk Engine | `engine/` → target `apps/engine/` (ADR 0007) | Research layer (boilerplate) sedang dibangun; modul M2 **(rencana)** |
 | Keeper | `engine/src/keeper/` | **(rencana)** |
-| Paket bersama | `packages/domain/` (tipe, chain registry, rumus HF), `packages/db/` (skema Drizzle tunggal) | `domain` sedang dibuat (fase 0); `db` di fase 1 — ADR 0007 |
+| Paket bersama | `packages/domain/` (tipe, chain registry, rumus HF), `packages/db/` (skema Drizzle tunggal + script DB) | Ada — ADR 0007 |
 
 ---
 
 ## 2. Struktur repo
 
-> **Target struktur ada di [ADR 0007](decisions/0007-monorepo-structure-and-runtime.md):** npm workspaces dengan `apps/web`, `apps/engine`, `packages/db`, `packages/domain`. Migrasi dilakukan bertahap (fase 0–3). Pohon di bawah menunjukkan isi `engine/`, yang akan menjadi `apps/engine/` di fase 2.
+> **Struktur repo ([ADR 0007](decisions/0007-monorepo-structure-and-runtime.md)):** npm workspaces. Sudah jalan: `apps/web` (Next.js), `packages/db` (skema & koneksi tunggal), `packages/domain` (tipe, chain registry, rumus HF). Fase 2: `engine/` → `apps/engine/`. Pohon di bawah menunjukkan isi engine. Path `app/`, `components/`, `hooks/`, `lib/` di dokumen ini relatif terhadap `apps/web/`; `lib/schema.ts` kini `packages/db/src/schema.ts`.
 
 ```
 app/                    Next.js App Router (UI + API routes)
@@ -167,7 +167,7 @@ Alamat Arbitrum One yang sudah diverifikasi on-chain (8 Okt 2026), beserta dua t
 
 ## 5. Data model
 
-Skema saat ini di `lib/schema.ts`.
+Skema saat ini di `packages/db/src/schema.ts` (satu-satunya sumber, ADR 0007).
 
 | Tabel | Fungsi | Status |
 |-------|--------|--------|

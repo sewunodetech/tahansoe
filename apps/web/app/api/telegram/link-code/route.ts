@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { linkNonces } from "@/lib/schema";
+import { db, linkNonces } from "@tahansoe/db";
 import { getSession } from "@/lib/session";
 import crypto from "crypto";
 
