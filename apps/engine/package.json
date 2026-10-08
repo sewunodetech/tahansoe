@@ -1,21 +1,21 @@
 {
-  "name": "tahansoe-engine",
-  "version": "0.0.0",
+  "name": "@tahansoe/engine",
+  "version": "0.1.0",
   "private": true,
   "description": "Core Risk Engine — research agents (multi-agent) + reflection loop. Lihat docs/specs/m3-research-agents.md.",
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test test/all.test.ts",
-    "research:run": "tsx src/agents/run.ts",
+    "research:run": "tsx src/index.ts",
     "reflect:settle": "tsx src/reflection/settle.ts",
     "reflect:daily": "tsx src/reflection/reflect.ts",
     "scorecard": "tsx src/reflection/scorecard.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",
-    "@neondatabase/serverless": "^1.1.0",
-    "drizzle-orm": "^0.45.2",
+    "@tahansoe/db": "*",
+    "@tahansoe/domain": "*",
     "viem": "^2.55.19",
     "zod": "^4.1.12"
   },

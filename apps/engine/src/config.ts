@@ -12,9 +12,12 @@
  *    STRESSED/CRISIS (dijaga di fusion, bukan di sini).
  */
 
-/** Regime pasar, selaras PRD §6.3 / ResearchReport.proposedRegime. */
-export const REGIMES = ["CALM", "ELEVATED", "STRESSED", "CRISIS"] as const;
-export type Regime = (typeof REGIMES)[number];
+/**
+ * Regime pasar — tipe kanonik dari @tahansoe/domain (ADR 0007: satu sumber tipe).
+ * Di-re-export agar modul engine lain tetap bisa `import { REGIMES, Regime }` dari config.
+ */
+export { REGIMES } from "@tahansoe/domain";
+export type { Regime } from "@tahansoe/domain";
 
 /** Pemicu satu run riset (spec §3.2). */
 export type ResearchTrigger = "SCHEDULED" | "ESCALATION";
@@ -60,7 +63,7 @@ export const env = {
  */
 export const config = {
   /** Versi prompt gabungan; disimpan di research_reports.prompt_version. */
-  promptVersion: "2026.10.0",
+  promptVersion: "2026.10.1",
 
   /** Batas keras confidence sinyal RESEARCH (spec §3.3). JANGAN naikkan tanpa ADR. */
   confidenceCap: 0.6,

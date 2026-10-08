@@ -1,16 +1,17 @@
 /**
- * Skema DB tambahan untuk research layer (spec §3.8, ADR 0004/0005).
+ * Skema DB research layer (spec §3.8, ADR 0004/0005).
  *
- * CATATAN INTEGRASI (architecture §2 & §5):
- *  - Tabel bersama (schema DB) idealnya berada di `lib/schema.ts`. Tabel di sini
- *    adalah boilerplate yang BELUM digabung karena `signals`, `risk_assessments`,
- *    dan `market_events` sendiri masih (rencana) di spec M2/M3 lain.
- *  - Saat tabel `signals` dibuat, tambahkan nilai enum `RESEARCH` pada
- *    `signals.module` (lihat `signalModuleEnum` di bawah sebagai acuan), dan
- *    pindahkan definisi ini ke sumber kebenaran bersama.
+ * CATATAN INTEGRASI:
+ *  - Tabel ini dipakai oleh @tahansoe/engine (research agents & reflection) dan
+ *    dipindahkan ke sini pada Fase 2 ADR 0007 agar skema DB tunggal (tanpa duplikasi).
+ *  - Tabel ini BELUM dibuat oleh `packages/db/scripts/migrate.ts`; buat migrasinya
+ *    saat implementasi spec M2/M3 (bukan boilerplate). `signals`, `risk_assessments`,
+ *    dan `market_events` sendiri masih (rencana) di spec lain.
+ *  - Saat tabel `signals` dibuat, pakai `signalModuleEnum` di bawah (sudah memuat
+ *    nilai baru `RESEARCH` dari ADR 0004) sebagai acuan nilai `signals.module`.
  *  - Setiap tabel menyimpan `chain_id` karena menyangkut data on-chain (architecture §5).
  *
- * Konvensi mengikuti lib/schema.ts: uuid pk, timestamps withTimezone, jsonb.
+ * Konvensi mengikuti schema.ts: uuid pk, timestamps withTimezone, jsonb.
  */
 
 import {
@@ -58,7 +59,7 @@ export const researchReports = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     chainId: integer("chain_id").notNull(),
     trigger: researchTriggerEnum("trigger").notNull(),
-    /** ResearchReport tervalidasi schema (agents/schemas.ts). */
+    /** ResearchReport tervalidasi schema (engine agents/schemas.ts). */
     report: jsonb("report").notNull(),
     /** Array AnalystReport. */
     analystReports: jsonb("analyst_reports").notNull(),
@@ -96,7 +97,7 @@ export const riskSettlements = pgTable(
     ),
     label: settlementLabelEnum("label").notNull(),
     leadTimeMinutes: integer("lead_time_minutes"),
-    /** Outcome mentah (outcomes.ts) agar label bisa dihitung ulang. */
+    /** Outcome mentah (engine reflection/outcomes.ts) agar label bisa dihitung ulang. */
     outcome: jsonb("outcome").notNull(),
     /** Versi aturan/prompt saat penilaian dibuat (ADR 0005 §4). */
     modelVersion: text("model_version").notNull(),
