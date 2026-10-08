@@ -118,6 +118,7 @@ export default function BotPage() {
   const [status,       setStatus]       = useState<ConnectionStatus>("disconnected");
   const [copied,       setCopied]       = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [lastAlertTime, setLastAlertTime] = useState<string>("—");
 
   const { linkCode, status: linkStatus, error: linkError, generateCode, reset: resetLink } = useTelegramLink();
 
@@ -129,10 +130,6 @@ export default function BotPage() {
       .catch(() => {})
       .finally(() => setStatusLoading(false));
   }, []);
-
-  useEffect(() => {
-    if (linkStatus === "loading") setStatus("pending");
-  }, [linkStatus]);
 
   /* Real unlink: DELETE /api/telegram/status (or POST /api/telegram/unlink) */
   const handleDisconnect = async () => {
@@ -158,14 +155,31 @@ export default function BotPage() {
   /* Stats derived from simulation state */
   const alertsSent    = alerts.length;
   const executions    = history.filter((h) => h.action !== "NOOP" && h.status === "success").length;
-  const lastAlertTime = alerts.length > 0
-    ? (() => {
-        const diff = Date.now() - alerts[0].timestamp;
-        if (diff < 60_000)   return `${Math.round(diff / 1_000)}s ago`;
-        if (diff < 3_600_000) return `${Math.round(diff / 60_000)}m ago`;
-        return `${Math.round(diff / 3_600_000)}h ago`;
-      })()
-    : "—";
+
+  useEffect(() => {
+    const updateTime = () => {
+      const first = alerts[0];
+      if (!first) {
+        setLastAlertTime("—");
+        return;
+      }
+      const diff = Date.now() - first.timestamp;
+      if (diff < 60_000) {
+        setLastAlertTime(`${Math.round(diff / 1_000)}s ago`);
+      } else if (diff < 3_600_000) {
+        setLastAlertTime(`${Math.round(diff / 60_000)}m ago`);
+      } else {
+        setLastAlertTime(`${Math.round(diff / 3_600_000)}h ago`);
+      }
+    };
+
+    const timer = setTimeout(updateTime, 0);
+    const interval = setInterval(updateTime, 10_000);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [alerts]);
 
   return (
     <div className="w-full p-5 md:p-7 space-y-5">

@@ -350,7 +350,7 @@ export function SidebarNav({
                   className="text-[10px] font-mono leading-none"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Base · Connected
+                  Arbitrum · Connected
                 </span>
               </div> */}
             </div>

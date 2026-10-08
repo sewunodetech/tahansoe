@@ -11,7 +11,7 @@ import {
   Zap, ArrowRight, CheckCircle, Clock,
 } from "lucide-react";
 import { useSimulation } from "@/lib/simulation-context";
-import { PORTFOLIO_BREAKDOWN } from "@/lib/mock-data";
+import { PORTFOLIO_BREAKDOWN, type Position } from "@/lib/mock-data";
 
 // ── helpers ───────────────────────────────────────────────────────────────
 function hfBarPct(hf: number) {
@@ -28,12 +28,24 @@ const HF_TEXT  = { safe: "text-emerald-400", warning: "text-yellow-400", critica
 const HF_LABEL = { safe: "Safe", warning: "Monitor", critical: "At risk" };
 
 // ── custom tooltip ────────────────────────────────────────────────────────
-function ChartTooltip({ active, payload, label }: any) {
+interface ChartTooltipItem {
+  name?: string;
+  value: number;
+  color?: string;
+}
+
+interface ChartTooltipProps {
+  active?: boolean;
+  payload?: readonly ChartTooltipItem[];
+  label?: string | number;
+}
+
+function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-[8px] border border-white/[0.08] px-3 py-2" style={{ background: "#0b1110" }}>
       <p className="text-[10px] font-mono text-white/30 mb-1">{label}</p>
-      {payload.map((p: any) => (
+      {payload.map((p) => (
         <p key={p.name} className="text-[12px] font-mono" style={{ color: p.color }}>
           {p.name}: {p.value.toFixed(2)}
         </p>
@@ -72,7 +84,7 @@ function StatCard({ label, value, sub, icon: Icon, colorIndex = 0 }: {
 }
 
 // ── position mini-card ────────────────────────────────────────────────────
-function PositionMini({ pos, triggerHF }: { pos: any; triggerHF: number }) {
+function PositionMini({ pos, triggerHF }: { pos: Position; triggerHF: number }) {
   const pct  = hfBarPct(pos.hf);
   const tPct = hfBarPct(triggerHF);
   const s    = pos.status;

@@ -210,8 +210,10 @@ async function sendTelegramAlert(payload: TelegramPayload) {
 export function SimulationEngine() {
   const { state, dispatch } = useSimulation();
 
-  const stateRef       = useRef(state);
-  stateRef.current     = state;
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const baseEthRef     = useRef(3_400);
   const cooldownRef    = useRef<Map<string, number>>(new Map());

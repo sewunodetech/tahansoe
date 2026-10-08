@@ -69,9 +69,9 @@ export function HFCard() {
 
   // Smooth HF number interpolation
   useEffect(() => {
-    const target = current.hf;
-    if (reduce) { setDisplayHF(target); return; }
+    if (reduce) return;
 
+    const target = current.hf;
     const start = displayHF;
     const diff = target - start;
     const steps = 30;
@@ -93,24 +93,20 @@ export function HFCard() {
       if (hfAnimRef.current) clearInterval(hfAnimRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  }, [step, reduce]);
 
   // Live block counter
   useEffect(() => {
     if (reduce) return;
-    let start = Date.now();
-    const initialValue = blockNum;
-    blockRef.current = setInterval(() => {
-      const elapsedBlocks = Math.floor((Date.now() - start) / 2000);
-      setBlockNum(initialValue + elapsedBlocks);
-      start = Date.now();
-    }, 100);
+    // One simulated block every 2 s.
+    blockRef.current = setInterval(() => setBlockNum((n) => n + 1), 2000);
     return () => {
       if (blockRef.current) clearInterval(blockRef.current);
     };
   }, [reduce]);
 
-  const barPct = hfToBarPct(displayHF);
+  const visibleHF = reduce ? current.hf : displayHF;
+  const barPct = hfToBarPct(visibleHF);
   const statusColor = STATUS_COLOR[current.status];
   const isCritical = current.status === "critical";
   
@@ -180,7 +176,7 @@ export function HFCard() {
                 animate={{ color: isCritical ? "#ef4444" : "#fdf1e1" }}
                 transition={{ duration: 0.4 }}
               >
-                {displayHF.toFixed(2)}
+                {visibleHF.toFixed(2)}
               </motion.span>
               <motion.span
                 className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded-[4px]"
@@ -229,7 +225,7 @@ export function HFCard() {
             <StatCell label="Collateral" value="4.2 ETH" />
             <StatCell label="Debt" value="5,400 USDC" />
             <StatCell label="Protocol" value="Aave V3" />
-            <StatCell label="Chain" value="Base" />
+            <StatCell label="Chain" value="Arbitrum" />
           </div>
 
           {/* Action log */}

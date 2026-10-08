@@ -23,12 +23,24 @@ function HF_COLOR_HEX(status: string) {
   return "#f87171";
 }
 
-function ChartTooltip({ active, payload, label }: any) {
+interface ChartTooltipItem {
+  name?: string;
+  value?: number | string;
+  color?: string;
+}
+
+interface ChartTooltipProps {
+  active?: boolean;
+  payload?: readonly ChartTooltipItem[];
+  label?: string | number;
+}
+
+function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-[8px] border border-white/[0.08] px-3 py-2" style={{ background: "#0b1110" }}>
       <p className="text-[10px] font-mono text-white/30 mb-1">{label}</p>
-      {payload.map((p: any) => (
+      {payload.map((p) => (
         <p key={p.name} className="text-[12px] font-mono" style={{ color: p.color }}>
           {p.name}: {Number(p.value).toFixed(2)}
         </p>
