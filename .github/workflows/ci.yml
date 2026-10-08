@@ -1,5 +1,4 @@
-# CI (ADR 0007). Satu install npm workspaces untuk apps/* dan packages/*.
-# engine/ belum menjadi workspace (fase 2) sehingga masih punya job sendiri.
+# CI (ADR 0007). Satu install npm workspaces untuk apps/* (web, engine) dan packages/*.
 name: CI
 
 on:
@@ -37,9 +36,6 @@ jobs:
   lint:
     name: Web lint
     runs-on: ubuntu-latest
-    # Sementara tidak memblokir: ada error lint lama di dashboard/simulasi
-    # (lihat docs/status.md). Hapus baris ini setelah semuanya diperbaiki.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,24 +44,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
-
-  engine:
-    name: Engine (typecheck + test)
-    runs-on: ubuntu-latest
-    if: ${{ hashFiles('engine/package.json') != '' }}
-    defaults:
-      run:
-        working-directory: engine
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: engine/package-lock.json
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
 
   contracts:
     name: Contracts (forge test, tanpa fork)

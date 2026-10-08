@@ -17,7 +17,9 @@
 - `TahansoeGuardian` v1: hot reserve repay, unit + fuzz test, fork test Aave V3 Arbitrum Sepolia
 - Guardian v1 ter-deploy di Arbitrum Sepolia: `0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E`
 - Dokumentasi & workflow agent (PRD v0.2, BRD, architecture, security, ADR)
-- Struktur repo & runtime: ADR 0007 (*Accepted*) — npm workspaces, Next.js + worker terpisah, tanpa indexer dulu. Fase 0 & 1 selesai: `.gitattributes`, CI, `packages/domain`, `packages/db`, web di `apps/web` (build hijau)
+- Struktur repo & runtime: ADR 0007 (*Accepted*) — npm workspaces, Next.js + worker terpisah, tanpa indexer dulu. Fase 0–2 selesai: `.gitattributes`, CI, `packages/domain`, `packages/db` (skema tunggal, termasuk tabel research yang belum dimigrasi), web di `apps/web`, engine di `apps/engine` (typecheck, test 22+16, build hijau)
+- Prompt LLM engine berbahasa Inggris (`promptVersion` 2026.10.1)
+- Lint web 0 error; UI menampilkan chain Arbitrum; `arbitrumSepolia` ada di wagmi
 - Model bisnis: ADR 0006 (*Accepted*) — informasi gratis, otomasi Pro, tanpa fee on-chain di v1
 - Desain research agents & reflection: ADR 0004/0005 (*Accepted*), [spec m3-research-agents](specs/m3-research-agents.md), [knowledge/risk-transmission](knowledge/risk-transmission.md), PRD v0.3
 
@@ -25,7 +27,6 @@
 
 ### Produk inti (prioritas tertinggi)
 - [ ] Web app belum terhubung ke kontrak (tidak ada read/write Guardian)
-- [ ] `arbitrumSepolia` belum ada di `lib/wagmi-config.ts`
 - [ ] Settings hanya disimpan di localStorage; belum ke kontrak/DB
 - [ ] Dashboard memakai data simulasi, bukan posisi Aave asli
 - [ ] Belum ada keeper/worker; alert Telegram dipicu dari browser (hanya jalan saat tab terbuka)
@@ -36,7 +37,6 @@
 - [ ] FAQ/landing menyebut Safe Module; v1 memakai approve dari EOA (lihat ADR 0003)
 - [ ] `contracts/README.md` merujuk `.env.example` yang belum ada (`.gitignore` kini mengizinkan `.env.example`; file-nya belum dibuat)
 - [ ] Form waitlist tidak menyimpan email
-- [ ] UI masih menyebut chain "Base" (`components/landing/HFCard.tsx`, `components/ui/dashboard-sidebar.tsx`, `lib/mock-data.ts`); `base` jadi chain pertama di `lib/wagmi-config.ts`
 
 ### Data & teknis
 - [ ] `users` unik per `(wallet, chainId)` → ganti jadi per wallet
@@ -44,8 +44,9 @@
 - [ ] Tabel `guardian_modules` mengasumsikan Safe; tinjau ulang
 - [ ] CI baru ditambahkan (`.github/workflows/ci.yml`); belum terbukti hijau di GitHub
 - [ ] **Vercel: ubah Root Directory proyek ke `apps/web`** saat branch ini di-merge (web sudah pindah); env Vercel tidak berubah. Lokal: pindahkan `.env` ke `apps/web/.env`
-- [ ] Migrasi struktur ADR 0007: fase 2 (`engine/` → `apps/engine`, pakai `@tahansoe/db` & `@tahansoe/domain`, hapus `engine/src/db/schema.ts` duplikat), fase 3 (demo mode)
-- [ ] 11 error lint lama di web (CI lint sementara non-blocking): `no-explicit-any` di dashboard (7), `react-hooks/set-state-in-effect` (bot, HFCard), `react-hooks/purity` (bot), `react-hooks/refs` (`lib/simulation-engine.tsx`)
+- [ ] Migrasi struktur ADR 0007 fase 3: simulasi & mock data → `apps/web/features/demo/` (bersama M1)
+- [ ] Tabel research (`packages/db/src/research.ts`) belum ada di `packages/db/scripts/migrate.ts`
+- [ ] 12 warning lint lama di web (non-blocking)
 - [ ] Konfigurasi npm mesin dev memakai `legacy-peer-deps=true`; `ethers` (peer dep `siwe`) kini dependensi eksplisit web
 - [ ] Host untuk engine (worker selalu hidup) belum dipilih
 - [ ] Belum ada test untuk web app
@@ -65,7 +66,7 @@ Lihat [security.md §3](security.md#3-temuan-terbuka).
 
 1. Spec M2: kerangka `engine/` (chain registry, AaveAdapter read, scheduler, tabel signals/risk_assessments)
 2. Keeper v1 di engine: `needsProtection` → `protect` + log `intents` + Telegram dari server
-3. Web: `arbitrumSepolia` di wagmi, Settings → `approve` + `setPolicy`, dashboard baca posisi asli (simulasi jadi "demo mode")
+3. Web: Settings → `approve` + `setPolicy`, dashboard baca posisi asli (simulasi jadi "demo mode")
 4. Oracle monitor + technical module + macro calendar → RiskAssessment dry-run
 5. CI
 6. Verifikasi lisensi komersial sumber data research (FRED, Polymarket, Alpha Vantage, Yahoo, Reddit, GDELT) dan cara baca OI/funding perp DEX on-chain di Arbitrum

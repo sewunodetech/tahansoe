@@ -61,8 +61,9 @@ Urutan prioritas jika dokumen bertentangan: **security.md > ADR terbaru > prd.md
 4. Mengubah arah arsitektur, chain, model keamanan, atau dependensi besar → tulis ADR baru di `docs/decisions/` dari `0000-template.md`. Jangan mengubah ADR lama yang sudah `Accepted`; buat ADR baru yang men-*supersede*.
 
 ### Selama mengerjakan
+- Bahasa: dokumen di `docs/` berbahasa Indonesia (lihat `docs/README.md`); **prompt LLM, instruksi inline ke model, dan deskripsi schema output berbahasa Inggris**.
 - Ikuti konvensi kode di sekitarnya. Web app: Next.js App Router (baca docs Next di `node_modules/next/dist/docs/` dulu). Kontrak: Foundry, Solidity 0.8.26, OpenZeppelin v5.
-- Engine tinggal di `engine/` (target `apps/engine/`), bukan di dalam `app/`. Kode bersama web & engine hanya lewat `packages/*` ([ADR 0007](docs/decisions/0007-monorepo-structure-and-runtime.md)); web dan engine tidak saling import.
+- Engine tinggal di `apps/engine/`, bukan di dalam `app/`. Kode bersama web & engine hanya lewat `packages/*` ([ADR 0007](docs/decisions/0007-monorepo-structure-and-runtime.md)); web dan engine tidak saling import.
 - Beberapa agent bisa bekerja di worktree yang sama. Sentuh hanya folder yang ditugaskan, jangan memindahkan folder di luar fase yang sedang berjalan, dan jangan commit kecuali diminta koordinator.
 - Jangan menambah fitur di luar scope tugas. Catat ide tambahan di `docs/status.md` → "Backlog/ide".
 
@@ -96,9 +97,6 @@ npm run typecheck      # semua workspace
 npm test               # semua workspace
 npm run build
 npm run db:migrate     # setup DB (idempotent), env dari apps/web/.env
-
-# Engine (belum workspace, fase 2 ADR 0007)
-cd engine && npm install && npm run typecheck && npm test
 
 # Kontrak
 cd contracts

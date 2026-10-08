@@ -120,6 +120,7 @@ const ResearchReport = z.object({
 
 Ambang eval awal untuk naik tier: akurasi `path`/`severity` < 80% pada `news-labeled`, ada kegagalan pada `injection`, atau < 70% kesesuaian regime pada `scenarios`.
 
+- **Bahasa prompt: Inggris** (keputusan tim, 8 Okt 2026). Semua system prompt, instruksi inline, dan deskripsi field schema ditulis dalam bahasa Inggris. Field teks hasil LLM (summary, rationale, hawkCase/doveCase, lesson) juga berbahasa Inggris. Lokalisasi ke bahasa user dilakukan di lapisan notifikasi/UI, bukan lewat prompt.
 - Selalu structured output (zod). Output gagal validasi → dibuang dan dicatat, tidak "diperbaiki".
 - Cek `stop_reason` sebelum membaca hasil. Topik perang, serangan, dan exploit bisa memicu `refusal`; aktifkan server-side fallback (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`). Jika tetap refusal → analyst dianggap gagal untuk run itu.
 - Konten eksternal dibungkus sebagai data di akhir prompt; system prompt statis di depan (prompt caching).

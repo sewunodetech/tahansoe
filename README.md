@@ -163,7 +163,7 @@ Semua perintah dijalankan dari root repo (npm workspaces).
 | `npm test` | Test semua workspace |
 | `npm run db:*` | Script database (lihat di atas) |
 
-Engine (`engine/`) dan kontrak (`contracts/`) punya perintah sendiri — lihat README masing-masing.
+Kontrak (`contracts/`) memakai Foundry — lihat `contracts/README.md`. Engine (`apps/engine`) ikut `typecheck`/`test` root; script run-nya ada di `apps/engine/README.md`.
 
 ---
 
@@ -178,10 +178,10 @@ apps/
     components/       landing/, ui/, providers/
     hooks/            useAuth, useAuthGuard, useTelegramLink
     lib/              session, wagmi-config, utils, simulasi HF (demo)
+  engine/             Core Risk Engine (worker Node): research agents & reflection
 packages/
   db/                 SATU skema Drizzle + koneksi Neon + script database
   domain/             tipe kanonik (Signal, RiskAssessment, Intent, ...), chain registry, rumus HF
-engine/               Core Risk Engine — research agents & reflection (akan pindah ke apps/engine)
 contracts/            Foundry: TahansoeGuardian, test, deploy
 docs/                 PRD, BRD, architecture, security, status, ADR, specs, knowledge
 AGENTS.md             panduan & workflow untuk agent/kontributor

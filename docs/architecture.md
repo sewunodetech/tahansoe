@@ -35,7 +35,7 @@ Dokumen ini menjelaskan *bagaimana* sistem dibangun. Bagian bertanda **(rencana)
 | Telegram (link, webhook, alert) | `app/api/telegram/`, `app/api/alerts/` | Ada; alert dipicu dari browser |
 | Database | `packages/db/src/schema.ts`, `packages/db/scripts/migrate.ts` | Ada; sebagian tabel belum dipakai |
 | Guardian v1 | `contracts/src/TahansoeGuardian.sol` | Live di Arbitrum Sepolia |
-| Core Risk Engine | `engine/` → target `apps/engine/` (ADR 0007) | Research layer (boilerplate) sedang dibangun; modul M2 **(rencana)** |
+| Core Risk Engine | `apps/engine/` (workspace `@tahansoe/engine`, ADR 0007) | Research layer (boilerplate) sedang dibangun; modul M2 **(rencana)** |
 | Keeper | `engine/src/keeper/` | **(rencana)** |
 | Paket bersama | `packages/domain/` (tipe, chain registry, rumus HF), `packages/db/` (skema Drizzle tunggal + script DB) | Ada — ADR 0007 |
 
@@ -43,7 +43,7 @@ Dokumen ini menjelaskan *bagaimana* sistem dibangun. Bagian bertanda **(rencana)
 
 ## 2. Struktur repo
 
-> **Struktur repo ([ADR 0007](decisions/0007-monorepo-structure-and-runtime.md)):** npm workspaces. Sudah jalan: `apps/web` (Next.js), `packages/db` (skema & koneksi tunggal), `packages/domain` (tipe, chain registry, rumus HF). Fase 2: `engine/` → `apps/engine/`. Pohon di bawah menunjukkan isi engine. Path `app/`, `components/`, `hooks/`, `lib/` di dokumen ini relatif terhadap `apps/web/`; `lib/schema.ts` kini `packages/db/src/schema.ts`.
+> **Struktur repo ([ADR 0007](decisions/0007-monorepo-structure-and-runtime.md)):** npm workspaces. Sudah jalan: `apps/web` (Next.js), `packages/db` (skema & koneksi tunggal), `packages/domain` (tipe, chain registry, rumus HF). `apps/engine` (Core Risk Engine). Pohon di bawah menunjukkan isi engine (`apps/engine/`). Path `app/`, `components/`, `hooks/`, `lib/` di dokumen ini relatif terhadap `apps/web/`; `lib/schema.ts` kini `packages/db/src/schema.ts`.
 
 ```
 app/                    Next.js App Router (UI + API routes)
@@ -210,7 +210,7 @@ Konvensi angka:
 | Engine | Node.js + TypeScript, viem, dijalankan sebagai long-running worker di host yang selalu hidup (bukan Vercel) **(rencana)** |
 | Data on-chain | RPC + multicall untuk state; event sync ringan (cursor block + konfirmasi) untuk event Guardian & `LiquidationCall` Aave; **tanpa indexer khusus** sampai ada ADR baru (ADR 0007) |
 | Monorepo | npm workspaces (ADR 0007) — fase migrasi lihat status.md |
-| CI | GitHub Actions: lint web, typecheck+test engine & `packages/domain`, `forge test` tanpa fork (`.github/workflows/ci.yml`) |
+| CI | GitHub Actions: typecheck + test + build semua workspace, lint web (blocking), `forge test` tanpa fork (`.github/workflows/ci.yml`) |
 | DB | Neon Postgres + Drizzle |
 | Kontrak | Foundry, Solidity 0.8.26, OpenZeppelin v5 |
 | LLM | Provider-agnostic interface; output divalidasi schema. Implementasi pertama: Anthropic (`@anthropic-ai/sdk` + zod) — [ADR 0004](decisions/0004-multi-agent-research-layer.md) **(rencana)** |
