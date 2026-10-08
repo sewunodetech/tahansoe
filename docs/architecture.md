@@ -233,5 +233,5 @@ Konvensi angka:
 | `ANTHROPIC_API_KEY` | engine — research agents & klasifikasi berita **(rencana)** |
 | `LLM_DAILY_BUDGET_USD` | engine — batas biaya LLM harian; jika terlampaui, jalur LLM berhenti, modul lain tetap jalan **(rencana)** |
 | `RESEARCH_ENABLED` | engine — kill switch research agents (default `false`) **(rencana)** |
-| `FRED_API_KEY`, `ALPHA_VANTAGE_API_KEY` | engine — data makro & berita untuk research agents **(rencana)** |
+| `FRED_API_KEY` | engine — data makro FRED untuk research agents (key gratis) |
 | `ARBITRUM_RPC_URL` | engine — RPC Arbitrum One berbayar untuk polling on-chain **(rencana)** |

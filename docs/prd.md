@@ -270,7 +270,7 @@ Setiap perubahan regime dan setiap Intent disimpan beserta `drivers` dan `explan
 
 ### 6.6 Research agents (multi-agent)
 
-Status: *Accepted* — [ADR 0004](decisions/0004-multi-agent-research-layer.md), detail di [spec m3-research-agents](specs/m3-research-agents.md). **Akses: gratis untuk semua user**; otomasi berbasis hasilnya (dynamic trigger) adalah fitur Pro (spec §3.11, ADR 0006). Sumber data fundamental/berita/makro mengikuti jenis sumber TradingAgents (FRED, Polymarket, berita & sentimen, Reddit), dengan verifikasi lisensi komersial (spec §3.10).
+Status: *Accepted* — [ADR 0004](decisions/0004-multi-agent-research-layer.md), detail di [spec m3-research-agents](specs/m3-research-agents.md). **Akses: gratis untuk semua user**; otomasi berbasis hasilnya (dynamic trigger) adalah fitur Pro (spec §3.11, ADR 0006). Sumber data dipilih yang **gratis dan kredibel**: on-chain, FRED, GDELT, kalender makro resmi, DefiLlama; Polymarket/prediction market tidak dipakai (spec §3.10).
 
 Modul sinyal mendeteksi kejadian satu per satu. Research agents menalar **kombinasi** konteks dan menjelaskannya, dengan pola yang terinspirasi [TradingAgents](https://github.com/TauricResearch/TradingAgents):
 

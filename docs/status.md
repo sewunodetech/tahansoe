@@ -65,12 +65,14 @@ Lihat [security.md §3](security.md#3-temuan-terbuka).
 
 ## Next steps (urutan disarankan)
 
+> **Prioritas tim (8 Okt 2026): AI research dulu.** Pekerjaan web (spec M1) ditunda sampai research agent berjalan end-to-end. Wave aktif: pipeline research dry-run (LLM + agents) dan sumber data gratis & kredibel (GDELT, FRED, on-chain snapshot; Polymarket dikeluarkan).
+
 1. Setujui spec M1 & M2, lalu implementasi [M2 kerangka engine](specs/m2-engine-skeleton.md) (chain registry, AaveAdapter read, scheduler, event sync, Oracle Monitor, tabel signals/risk_assessments)
 2. Keeper v1 di engine: `needsProtection` → `protect` + log `intents` + Telegram dari server
 3. Web: implementasi [spec M1](specs/m1-web-onchain-integration.md) — Settings → `approve` + `setPolicy`, dashboard baca posisi asli, demo mode
 4. Oracle monitor + technical module + macro calendar → RiskAssessment dry-run
 5. CI
-6. Verifikasi lisensi komersial sumber data research (FRED, Polymarket, Alpha Vantage, Yahoo, Reddit, GDELT) dan cara baca OI/funding perp DEX on-chain di Arbitrum
+6. Verifikasi lisensi komersial sumber data research (FRED, GDELT, DefiLlama, Reddit) dan cara baca OI/funding perp DEX on-chain di Arbitrum
 7. Settlement deterministik + scorecard bersamaan dengan Risk Fusion v1 (M2), agar ada baseline sebelum research agents (M3)
 
 ## Backlog / ide

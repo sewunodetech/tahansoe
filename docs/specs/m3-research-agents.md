@@ -193,24 +193,28 @@ Semua tabel menyertakan `chain_id` jika menyimpan data on-chain (architecture §
 
 ### 3.9 Env baru
 
-`ANTHROPIC_API_KEY`, `LLM_DAILY_BUDGET_USD`, `RESEARCH_ENABLED` (kill switch, default `false`), `FRED_API_KEY`, `ALPHA_VANTAGE_API_KEY` (opsional), `ARBITRUM_RPC_URL`. Semuanya hanya di environment server, tanpa prefix `NEXT_PUBLIC_`.
+`ANTHROPIC_API_KEY`, `LLM_DAILY_BUDGET_USD`, `RESEARCH_ENABLED` (kill switch, default `false`), `FRED_API_KEY` (gratis), `ARBITRUM_RPC_URL`. Semuanya hanya di environment server, tanpa prefix `NEXT_PUBLIC_`.
 
 ### 3.10 Sumber data
 
-Keputusan tim (8 Okt 2026): **fundamental, berita, dan makro** memakai jenis sumber yang sama dengan [TradingAgents](https://github.com/TauricResearch/TradingAgents); **teknikal diambil langsung dari on-chain**.
+Keputusan tim (8 Okt 2026): fundamental, berita, dan makro memakai jenis sumber yang sama dengan [TradingAgents](https://github.com/TauricResearch/TradingAgents); teknikal diambil langsung dari on-chain. **Prinsip pemilihan: gratis (atau free tier yang cukup) dan kredibel.** Sumber berbayar atau tidak resmi tidak dipakai.
 
-| Kebutuhan | Sumber | Dipakai TradingAgents? | Catatan |
-|-----------|--------|------------------------|---------|
-| Makro (suku bunga, CPI, data tenaga kerja) | FRED API | Ya | Gratis dengan API key |
-| Probabilitas event geopolitik/makro | Polymarket (API publik) | Ya | Pasar tipis bisa menyesatkan; pakai sebagai salah satu suara |
-| Berita & sentimen berita | Alpha Vantage News & Sentiment, pencarian berita Yahoo Finance | Ya | Tier gratis Alpha Vantage sangat terbatas |
-| Berita geopolitik global | GDELT | Tidak (tambahan) | Gratis; cakupan geopolitik paling luas |
-| Sentimen sosial | Reddit | Ya | Butuh OAuth; masuk spec Social Sentiment terpisah |
-| Fundamental emiten | SEC EDGAR, Yahoo Finance | Ya | Hanya relevan untuk proksi crypto (ETF, emiten crypto); prioritas rendah |
-| Harga & volatilitas (teknikal) | **On-chain:** `AaveOracle` + riwayat round Chainlink di Arbitrum | — | Satu-satunya sumber harga yang juga dipakai untuk eksekusi (I5) |
-| Likuiditas & depeg | **On-chain:** `Pool.getReserveData` Aave, pool DEX Arbitrum, rasio LST | — | — |
-| Leverage (funding, OI) | **On-chain:** perp DEX di Arbitrum (mis. GMX) | — | *Perlu verifikasi* cakupan dan cara baca kontraknya; data CEX hanya pembanding opsional |
-| Status jaringan | **On-chain:** Sequencer Uptime Feed, `eth_feeHistory` | — | — |
+| Kebutuhan | Sumber | Biaya | Kredibilitas | Status |
+|-----------|--------|-------|--------------|--------|
+| Harga & volatilitas (teknikal) | **On-chain:** `AaveOracle` + proxy Chainlink di Arbitrum | Gratis | Tertinggi — sama dengan oracle eksekusi (I5) | Wave aktif |
+| Status jaringan | **On-chain:** Sequencer Uptime Feed, `eth_feeHistory` | Gratis | Tertinggi | Wave aktif |
+| Makro (suku bunga, CPI, kurva yield) | FRED API | Gratis (API key gratis) | Data resmi | Wave aktif |
+| Berita geopolitik & makro | GDELT DOC 2.0 | Gratis, tanpa key | Agregator berita global; butuh konfirmasi multi-sumber | Wave aktif |
+| Kalender makro terjadwal | Jadwal FOMC (federalreserve.gov), jadwal rilis CPI/NFP (BLS) — disimpan sebagai file data di repo, diperbarui tahunan | Gratis | Resmi | Berikutnya |
+| Peg stablecoin & insiden protokol (T4, T9) | DefiLlama API (stablecoins, hacks) | Gratis, tanpa key | Rujukan utama industri DeFi | Berikutnya |
+| Konfirmasi kebijakan moneter | RSS siaran pers Federal Reserve | Gratis | Resmi | Berikutnya |
+| Likuiditas & leverage on-chain | `Pool.getReserveData` Aave, perp DEX Arbitrum (mis. GMX) | Gratis | Tinggi; cara baca perp DEX *perlu verifikasi* | Nanti |
+| Sentimen sosial | Reddit | Gratis dengan batas | Rendah — spec Social Sentiment terpisah | Nanti |
+| ~~Berita Yahoo Finance~~ | — | — | Endpoint tidak resmi | **Tidak dipakai** |
+| ~~Alpha Vantage News~~ | — | Free tier 25 request/hari | — | **Tidak dipakai** |
+| ~~Polymarket / prediction market~~ | — | — | Platform taruhan — risiko reputasi & regulasi (perjudian di banyak yurisdiksi, termasuk Indonesia) | **Tidak dipakai** (keputusan tim, 8 Okt 2026) |
+
+Setiap item yang masuk ke konteks membawa nama sumbernya, sehingga Risk Assessor dan fusion bisa menimbang kredibilitas: on-chain & resmi > agregator berita.
 
 **Lisensi (wajib dicek sebelum keluar dari shadow mode).** TradingAgents adalah proyek riset. Sebagian sumbernya punya batasan untuk penggunaan **komersial**, terutama data Yahoo Finance yang diakses lewat endpoint tidak resmi, tier gratis Alpha Vantage, dan API Reddit. Karena Tahansoe adalah produk komersial (Pro dan B2B memakai output yang sama, ADR 0006), setiap sumber harus punya lisensi atau ketentuan yang mengizinkan penggunaan komersial sebelum keluar dari shadow mode. Sumber yang tidak lolos diganti, dan agent tetap berjalan dengan sumber yang tersisa.
 

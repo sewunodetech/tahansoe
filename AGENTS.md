@@ -65,6 +65,7 @@ Urutan prioritas jika dokumen bertentangan: **security.md > ADR terbaru > prd.md
 - Ikuti konvensi kode di sekitarnya. Web app: Next.js App Router (baca docs Next di `node_modules/next/dist/docs/` dulu). Kontrak: Foundry, Solidity 0.8.26, OpenZeppelin v5.
 - Engine tinggal di `apps/engine/`, bukan di dalam `app/`. Kode bersama web & engine hanya lewat `packages/*` ([ADR 0007](docs/decisions/0007-monorepo-structure-and-runtime.md)); web dan engine tidak saling import.
 - Beberapa agent bisa bekerja di worktree yang sama. Sentuh hanya folder yang ditugaskan, jangan memindahkan folder di luar fase yang sedang berjalan, dan jangan commit kecuali diminta koordinator.
+- **Kesulitan? Minta bantuan, jangan berputar sendiri.** Jika satu masalah (error test, API, tooling, spec ambigu) belum terpecahkan setelah ~10 menit atau 3 percobaan berbeda, tanyakan ke koordinator: `orca orchestration ask` untuk pertanyaan yang memblokir, atau pesan `--type escalation` jika task tidak bisa diselesaikan. Sertakan masalah, apa yang sudah dicoba, dan opsi yang dipertimbangkan.
 - Jangan menambah fitur di luar scope tugas. Catat ide tambahan di `docs/status.md` → "Backlog/ide".
 
 ### Sebelum selesai (Definition of Done)
