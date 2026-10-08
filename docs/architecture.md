@@ -35,12 +35,15 @@ Dokumen ini menjelaskan *bagaimana* sistem dibangun. Bagian bertanda **(rencana)
 | Telegram (link, webhook, alert) | `app/api/telegram/`, `app/api/alerts/` | Ada; alert dipicu dari browser |
 | Database | `lib/schema.ts`, `scripts/migrate.ts` | Ada; sebagian tabel belum dipakai |
 | Guardian v1 | `contracts/src/TahansoeGuardian.sol` | Live di Arbitrum Sepolia |
-| Core Risk Engine | `engine/` | **(rencana)** — fokus branch `core-dev` |
+| Core Risk Engine | `engine/` → target `apps/engine/` (ADR 0007) | Research layer (boilerplate) sedang dibangun; modul M2 **(rencana)** |
 | Keeper | `engine/src/keeper/` | **(rencana)** |
+| Paket bersama | `packages/domain/` (tipe, chain registry, rumus HF), `packages/db/` (skema Drizzle tunggal) | `domain` sedang dibuat (fase 0); `db` di fase 1 — ADR 0007 |
 
 ---
 
 ## 2. Struktur repo
+
+> **Target struktur ada di [ADR 0007](decisions/0007-monorepo-structure-and-runtime.md):** npm workspaces dengan `apps/web`, `apps/engine`, `packages/db`, `packages/domain`. Migrasi dilakukan bertahap (fase 0–3). Pohon di bawah menunjukkan isi `engine/`, yang akan menjadi `apps/engine/` di fase 2.
 
 ```
 app/                    Next.js App Router (UI + API routes)
@@ -204,7 +207,10 @@ Konvensi angka:
 | Area | Pilihan |
 |------|---------|
 | Web | Next.js 16 (App Router), React 19, Tailwind v4, wagmi + viem |
-| Engine | Node.js + TypeScript, viem, dijalankan sebagai long-running worker **(rencana)** |
+| Engine | Node.js + TypeScript, viem, dijalankan sebagai long-running worker di host yang selalu hidup (bukan Vercel) **(rencana)** |
+| Data on-chain | RPC + multicall untuk state; event sync ringan (cursor block + konfirmasi) untuk event Guardian & `LiquidationCall` Aave; **tanpa indexer khusus** sampai ada ADR baru (ADR 0007) |
+| Monorepo | npm workspaces (ADR 0007) — fase migrasi lihat status.md |
+| CI | GitHub Actions: lint web, typecheck+test engine & `packages/domain`, `forge test` tanpa fork (`.github/workflows/ci.yml`) |
 | DB | Neon Postgres + Drizzle |
 | Kontrak | Foundry, Solidity 0.8.26, OpenZeppelin v5 |
 | LLM | Provider-agnostic interface; output divalidasi schema. Implementasi pertama: Anthropic (`@anthropic-ai/sdk` + zod) — [ADR 0004](decisions/0004-multi-agent-research-layer.md) **(rencana)** |

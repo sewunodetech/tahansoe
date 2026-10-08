@@ -1,0 +1,77 @@
+# CI (ADR 0007, fase 0). Path mengikuti layout saat ini; perbarui saat fase 1–2
+# memindahkan web ke apps/web dan engine ke apps/engine.
+name: CI
+
+on:
+  push:
+    branches: [master, core-dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web (lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  engine:
+    name: Engine (typecheck + test)
+    runs-on: ubuntu-latest
+    if: ${{ hashFiles('engine/package.json') != '' }}
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: engine/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  domain:
+    name: packages/domain (typecheck + test)
+    runs-on: ubuntu-latest
+    if: ${{ hashFiles('packages/domain/package.json') != '' }}
+    defaults:
+      run:
+        working-directory: packages/domain
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+
+  contracts:
+    name: Contracts (forge test, tanpa fork)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: Install dependencies (lib/ di-gitignore)
+        run: forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts@v5.1.0 --no-git
+      - run: forge build
+      # Fork test butuh RPC Arbitrum Sepolia; dijalankan manual / job terpisah dengan secret.
+      - run: forge test --no-match-contract Fork -vv

@@ -14,3 +14,4 @@ Aturan:
 | 0004 | [Lapis riset multi-agent (pola TradingAgents) di Core Risk Engine](0004-multi-agent-research-layer.md) | Accepted |
 | 0005 | [Reflection loop: evaluasi ulang tanpa mengubah aturan sendiri](0005-reflection-loop.md) | Accepted |
 | 0006 | [Model bisnis: informasi gratis, otomasi berbayar, tanpa fee on-chain di v1](0006-business-model-free-info-paid-automation.md) | Accepted |
+| 0007 | [Struktur monorepo, Next.js + worker terpisah, tanpa indexer dulu](0007-monorepo-structure-and-runtime.md) | Accepted |

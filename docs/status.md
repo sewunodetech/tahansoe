@@ -17,6 +17,7 @@
 - `TahansoeGuardian` v1: hot reserve repay, unit + fuzz test, fork test Aave V3 Arbitrum Sepolia
 - Guardian v1 ter-deploy di Arbitrum Sepolia: `0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E`
 - Dokumentasi & workflow agent (PRD v0.2, BRD, architecture, security, ADR)
+- Struktur repo & runtime: ADR 0007 (*Accepted*) — npm workspaces, Next.js + worker terpisah, tanpa indexer dulu. Fase 0 berjalan: `.gitattributes`, CI, `packages/domain`
 - Model bisnis: ADR 0006 (*Accepted*) — informasi gratis, otomasi Pro, tanpa fee on-chain di v1
 - Desain research agents & reflection: ADR 0004/0005 (*Accepted*), [spec m3-research-agents](specs/m3-research-agents.md), [knowledge/risk-transmission](knowledge/risk-transmission.md), PRD v0.3
 
@@ -41,7 +42,9 @@
 - [ ] `users` unik per `(wallet, chainId)` → ganti jadi per wallet
 - [ ] Tabel `positions`, `policies`, `intents`, `notification_logs` belum dipakai
 - [ ] Tabel `guardian_modules` mengasumsikan Safe; tinjau ulang
-- [ ] Belum ada CI (lint + `forge test`)
+- [ ] CI baru ditambahkan (`.github/workflows/ci.yml`); belum terbukti hijau di GitHub
+- [ ] Migrasi struktur ADR 0007: fase 1 (`packages/db`, web → `apps/web`, ubah Root Directory Vercel), fase 2 (`engine/` → `apps/engine`), fase 3 (demo mode)
+- [ ] Host untuk engine (worker selalu hidup) belum dipilih
 - [ ] Belum ada test untuk web app
 
 ### Kontrak
