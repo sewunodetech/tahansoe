@@ -1,59 +1,172 @@
 /**
  * Implementasi LlmProvider memakai Anthropic SDK (ADR 0004 §5, spec §3.4).
  *
- * STATUS: stub boilerplate. Alur dan invariant sudah dijabarkan sebagai TODO,
- * tetapi pemanggilan SDK sengaja belum diisi supaya typecheck tidak butuh network.
+ * Memakai `client.messages.parse` + `zodOutputFormat` (SDK ≥ 0.132) sehingga
+ * output otomatis divalidasi terhadap schema zod dan tersedia di `parsed_output`.
  *
- * Yang WAJIB diterapkan saat mengisi (spec §3.4):
- *  - Structured output pakai `messages.parse` + `zodOutputFormat` (schema zod).
- *  - Prompt caching: system prompt statis di depan, konten eksternal (data) di akhir.
- *  - Cek `stop_reason`. Topik perang/serangan/exploit bisa memicu `refusal`;
- *    aktifkan server-side fallback (`fallbacks: "default"`, beta
- *    `server-side-fallback-2026-07-01`). Jika tetap refusal → kembalikan
- *    stopReason "refusal" dan data null (analyst dianggap gagal untuk run itu).
- *  - Output gagal validasi schema → data null + error, JANGAN diperbaiki.
- *  - Catat usage ke Budget setelah tiap call.
- *  - JANGAN pernah log `apiKey` (security.md I8).
+ * Invarian (spec §3.4):
+ *  - Structured output zod; gagal validasi → data null + error (dibuang, tidak diperbaiki).
+ *  - Agent TANPA tools (tidak ada `tools` di request).
+ *  - Cek `stop_reason`: "refusal" → data null + catat kategori; "max_tokens" → data null + error.
+ *  - System prompt statis di depan (prompt caching ephemeral) + data di akhir.
+ *  - JANGAN kirim temperature/top_p/budget_tokens; effort lewat output_config.effort.
+ *  - Rakit usage (input, output, cache read/write) lalu budget.record.
+ *  - JANGAN pernah log apiKey (security.md I8).
  */
 
-import type { LlmProvider, LlmRequest, LlmResult } from "./provider.ts";
+import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import type { LlmProvider, LlmRequest, LlmResult, LlmUsage } from "./provider.ts";
 import { budget as defaultBudget, type Budget } from "./budget.ts";
 import { env } from "../config.ts";
 
-/** Peta effort engine → parameter thinking/effort SDK. TODO(dev): sesuaikan ke API final. */
-const EFFORT_BUDGET_TOKENS = {
-  low: 1_000,
-  medium: 4_000,
-  high: 12_000,
-} as const;
+/** Token output maksimum per panggilan (spec §3.4). */
+const MAX_OUTPUT_TOKENS = 16000;
+
+/** Antarmuka minimal client yang dipakai provider (memudahkan test tanpa API). */
+export interface MessagesParseClient {
+  messages: {
+    parse(params: unknown): Promise<ParsedLike>;
+  };
+}
+
+/** Bentuk respons yang kita baca dari `messages.parse` (subset). */
+export interface ParsedLike {
+  stop_reason: string | null;
+  stop_details?: { category?: string | null } | null;
+  parsed_output?: unknown;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_input_tokens?: number | null;
+    cache_creation_input_tokens?: number | null;
+  };
+}
 
 export class AnthropicProvider implements LlmProvider {
-  private readonly apiKey: string;
+  private readonly client: MessagesParseClient;
   private readonly budget: Budget;
 
-  constructor(budget: Budget = defaultBudget) {
+  /**
+   * @param budget akumulator biaya (default: instance global).
+   * @param client opsional — untuk test, suntik client palsu agar tanpa API/env.
+   *   Produksi: biarkan undefined; provider membuat `new Anthropic(...)` dari env.
+   */
+  constructor(budget: Budget = defaultBudget, client?: MessagesParseClient) {
     this.budget = budget;
-    // Lazy: hanya butuh key saat provider dibuat untuk run nyata.
-    this.apiKey = env.anthropicApiKey();
-    void this.apiKey; // dipakai saat SDK diisi
-    void this.budget;
-    void EFFORT_BUDGET_TOKENS;
+    this.client =
+      client ?? (new Anthropic({ apiKey: env.anthropicApiKey() }) as unknown as MessagesParseClient);
   }
 
   async structured<T>(req: LlmRequest<T>): Promise<LlmResult<T>> {
-    // TODO(dev): inisialisasi `new Anthropic({ apiKey: this.apiKey })` (sekali, modul-level).
-    // TODO(dev): bangun params:
-    //   - system: req.system  (cache_control: ephemeral di blok statis)
-    //   - messages: req.messages
-    //   - response_format / tool via zodOutputFormat(req.output, req.outputName)
-    //   - thinking budget dari EFFORT_BUDGET_TOKENS[req.effort]
-    //   - betas: ["server-side-fallback-2026-07-01"], fallbacks: "default"
-    // TODO(dev): panggil client.messages.parse(...).
-    // TODO(dev): map stop_reason → StopReason; jika "refusal" → data null.
-    // TODO(dev): validasi hasil dengan req.output.safeParse; jika gagal → data null + error.
-    // TODO(dev): rakit LlmUsage dari response.usage; panggil this.budget.record(usage).
-    throw new Error(
-      "[engine/llm/anthropic] AnthropicProvider.structured belum diimplementasikan — lihat TODO di file ini (spec §3.4).",
-    );
+    try {
+      const message = await this.client.messages.parse({
+        model: req.model,
+        max_tokens: req.maxOutputTokens ?? MAX_OUTPUT_TOKENS,
+        // System prompt statis di depan + prompt caching (ephemeral).
+        system: [
+          {
+            type: "text",
+            text: req.system,
+            cache_control: { type: "ephemeral" },
+          },
+        ],
+        messages: req.messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        output_config: {
+          effort: req.effort,
+          format: zodOutputFormat(req.output),
+        },
+      });
+
+      const usage = toUsage(req.model, message.usage);
+      this.budget.record(usage);
+
+      // Cek stop_reason sebelum membaca hasil (spec §3.4).
+      switch (message.stop_reason) {
+        case "refusal": {
+          const category = message.stop_details?.category ?? "unknown";
+          return {
+            stopReason: "refusal",
+            data: null,
+            usage,
+            error: `refusal (category=${category})`,
+          };
+        }
+        case "max_tokens":
+          return {
+            stopReason: "max_tokens",
+            data: null,
+            usage,
+            error: "max_tokens reached before completion",
+          };
+        case "model_context_window_exceeded":
+          return {
+            stopReason: "error",
+            data: null,
+            usage,
+            error: "model_context_window_exceeded",
+          };
+        default:
+          break;
+      }
+
+      // SDK sudah mem-parse dengan zodOutputFormat; validasi ulang defensif.
+      const parsed = message.parsed_output;
+      if (parsed == null) {
+        return {
+          stopReason: "ok",
+          data: null,
+          usage,
+          error: "no parsed_output (schema parse failed)",
+        };
+      }
+      const check = req.output.safeParse(parsed);
+      if (!check.success) {
+        return {
+          stopReason: "ok",
+          data: null,
+          usage,
+          error: `schema invalid: ${check.error.message}`,
+        };
+      }
+
+      return { stopReason: "ok", data: check.data, usage };
+    } catch (err) {
+      // Kegagalan jaringan/SDK: data null, biaya tak tercatat (tidak ada usage).
+      return {
+        stopReason: "error",
+        data: null,
+        usage: { model: req.model, inputTokens: 0, outputTokens: 0 },
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
   }
+}
+
+/**
+ * Rakit LlmUsage dari usage SDK. `input_tokens` adalah input non-cache; token
+ * cache write (creation) dan cache read dipisah agar costOf bisa menagihnya
+ * dengan multiplier yang berbeda.
+ */
+function toUsage(
+  model: string,
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_input_tokens?: number | null;
+    cache_creation_input_tokens?: number | null;
+  },
+): LlmUsage {
+  const cacheWrite = usage.cache_creation_input_tokens ?? 0;
+  const cacheRead = usage.cache_read_input_tokens ?? 0;
+  return {
+    model,
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    cacheWriteTokens: cacheWrite > 0 ? cacheWrite : undefined,
+    cacheReadTokens: cacheRead > 0 ? cacheRead : undefined,
+  };
 }

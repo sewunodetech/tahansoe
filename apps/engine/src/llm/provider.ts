@@ -24,10 +24,13 @@ export type StopReason = "ok" | "refusal" | "max_tokens" | "error";
 /** Pemakaian token untuk akuntansi biaya (budget.ts). */
 export interface LlmUsage {
   model: string;
+  /** Token input non-cache (API Anthropic: TIDAK termasuk token cache). */
   inputTokens: number;
   outputTokens: number;
-  /** Token input yang terlayani dari cache (prompt caching). */
-  cachedInputTokens?: number;
+  /** Token input yang DITULIS ke cache (ditagih ~1.25x harga input). */
+  cacheWriteTokens?: number;
+  /** Token input yang DIBACA dari cache (ditagih ~0.1x harga input). */
+  cacheReadTokens?: number;
 }
 
 /**

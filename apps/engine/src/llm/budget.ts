@@ -22,16 +22,48 @@ const PRICE_PER_MTOK: Record<string, { input: number; output: number }> = {
   "claude-haiku-5-5": { input: 0.1, output: 0.5 },
 };
 
-/** Biaya satu pemakaian dalam USD. Token cache diasumsikan harga input penuh (konservatif). */
+/**
+ * Multiplier harga token cache relatif terhadap harga input (Anthropic):
+ *  - cache WRITE (creation) ditagih ~1.25x harga input.
+ *  - cache READ ditagih ~0.1x harga input.
+ * `usage.input_tokens` dari API TIDAK termasuk token cache, jadi ketiganya
+ * dijumlahkan terpisah.
+ */
+const CACHE_WRITE_MULTIPLIER = 1.25;
+const CACHE_READ_MULTIPLIER = 0.1;
+
+/** Harga fallback untuk model tak dikenal: pakai tier termahal (opus), bukan gratis. */
+const FALLBACK_PRICE = PRICE_PER_MTOK["claude-opus-5-5"]!;
+
+/** Model tak dikenal yang sudah di-warning (agar warning hanya sekali per model). */
+const warnedUnknownModels = new Set<string>();
+
+/**
+ * Biaya satu pemakaian dalam USD.
+ *
+ * Memperhitungkan token cache secara terpisah: input non-cache pada harga penuh,
+ * cache write ~1.25x, cache read ~0.1x, output pada harga output. Model yang tidak
+ * ada di tabel harga diperlakukan konservatif memakai harga tier termahal (opus)
+ * dan dicatat sebagai warning sekali — tidak pernah dianggap gratis.
+ */
 export function costOf(usage: LlmUsage): number {
-  const price = PRICE_PER_MTOK[usage.model];
+  let price = PRICE_PER_MTOK[usage.model];
   if (!price) {
-    // Model tak dikenal → jangan anggap gratis; TODO(dev): lengkapi tabel harga.
-    return 0;
+    if (!warnedUnknownModels.has(usage.model)) {
+      warnedUnknownModels.add(usage.model);
+      console.warn(
+        `[engine/llm/budget] model tak dikenal "${usage.model}" — memakai harga opus (konservatif). Lengkapi PRICE_PER_MTOK.`,
+      );
+    }
+    price = FALLBACK_PRICE;
   }
   const input = (usage.inputTokens / 1_000_000) * price.input;
+  const cacheWrite =
+    ((usage.cacheWriteTokens ?? 0) / 1_000_000) * price.input * CACHE_WRITE_MULTIPLIER;
+  const cacheRead =
+    ((usage.cacheReadTokens ?? 0) / 1_000_000) * price.input * CACHE_READ_MULTIPLIER;
   const output = (usage.outputTokens / 1_000_000) * price.output;
-  return input + output;
+  return input + cacheWrite + cacheRead + output;
 }
 
 /** Kunci hari UTC untuk reset harian. */

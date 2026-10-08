@@ -20,24 +20,74 @@ export interface DebateResult {
 
 /**
  * Jalankan debat N ronde. Setiap ronde: Hawk lalu Dove, masing-masing melihat
- * laporan analyst + giliran sebelumnya.
+ * ringkasan laporan analyst + giliran sebelumnya (untuk rebuttal).
  *
- * TODO(dev):
- *  - rounds = min(opts.rounds ?? config.debateRounds, config.debateRoundsMax).
- *  - Bangun ringkasan analystReports sebagai data.
- *  - Tiap giliran: provider.structured({ system: loadPrompt("hawk"|"dove"),
- *    effort: config.effort.hawkDove, output: DebateTurn }).
- *  - Sisipkan giliran sebelumnya ke messages agar ada rebuttal.
- *  - stopReason != "ok" → tandai degraded, lanjutkan dengan giliran yang ada.
+ * Giliran yang gagal (stopReason != "ok") ditandai `degraded` dan dilewati;
+ * assessor tetap bisa jalan dengan giliran yang ada (I6).
  */
 export async function runDebate(
-  _provider: LlmProvider,
-  _analystReports: AnalystReport[],
-  _opts: { rounds: number } = { rounds: config.debateRounds },
+  provider: LlmProvider,
+  analystReports: AnalystReport[],
+  opts: { rounds: number } = { rounds: config.debateRounds },
 ): Promise<DebateResult> {
-  void loadPrompt;
-  void DebateTurn;
-  throw new Error(
-    "[engine/agents/debate] runDebate belum diimplementasikan — lihat TODO (spec §3.4).",
+  const rounds = Math.min(
+    Math.max(opts.rounds, 1),
+    config.debateRoundsMax,
   );
+  const analystData = renderAnalystReports(analystReports);
+  const turns: DebateTurn[] = [];
+  let degraded = false;
+
+  for (let round = 0; round < rounds; round++) {
+    for (const side of ["hawk", "dove"] as const) {
+      const priorTurns = turns.length
+        ? `\n\n## Debate so far\n${renderDebateTurns(turns)}`
+        : "";
+      const result = await provider.structured({
+        model: config.models.hawkDove,
+        effort: config.effort.hawkDove,
+        system: loadPrompt(side),
+        messages: [
+          {
+            role: "user",
+            content: `## Analyst reports\n${analystData}${priorTurns}`,
+          },
+        ],
+        output: DebateTurn,
+        outputName: "DebateTurn",
+      });
+      if (result.stopReason !== "ok" || !result.data) {
+        degraded = true;
+        continue;
+      }
+      turns.push(result.data);
+    }
+  }
+
+  return { turns, degraded };
+}
+
+/** Ringkasan laporan analyst untuk disisipkan sebagai data. */
+function renderAnalystReports(reports: AnalystReport[]): string {
+  return reports
+    .map((r) => {
+      const findings = r.findings
+        .map((f) => `  - ${f.path} severity=${f.severity.toFixed(2)}: ${f.rationale}`)
+        .join("\n");
+      return `### ${r.domain}\n${r.summary}\n${findings}`;
+    })
+    .join("\n\n");
+}
+
+/** Ringkasan giliran debat sebelumnya. */
+function renderDebateTurns(turns: DebateTurn[]): string {
+  return turns
+    .map((t) => {
+      const paths = t.pathsHighlighted.length
+        ? ` [${t.pathsHighlighted.join(",")}]`
+        : "";
+      const reb = t.rebuttal ? `\n  rebuttal: ${t.rebuttal}` : "";
+      return `- ${t.side}${paths}: ${t.argument}${reb}`;
+    })
+    .join("\n");
 }

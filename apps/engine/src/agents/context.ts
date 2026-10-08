@@ -8,13 +8,17 @@
  * regime kini, lessons terpilih, catatan chain (Arbitrum: USDC cap, no sentinel).
  *
  * Pengumpulan data mentah (spec §3.10) ada di `../sources/`: fundamental/berita/
- * makro ala TradingAgents (FRED, Polymarket, Alpha Vantage/Yahoo, GDELT); teknikal
+ * makro dari sumber gratis & kredibel (FRED, GDELT; spec §3.10); teknikal
  * langsung on-chain (AaveOracle + riwayat Chainlink, getReserveData, perp DEX).
  * Context builder MENGONSUMSI hasil yang sudah tersimpan di DB, bukan fetch sendiri.
  */
 
 import type { TransmissionPath } from "./schemas.ts";
 import type { Regime } from "../config.ts";
+import { collectResearchInputs } from "../sources/collect.ts";
+
+/** Pengumpul input research yang dapat di-inject (test / mode --fake tanpa jaringan). */
+export type ResearchInputCollector = typeof collectResearchInputs;
 
 /** Satu sinyal aktif dari modul lain (bentuk ringkas untuk prompt). */
 export interface ContextSignal {
@@ -60,23 +64,52 @@ export interface ResearchContext {
 }
 
 /**
- * Rakit konteks dari DB.
+ * Rakit konteks untuk satu run.
  *
- * TODO(dev):
- *  - Buka koneksi Neon (drizzle) dengan env.databaseUrl().
- *  - Query signals WHERE expiresAt > now() (aktif), urut severity desc.
- *  - Query market_events WHERE publishedAt > now()-24h, sudah dedup.
- *  - Query kalender makro mendatang (mis. ≤ 48 jam) + importance.
- *  - Ambil regime kini dari risk_assessments terbaru per aset/chain.
- *  - Isi chainNotes dari chain registry (architecture §4) — JANGAN hardcode alamat.
- *  - Bungkus semua teks eksternal sebagai data; jangan jadikan instruksi.
+ * MODE DRY (tanpa DB): ambil input dari `collectResearchInputs()` (src/sources),
+ * yang melakukan semua fetch (ADR 0004 §6 — LLM tanpa tools). `currentRegime`
+ * default "CALM" bila belum ada data regime.
+ *
+ * Jalur DB (membaca signals/market_events/risk_assessments tersimpan) dibiarkan
+ * TODO sampai M2 engine skeleton diimplementasikan (spec m2-engine-skeleton).
  */
-export async function buildContext(_params: {
+export async function buildContext(params: {
   chainId: number;
   assets: string[];
+  dry?: boolean;
+  now?: Date;
+  /**
+   * Sumber input dapat di-inject (default: collectResearchInputs dari sources).
+   * Dipakai test & mode --fake agar tidak menyentuh jaringan.
+   */
+  collector?: ResearchInputCollector;
 }): Promise<ResearchContext> {
+  const now = params.now ?? new Date();
+  if (params.dry) {
+    const collect = params.collector ?? collectResearchInputs;
+    const inputs = await collect({
+      chainId: params.chainId,
+      assets: params.assets,
+      now,
+    });
+    return {
+      chainId: params.chainId,
+      assets: params.assets,
+      // TODO(dev): turunkan regime dari risk_assessments terbaru saat DB aktif.
+      currentRegime: "CALM",
+      signals: inputs.signals,
+      marketEvents: inputs.marketEvents,
+      macroEvents: inputs.macroEvents,
+      // Simpan warnings sumber sebagai catatan chain agar terlihat di report.
+      chainNotes: [...inputs.chainNotes, ...inputs.warnings.map((w) => `warning: ${w}`)],
+      builtAt: now,
+    };
+  }
+
+  // TODO(dev): jalur DB — query signals aktif, market_events 24j, kalender makro,
+  // regime kini dari risk_assessments, chainNotes dari chain registry.
   throw new Error(
-    "[engine/agents/context] buildContext belum diimplementasikan — lihat TODO (spec §3.1).",
+    "[engine/agents/context] buildContext non-dry belum diimplementasikan — lihat spec m2-engine-skeleton.",
   );
 }
 
@@ -94,11 +127,77 @@ export const DATA_BLOCK_HEADER =
  * Render konteks menjadi blok teks DATA untuk disisipkan di akhir prompt
  * (prompt caching: system statis di depan, data di belakang — spec §3.4).
  *
- * TODO(dev): format ringkas & deterministik (urutan stabil) agar cache efektif
- * dan replay backtest reprodusibel. Awali dengan `DATA_BLOCK_HEADER` (bahasa Inggris).
+ * Deterministik: urutan field tetap dan list diurutkan secara stabil agar cache
+ * efektif dan replay backtest reprodusibel. Diawali `DATA_BLOCK_HEADER`.
  */
-export function renderContextAsData(_ctx: ResearchContext): string {
-  throw new Error(
-    "[engine/agents/context] renderContextAsData belum diimplementasikan — lihat TODO (spec §3.4).",
+export function renderContextAsData(ctx: ResearchContext): string {
+  const lines: string[] = [];
+  lines.push(DATA_BLOCK_HEADER);
+  lines.push("");
+  lines.push(`chainId: ${ctx.chainId}`);
+  lines.push(`assets: ${[...ctx.assets].sort().join(", ")}`);
+  lines.push(`currentRegime: ${ctx.currentRegime}`);
+  lines.push(`builtAt: ${ctx.builtAt.toISOString()}`);
+
+  lines.push("");
+  lines.push("## Transmission paths (reference)");
+  lines.push(
+    "T1 price drop | T2 volatility | T3 leverage cascade | T4 stablecoin depeg | " +
+      "T5 LST depeg | T6 gas/congestion | T7 reserve liquidity | T8 oracle lag | " +
+      "T9 protocol incident | T10 sequencer down",
+  );
+
+  lines.push("");
+  lines.push("## Chain notes");
+  if (ctx.chainNotes.length === 0) lines.push("(none)");
+  else for (const n of [...ctx.chainNotes].sort()) lines.push(`- ${n}`);
+
+  lines.push("");
+  lines.push("## Active signals");
+  if (ctx.signals.length === 0) lines.push("(none)");
+  else
+    for (const s of sortSignals(ctx.signals)) {
+      const paths = s.paths?.length ? ` paths=[${[...s.paths].sort().join(",")}]` : "";
+      lines.push(
+        `- [${s.module}] severity=${s.severity.toFixed(2)} confidence=${s.confidence.toFixed(2)}${paths} :: ${s.summary}`,
+      );
+    }
+
+  lines.push("");
+  lines.push("## Market / news events (deduplicated)");
+  if (ctx.marketEvents.length === 0) lines.push("(none)");
+  else
+    for (const e of sortMarketEvents(ctx.marketEvents)) {
+      lines.push(`- [${e.category}] ${e.publishedAt.toISOString()} :: ${e.headline}`);
+      if (e.excerpt) lines.push(`  excerpt: ${e.excerpt}`);
+    }
+
+  lines.push("");
+  lines.push("## Upcoming macro events");
+  if (ctx.macroEvents.length === 0) lines.push("(none)");
+  else
+    for (const m of sortMacroEvents(ctx.macroEvents)) {
+      lines.push(`- [${m.importance}] ${m.scheduledAt.toISOString()} :: ${m.name}`);
+    }
+
+  return lines.join("\n");
+}
+
+/** Urutan stabil: severity desc, lalu id. */
+function sortSignals(signals: ContextSignal[]): ContextSignal[] {
+  return [...signals].sort((a, b) => b.severity - a.severity || a.id.localeCompare(b.id));
+}
+
+/** Urutan stabil: publishedAt desc, lalu id. */
+function sortMarketEvents(events: ContextMarketEvent[]): ContextMarketEvent[] {
+  return [...events].sort(
+    (a, b) => b.publishedAt.getTime() - a.publishedAt.getTime() || a.id.localeCompare(b.id),
+  );
+}
+
+/** Urutan stabil: scheduledAt asc, lalu id. */
+function sortMacroEvents(events: ContextMacroEvent[]): ContextMacroEvent[] {
+  return [...events].sort(
+    (a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime() || a.id.localeCompare(b.id),
   );
 }

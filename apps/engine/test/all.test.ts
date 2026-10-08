@@ -7,6 +7,10 @@
  */
 
 import "./agents/to-signal.test.ts";
+import "./agents/run-dry.test.ts";
+import "./llm/anthropic.test.ts";
+import "./llm/budget.test.ts";
 import "./reflection/settle.test.ts";
 import "./reflection/lessons.test.ts";
 import "./reflection/scorecard.test.ts";
+import "./sources/sources.test.ts";

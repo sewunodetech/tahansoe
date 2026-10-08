@@ -8,12 +8,13 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test test/all.test.ts",
     "research:run": "tsx src/index.ts",
+    "research:dry": "tsx src/agents/run.ts --dry",
     "reflect:settle": "tsx src/reflection/settle.ts",
     "reflect:daily": "tsx src/reflection/reflect.ts",
     "scorecard": "tsx src/reflection/scorecard.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.70.0",
+    "@anthropic-ai/sdk": "^0.132.1",
     "@tahansoe/db": "*",
     "@tahansoe/domain": "*",
     "viem": "^2.55.19",
