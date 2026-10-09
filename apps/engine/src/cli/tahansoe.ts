@@ -18,6 +18,8 @@ const COMMANDS = [
   ["models", "List gateway models + prices + cost estimate"],
   ["settings", "Manage non-secret settings.json"],
   ["eval", "Run the eval set"],
+  ["settle", "Settle due research reports (ADR 0005)"],
+  ["scorecard", "Research-agent accuracy scorecard"],
   ["doctor", "Check env & connectivity"],
 ] as const;
 
@@ -120,6 +122,14 @@ export async function main(argv: string[]): Promise<number> {
     case "eval": {
       const { evalCommand } = await import("./commands/simple.ts");
       return evalCommand(rest);
+    }
+    case "settle": {
+      const { settleCommand } = await import("./commands/scorecard-settle.ts");
+      return settleCommand(rest);
+    }
+    case "scorecard": {
+      const { scorecardCommand } = await import("./commands/scorecard-settle.ts");
+      return scorecardCommand(rest);
     }
     case "doctor": {
       const { doctorCommand } = await import("./commands/doctor.ts");

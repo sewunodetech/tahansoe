@@ -9,10 +9,6 @@
  */
 
 import { pathToFileURL } from "node:url";
-import {
-  generateScorecard,
-  formatScorecardTable,
-} from "../reflection/scorecard.ts";
 
 try {
   const { setGlobalDispatcher, Agent } = await import("undici");
@@ -24,27 +20,11 @@ try {
 }
 
 export async function runScorecardCli(args: string[] = process.argv.slice(2)): Promise<void> {
-  let days = 30;
-  const daysIdx = args.indexOf("--days");
-  if (daysIdx !== -1 && args[daysIdx + 1]) {
-    const parsed = parseInt(args[daysIdx + 1]!, 10);
-    if (!isNaN(parsed) && parsed > 0) {
-      days = parsed;
-    }
-  }
-
-  const toIdx = args.indexOf("--to");
-  const rawTo = toIdx !== -1 ? args[toIdx + 1] : undefined;
-  const to = rawTo ? new Date(rawTo) : new Date();
-  const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
-
-  try {
-    const sc = await generateScorecard({ from, to });
-    console.log(formatScorecardTable(sc));
-  } catch (err) {
-    console.error("[scorecard-cli] Gagal menghasilkan scorecard:", err);
-    process.exit(1);
-  }
+  // Delegasi ke `tahansoe scorecard` (satu jalur render). Teruskan --days apa adanya.
+  // (cli-settle-scorecard task: scorecard.ts jadi alias tipis.)
+  const { scorecardCommand } = await import("./commands/scorecard-settle.ts");
+  const code = await scorecardCommand(args);
+  if (code !== 0) process.exit(code);
 }
 
 if (

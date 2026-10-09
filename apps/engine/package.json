@@ -20,9 +20,10 @@
     "research:history": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts history",
     "eval": "tsx --env-file-if-exists=.env src/eval/runner.ts",
     "doctor": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts doctor",
+    "settle": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts settle",
+    "scorecard": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts scorecard",
     "reflect:settle": "tsx --env-file-if-exists=.env src/reflection/settle.ts",
-    "reflect:daily": "tsx --env-file-if-exists=.env src/reflection/reflect.ts",
-    "scorecard": "tsx --env-file-if-exists=.env src/reflection/scorecard.ts"
+    "reflect:daily": "tsx --env-file-if-exists=.env src/reflection/reflect.ts"
   },
   "bin": {
     "tahansoe": "./bin/tahansoe.mjs"

@@ -106,12 +106,20 @@ npm run tahansoe -- history --limit 20      # tabel riwayat + sparkline regime
 npm run tahansoe -- report latest           # laporan lengkap (atau: report <id> [--md|--json])
 npm run tahansoe -- models --filter flash   # daftar model gateway + harga + estimasi
 npm run tahansoe -- settings show           # settings non-rahasia (show|init|set-role|set)
+npm run tahansoe -- settle                  # settle research_reports jatuh tempo (tabel: label, lead time)
+npm run tahansoe -- settle --now 2026-10-09T00:00:00Z --json   # settle sampai waktu tertentu, JSON
+npm run tahansoe -- scorecard --days 30     # scorecard akurasi (recall, presisi ≥STRESSED, lead time)
 npm run tahansoe -- doctor                  # cek env/DB/RPC/gateway (key disamarkan)
-npm run tahansoe -- schedule run            # scheduler foreground (Ctrl+C lepas lock)
+npm run tahansoe -- schedule run            # scheduler foreground: research + settlement (Ctrl+C lepas lock)
 npm run tahansoe -- schedule run --with-price   # + price worker di proses yang sama
+npm run tahansoe -- schedule run --no-settle    # scheduler tanpa settlement job
 npm run tahansoe -- schedule run --once     # satu siklus lalu keluar
 npm run tahansoe -- schedule status         # lock + run terakhir dari DB
 ```
+
+`settle` dan `scorecard` membaca/menulis tabel `risk_settlements` lewat job settlement (ADR 0005) — butuh `DATABASE_URL`. `settle` memberi label `TRUE_POSITIVE`/`FALSE_POSITIVE`/`MISSED`/`TRUE_NEGATIVE` (idempoten; report tanpa data harga cukup ditandai *insufficient*, bukan dilabeli palsu). `scorecard` meringkas metrik vs target spec §3.6.
+
+**`schedule run` juga menjalankan settlement** secara periodik di proses yang sama, di bawah advisory lock Postgres TERPISAH dari research worker (key `42161002`), tiap `SETTLE_INTERVAL_MIN` menit (default 60; override via env). Kegagalan job di-log dan tidak pernah menjatuhkan scheduler; dashboard menampilkan "Last settle: HH:MM UTC, N settled / M insufficient". Nonaktifkan dengan `--no-settle`. Jika instance lain sudah memegang lock settlement, proses ini melewati settlement (research tetap jalan).
 
 Opsi global: `--json` (output mesin, hanya di stdout), `--no-color` (nonaktifkan ANSI; otomatis mati pada pipe/`NO_COLOR`/`TERM=dumb`). Exit code: `0` ok · `1` error · `2` konfigurasi salah (mis. `LLM_API_URL`/`LLM_API_KEY` belum diisi). Setiap kartu laporan diakhiri "not a trading signal"; CLI tidak pernah melakukan aksi on-chain dan tidak pernah mencetak secret.
 
@@ -154,7 +162,8 @@ Advisory lock Postgres memastikan hanya satu instance scheduler aktif; instance 
 | `npm run research:run` | Pipeline riset dari entry scheduler utama (`src/index.ts`). |
 | `npm run reflect:settle` | Settlement outcome aktual vs prediksi horizon (`TRUE_POSITIVE`/`FALSE_POSITIVE`/`MISSED`/`TRUE_NEGATIVE`). |
 | `npm run reflect:daily` | Refleksi harian batch → pelajaran baru (`research_lessons`). |
-| `npm run scorecard` | Metrik mingguan scorecard engine. |
+| `npm run settle` | Alias `tahansoe settle` — settlement report jatuh tempo (ADR 0005). |
+| `npm run scorecard` | Alias `tahansoe scorecard` — metrik akurasi engine (recall/presisi/lead time). |
 | `npm run test` | Seluruh test suite unit engine offline (`test/all.test.ts`). |
 | `npm run typecheck` | Validasi tipe TypeScript engine (`tsc --noEmit`). |
 

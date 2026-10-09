@@ -11,17 +11,30 @@
 
 import { parseArgs } from "node:util";
 import type { RunResult } from "../../agents/run.ts";
-import { EXIT_OK, EXIT_ERROR, EXIT_CONFIG } from "./args.ts";
+import type { SettleJobResult } from "../../reflection/settle-job.ts";
+import { EXIT_OK, EXIT_ERROR, EXIT_CONFIG, flagOrNpm } from "./args.ts";
 import { isGatewayConfigured, gatewayError } from "../../llm/registry.ts";
 
 export const SCHEDULE_HELP = `tahansoe schedule — run the research scheduler (foreground)
 
 Usage:
-  tahansoe schedule run [--once] [--with-price]
+  tahansoe schedule run [--once] [--with-price] [--no-settle]
   tahansoe schedule status
 Options:
   --once         Run a single cycle then exit
-  --with-price   Also start the price worker in-process`;
+  --with-price   Also start the price worker in-process
+  --no-settle    Disable the periodic settlement job`;
+
+/** Lock key settlement — BERBEDA dari research worker (42161001) agar independen. */
+export const SETTLE_ADVISORY_LOCK_KEY = 42161002;
+
+/** Interval settlement default (menit); override via SETTLE_INTERVAL_MIN. */
+export function settleIntervalMs(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.SETTLE_INTERVAL_MIN;
+  const min = raw ? parseInt(raw, 10) : NaN;
+  const mins = Number.isFinite(min) && min > 0 ? min : 60;
+  return mins * 60 * 1000;
+}
 
 /** Opsi/dep injectable untuk test (tanpa DB/timer nyata). */
 export interface ScheduleDeps {
@@ -36,6 +49,127 @@ export interface ScheduleDeps {
   }) => { start: () => Promise<boolean>; stop: () => Promise<void> };
   /** Pengecek status (lock+DB). */
   statusImpl?: () => Promise<string>;
+  /** Job settlement (default: runSettlementJob). Injectable untuk test. */
+  settleJob?: (opts: { now?: Date }) => Promise<SettleJobResult>;
+  /**
+   * Factory lock settlement (default: Neon advisory lock pada SETTLE key). Harus
+   * mengembalikan { acquired, release }. Kontensi lock (acquired=false) → skip tick.
+   */
+  makeSettleLock?: () => Promise<{ acquired: boolean; release: () => Promise<void> }>;
+  /** Clock untuk settle ticker (test). */
+  settleClock?: { setInterval: (fn: () => void, ms: number) => unknown; clearInterval: (id: unknown) => void };
+  /** Interval settlement (ms). Default dari SETTLE_INTERVAL_MIN. */
+  settleIntervalMs?: number;
+}
+
+/** Status ringkas settlement terakhir untuk dashboard. */
+export interface SettleStatus {
+  lastAt: Date | null;
+  settled: number;
+  insufficient: number;
+  heldLock: boolean;
+}
+
+/**
+ * Ticker settlement: ambil lock settlement sendiri, jalankan job segera + tiap
+ * interval. Kontensi lock → skip (instance lain yang menyelesaikan). Error job
+ * di-log, TIDAK pernah meng-crash scheduler. Dipakai oleh `schedule run`.
+ */
+export class SettleTicker {
+  private timer: unknown = null;
+  private release: (() => Promise<void>) | null = null;
+  private running = false;
+  readonly status: SettleStatus = { lastAt: null, settled: 0, insufficient: 0, heldLock: false };
+
+  constructor(
+    private readonly job: (opts: { now?: Date }) => Promise<SettleJobResult>,
+    private readonly makeLock: () => Promise<{ acquired: boolean; release: () => Promise<void> }>,
+    private readonly logger: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void },
+    private readonly intervalMs: number,
+    private readonly clock: { setInterval: (fn: () => void, ms: number) => unknown; clearInterval: (id: unknown) => void } = {
+      setInterval: (fn, ms) => setInterval(fn, ms),
+      clearInterval: (id) => clearInterval(id as ReturnType<typeof setInterval>),
+    },
+  ) {}
+
+  /** Mulai: ambil lock, tick pertama segera, lalu jadwalkan interval. */
+  async start(): Promise<void> {
+    try {
+      const lock = await this.makeLock();
+      this.status.heldLock = lock.acquired;
+      if (!lock.acquired) {
+        this.logger.info("[settle] lock dipegang instance lain — settlement dilewati di proses ini.");
+        return;
+      }
+      this.release = lock.release;
+    } catch (err) {
+      this.logger.warn(`[settle] gagal ambil lock: ${err instanceof Error ? err.message : String(err)} — settlement nonaktif.`);
+      return;
+    }
+    await this.tick();
+    this.timer = this.clock.setInterval(() => void this.tick(), this.intervalMs);
+  }
+
+  /** Satu tick settlement. Error di-log, tidak melempar. */
+  async tick(): Promise<void> {
+    if (this.running) return; // anti-overlap
+    this.running = true;
+    try {
+      const result = await this.job({});
+      this.status.lastAt = new Date();
+      this.status.settled = result.settled.length;
+      this.status.insufficient = result.insufficientData.length;
+      this.logger.info(
+        `[settle] ${this.status.lastAt.toISOString().slice(11, 16)} UTC · ${result.settled.length} settled / ${result.insufficientData.length} insufficient (evaluated ${result.totalEvaluated})`,
+      );
+    } catch (err) {
+      this.logger.error(`[settle] job gagal: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      this.running = false;
+    }
+  }
+
+  /** Baris dashboard. */
+  dashboardLine(): string {
+    if (!this.status.heldLock) return "Last settle: (handled by another instance)";
+    if (!this.status.lastAt) return "Last settle: (pending)";
+    return `Last settle: ${this.status.lastAt.toISOString().slice(11, 16)} UTC, ${this.status.settled} settled / ${this.status.insufficient} insufficient`;
+  }
+
+  async stop(): Promise<void> {
+    if (this.timer) {
+      this.clock.clearInterval(this.timer);
+      this.timer = null;
+    }
+    if (this.release) {
+      try {
+        await this.release();
+      } catch {
+        /* abaikan */
+      }
+      this.release = null;
+    }
+  }
+}
+
+/** Lock settlement default via Neon advisory lock (key berbeda dari research). */
+async function defaultSettleLock(): Promise<{ acquired: boolean; release: () => Promise<void> }> {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) return { acquired: false, release: async () => {} };
+  const { createNeonLockClient, acquireAdvisoryLock, releaseAdvisoryLock } = await import("../../worker/lock.ts");
+  const client = await createNeonLockClient(dbUrl);
+  const acquired = await acquireAdvisoryLock(client, SETTLE_ADVISORY_LOCK_KEY);
+  return {
+    acquired,
+    release: async () => {
+      try {
+        await releaseAdvisoryLock(client, SETTLE_ADVISORY_LOCK_KEY);
+        await client.end?.();
+      } catch {
+        /* abaikan */
+      }
+    },
+  };
 }
 
 /** Clock yang tidak pernah menjadwalkan timer nyata (untuk --once & test). */
@@ -58,6 +192,7 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
       options: {
         once: { type: "boolean" },
         "with-price": { type: "boolean" },
+        "no-settle": { type: "boolean" },
         "no-color": { type: "boolean" },
         help: { type: "boolean" },
       },
@@ -92,7 +227,8 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
   }
 
   const makeWorker = deps.makeWorker ?? defaultMakeWorker;
-  const once = Boolean(parsed.values.once);
+  const once = flagOrNpm(parsed.values.once, "once");
+  const withPrice = flagOrNpm(parsed.values["with-price"], "with_price", ["with-price"]);
 
   const logger = {
     info: (m: string) => process.stdout.write(m + "\n"),
@@ -102,7 +238,7 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
 
   // --with-price: jalankan price worker di proses yang sama (best-effort).
   let stopPrice: (() => Promise<void>) | null = null;
-  if (parsed.values["with-price"] && !once) {
+  if (withPrice && !once) {
     try {
       const mod = (await import("../../worker/price-worker.ts")) as Record<string, unknown>;
       const start = mod.startPriceWorker as (() => Promise<() => Promise<void>>) | undefined;
@@ -135,10 +271,28 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
   const started = await worker.start();
   if (!started) return EXIT_OK; // worker lain memegang lock → keluar bersih
 
+  // Settlement job periodik di proses yang sama (lock sendiri). --no-settle utk disable.
+  const settleEnabled = !flagOrNpm(parsed.values["no-settle"], "no_settle", ["no-settle"]);
+  let ticker: SettleTicker | null = null;
+  if (settleEnabled) {
+    const job = deps.settleJob ?? (await import("../../reflection/settle-job.ts")).runSettlementJob;
+    const makeLock = deps.makeSettleLock ?? defaultSettleLock;
+    ticker = new SettleTicker(
+      job,
+      makeLock,
+      logger,
+      deps.settleIntervalMs ?? settleIntervalMs(),
+      deps.settleClock,
+    );
+    await ticker.start();
+    logger.info(ticker.dashboardLine());
+  }
+
   await new Promise<void>((resolve) => {
     const shutdown = async () => {
       process.stderr.write("\n[schedule] menghentikan… melepas lock.\n");
       try {
+        if (ticker) await ticker.stop();
         await worker.stop();
         if (stopPrice) await stopPrice();
       } finally {
