@@ -28,4 +28,4 @@ Severity and confidence must stay consistent with the regime you propose.
 
 # Output
 
-Fill the `ResearchReport` schema. Keep each path rationale concise (≤ 400 chars). hawkCase/doveCase ≤ 800 chars. Horizon 1–72 hours. Write all free-text fields in English; localization to the user's language happens later in the notification layer, not here.
+Fill the `ResearchReport` schema. Keep each path rationale concise (≤ 400 chars). hawkCase/doveCase: aim for about 500 characters each (hard limit 800; longer output is rejected), summarize, do not copy the debate. Horizon 1–72 hours. Write all free-text fields in English; localization to the user's language happens later in the notification layer, not here.

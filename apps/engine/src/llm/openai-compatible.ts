@@ -13,6 +13,7 @@
 import { z } from "zod";
 import type { LlmProvider, LlmRequest, LlmResult, LlmUsage } from "./provider.ts";
 import { budget as defaultBudget, type Budget } from "./budget.ts";
+import { redactDeep } from "./redact.ts";
 
 /** Token output maksimum per panggilan (spec §3.4). */
 const MAX_OUTPUT_TOKENS = 16000;
@@ -233,7 +234,25 @@ export class OpenAICompatibleProvider implements LlmProvider {
         rawContent: content,
       };
     }
-    return { kind: "final", result: { stopReason: "ok", data: check.data, usage } };
+    // Lapis kedua anti-injeksi: frasa perintah yang dikutip model dari data
+    // diganti penanda netral, lalu divalidasi ulang (panjang bisa berubah).
+    const redacted = req.output.safeParse(redactDeep(check.data));
+    if (!redacted.success) {
+      const issues = toSchemaIssues(redacted.error);
+      return {
+        kind: "schema-invalid",
+        result: {
+          stopReason: "ok",
+          data: null,
+          usage,
+          error: `schema invalid after redaction: ${summarizeIssues(issues)}`,
+          schemaInvalid: true,
+        },
+        issues,
+        rawContent: content,
+      };
+    }
+    return { kind: "final", result: { stopReason: "ok", data: redacted.data, usage } };
   }
 }
 
