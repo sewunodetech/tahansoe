@@ -114,7 +114,69 @@ test("renderReportCard: footer 'not a trading signal', tanpa buy/sell", () => {
   assert.match(card, /saved #a91f1/);
 });
 
-// --- analyze --------------------------------------------------------------
+test("renderReportCard: label 'Proposed regime (research)' + footer biaya IDR; path code pad 3", () => {
+  const card = renderReportCard(noColor, {
+    createdAt: new Date("2026-10-09T14:02:00Z"),
+    regime: "CALM",
+    direction: "VOLATILITY",
+    confidence: 0.45,
+    confidenceCap: 0.6,
+    horizonHours: 24,
+    paths: [
+      { code: "T1", label: "Collateral price drop", severity: 0.5 },
+      { code: "T10", label: "L2 sequencer down", severity: 0.4 },
+    ],
+    evidence: [],
+    suggestion: "No change suggested: your static policy applies",
+    tokens: 36500,
+    costIdr: 6,
+    durationMs: 345000,
+  });
+  assert.match(card, /Proposed regime \(research\)/, "label menandai regime proposal riset");
+  assert.match(card, /Rp 6/, "biaya IDR di footer");
+  assert.match(card, /36\.5k tok/);
+  // Path code di-pad lebar 3: label 'Collateral' dan 'L2' mulai pada kolom sama.
+  const t1 = card.split("\n").find((l) => l.includes("T1 "))!;
+  const t10 = card.split("\n").find((l) => l.includes("T10"))!;
+  assert.equal(t1.indexOf("Collateral"), t10.indexOf("L2 sequencer"), "label jalur sejajar (pad kode 3)");
+});
+
+test("suggestionFor: bergantung regime, tanpa buy/sell", async () => {
+  const { suggestionFor } = await import("../../src/cli/report-card-data.ts");
+  assert.match(suggestionFor("CALM"), /No change suggested/);
+  assert.match(suggestionFor("ELEVATED"), /higher buffer within your approved band/i);
+  assert.match(suggestionFor("STRESSED"), /rules engine decides/i);
+  assert.match(suggestionFor("CRISIS"), /rules engine decides/i);
+  for (const r of ["CALM", "ELEVATED", "STRESSED", "CRISIS"]) {
+    assert.doesNotMatch(suggestionFor(r).toLowerCase(), /\bbuy\b|\bsell\b/);
+  }
+});
+
+test("runCostFromDiagnostics: USD + IDR dari harga runtime (Bynara)", async () => {
+  const { setRuntimePricing, clearRuntimePricing } = await import("../../src/llm/budget.ts");
+  const { runCostFromDiagnostics } = await import("../../src/cli/report-card-data.ts");
+  const usdToIdr = 17891.619611;
+  try {
+    setRuntimePricing(
+      new Map([
+        ["agnes-2.5-flash", { inputPerM: 100 / usdToIdr, outputPerM: 200 / usdToIdr, native: { currency: "IDR" as const, inputPerM: 100, outputPerM: 200, usdToNative: usdToIdr } }],
+      ]),
+    );
+    const diag = {
+      roles: [
+        { role: "assessor", ok: true, usedModel: "agnes-2.5-flash", inputTokens: 1_000_000, outputTokens: 1_000_000 },
+      ],
+      totalInputTokens: 1_000_000,
+      totalOutputTokens: 1_000_000,
+      durationMs: 1000,
+    };
+    const c = runCostFromDiagnostics(diag);
+    assert.ok(Math.abs(c.usd - 300 / usdToIdr) < 1e-9);
+    assert.ok(c.idr !== undefined && Math.abs(c.idr - 300) < 1e-6, "IDR = 100+200 per 1M");
+  } finally {
+    clearRuntimePricing();
+  }
+});
 
 test("analyze --fake --json → JSON valid di stdout, exit 0", async () => {
   const chunks: string[] = [];

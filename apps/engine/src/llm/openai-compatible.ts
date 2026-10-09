@@ -216,6 +216,10 @@ export class OpenAICompatibleProvider implements LlmProvider {
     const check = req.output.safeParse(parsedJson);
     if (!check.success) {
       const issues = toSchemaIssues(check.error);
+      // DEBUG (stderr): untuk isu "Invalid option" (enum), catat NILAI yang salah
+      // SAJA (bukan konten teks) agar nanti bisa diputuskan apakah enum perlu
+      // nilai baru (mis. Evidence.source "ANALYST"). cli-polish §7.
+      logInvalidEnumValues(check.error, parsedJson, model);
       return {
         kind: "schema-invalid",
         result: {
@@ -231,6 +235,34 @@ export class OpenAICompatibleProvider implements LlmProvider {
     }
     return { kind: "final", result: { stopReason: "ok", data: check.data, usage } };
   }
+}
+
+/**
+ * Catat ke stderr (debug) nilai enum yang tidak valid SAJA (bukan konten). Hanya
+ * untuk issue `invalid_value`/"Invalid option" (enum). Nilai diambil dari JSON pada
+ * path issue, dipendekkan, agar bisa diaudit tanpa membocorkan teks eksternal.
+ */
+function logInvalidEnumValues(error: z.ZodError, parsed: unknown, model: string): void {
+  for (const issue of error.issues) {
+    const isEnum = issue.code === "invalid_value" || /invalid option/i.test(issue.message);
+    if (!isEnum) continue;
+    const pathStr = issue.path.join(".");
+    const val = valueAtPath(parsed, issue.path);
+    // Hanya log bila nilai berupa string pendek (nama enum), bukan teks panjang.
+    if (typeof val === "string" && val.length <= 40) {
+      console.error(`[engine/llm] invalid enum at ${pathStr}: "${val}" (model ${model})`);
+    }
+  }
+}
+
+/** Ambil nilai pada path (array of string|number) dari objek JSON. undefined bila tak ada. */
+function valueAtPath(obj: unknown, path: PropertyKey[]): unknown {
+  let cur: unknown = obj;
+  for (const key of path) {
+    if (cur == null || typeof cur !== "object") return undefined;
+    cur = (cur as Record<PropertyKey, unknown>)[key];
+  }
+  return cur;
 }
 
 /**

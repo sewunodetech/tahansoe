@@ -147,9 +147,10 @@ test("dry + fake: < 3 analyst sukses → report null, tidak menulis file (offlin
   }
 });
 
-test("dry + fake: error 400 non-retryable → berhenti setelah panggilan pertama, alasan jelas", async () => {
-  // Semua panggilan mengembalikan error 400 (mis. kredit habis). Fail-fast:
-  // run harus berhenti setelah analyst PERTAMA, tanpa memanggil peran lain.
+test("dry + fake: error 400 non-retryable → stop sebelum debate/assessor, alasan jelas", async () => {
+  // Semua panggilan mengembalikan error 400 (mis. kredit habis). Analis dijalankan
+  // KONKUREN (4 panggilan), lalu GUARD fail-fast menghentikan run SEBELUM debate &
+  // assessor karena analyst pertama gagal non-retryable (cli-polish §5).
   const provider = new FakeProvider([], {
     stopReason: "error",
     error: "400 Your credit balance is too low to access the Anthropic API",
@@ -165,8 +166,8 @@ test("dry + fake: error 400 non-retryable → berhenti setelah panggilan pertama
     dry: true,
   });
   assert.equal(result.report, null);
-  // Hanya SATU panggilan LLM (analyst pertama) sebelum berhenti.
-  assert.equal(provider.calls.length, 1, "berhenti setelah panggilan pertama");
+  // 4 panggilan analis (konkuren), TIDAK ada panggilan debate/assessor sesudahnya.
+  assert.equal(provider.calls.length, 4, "hanya 4 analis dipanggil; berhenti sebelum debate/assessor");
   // Alasan menyebut error non-retryable + pesan asli (tanpa API key).
   assert.match(result.reason ?? "", /non-retryable/);
   assert.match(result.reason ?? "", /credit balance is too low/);

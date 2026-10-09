@@ -200,39 +200,15 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
   const ctx = await buildContext({ chainId, assets, dry, collector });
   emit({ type: "stage_done", stage: "sources", ms: Date.now() - sourcesStart });
 
-  // Jalankan analyst dengan FAIL-FAST: coba analyst pertama lebih dulu. Jika gagal
-  // dengan status non-retryable (400/401/403 — auth/kredit/request salah), error
-  // yang sama pasti terulang di peran lain, jadi hentikan tanpa memanggil sisanya.
+  // Jalankan 4 analyst SECARA PARALEL (limit konkurensi = 4; mereka independen).
+  // Satu gagal tidak membatalkan yang lain. Setelah settle, GUARD fail-fast tetap
+  // berlaku: jika analyst pertama gagal non-retryable (400/401/403 — auth/kredit),
+  // error itu pasti terulang di peran lain, jadi hentikan run (tanpa memanggil
+  // debate/assessor). (cli-polish §5: analis konkuren; semantik pipeline tetap.)
   const analystsStart = Date.now();
   emit({ type: "stage_start", stage: "analysts", label: "Running analysts" });
-  const outcomes: AnalystOutcome[] = [];
-  const firstStart = Date.now();
-  const first = await runAnalyst(analystProvider, ANALYSTS[0]!, ctx);
-  outcomes.push(first);
-  emit({
-    type: "analyst_done",
-    domain: ANALYSTS[0]!.toLowerCase(),
-    ok: first.report !== null,
-    ms: Date.now() - firstStart,
-    usedModel: first.usedModel,
-    reason: first.report === null ? first.reason : undefined,
-  });
-  if (first.report === null && isNonRetryableStatus(first.status)) {
-    const reason =
-      `semua panggilan kemungkinan gagal: analyst ${ANALYSTS[0]!.toLowerCase()} ` +
-      `gagal dengan error non-retryable (${first.reason}). Menghentikan run lebih awal ` +
-      `tanpa memanggil peran lain.`;
-    emit({ type: "error", stage: "analysts", message: reason });
-    return {
-      report: null,
-      reason,
-      diagnostics: buildDiagnostics({ startedAtMs, analystOutcomes: outcomes }),
-    };
-  }
-
-  // Sisanya paralel; satu gagal tidak membatalkan yang lain.
-  const restSettled = await Promise.allSettled(
-    ANALYSTS.slice(1).map(async (domain) => {
+  const settled = await Promise.allSettled(
+    ANALYSTS.map(async (domain) => {
       const s = Date.now();
       const outcome = await runAnalyst(analystProvider, domain, ctx);
       emit({
@@ -246,11 +222,26 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
       return outcome;
     }),
   );
-  for (const r of restSettled) {
+  const outcomes: AnalystOutcome[] = [];
+  for (const r of settled) {
     if (r.status === "fulfilled") outcomes.push(r.value);
     // Promise ditolak (bug tak terduga) diabaikan di penghitungan sukses.
   }
   emit({ type: "stage_done", stage: "analysts", ms: Date.now() - analystsStart });
+
+  // GUARD fail-fast: analyst pertama (ANALYSTS[0]) gagal non-retryable → hentikan.
+  const first = outcomes.find((o) => o.domain === ANALYSTS[0]);
+  if (first && first.report === null && isNonRetryableStatus(first.status)) {
+    const reason =
+      `semua panggilan kemungkinan gagal: analyst ${ANALYSTS[0]!.toLowerCase()} ` +
+      `gagal dengan error non-retryable (${first.reason}). Menghentikan run lebih awal.`;
+    emit({ type: "error", stage: "analysts", message: reason });
+    return {
+      report: null,
+      reason,
+      diagnostics: buildDiagnostics({ startedAtMs, analystOutcomes: outcomes }),
+    };
+  }
 
   const reports = outcomes.flatMap((o) => (o.report ? [o.report] : []));
 

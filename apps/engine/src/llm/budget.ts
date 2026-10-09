@@ -48,25 +48,27 @@ const FALLBACK_PRICE = PRICE_PER_MTOK["claude-opus-5-5"]!;
 const warnedUnknownModels = new Set<string>();
 
 /**
- * Harga runtime (USD per 1M token) dari pricing.ts (LLM_MODEL_PRICES / LLM_PRICING_URL).
- * Dikonsultasikan SEBELUM tabel bawaan. Kosong secara default; diisi lewat
- * `setRuntimePricing` oleh pemanggil yang memuat harga (CLI, worker).
+ * Harga runtime dari pricing.ts (settings.modelPrices / pricingUrl). Menyimpan
+ * ModelPrice PENUH (termasuk `native` IDR) agar costOfDetailed bisa melaporkan IDR.
+ * Dikonsultasikan SEBELUM tabel bawaan. Diisi lewat `setRuntimePricing`.
  */
-let runtimePricing: Map<string, { input: number; output: number }> = new Map();
+let runtimePricing: Map<string, ModelPrice> = new Map();
 
-/**
- * Pasang harga runtime dari pricing.ts. Hanya menyimpan input/outputPerM (USD).
- * Memanggil ini mengganti harga runtime sebelumnya.
- */
+/** Pasang harga runtime dari pricing.ts (ModelPrice penuh). Mengganti yang lama. */
 export function setRuntimePricing(prices: Map<string, ModelPrice>): void {
-  const next = new Map<string, { input: number; output: number }>();
-  for (const [model, p] of prices) next.set(model, { input: p.inputPerM, output: p.outputPerM });
-  runtimePricing = next;
+  runtimePricing = new Map(prices);
 }
 
 /** Kosongkan harga runtime (untuk test agar tidak bocor antar-kasus). */
 export function clearRuntimePricing(): void {
   runtimePricing = new Map();
+}
+
+/** Harga USD per 1M (input/output) untuk sebuah model, atau undefined bila tak ada. */
+function priceFor(model: string): { input: number; output: number } | undefined {
+  const rt = runtimePricing.get(model);
+  if (rt) return { input: rt.inputPerM, output: rt.outputPerM };
+  return PRICE_PER_MTOK[model];
 }
 
 /**
@@ -80,7 +82,7 @@ export function clearRuntimePricing(): void {
  * cache write ~1.25x, cache read ~0.1x, output pada harga output.
  */
 export function costOf(usage: LlmUsage): number {
-  let price = runtimePricing.get(usage.model) ?? PRICE_PER_MTOK[usage.model];
+  let price = priceFor(usage.model);
   if (!price) {
     if (!warnedUnknownModels.has(usage.model)) {
       warnedUnknownModels.add(usage.model);
@@ -98,6 +100,20 @@ export function costOf(usage: LlmUsage): number {
     ((usage.cacheReadTokens ?? 0) / 1_000_000) * price.input * CACHE_READ_MULTIPLIER;
   const output = (usage.outputTokens / 1_000_000) * price.output;
   return input + cacheWrite + cacheRead + output;
+}
+
+/** Rincian biaya satu pemakaian: USD selalu; IDR bila harga runtime punya native IDR. */
+export function costOfDetailed(usage: LlmUsage): { usd: number; idr?: number } {
+  const usd = costOf(usage);
+  const rt = runtimePricing.get(usage.model);
+  if (rt?.native?.currency === "IDR") {
+    const idrIn = (usage.inputTokens / 1_000_000) * rt.native.inputPerM;
+    const idrOut = (usage.outputTokens / 1_000_000) * rt.native.outputPerM;
+    const idrCacheWrite = ((usage.cacheWriteTokens ?? 0) / 1_000_000) * rt.native.inputPerM * CACHE_WRITE_MULTIPLIER;
+    const idrCacheRead = ((usage.cacheReadTokens ?? 0) / 1_000_000) * rt.native.inputPerM * CACHE_READ_MULTIPLIER;
+    return { usd, idr: idrIn + idrOut + idrCacheWrite + idrCacheRead };
+  }
+  return { usd };
 }
 
 /** Kunci hari UTC untuk reset harian. */

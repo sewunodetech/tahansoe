@@ -8,6 +8,7 @@ import type { ResearchReport } from "../agents/schemas.ts";
 import type { RunDiagnostics } from "../agents/run.ts";
 import type { ReportCardData } from "./render.ts";
 import { config } from "../config.ts";
+import { costOfDetailed } from "../llm/budget.ts";
 
 /** Label ramah-manusia untuk jalur transmisi T1..T10 (knowledge/risk-transmission §1). */
 export const PATH_LABEL: Record<string, string> = {
@@ -23,12 +24,52 @@ export const PATH_LABEL: Record<string, string> = {
   T10: "L2 sequencer down",
 };
 
+/**
+ * Saran buffer bergantung regime (cli-polish §1). TIDAK pernah menyebut buy/sell;
+ * keputusan akhir tetap di rule engine (clamp ke band user). Regime ini adalah
+ * "proposed regime (research)" — riset sendirian tidak bisa mengangkat ke STRESSED+.
+ */
+export function suggestionFor(regime: string): string {
+  switch (regime) {
+    case "CALM":
+      return "No change suggested: your static policy applies";
+    case "ELEVATED":
+      return "Consider a higher buffer within your approved band";
+    case "STRESSED":
+    case "CRISIS":
+      return "Higher buffer recommended within your approved band (rules engine decides)";
+    default:
+      return "No change suggested: your static policy applies";
+  }
+}
+
 export interface ToCardOpts {
   reportId?: string;
   diagnostics?: RunDiagnostics;
   costUsd?: number;
   costIdr?: number;
   now?: Date;
+}
+
+/**
+ * Hitung total biaya run dari diagnostics (per peran: usedModel + token) memakai
+ * harga budget (costOfDetailed → USD + IDR bila sumber Bynara). Harga runtime
+ * harus sudah dimuat (bootstrapBudgetPricing). Model tak dikenal → fallback budget.
+ */
+export function runCostFromDiagnostics(diagnostics: RunDiagnostics): { usd: number; idr?: number } {
+  let usd = 0;
+  let idr = 0;
+  let anyIdr = false;
+  for (const r of diagnostics.roles) {
+    const model = r.usedModel ?? "(unknown)";
+    const d = costOfDetailed({ model, inputTokens: r.inputTokens, outputTokens: r.outputTokens });
+    usd += d.usd;
+    if (d.idr !== undefined) {
+      idr += d.idr;
+      anyIdr = true;
+    }
+  }
+  return anyIdr ? { usd, idr } : { usd };
 }
 
 /** Bangun ReportCardData dari report + opsi (biaya/diagnostik). Pure. */
@@ -51,7 +92,7 @@ export function toReportCardData(report: ResearchReport, opts: ToCardOpts = {}):
     evidence: report.keyDevelopments.flatMap((d) =>
       d.evidence.map((e) => ({ text: e.summary, source: e.source })),
     ),
-    suggestion: "Suggested buffer: raise trigger HF within your approved band",
+    suggestion: suggestionFor(report.proposedRegime),
     reportId: opts.reportId,
     tokens,
     costUsd: opts.costUsd,

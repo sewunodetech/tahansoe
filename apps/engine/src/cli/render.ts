@@ -276,7 +276,9 @@ function arrow(direction: string): string {
 export function renderReportCard(theme: Theme, data: ReportCardData): string {
   const lines: string[] = [];
   const regimeTxt = regimeColor(theme, data.regime, `● ${data.regime}`);
-  lines.push(`Regime     ${padEndW(regimeTxt, 18)} Direction  ${arrow(data.direction)}`);
+  // "Proposed regime (research)": riset sendirian tidak menetapkan regime fusi
+  // (butuh konfirmasi ORACLE/ONCHAIN/MACRO) — jangan menyiratkan ini regime final.
+  lines.push(`Proposed regime (research)  ${padEndW(regimeTxt, 16)} Direction  ${arrow(data.direction)}`);
   lines.push(
     `Confidence ${confidenceBar(data.confidence, data.confidenceCap)}   Horizon ${data.horizonHours ?? "?"}h`,
   );
@@ -284,7 +286,8 @@ export function renderReportCard(theme: Theme, data: ReportCardData): string {
   lines.push("Top paths");
   if (data.paths.length === 0) lines.push("  (none)");
   for (const p of [...data.paths].sort((a, b) => b.severity - a.severity).slice(0, 4)) {
-    lines.push(`  ${p.code} ${padEndW(sanitizeExternal(p.label, 24), 24)} ${bar(p.severity, 9)} sev ${p.severity.toFixed(2)}`);
+    // Kode jalur di-pad ke lebar 3 (T1..T10) agar kolom label sejajar.
+    lines.push(`  ${p.code.padEnd(3)} ${padEndW(sanitizeExternal(p.label, 24), 24)} ${bar(p.severity, 9)} sev ${p.severity.toFixed(2)}`);
   }
   lines.push("");
   lines.push("Key evidence");

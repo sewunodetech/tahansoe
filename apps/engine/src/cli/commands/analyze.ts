@@ -85,7 +85,8 @@ export async function analyzeCommand(argv: string[], deps: AnalyzeDeps = {}): Pr
   const npmFlag = (name: string): boolean => process.env[`npm_config_${name}`] !== undefined;
   const json = Boolean(f.json) || npmFlag("json");
   const fake = Boolean(f.fake) || npmFlag("fake");
-  const dry = Boolean(f.dry) || npmFlag("dry");
+  // PowerShell menelan `--`, lalu npm membaca --dry sebagai singkatan --dry-run.
+  const dry = Boolean(f.dry) || npmFlag("dry") || process.env.npm_config_dry_run === "true";
   const assets = f.assets ? parseCsv(f.assets) : ["ETH", "USDC"];
   // Tema untuk stderr (progress/banner). JSON mode selalu non-color output data.
   const theme = detectTheme(argv, process.env, process.stderr);
@@ -153,9 +154,22 @@ export async function analyzeCommand(argv: string[], deps: AnalyzeDeps = {}): Pr
     return EXIT_ERROR;
   }
 
+  // Biaya run dari diagnostics (harga runtime sudah dimuat untuk run nyata).
+  // Mode --fake tidak menampilkan biaya (model "fake", bukan panggilan berbayar).
+  let costUsd: number | undefined;
+  let costIdr: number | undefined;
+  if (!fake && result.diagnostics) {
+    const { runCostFromDiagnostics } = await import("../report-card-data.ts");
+    const c = runCostFromDiagnostics(result.diagnostics);
+    costUsd = c.usd;
+    costIdr = c.idr;
+  }
+
   const cardData = toReportCardData(result.report, {
     reportId: result.reportId,
     diagnostics: result.diagnostics,
+    costUsd,
+    costIdr,
     now: new Date(),
   });
 
