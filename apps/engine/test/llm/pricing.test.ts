@@ -15,7 +15,11 @@ import {
   parseManualPrices,
   parsePricingPayload,
   loadPricing,
+  cacheFileName,
+  CACHE_TTL_MS,
   type FetchLike,
+  type PricingCacheStore,
+  type CacheEntry,
 } from "../../src/llm/pricing.ts";
 import {
   estimateCost,
@@ -25,6 +29,27 @@ import {
 } from "../../src/llm/estimate.ts";
 
 const USD_TO_IDR = 17891.619611;
+
+/** Cache in-memory untuk test (tanpa menyentuh disk). `nowMs` dapat diatur. */
+function memoryCache(seed?: Record<string, CacheEntry>, nowMs = 1_000_000_000_000): PricingCacheStore {
+  const store = new Map<string, CacheEntry>(Object.entries(seed ?? {}));
+  return {
+    async read(url) {
+      return store.get(url) ?? null;
+    },
+    async write(url, entry) {
+      store.set(url, entry);
+    },
+    now() {
+      return nowMs;
+    },
+  };
+}
+
+/** Payload Bynara minimal untuk satu alias. */
+function bynaraPayload(alias: string, inC = 1, outC = 2) {
+  return { data: [{ alias, input_credit_per_1k: inC, output_credit_per_1k: outC }], usd_to_idr: USD_TO_IDR };
+}
 
 test("parseBynara: credit/1k (IDR) → USD per 1M + simpan IDR asli", () => {
   const { prices } = parseBynara(
@@ -98,15 +123,102 @@ test("loadPricing: remote (mock) + manual menimpa; fetch gagal → warning tanpa
     pricingUrl: "https://example/pricing",
     modelPricesJson: '{"m1":{"inputPerM":9,"outputPerM":9}}',
     fetchImpl: okFetch,
+    cache: memoryCache(),
   });
   // manual menimpa remote untuk m1
   assert.equal(r1.prices.get("m1")?.inputPerM, 9);
   assert.equal(r1.prices.get("m1")?.source, "manual");
 
   const failFetch: FetchLike = async () => ({ ok: false, status: 500, json: async () => ({}), text: async () => "err" });
-  const r2 = await loadPricing({ pricingUrl: "https://example/pricing", modelPricesJson: "", fetchImpl: failFetch });
+  const r2 = await loadPricing({
+    pricingUrl: "https://example/pricing",
+    modelPricesJson: "",
+    fetchImpl: failFetch,
+    cache: memoryCache(),
+  });
   assert.equal(r2.prices.size, 0);
   assert.match(r2.warnings.join(" "), /gagal memuat LLM_PRICING_URL/);
+});
+
+test("cacheFileName: deterministik & aman untuk nama file", () => {
+  const a = cacheFileName("https://router.bynara.id/api/pricing");
+  const b = cacheFileName("https://router.bynara.id/api/pricing");
+  const c = cacheFileName("https://openrouter.ai/api/v1/models");
+  assert.equal(a, b, "URL sama → nama sama");
+  assert.notEqual(a, c, "URL beda → nama beda");
+  assert.match(a, /^pricing-[0-9a-f]{16}\.json$/);
+});
+
+test("resilience: retry berhasil di percobaan kedua (5xx lalu 200)", async () => {
+  let calls = 0;
+  const fetchImpl: FetchLike = async () => {
+    calls += 1;
+    if (calls === 1) return { ok: false, status: 503, json: async () => ({}), text: async () => "busy" };
+    return { ok: true, status: 200, json: async () => bynaraPayload("retry-model"), text: async () => "" };
+  };
+  const cache = memoryCache();
+  const r = await loadPricing({ pricingUrl: "https://x/pricing", modelPricesJson: "", fetchImpl, cache });
+  assert.equal(calls, 2, "dicoba 2x (retry sekali)");
+  assert.ok(r.prices.get("retry-model"), "harga dari percobaan kedua termuat");
+  // Sukses menulis cache
+  assert.ok(await cache.read("https://x/pricing"), "cache ditulis setelah sukses");
+});
+
+test("resilience: network error lalu sukses (retry)", async () => {
+  let calls = 0;
+  const fetchImpl: FetchLike = async () => {
+    calls += 1;
+    if (calls === 1) throw new Error("fetch failed");
+    return { ok: true, status: 200, json: async () => bynaraPayload("net-model"), text: async () => "" };
+  };
+  const r = await loadPricing({ pricingUrl: "https://x/pricing", modelPricesJson: "", fetchImpl, cache: memoryCache() });
+  assert.equal(calls, 2);
+  assert.ok(r.prices.get("net-model"));
+});
+
+test("resilience: 4xx tidak di-retry (langsung gagal)", async () => {
+  let calls = 0;
+  const fetchImpl: FetchLike = async () => {
+    calls += 1;
+    return { ok: false, status: 404, json: async () => ({}), text: async () => "nf" };
+  };
+  const r = await loadPricing({ pricingUrl: "https://x/pricing", modelPricesJson: "", fetchImpl, cache: memoryCache() });
+  assert.equal(calls, 1, "4xx tidak di-retry");
+  assert.match(r.warnings.join(" "), /gagal memuat LLM_PRICING_URL/);
+});
+
+test("resilience: fetch gagal → fallback ke cache (walau kedaluwarsa) + warning", async () => {
+  const url = "https://x/pricing";
+  const now = 2_000_000_000_000;
+  // Cache ditulis jauh di masa lampau (kedaluwarsa).
+  const staleAt = now - CACHE_TTL_MS - 10_000;
+  const cache = memoryCache({ [url]: { fetchedAt: staleAt, payload: bynaraPayload("cached-model") } }, now);
+  let calls = 0;
+  const fetchImpl: FetchLike = async () => {
+    calls += 1;
+    throw new Error("fetch failed");
+  };
+  const r = await loadPricing({ pricingUrl: url, modelPricesJson: "", fetchImpl, cache });
+  assert.equal(calls, 2, "fetch tetap dicoba (2x) sebelum fallback");
+  assert.ok(r.prices.get("cached-model"), "harga dari cache kedaluwarsa dipakai");
+  assert.match(r.warnings.join(" "), /memakai harga cache dari/);
+  assert.match(r.warnings.join(" "), /mungkin kedaluwarsa/);
+});
+
+test("resilience: cache valid (dalam TTL) TIDAK memicu fetch", async () => {
+  const url = "https://x/pricing";
+  const now = 2_000_000_000_000;
+  const freshAt = now - 60_000; // 1 menit lalu, masih dalam TTL
+  const cache = memoryCache({ [url]: { fetchedAt: freshAt, payload: bynaraPayload("fresh-model") } }, now);
+  let calls = 0;
+  const fetchImpl: FetchLike = async () => {
+    calls += 1;
+    return { ok: true, status: 200, json: async () => bynaraPayload("should-not-be-used"), text: async () => "" };
+  };
+  const r = await loadPricing({ pricingUrl: url, modelPricesJson: "", fetchImpl, cache });
+  assert.equal(calls, 0, "cache segar → tidak fetch");
+  assert.ok(r.prices.get("fresh-model"));
+  assert.equal(r.prices.get("should-not-be-used"), undefined);
 });
 
 test("estimateCost: per run/day/month + IDR dari harga native", () => {

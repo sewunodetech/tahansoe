@@ -15,10 +15,30 @@
  * Gagal fetch / parse TIDAK meng-crash: kembalikan apa yang bisa dimuat + daftar
  * warning. Modul ini murni data (tanpa efek on-chain, tanpa secret di log).
  *
+ * KETAHANAN JARINGAN:
+ *  - Setiap fetch harga punya timeout eksplisit (FETCH_TIMEOUT_MS) + 1 retry pada
+ *    error jaringan / 5xx (jeda RETRY_DELAY_MS).
+ *  - Hasil sukses di-cache ke apps/engine/.cache/pricing-<hash url>.json dengan
+ *    TTL (CACHE_TTL_MS). Cache valid dipakai TANPA fetch. Bila fetch gagal, cache
+ *    terakhir dipakai walau kedaluwarsa, dengan peringatan "memakai harga cache
+ *    dari <waktu>". (.cache/ di-gitignore.)
+ *
  * JANGAN pernah log API key (I8). Konten remote diperlakukan sebagai DATA.
  */
 
+import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { env } from "../config.ts";
+
+/** Timeout per permintaan fetch harga (ms). */
+export const FETCH_TIMEOUT_MS = 10_000;
+/** Jeda singkat sebelum retry pada error jaringan / 5xx (ms). */
+export const RETRY_DELAY_MS = 750;
+/** Umur cache harga yang masih dianggap "segar" (ms). Default 6 jam. */
+export const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 /** Harga satu model dalam USD per 1 juta token (+ info harga asli opsional). */
 export interface ModelPrice {
@@ -48,13 +68,70 @@ export interface PricingResult {
   warnings: string[];
 }
 
-/** Fetch injectable agar test offline. */
-export type FetchLike = (url: string, init?: unknown) => Promise<{
+/** Fetch injectable agar test offline. `init` boleh membawa AbortSignal untuk timeout. */
+export type FetchLike = (
+  url: string,
+  init?: { method?: string; headers?: Record<string, string>; signal?: AbortSignal },
+) => Promise<{
   ok: boolean;
   status: number;
   json: () => Promise<unknown>;
   text: () => Promise<string>;
 }>;
+
+/** Satu entri cache harga di disk: payload mentah + waktu ambil (epoch ms). */
+export interface CacheEntry {
+  fetchedAt: number;
+  payload: unknown;
+}
+
+/**
+ * Penyimpanan cache harga (injectable agar test offline tanpa menyentuh disk).
+ * `read` mengembalikan null bila tidak ada; `now` memudahkan uji TTL.
+ */
+export interface PricingCacheStore {
+  read(url: string): Promise<CacheEntry | null>;
+  write(url: string, entry: CacheEntry): Promise<void>;
+  now(): number;
+}
+
+/** Direktori cache: apps/engine/.cache (di root paket engine). */
+function cacheDir(): string {
+  const here = dirname(fileURLToPath(import.meta.url)); // src/llm
+  return join(here, "..", "..", ".cache"); // apps/engine/.cache
+}
+
+/** Nama file cache deterministik dari URL (hash agar aman untuk nama file). */
+export function cacheFileName(url: string): string {
+  const hash = createHash("sha256").update(url).digest("hex").slice(0, 16);
+  return `pricing-${hash}.json`;
+}
+
+/** Cache store berbasis file nyata (dipakai produksi). Gagal baca/tulis → diam. */
+export const fileCacheStore: PricingCacheStore = {
+  async read(url: string): Promise<CacheEntry | null> {
+    try {
+      const raw = await readFile(join(cacheDir(), cacheFileName(url)), "utf8");
+      const parsed = JSON.parse(raw) as CacheEntry;
+      if (typeof parsed?.fetchedAt !== "number" || !("payload" in parsed)) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  },
+  async write(url: string, entry: CacheEntry): Promise<void> {
+    try {
+      const dir = cacheDir();
+      await mkdir(dir, { recursive: true });
+      await writeFile(join(dir, cacheFileName(url)), JSON.stringify(entry), "utf8");
+    } catch {
+      // Cache bersifat best-effort; kegagalan tulis tidak boleh meng-crash.
+    }
+  },
+  now(): number {
+    return Date.now();
+  },
+};
 
 /**
  * Muat harga dari manual JSON (LLM_MODEL_PRICES) + remote (LLM_PRICING_URL).
@@ -65,26 +142,22 @@ export async function loadPricing(opts?: {
   modelPricesJson?: string;
   apiKey?: string;
   fetchImpl?: FetchLike;
+  cache?: PricingCacheStore;
 }): Promise<PricingResult> {
   const pricingUrl = opts?.pricingUrl ?? env.llmPricingUrl();
   const modelPricesJson = opts?.modelPricesJson ?? env.llmModelPricesJson();
   const apiKey = opts?.apiKey ?? env.llmApiKey();
   const fetchImpl = opts?.fetchImpl ?? (globalThis.fetch as unknown as FetchLike);
+  const cache = opts?.cache ?? fileCacheStore;
 
   const prices = new Map<string, ModelPrice>();
   const warnings: string[] = [];
 
   // Remote dulu, lalu manual menimpa (manual = sumber kebenaran operator).
   if (pricingUrl.trim()) {
-    try {
-      const remote = await fetchPricing(pricingUrl.trim(), apiKey, fetchImpl);
-      for (const [model, price] of remote.prices) prices.set(model, price);
-      warnings.push(...remote.warnings);
-    } catch (err) {
-      warnings.push(
-        `[pricing] gagal memuat LLM_PRICING_URL: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
+    const remote = await fetchPricingResilient(pricingUrl.trim(), apiKey, fetchImpl, cache);
+    for (const [model, price] of remote.prices) prices.set(model, price);
+    warnings.push(...remote.warnings);
   }
 
   if (modelPricesJson.trim()) {
@@ -134,16 +207,87 @@ export function parseManualPrices(json: string): PricingResult {
   return { prices, warnings };
 }
 
-/** Ambil harga dari remote URL; deteksi format dari bentuk payload. */
-async function fetchPricing(url: string, apiKey: string, fetchImpl: FetchLike): Promise<PricingResult> {
+/**
+ * Ambil harga dengan ketahanan: cache valid (TTL) dipakai TANPA fetch; selain itu
+ * fetch dengan timeout + 1 retry (error jaringan/5xx). Fetch sukses menulis cache.
+ * Fetch gagal → pakai cache terakhir walau kedaluwarsa (warning); tanpa cache →
+ * warning kegagalan. Tidak pernah throw.
+ */
+async function fetchPricingResilient(
+  url: string,
+  apiKey: string,
+  fetchImpl: FetchLike,
+  cache: PricingCacheStore,
+): Promise<PricingResult> {
+  const now = cache.now();
+  const cached = await cache.read(url);
+
+  // 1. Cache masih segar (dalam TTL) → pakai langsung, jangan fetch.
+  if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
+    return parsePricingPayload(cached.payload);
+  }
+
+  // 2. Coba fetch (timeout + 1 retry pada error jaringan/5xx).
+  const fetched = await fetchWithRetry(url, apiKey, fetchImpl);
+  if (fetched.ok) {
+    await cache.write(url, { fetchedAt: now, payload: fetched.payload });
+    return parsePricingPayload(fetched.payload);
+  }
+
+  // 3. Fetch gagal → fallback ke cache kedaluwarsa bila ada.
+  if (cached) {
+    const stamp = new Date(cached.fetchedAt).toISOString();
+    const result = parsePricingPayload(cached.payload);
+    result.warnings.unshift(
+      `[pricing] fetch harga gagal (${fetched.error}); memakai harga cache dari ${stamp} (mungkin kedaluwarsa).`,
+    );
+    return result;
+  }
+
+  // 4. Tidak ada cache → kembalikan warning kegagalan (tanpa crash).
+  return { prices: new Map(), warnings: [`[pricing] gagal memuat LLM_PRICING_URL: ${fetched.error}`] };
+}
+
+/** Hasil upaya fetch mentah: sukses dengan payload, atau gagal dengan pesan error. */
+type FetchOutcome = { ok: true; payload: unknown } | { ok: false; error: string };
+
+/**
+ * Fetch satu URL harga dengan timeout eksplisit + 1 retry. Error RETRYABLE
+ * (jaringan/timeout/5xx) memicu retry sekali setelah RETRY_DELAY_MS; 4xx tidak
+ * di-retry. Mengembalikan FetchOutcome (tidak throw).
+ */
+async function fetchWithRetry(url: string, apiKey: string, fetchImpl: FetchLike): Promise<FetchOutcome> {
   const headers: Record<string, string> = { accept: "application/json" };
   if (apiKey) headers["authorization"] = `Bearer ${apiKey}`;
-  const res = await fetchImpl(url, { method: "GET", headers });
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
+
+  let lastError = "unknown";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetchImpl(url, { method: "GET", headers, signal: controller.signal });
+      if (res.ok) {
+        const payload = await res.json();
+        return { ok: true, payload };
+      }
+      lastError = `HTTP ${res.status}`;
+      // 4xx non-retryable → berhenti; 5xx retryable → lanjut retry.
+      if (res.status < 500) return { ok: false, error: lastError };
+    } catch (err) {
+      // Network/timeout/abort → retryable.
+      lastError = err instanceof Error ? err.message : String(err);
+    } finally {
+      clearTimeout(timer);
+    }
+    // Masih ada percobaan tersisa → jeda singkat lalu retry.
+    if (attempt === 0 && RETRY_DELAY_MS > 0) await delay(RETRY_DELAY_MS);
   }
-  const payload = (await res.json()) as unknown;
-  return parsePricingPayload(payload);
+  return { ok: false, error: lastError };
+}
+
+/** Jeda (ms) untuk retry. */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
