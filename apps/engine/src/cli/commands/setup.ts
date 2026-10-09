@@ -26,6 +26,7 @@ import { detectTheme, maskHost, type Theme } from "../render.ts";
 import { writeEnvUpdates, defaultEnvPath } from "../env-writer.ts";
 import { loadSettingsSync, writeSettings, settingsPath } from "../../settings/settings.ts";
 import { runDoctor, formatDoctor, type DoctorFetch, type CheckResult } from "./doctor.ts";
+import { t, setLanguage, type SupportedLanguage } from "../i18n/index.ts";
 
 export const SETUP_HELP = `tahansoe setup — wizard konfigurasi awal (gateway, models, database, telegram)
 
@@ -33,6 +34,7 @@ Usage: tahansoe setup [options]
 
 Options:
   --yes                        Mode non-interaktif (otomatis dengan opsi yang diberikan/default)
+  --lang <id|en>               Bahasa antarmuka / UI language (default: id)
   --llm-url <url>              URL endpoint LLM gateway (default: https://router.bynara.id/v1)
   --llm-key-env <NAME>         Nama env var yang memuat LLM_API_KEY (jangan lewat argv)
   --db <pglite|neon>           Pilihan database: pglite (lokal, default) atau neon (cloud)
@@ -304,6 +306,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
       args: argv,
       options: {
         yes: { type: "boolean" },
+        lang: { type: "string" },
         "llm-url": { type: "string" },
         "llm-key-env": { type: "string" },
         db: { type: "string" },
@@ -368,11 +371,19 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   let arbitrumRpcUrl = "";
   let fredApiKey = "";
   let telegramToken = "";
+  let chosenLang: SupportedLanguage | undefined;
 
   // -------------------------------------------------------------------------
   // 1. LLM Gateway & API Key
   // -------------------------------------------------------------------------
   if (isNonInteractive) {
+    if (f.lang) {
+      const l = String(f.lang).trim().toLowerCase();
+      if (l === "id" || l === "en") {
+        chosenLang = l as SupportedLanguage;
+        setLanguage(chosenLang);
+      }
+    }
     apiUrl = f["llm-url"] || existingApiUrl || "https://router.bynara.id/v1";
     if (f["llm-key-env"]) {
       apiKey = env[f["llm-key-env"]] || "";
@@ -416,7 +427,22 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
       }
     }
   } else {
-    // Mode Interaktif
+    // 0. Pemilihan Bahasa Antarmuka (pada setup awal)
+    if (!hasExistingRoles) {
+      writeOut(pc.cyan("0. Bahasa Antarmuka / UI Language\n"));
+      writeOut("  1) Bahasa Indonesia (default)\n");
+      writeOut("  2) English\n");
+      const langAns = await askQuestion("  Pilih bahasa / Choose language [1]: ", {
+        input: deps.stdin,
+        output: deps.outputStream,
+        defaultValue: "1",
+      });
+      chosenLang =
+        langAns.trim() === "2" || langAns.trim().toLowerCase() === "en" ? "en" : "id";
+      setLanguage(chosenLang);
+      writeOut(pc.green(`  ✔ ${t("setup.langSaved", { lang: chosenLang === "id" ? "Bahasa Indonesia" : "English" })}\n\n`));
+    }
+
     writeOut(pc.cyan("1. LLM Gateway (OpenAI-compatible)\n"));
     const urlPrompt = existingApiUrl
       ? `  LLM_API_URL [${existingApiUrl} (current)]: `
@@ -731,24 +757,30 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   if (fredApiKey) env.FRED_API_KEY = fredApiKey;
   if (telegramToken) env.TELEGRAM_BOT_TOKEN = telegramToken;
 
-  // Update settings.json HANYA jika model diubah (bukan keep current)
-  if (!keepCurrentModel) {
-    try {
-      const { settings } = loadSettingsSync(targetSettingsPath);
-      const updatedSettings = {
-        ...settings,
-        roles: {
-          analyst: [selectedModel, "deepseek-v4-flash"],
-          debate: [selectedModel, "deepseek-v4-flash"],
-          assessor: [selectedModel, "deepseek-v4-flash"],
-          reflector: [selectedModel, "deepseek-v4-flash"],
-          chat: [selectedModel, "deepseek-v4-flash"],
-        },
-      };
-      await writeSettings(updatedSettings, targetSettingsPath);
-    } catch (err) {
-      writeErr(pc.yellow(`Peringatan menyimpan settings: ${err instanceof Error ? err.message : String(err)}\n`));
+  // Update settings.json (roles dan bahasa antarmuka)
+  try {
+    const { settings } = loadSettingsSync(targetSettingsPath);
+    let needSave = false;
+    const updatedSettings = { ...settings };
+    if (chosenLang && updatedSettings.ui?.language !== chosenLang) {
+      updatedSettings.ui = { ...updatedSettings.ui, language: chosenLang };
+      needSave = true;
     }
+    if (!keepCurrentModel) {
+      updatedSettings.roles = {
+        analyst: [selectedModel, "deepseek-v4-flash"],
+        debate: [selectedModel, "deepseek-v4-flash"],
+        assessor: [selectedModel, "deepseek-v4-flash"],
+        reflector: [selectedModel, "deepseek-v4-flash"],
+        chat: [selectedModel, "deepseek-v4-flash"],
+      };
+      needSave = true;
+    }
+    if (needSave) {
+      await writeSettings(updatedSettings, targetSettingsPath);
+    }
+  } catch (err) {
+    writeErr(pc.yellow(`Peringatan menyimpan settings: ${err instanceof Error ? err.message : String(err)}\n`));
   }
 
   writeOut(pc.green(`✔ Konfigurasi tersimpan di .env dan settings.json.\n\n`));

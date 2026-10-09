@@ -415,3 +415,32 @@ test("setupCommand: konfigurasi neon eksisting + semua Enter -> .env dan setting
   await rm(tmp, { recursive: true, force: true });
 });
 
+test("setupCommand: opsi --lang pada non-interaktif dan interaktif menyimpan ke settings.json", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "tahansoe-setup-lang-"));
+  const tmpEnv = join(tmp, ".env");
+  const tmpSettings = join(tmp, "settings.json");
+
+  // Non-interaktif dengan --lang en
+  const exitCode = await setupCommand(["--yes", "--lang", "en"], {
+    env: { LLM_API_KEY: "secret" },
+    envPath: tmpEnv,
+    settingsPath: tmpSettings,
+    stdout: () => {},
+    stderr: () => {},
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [{ id: "gpt-6-luna" }] }),
+      text: async () => "",
+    }) as any,
+    runDoctorImpl: async () => [],
+  });
+
+  assert.equal(exitCode, EXIT_OK);
+  const settingsContent = JSON.parse(await readFile(tmpSettings, "utf-8"));
+  assert.equal(settingsContent.ui?.language, "en", "ui.language harus tersimpan 'en'");
+
+  await rm(tmp, { recursive: true, force: true });
+});
+
+

@@ -48,6 +48,9 @@ import "./signals/deterministic.test.ts";
 import "./cli/repl/slash.test.ts";
 import "./cli/repl/context.test.ts";
 import "./cli/repl/chat.test.ts";
+import "./cli/ui.test.ts";
+import "./cli/i18n.test.ts";
+import "./cli/repl/lang.test.ts";
 import "./cli/setup.test.ts";
 import "./cli/setup-telegram.test.ts";
 import "./cli/start.test.ts";
@@ -60,3 +63,5 @@ import "./gateway/router.test.ts";
 import "./gateway/alerts.test.ts";
 import "./gateway/state.test.ts";
 import "./gateway/gateway.test.ts";
+
+
