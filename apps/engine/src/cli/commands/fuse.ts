@@ -100,7 +100,8 @@ export async function fuseCommand(argv: string[], deps: FuseDeps = {}): Promise<
     }
     const a = r.assessment;
     const regimeTxt = regimeColor(theme, a.regime, `● ${a.regime}`);
-    lines.push(`${r.asset.padEnd(6)} ${regimeTxt}  trigger HF ${a.recommendedTriggerHF.toFixed(2)} · d4 ${(a.drawdownEstimate.h4 * 100).toFixed(1)}% · score ${a.riskScore.toFixed(0)}`);
+    lines.push(`${r.asset.padEnd(6)} ${regimeTxt}  rec. trigger HF ${a.recommendedTriggerHF.toFixed(2)} (pre-band; rules clamp to your band, default 1.25-1.60)`);
+    lines.push(dim(theme, `       d4 ${(a.drawdownEstimate.h4 * 100).toFixed(1)}% · d24 ${(a.drawdownEstimate.h24 * 100).toFixed(1)}% · score ${a.riskScore.toFixed(0)}`));
     if (r.reasons.length > 0) lines.push(dim(theme, `       reasons: ${r.reasons.join(", ")}`));
     // Penjelasan (deterministik, sudah tersanitasi di renderer) — baris pertama saja.
     const firstExplainLine = a.explanation.split("\n")[0] ?? "";

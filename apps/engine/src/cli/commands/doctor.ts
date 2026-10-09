@@ -164,8 +164,9 @@ export async function runDoctor(deps: DoctorDeps = {}): Promise<CheckResult[]> {
 async function defaultCheckDb(): Promise<{ ok: boolean; detail: string }> {
   const { getDb } = await import("@tahansoe/db");
   const { sql } = await import("drizzle-orm");
+  const { withTransientRetry } = await import("../../db/store.ts");
   const db = getDb();
-  await db.execute(sql`select 1`);
+  await withTransientRetry(() => db.execute(sql`select 1`));
   return { ok: true, detail: "connected" };
 }
 

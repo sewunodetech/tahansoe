@@ -24,6 +24,7 @@ import {
   acquireAdvisoryLock,
   createNeonLockClient,
   releaseAdvisoryLock,
+  unwrapError,
   type AdvisoryLockClient,
 } from "./lock.ts";
 import {
@@ -62,6 +63,7 @@ export interface ResearchWorkerOptions {
   logger?: ResearchWorkerLogger;
   exitFn?: (code: number) => void;
   onRunCompleted?: (result: RunResult | null) => void;
+  makeLockClient?: (dbUrl: string, opts?: import("./lock.ts").OpenLockOptions) => Promise<AdvisoryLockClient>;
 }
 
 export class ResearchWorker {
@@ -78,9 +80,11 @@ export class ResearchWorker {
   private logger: ResearchWorkerLogger;
   private exitFn: (code: number) => void;
   private onRunCompleted?: (result: RunResult | null) => void;
+  private makeLockClient?: (dbUrl: string, opts?: import("./lock.ts").OpenLockOptions) => Promise<AdvisoryLockClient>;
 
   private isRunning = false;
   private isExecuting = false;
+  private isLockLost = false;
   private scheduledTimer: any = null;
   private lastRegime: Regime = "CALM";
 
@@ -102,6 +106,7 @@ export class ResearchWorker {
     };
     this.exitFn = opts.exitFn ?? ((code) => process.exit(code));
     this.onRunCompleted = opts.onRunCompleted;
+    this.makeLockClient = opts.makeLockClient;
   }
 
   /**
@@ -115,17 +120,35 @@ export class ResearchWorker {
       const dbUrl = this.env.DATABASE_URL;
       if (dbUrl) {
         try {
-          this.lockClient = await createNeonLockClient(dbUrl);
+          const makeLock = this.makeLockClient ?? createNeonLockClient;
+          this.lockClient = await makeLock(dbUrl, {
+            onError: (message) => {
+              this.isLockLost = true;
+              this.logger.warn(`[worker] koneksi lock hilang (${message}) — akan dicoba reconnect pada tick berikutnya.`);
+            },
+          });
         } catch (err) {
-          this.logger.error(`[worker] gagal membuka koneksi lock: ${String(err)}`);
+          this.logger.error(`[worker] gagal membuka koneksi lock: ${unwrapError(err)}`);
           this.exitFn(1);
           return false;
         }
       }
+    } else if (typeof (this.lockClient as any).on === "function") {
+      (this.lockClient as any).on("error", (err: unknown) => {
+        this.isLockLost = true;
+        this.logger.warn(`[worker] koneksi lock hilang (${unwrapError(err)}) — akan dicoba reconnect pada tick berikutnya.`);
+      });
     }
 
     if (this.lockClient) {
-      const locked = await acquireAdvisoryLock(this.lockClient);
+      let locked = false;
+      try {
+        locked = await acquireAdvisoryLock(this.lockClient);
+      } catch (err) {
+        this.logger.error(`[worker] gagal mengambil advisory lock: ${unwrapError(err)}`);
+        this.exitFn(1);
+        return false;
+      }
       if (!locked) {
         this.logger.info(
           "[worker] another research worker is running; exiting cleanly",
@@ -147,6 +170,57 @@ export class ResearchWorker {
     return true;
   }
 
+  /** Status apakah koneksi advisory lock saat ini terputus/hilang. */
+  getIsLockLost(): boolean {
+    return this.isLockLost;
+  }
+
+  /**
+   * Coba pulihkan koneksi advisory lock yang putus.
+   * Mengembalikan true jika lock berhasil diambil kembali, false jika gagal atau dipegang instance lain.
+   */
+  async tryReacquireLock(): Promise<boolean> {
+    const dbUrl = this.env.DATABASE_URL;
+    if (!dbUrl) return false;
+
+    if (this.lockClient) {
+      try {
+        await this.lockClient.end?.();
+      } catch {
+        /* abaikan */
+      }
+      this.lockClient = null;
+    }
+
+    try {
+      this.logger.info("[worker] mencoba membuka kembali koneksi lock yang putus...");
+      const makeLock = this.makeLockClient ?? createNeonLockClient;
+      const client = await makeLock(dbUrl, {
+        onError: (message) => {
+          this.isLockLost = true;
+          this.logger.warn(`[worker] koneksi lock hilang (${message}) — akan dicoba reconnect pada tick berikutnya.`);
+        },
+      });
+      const locked = await acquireAdvisoryLock(client);
+      if (!locked) {
+        this.logger.info("[worker] lock dipegang instance lain — tetap pasif hingga tick berikutnya.");
+        try {
+          await client.end?.();
+        } catch {
+          /* abaikan */
+        }
+        return false;
+      }
+      this.lockClient = client;
+      this.isLockLost = false;
+      this.logger.info("[worker] postgres advisory lock berhasil diambil kembali.");
+      return true;
+    } catch (err) {
+      this.logger.warn(`[worker] gagal re-acquire lock: ${unwrapError(err)} — coba lagi tick berikutnya.`);
+      return false;
+    }
+  }
+
   /**
    * Hentikan worker dan lepaskan lock Postgres secara bersih.
    */
@@ -161,10 +235,12 @@ export class ResearchWorker {
 
     if (this.lockClient) {
       try {
-        await releaseAdvisoryLock(this.lockClient);
+        if (!this.isLockLost) {
+          await releaseAdvisoryLock(this.lockClient);
+        }
         await this.lockClient.end?.();
       } catch (err) {
-        this.logger.warn(`[worker] error saat melepaskan lock: ${String(err)}`);
+        this.logger.warn(`[worker] error saat melepaskan lock: ${unwrapError(err)}`);
       }
       this.lockClient = null;
     }
@@ -191,6 +267,15 @@ export class ResearchWorker {
     let nextDelayMs = getIntervalMs(this.lastRegime, this.env);
 
     try {
+      // Guard Lock Lost: jika koneksi lock terputus (57P01 dsb.), jangan mulai run baru.
+      // Coba reconnect dan re-acquire lock. Jika instance lain yang memegang, tetap pasif.
+      if (this.isLockLost) {
+        const reacquired = await this.tryReacquireLock();
+        if (!reacquired) {
+          this.scheduleNext(nextDelayMs);
+          return;
+        }
+      }
       // 1. Guard Kill Switch (RESEARCH_ENABLED=false)
       const isEnabled = this.env.RESEARCH_ENABLED !== "false";
       if (!isEnabled) {

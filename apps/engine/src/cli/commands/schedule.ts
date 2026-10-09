@@ -65,9 +65,9 @@ export interface ScheduleDeps {
   settleJob?: (opts: { now?: Date }) => Promise<SettleJobResult>;
   /**
    * Factory lock settlement (default: Neon advisory lock pada SETTLE key). Harus
-   * mengembalikan { acquired, release }. Kontensi lock (acquired=false) → skip tick.
+   * mengembalikan { acquired, release, isLost? }. Kontensi lock (acquired=false) → skip tick.
    */
-  makeSettleLock?: () => Promise<{ acquired: boolean; release: () => Promise<void> }>;
+  makeSettleLock?: () => Promise<{ acquired: boolean; release: () => Promise<void>; isLost?: () => boolean }>;
   /** Clock untuk settle ticker (test). */
   settleClock?: { setInterval: (fn: () => void, ms: number) => unknown; clearInterval: (id: unknown) => void };
   /** Interval settlement (ms). Default dari SETTLE_INTERVAL_MIN. */
@@ -75,7 +75,7 @@ export interface ScheduleDeps {
   /** Jalur fusion (default: runFusion). Injectable untuk test. */
   fusionRun?: (opts: RunFusionOptions) => Promise<FusionRunResult>;
   /** Factory lock fusion (default: Neon advisory lock pada FUSION key). */
-  makeFusionLock?: () => Promise<{ acquired: boolean; release: () => Promise<void> }>;
+  makeFusionLock?: () => Promise<{ acquired: boolean; release: () => Promise<void>; isLost?: () => boolean }>;
   /** Clock untuk fusion ticker (test). */
   fusionClock?: { setInterval: (fn: () => void, ms: number) => unknown; clearInterval: (id: unknown) => void };
   /** Interval fusion (ms). Default dari FUSION_INTERVAL_MIN. */
@@ -97,13 +97,13 @@ export interface SettleStatus {
  */
 export class SettleTicker {
   private timer: unknown = null;
-  private release: (() => Promise<void>) | null = null;
+  private lock: { acquired: boolean; release: () => Promise<void>; isLost?: () => boolean } | null = null;
   private running = false;
   readonly status: SettleStatus = { lastAt: null, settled: 0, insufficient: 0, heldLock: false };
 
   constructor(
     private readonly job: (opts: { now?: Date }) => Promise<SettleJobResult>,
-    private readonly makeLock: () => Promise<{ acquired: boolean; release: () => Promise<void> }>,
+    private readonly makeLock: () => Promise<{ acquired: boolean; release: () => Promise<void>; isLost?: () => boolean }>,
     private readonly logger: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void },
     private readonly intervalMs: number,
     private readonly clock: { setInterval: (fn: () => void, ms: number) => unknown; clearInterval: (id: unknown) => void } = {
@@ -112,21 +112,39 @@ export class SettleTicker {
     },
   ) {}
 
-  /** Mulai: ambil lock, tick pertama segera, lalu jadwalkan interval. */
-  async start(): Promise<void> {
+  /** Ambil lock (atau re-acquire bila belum/putus). Mengembalikan true bila dipegang. */
+  private async ensureLock(): Promise<boolean> {
+    if (this.lock && this.lock.acquired && !(this.lock.isLost?.() ?? false)) return true;
+    // Lock putus → lepas yang lama (best-effort), coba lagi.
+    if (this.lock) {
+      try {
+        await this.lock.release();
+      } catch {
+        /* abaikan */
+      }
+      this.lock = null;
+    }
     try {
       const lock = await this.makeLock();
+      this.lock = lock;
       this.status.heldLock = lock.acquired;
       if (!lock.acquired) {
         this.logger.info("[settle] lock dipegang instance lain — settlement dilewati di proses ini.");
-        return;
       }
-      this.release = lock.release;
+      return lock.acquired;
     } catch (err) {
-      this.logger.warn(`[settle] gagal ambil lock: ${err instanceof Error ? err.message : String(err)} — settlement nonaktif.`);
-      return;
+      this.status.heldLock = false;
+      this.logger.warn(`[settle] gagal ambil lock: ${err instanceof Error ? err.message : String(err)} — coba lagi tick berikutnya.`);
+      return false;
     }
-    await this.tick();
+  }
+
+  /** Mulai: ambil lock, tick pertama segera, lalu jadwalkan interval. */
+  async start(): Promise<void> {
+    const held = await this.ensureLock();
+    if (held) await this.tick();
+    // Tetap jadwalkan interval walau lock belum didapat: bisa jadi instance lain
+    // berhenti dan kita bisa ambil alih / reconnect pada tick berikutnya.
     this.timer = this.clock.setInterval(() => void this.tick(), this.intervalMs);
   }
 
@@ -135,6 +153,8 @@ export class SettleTicker {
     if (this.running) return; // anti-overlap
     this.running = true;
     try {
+      const held = await this.ensureLock();
+      if (!held) return; // lock dipegang instance lain / belum pulih → lewati
       const result = await this.job({});
       this.status.lastAt = new Date();
       this.status.settled = result.settled.length;
@@ -161,35 +181,25 @@ export class SettleTicker {
       this.clock.clearInterval(this.timer);
       this.timer = null;
     }
-    if (this.release) {
+    if (this.lock) {
       try {
-        await this.release();
+        await this.lock.release();
       } catch {
         /* abaikan */
       }
-      this.release = null;
+      this.lock = null;
     }
   }
 }
 
-/** Lock settlement default via Neon advisory lock (key berbeda dari research). */
-async function defaultSettleLock(): Promise<{ acquired: boolean; release: () => Promise<void> }> {
+/** Lock settlement default via Neon advisory lock (retry + error handler + lost). */
+async function defaultSettleLock(): Promise<{ acquired: boolean; release: () => Promise<void>; isLost: () => boolean }> {
   const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) return { acquired: false, release: async () => {} };
-  const { createNeonLockClient, acquireAdvisoryLock, releaseAdvisoryLock } = await import("../../worker/lock.ts");
-  const client = await createNeonLockClient(dbUrl);
-  const acquired = await acquireAdvisoryLock(client, SETTLE_ADVISORY_LOCK_KEY);
-  return {
-    acquired,
-    release: async () => {
-      try {
-        await releaseAdvisoryLock(client, SETTLE_ADVISORY_LOCK_KEY);
-        await client.end?.();
-      } catch {
-        /* abaikan */
-      }
-    },
-  };
+  if (!dbUrl) return { acquired: false, release: async () => {}, isLost: () => false };
+  const { openAdvisoryLock } = await import("../../worker/lock.ts");
+  return openAdvisoryLock(dbUrl, SETTLE_ADVISORY_LOCK_KEY, {
+    logger: { warn: (m) => process.stderr.write(`[settle] ${m}\n`) },
+  });
 }
 
 /** Status ringkas fusion terakhir untuk dashboard. */
@@ -206,13 +216,13 @@ export interface FusionTickStatus {
  */
 export class FusionTicker {
   private timer: unknown = null;
-  private release: (() => Promise<void>) | null = null;
+  private lock: { acquired: boolean; release: () => Promise<void>; isLost?: () => boolean } | null = null;
   private running = false;
   readonly status: FusionTickStatus = { lastAt: null, perAsset: "—", heldLock: false };
 
   constructor(
     private readonly runFn: (opts: RunFusionOptions) => Promise<FusionRunResult>,
-    private readonly makeLock: () => Promise<{ acquired: boolean; release: () => Promise<void> }>,
+    private readonly makeLock: () => Promise<{ acquired: boolean; release: () => Promise<void>; isLost?: () => boolean }>,
     private readonly logger: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void },
     private readonly intervalMs: number,
     private readonly clock: { setInterval: (fn: () => void, ms: number) => unknown; clearInterval: (id: unknown) => void } = {
@@ -221,29 +231,45 @@ export class FusionTicker {
     },
   ) {}
 
-  async start(): Promise<void> {
+  /** Ambil lock (atau re-acquire bila belum/putus). */
+  private async ensureLock(): Promise<boolean> {
+    if (this.lock && this.lock.acquired && !(this.lock.isLost?.() ?? false)) return true;
+    if (this.lock) {
+      try {
+        await this.lock.release();
+      } catch {
+        /* abaikan */
+      }
+      this.lock = null;
+    }
     try {
       const lock = await this.makeLock();
+      this.lock = lock;
       this.status.heldLock = lock.acquired;
       if (!lock.acquired) {
         this.logger.info("[fusion] lock dipegang instance lain — fusion dilewati di proses ini.");
-        return;
       }
-      this.release = lock.release;
+      return lock.acquired;
     } catch (err) {
-      this.logger.warn(`[fusion] gagal ambil lock: ${err instanceof Error ? err.message : String(err)} — fusion nonaktif.`);
-      return;
+      this.status.heldLock = false;
+      this.logger.warn(`[fusion] gagal ambil lock: ${err instanceof Error ? err.message : String(err)} — coba lagi tick berikutnya.`);
+      return false;
     }
-    await this.tick();
+  }
+
+  async start(): Promise<void> {
+    const held = await this.ensureLock();
+    if (held) await this.tick();
     this.timer = this.clock.setInterval(() => void this.tick(), this.intervalMs);
   }
 
   /** Jalankan satu siklus fusion (dipakai interval & setelah research run). */
   async tick(): Promise<void> {
-    if (!this.status.heldLock) return; // tanpa lock → biar instance lain yang fusion
     if (this.running) return; // anti-overlap
     this.running = true;
     try {
+      const held = await this.ensureLock();
+      if (!held) return; // tanpa lock → biar instance lain yang fusion
       const result = await this.runFn({});
       this.status.lastAt = new Date();
       this.status.perAsset =
@@ -268,35 +294,25 @@ export class FusionTicker {
       this.clock.clearInterval(this.timer);
       this.timer = null;
     }
-    if (this.release) {
+    if (this.lock) {
       try {
-        await this.release();
+        await this.lock.release();
       } catch {
         /* abaikan */
       }
-      this.release = null;
+      this.lock = null;
     }
   }
 }
 
-/** Lock fusion default via Neon advisory lock (key berbeda dari research & settle). */
-async function defaultFusionLock(): Promise<{ acquired: boolean; release: () => Promise<void> }> {
+/** Lock fusion default via Neon advisory lock (retry + error handler + lost). */
+async function defaultFusionLock(): Promise<{ acquired: boolean; release: () => Promise<void>; isLost: () => boolean }> {
   const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) return { acquired: false, release: async () => {} };
-  const { createNeonLockClient, acquireAdvisoryLock, releaseAdvisoryLock } = await import("../../worker/lock.ts");
-  const client = await createNeonLockClient(dbUrl);
-  const acquired = await acquireAdvisoryLock(client, FUSION_ADVISORY_LOCK_KEY);
-  return {
-    acquired,
-    release: async () => {
-      try {
-        await releaseAdvisoryLock(client, FUSION_ADVISORY_LOCK_KEY);
-        await client.end?.();
-      } catch {
-        /* abaikan */
-      }
-    },
-  };
+  if (!dbUrl) return { acquired: false, release: async () => {}, isLost: () => false };
+  const { openAdvisoryLock } = await import("../../worker/lock.ts");
+  return openAdvisoryLock(dbUrl, FUSION_ADVISORY_LOCK_KEY, {
+    logger: { warn: (m) => process.stderr.write(`[fusion] ${m}\n`) },
+  });
 }
 
 /** Clock yang tidak pernah menjadwalkan timer nyata (untuk --once & test). */
@@ -364,6 +380,38 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
     error: (m: string) => process.stderr.write(m + "\n"),
   };
 
+  // JARING PENGAMAN: driver Neon serverless kadang MELEMPAR dari timer internal
+  // (mis. "Sent before connected" / WebSocket error / 57P01) di LUAR try/catch &
+  // event "error", sehingga menjadi uncaughtException yang mematikan scheduler.
+  // Guard ini memperlakukan error koneksi Neon/WS sebagai LOCK LOST (log, lanjut) —
+  // ticker akan re-acquire pada tick berikutnya. Hanya aktif selama proses jadwal
+  // berjalan (kecuali test yang meng-inject makeWorker, agar tidak menelan error uji).
+  const installGuards = !deps.makeWorker;
+  const isNeonTransient = (err: unknown): boolean => {
+    const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+    return (
+      msg.includes("sent before connected") ||
+      msg.includes("websocket") ||
+      msg.includes("57p01") ||
+      msg.includes("terminating connection") ||
+      msg.includes("connection terminated") ||
+      msg.includes("fetch failed")
+    );
+  };
+  const onUncaught = (err: unknown): void => {
+    const message = err instanceof Error ? err.message : String(err);
+    if (isNeonTransient(err)) {
+      logger.warn(`[schedule] error koneksi Neon diabaikan (lock lost, re-acquire di tick berikutnya): ${message}`);
+    } else {
+      // Error tak dikenal: tetap log, jangan crash scheduler long-running.
+      logger.error(`[schedule] uncaught: ${message}`);
+    }
+  };
+  if (installGuards) {
+    process.on("uncaughtException", onUncaught);
+    process.on("unhandledRejection", onUncaught);
+  }
+
   // --with-price: jalankan price worker di proses yang sama (best-effort).
   let stopPrice: (() => Promise<void>) | null = null;
   if (withPrice && !once) {
@@ -377,26 +425,49 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
     }
   }
 
+  // Resolusi flag fusion/settle lebih awal (dipakai oleh --once maupun foreground).
+  const fusionEnabled = !flagOrNpm(parsed.values["no-fusion"], "no_fusion", ["no-fusion"]);
+  const settleEnabled = !flagOrNpm(parsed.values["no-settle"], "no_settle", ["no-settle"]);
+
   if (once) {
-    // Satu siklus: worker tanpa timer nyata; start() menjalankan run pertama, lalu stop.
-    let done = false;
+    // SATU SIKLUS PENUH: research → fusion (setelah research sukses) → settle, lalu keluar.
+    let reportProduced = false;
     const worker = await makeWorker({
       logger,
       clock: noTimerClock,
       exitFn: () => {},
-      onRunCompleted: () => {
-        done = true;
+      onRunCompleted: (r: RunResult | null) => {
+        if (r && r.report) reportProduced = true;
       },
     });
-    const started = await worker.start();
+    let started = false;
+    try {
+      started = await worker.start();
+    } catch (err) {
+      const { unwrapError } = await import("../../worker/lock.ts");
+      logger.error(`[worker] error saat start: ${unwrapError(err)}`);
+    }
     await worker.stop();
+
+    // Fusion sekali (setelah research). Jalan walau reportProduced false? Spec:
+    // "research → fusion (after research success) → settle". Jalankan fusion bila
+    // enabled & research sukses; tetap aman bila tidak ada sinyal (no assessment).
+    if (fusionEnabled && reportProduced) {
+      await runFusionOnce(deps, logger, true);
+    } else if (fusionEnabled) {
+      logger.info("[fusion] skipped (no research report this cycle)");
+    }
+
+    if (settleEnabled) {
+      await runSettleOnce(deps, logger);
+    }
+
     if (stopPrice) await stopPrice();
-    return started || done ? EXIT_OK : EXIT_ERROR;
+    return started || reportProduced ? EXIT_OK : EXIT_ERROR;
   }
 
   // Risk Fusion v1 periodik (lock sendiri FUSION key) + dipicu setelah tiap research
   // run. --no-fusion untuk disable. runFusion tidak pernah melempar (I6).
-  const fusionEnabled = !flagOrNpm(parsed.values["no-fusion"], "no_fusion", ["no-fusion"]);
   let fusionTicker: FusionTicker | null = null;
   if (fusionEnabled) {
     const runFn = deps.fusionRun ?? (await import("../../fusion/run.ts")).runFusion;
@@ -423,7 +494,6 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
   if (!started) return EXIT_OK; // worker lain memegang lock → keluar bersih
 
   // Settlement job periodik di proses yang sama (lock sendiri). --no-settle utk disable.
-  const settleEnabled = !flagOrNpm(parsed.values["no-settle"], "no_settle", ["no-settle"]);
   let ticker: SettleTicker | null = null;
   if (settleEnabled) {
     const job = deps.settleJob ?? (await import("../../reflection/settle-job.ts")).runSettlementJob;
@@ -460,6 +530,66 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
     process.once("SIGTERM", shutdown);
   });
   return EXIT_OK;
+}
+
+/** One-shot fusion untuk --once: lock → runFusion → log "[fusion] ETH=CALM USDC=CALM" → release. */
+async function runFusionOnce(
+  deps: ScheduleDeps,
+  logger: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void },
+  write: boolean,
+): Promise<void> {
+  const runFn = deps.fusionRun ?? (await import("../../fusion/run.ts")).runFusion;
+  const makeLock = deps.makeFusionLock ?? defaultFusionLock;
+  let lock: { acquired: boolean; release: () => Promise<void>; isLost?: () => boolean } | null = null;
+  try {
+    lock = await makeLock();
+    if (!lock.acquired) {
+      logger.info("[fusion] skipped (lock held by another instance)");
+      return;
+    }
+    const result = await runFn({ dry: !write });
+    const perAsset = result.results.map((r) => `${r.asset}=${r.assessment ? r.assessment.regime : "—"}`).join(" ") || "—";
+    logger.info(`[fusion] ${perAsset}`);
+  } catch (err) {
+    logger.error(`[fusion] job gagal: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    if (lock) {
+      try {
+        await lock.release();
+      } catch {
+        /* abaikan */
+      }
+    }
+  }
+}
+
+/** One-shot settlement untuk --once: lock → job → log "[settle] evaluated N settled M insufficient K" → release. */
+async function runSettleOnce(
+  deps: ScheduleDeps,
+  logger: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void },
+): Promise<void> {
+  const job = deps.settleJob ?? (await import("../../reflection/settle-job.ts")).runSettlementJob;
+  const makeLock = deps.makeSettleLock ?? defaultSettleLock;
+  let lock: { acquired: boolean; release: () => Promise<void>; isLost?: () => boolean } | null = null;
+  try {
+    lock = await makeLock();
+    if (!lock.acquired) {
+      logger.info("[settle] skipped (lock held by another instance)");
+      return;
+    }
+    const r = await job({});
+    logger.info(`[settle] evaluated ${r.totalEvaluated} settled ${r.settled.length} insufficient ${r.insufficientData.length}`);
+  } catch (err) {
+    logger.error(`[settle] job gagal: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    if (lock) {
+      try {
+        await lock.release();
+      } catch {
+        /* abaikan */
+      }
+    }
+  }
 }
 
 /** Status default: lock held? + run terakhir dari DB. */

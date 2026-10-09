@@ -18,6 +18,7 @@ import {
   acquireAdvisoryLock,
   createNeonLockClient,
   releaseAdvisoryLock,
+  unwrapError,
   type AdvisoryLockClient,
 } from "./lock.ts";
 import { sampleOnce, type SampledPrice } from "../sources/price-sampler.ts";
@@ -112,9 +113,13 @@ export class PriceWorker {
       const dbUrl = this.env.DATABASE_URL;
       if (dbUrl) {
         try {
-          this.lockClient = await createNeonLockClient(dbUrl);
+          this.lockClient = await createNeonLockClient(dbUrl, {
+            onError: (msg) => {
+              this.logger.warn(`[price-worker] koneksi lock hilang (${msg}) — akan dicoba reconnect pada tick berikutnya.`);
+            },
+          });
         } catch (err) {
-          this.logger.error(`[price-worker] gagal membuka koneksi lock: ${String(err)}`);
+          this.logger.error(`[price-worker] gagal membuka koneksi lock: ${unwrapError(err)}`);
           this.exitFn(1);
           return false;
         }

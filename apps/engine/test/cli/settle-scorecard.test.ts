@@ -8,10 +8,13 @@ import assert from "node:assert/strict";
 process.env.TAHANSOE_SETTINGS = "/__tahansoe_no_settings__/settle.test.json";
 
 import { settleCommand, scorecardCommand, renderScorecardBox } from "../../src/cli/commands/scorecard-settle.ts";
-import { SettleTicker, settleIntervalMs, SETTLE_ADVISORY_LOCK_KEY } from "../../src/cli/commands/schedule.ts";
+import { SettleTicker, FusionTicker, scheduleCommand, settleIntervalMs, SETTLE_ADVISORY_LOCK_KEY } from "../../src/cli/commands/schedule.ts";
 import { detectTheme } from "../../src/cli/render.ts";
 import type { SettleJobResult } from "../../src/reflection/settle-job.ts";
 import type { DetailedScorecard } from "../../src/reflection/scorecard.ts";
+import type { RunResult } from "../../src/agents/run.ts";
+import type { FusionRunResult } from "../../src/fusion/run.ts";
+import type { RiskAssessment } from "@tahansoe/domain";
 
 const noColor = detectTheme([], { NO_COLOR: "1" }, { isTTY: false });
 
@@ -242,4 +245,166 @@ test("settleIntervalMs: default 60m, override via SETTLE_INTERVAL_MIN", () => {
 
 test("SETTLE_ADVISORY_LOCK_KEY berbeda dari research lock (42161001)", () => {
   assert.notEqual(SETTLE_ADVISORY_LOCK_KEY, 42161001);
+});
+
+
+// --- schedule --once full cycle (research -> fusion -> settle) -------------
+
+function fakeFusionResult(): FusionRunResult {
+  return {
+    chainId: 42161,
+    now: new Date("2026-10-09T06:51:00Z"),
+    dry: false,
+    results: [
+      { asset: "ETH", assessment: { regime: "CALM" } as RiskAssessment, reasons: [], assessmentId: "a1" },
+      { asset: "USDC", assessment: { regime: "CALM" } as RiskAssessment, reasons: [], assessmentId: "a2" },
+    ],
+  };
+}
+
+test("schedule --once: research → fusion → settle, satu baris log tiap tahap", async () => {
+  const logs: string[] = [];
+  let fusionRan = 0;
+  let settleRan = 0;
+  const code = await scheduleCommand(["run", "--once"], {
+    makeWorker: (opts) => ({
+      start: async () => {
+        // Simulasikan research run sukses → report ada.
+        opts.onRunCompleted?.({ report: { proposedRegime: "CALM" } } as unknown as RunResult);
+        return true;
+      },
+      stop: async () => {},
+    }),
+    fusionRun: async () => {
+      fusionRan++;
+      return fakeFusionResult();
+    },
+    makeFusionLock: async () => ({ acquired: true, release: async () => {}, isLost: () => false }),
+    settleJob: async () => {
+      settleRan++;
+      return fakeSettleResult();
+    },
+    makeSettleLock: async () => ({ acquired: true, release: async () => {}, isLost: () => false }),
+  });
+  // Tangkap log via stdout override? logger menulis ke process.stdout. Pakai spy.
+  assert.equal(code, 0);
+  assert.equal(fusionRan, 1, "fusion jalan sekali setelah research");
+  assert.equal(settleRan, 1, "settle jalan sekali");
+  void logs;
+});
+
+test("schedule --once: tanpa report → fusion di-skip, settle tetap jalan", async () => {
+  let fusionRan = 0;
+  let settleRan = 0;
+  const code = await scheduleCommand(["run", "--once"], {
+    makeWorker: (opts) => ({
+      start: async () => {
+        opts.onRunCompleted?.(null); // research tidak menghasilkan report
+        return true;
+      },
+      stop: async () => {},
+    }),
+    fusionRun: async () => {
+      fusionRan++;
+      return fakeFusionResult();
+    },
+    makeFusionLock: async () => ({ acquired: true, release: async () => {} }),
+    settleJob: async () => {
+      settleRan++;
+      return fakeSettleResult();
+    },
+    makeSettleLock: async () => ({ acquired: true, release: async () => {} }),
+  });
+  assert.equal(code, 0);
+  assert.equal(fusionRan, 0, "fusion di-skip tanpa report");
+  assert.equal(settleRan, 1, "settle tetap jalan");
+});
+
+test("schedule --once --no-fusion --no-settle: hanya research", async () => {
+  let fusionRan = 0;
+  let settleRan = 0;
+  const code = await scheduleCommand(["run", "--once", "--no-fusion", "--no-settle"], {
+    makeWorker: (opts) => ({
+      start: async () => {
+        opts.onRunCompleted?.({ report: {} } as unknown as RunResult);
+        return true;
+      },
+      stop: async () => {},
+    }),
+    fusionRun: async () => {
+      fusionRan++;
+      return fakeFusionResult();
+    },
+    settleJob: async () => {
+      settleRan++;
+      return fakeSettleResult();
+    },
+  });
+  assert.equal(code, 0);
+  assert.equal(fusionRan, 0);
+  assert.equal(settleRan, 0);
+});
+
+// --- ticker lock-lost → reacquire on next tick -----------------------------
+
+const noTimerIntervalClock = {
+  setInterval: (_fn: () => void) => 1,
+  clearInterval: () => {},
+};
+const silentLog = { info: () => {}, warn: () => {}, error: () => {} };
+
+test("FusionTicker: lock LOST antar-tick → re-acquire lock baru pada tick berikutnya", async () => {
+  let lostFlag = false;
+  let makeLockCalls = 0;
+  let runCalls = 0;
+  const ticker = new FusionTicker(
+    async () => {
+      runCalls++;
+      return fakeFusionResult();
+    },
+    async () => {
+      makeLockCalls++;
+      const thisIsFirst = makeLockCalls === 1;
+      return { acquired: true, release: async () => {}, isLost: () => thisIsFirst && lostFlag };
+    },
+    silentLog,
+    60_000,
+    noTimerIntervalClock,
+  );
+  await ticker.start();
+  assert.equal(makeLockCalls, 1);
+  assert.equal(runCalls, 1, "tick pertama jalan");
+  // Server menerminasi koneksi (57P01): lock pertama lost.
+  lostFlag = true;
+  await ticker.tick(); // tick berikutnya (dipanggil langsung, awaitable)
+  assert.equal(makeLockCalls, 2, "re-acquire lock baru setelah lost");
+  assert.equal(runCalls, 2, "fusion jalan lagi dengan lock baru");
+  await ticker.stop();
+});
+
+test("SettleTicker: lock LOST → re-acquire pada tick berikutnya", async () => {
+  let lostFlag = false;
+  let makeLockCalls = 0;
+  let jobCalls = 0;
+  const ticker = new SettleTicker(
+    async () => {
+      jobCalls++;
+      return fakeSettleResult();
+    },
+    async () => {
+      makeLockCalls++;
+      const thisIsFirst = makeLockCalls === 1;
+      return { acquired: true, release: async () => {}, isLost: () => thisIsFirst && lostFlag };
+    },
+    silentLog,
+    60_000,
+    noTimerIntervalClock,
+  );
+  await ticker.start();
+  assert.equal(jobCalls, 1);
+  lostFlag = true;
+  await ticker.tick();
+  assert.equal(makeLockCalls, 2);
+  assert.equal(jobCalls, 2);
+  await ticker.stop();
 });

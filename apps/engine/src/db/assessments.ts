@@ -16,12 +16,15 @@ import type { PriorRegime } from "../fusion/index.ts";
 /** Prior assessment terbaru per (chain, asset) untuk hysteresis. null bila belum ada. */
 export async function latestAssessment(chainId: number, asset: string): Promise<PriorRegime | null> {
   const db = getDb();
-  const rows = await db
-    .select({ regime: riskAssessments.regime, createdAt: riskAssessments.createdAt })
-    .from(riskAssessments)
-    .where(and(eq(riskAssessments.chainId, chainId), eq(riskAssessments.asset, asset)))
-    .orderBy(desc(riskAssessments.createdAt))
-    .limit(1);
+  const { withTransientRetry } = await import("./store.ts");
+  const rows = await withTransientRetry(() =>
+    db
+      .select({ regime: riskAssessments.regime, createdAt: riskAssessments.createdAt })
+      .from(riskAssessments)
+      .where(and(eq(riskAssessments.chainId, chainId), eq(riskAssessments.asset, asset)))
+      .orderBy(desc(riskAssessments.createdAt))
+      .limit(1),
+  );
   const row = rows[0];
   if (!row) return null;
   return { regime: row.regime, createdAt: row.createdAt };
@@ -44,25 +47,28 @@ export async function insertAssessment(
   reasons: string[],
 ): Promise<string> {
   const db = getDb();
-  const [row] = await db
-    .insert(riskAssessments)
-    .values({
-      chainId: assessment.chainId,
-      asset: assessment.asset,
-      regime: assessment.regime,
-      riskScore: assessment.riskScore.toFixed(2),
-      drawdownH4: clampFrac(assessment.drawdownEstimate.h4).toFixed(5),
-      drawdownH24: clampFrac(assessment.drawdownEstimate.h24).toFixed(5),
-      recommendedTriggerHf: assessment.recommendedTriggerHF.toFixed(4),
-      recommendedTargetHf: assessment.recommendedTargetHF.toFixed(4),
-      drivers: slimDrivers(assessment),
-      reasons,
-      explanation: assessment.explanation,
-      modelVersion: assessment.modelVersion,
-      validUntil: assessment.validUntil,
-      createdAt: assessment.createdAt,
-    })
-    .returning({ id: riskAssessments.id });
+  const { withTransientRetry } = await import("./store.ts");
+  const [row] = await withTransientRetry(() =>
+    db
+      .insert(riskAssessments)
+      .values({
+        chainId: assessment.chainId,
+        asset: assessment.asset,
+        regime: assessment.regime,
+        riskScore: assessment.riskScore.toFixed(2),
+        drawdownH4: clampFrac(assessment.drawdownEstimate.h4).toFixed(5),
+        drawdownH24: clampFrac(assessment.drawdownEstimate.h24).toFixed(5),
+        recommendedTriggerHf: assessment.recommendedTriggerHF.toFixed(4),
+        recommendedTargetHf: assessment.recommendedTargetHF.toFixed(4),
+        drivers: slimDrivers(assessment),
+        reasons,
+        explanation: assessment.explanation,
+        modelVersion: assessment.modelVersion,
+        validUntil: assessment.validUntil,
+        createdAt: assessment.createdAt,
+      })
+      .returning({ id: riskAssessments.id }),
+  );
   return row!.id;
 }
 
