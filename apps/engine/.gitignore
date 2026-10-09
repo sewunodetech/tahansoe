@@ -4,3 +4,6 @@ node_modules/
 out/
 .cache/
 settings.json
+
+# Local PGlite database (ADR 0010)
+.data/

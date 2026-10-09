@@ -23,6 +23,7 @@ import { budget } from "../llm/budget.ts";
 import {
   acquireAdvisoryLock,
   createNeonLockClient,
+  createPgliteLockClient,
   releaseAdvisoryLock,
   unwrapError,
   type AdvisoryLockClient,
@@ -118,7 +119,10 @@ export class ResearchWorker {
     // 1. Ambil Postgres advisory lock jika belum disediakan
     if (this.lockClient === undefined || this.lockClient === null) {
       const dbUrl = this.env.DATABASE_URL;
-      if (dbUrl) {
+      const driver = (this.env.DB_DRIVER as any) || (dbUrl ? "neon" : "pglite");
+      if (driver === "pglite") {
+        this.lockClient = createPgliteLockClient(this.env.PGLITE_DATA_DIR);
+      } else if (dbUrl) {
         try {
           const makeLock = this.makeLockClient ?? createNeonLockClient;
           this.lockClient = await makeLock(dbUrl, {
@@ -181,7 +185,7 @@ export class ResearchWorker {
    */
   async tryReacquireLock(): Promise<boolean> {
     const dbUrl = this.env.DATABASE_URL;
-    if (!dbUrl) return false;
+    const driver = (this.env.DB_DRIVER as any) || (dbUrl ? "neon" : "pglite");
 
     if (this.lockClient) {
       try {
@@ -191,6 +195,26 @@ export class ResearchWorker {
       }
       this.lockClient = null;
     }
+
+    if (driver === "pglite") {
+      this.lockClient = createPgliteLockClient(this.env.PGLITE_DATA_DIR);
+      let locked = false;
+      try {
+        locked = await acquireAdvisoryLock(this.lockClient);
+      } catch (err) {
+        this.logger.warn(`[worker] gagal re-acquire lock: ${unwrapError(err)} — coba lagi tick berikutnya.`);
+        return false;
+      }
+      if (!locked) {
+        this.logger.info("[worker] lock dipegang instance lain — tetap pasif hingga tick berikutnya.");
+        return false;
+      }
+      this.isLockLost = false;
+      this.logger.info("[worker] pglite advisory lock berhasil diambil kembali.");
+      return true;
+    }
+
+    if (!dbUrl) return false;
 
     try {
       this.logger.info("[worker] mencoba membuka kembali koneksi lock yang putus...");

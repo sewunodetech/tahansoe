@@ -11,8 +11,10 @@ import { detectTheme, banner, dim, bold, maskHost, regimeColor } from "./render.
 import { EXIT_OK, EXIT_ERROR, EXIT_CONFIG } from "./commands/args.ts";
 
 const COMMANDS = [
+  ["start", "Run the standalone risk agent in one process"],
   ["analyze", "Run one risk-research pass + report card"],
   ["schedule", "Run the scheduler (foreground) or show status"],
+  ["gateway", "Channel gateway operations (gateway run)"],
   ["history", "Recent research reports (table + sparkline)"],
   ["report", "Show a full report by <id|latest>"],
   ["models", "List gateway models + prices + cost estimate"],
@@ -21,6 +23,9 @@ const COMMANDS = [
   ["fuse", "Run one Risk Fusion v1 pass (per-asset regime)"],
   ["settle", "Settle due research reports (ADR 0005)"],
   ["scorecard", "Research-agent accuracy scorecard"],
+  ["carry", "Aave V3 carry & interest-rate risk monitor"],
+  ["ask", "Ask grounded risk research question (non-interactive)"],
+  ["setup", "First-time setup wizard (gateway, models, DB)"],
   ["doctor", "Check env & connectivity"],
 ] as const;
 
@@ -58,6 +63,10 @@ async function quickStatus(): Promise<void> {
     /* abaikan */
   }
 
+  if (gatewayHost === "(not configured)") {
+    process.stdout.write(dim(theme, " tip      jalankan 'tahansoe setup' untuk konfigurasi awal\n"));
+  }
+
   // Regime terakhir dari DB (bila DATABASE_URL diset).
   if (process.env.DATABASE_URL) {
     try {
@@ -87,6 +96,11 @@ export async function main(argv: string[]): Promise<number> {
   const rest = argv.slice(1);
 
   if (!cmd) {
+    if (Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY)) {
+      const { startRepl } = await import("./repl/repl.ts");
+      await startRepl();
+      return EXIT_OK;
+    }
     await quickStatus();
     return EXIT_OK;
   }
@@ -96,6 +110,27 @@ export async function main(argv: string[]): Promise<number> {
   }
 
   switch (cmd) {
+    case "start": {
+      const { startCommand } = await import("./commands/start.ts");
+      return startCommand(rest);
+    }
+    case "gateway": {
+      const sub = rest[0];
+      const subRest = rest.slice(1);
+      if (sub === "run") {
+        try {
+          // @ts-ignore - concurrently built by Antigravity #1
+          const { gatewayRunCommand } = await import("../gateway/cli.ts");
+          const res = await gatewayRunCommand(subRest);
+          return typeof res === "number" ? res : EXIT_OK;
+        } catch (err) {
+          process.stderr.write(`[gateway] gagal memuat gateway: ${err instanceof Error ? err.message : String(err)}\n`);
+          return EXIT_ERROR;
+        }
+      }
+      process.stderr.write(`subcommand gateway tidak dikenal: ${sub ?? "(kosong)"} (pakai: tahansoe gateway run)\n`);
+      return EXIT_ERROR;
+    }
     case "analyze": {
       const { analyzeCommand } = await import("./commands/analyze.ts");
       return analyzeCommand(rest);
@@ -139,6 +174,18 @@ export async function main(argv: string[]): Promise<number> {
     case "doctor": {
       const { doctorCommand } = await import("./commands/doctor.ts");
       return doctorCommand(rest);
+    }
+    case "carry": {
+      const { carryCommand } = await import("./commands/carry.ts");
+      return carryCommand(rest);
+    }
+    case "ask": {
+      const { askCommand } = await import("./commands/ask.ts");
+      return askCommand(rest);
+    }
+    case "setup": {
+      const { setupCommand } = await import("./commands/setup.ts");
+      return setupCommand(rest);
     }
     default:
       process.stderr.write(`perintah tidak dikenal: ${cmd}\n\n${TOP_HELP}\n`);

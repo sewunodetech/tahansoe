@@ -44,16 +44,19 @@ export function signal(
   severity: number,
   summary: string,
   paths?: TransmissionPath[],
+  confidence = 0.5,
+  hAgo = 1,
+  hAhead = 1,
 ): ContextSignal {
   return {
     id: nid("sig"),
     module,
     severity,
-    confidence: 0.5,
+    confidence,
     paths,
     summary,
-    createdAt: hoursAgo(1),
-    expiresAt: hoursAhead(1),
+    createdAt: hoursAgo(hAgo),
+    expiresAt: hoursAhead(hAhead),
   };
 }
 

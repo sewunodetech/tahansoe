@@ -95,3 +95,21 @@ export const ASSESSMENT_TTL_MIN = 20;
 
 /** riskScore maksimum (0..100). */
 export const RISK_SCORE_MAX = 100;
+
+/**
+ * Ambang batas jalur transmisi T11 (bunga & carry, spec m3-carry-interest-monitoring §3.3).
+ */
+export const CARRY_THRESHOLDS = {
+  /** Utilization >= 98% memicu penambahan jalur T7 (likuiditas reserve kering). */
+  t7Utilization: 0.98,
+  /** Lonjakan borrow APR stablecoin untuk deteksi rate spike (> 20%). */
+  stableBorrowAprSpike: 0.20,
+  /** Ambang kelipatan lonjakan borrow APR dibanding 24 jam lalu. */
+  rateSpikeMultiplier: 2.0,
+  /** Confidence deterministik sinyal rate on-chain. */
+  confidence: 0.9,
+  /** TTL sinyal carry yang dipancarkan (menit). */
+  signalTtlMin: 30,
+  /** Regime maksimum bila sinyal risiko hanya T11 tanpa konfirmasi lain. */
+  maxRegimeT11Alone: "ELEVATED" as Regime,
+} as const;

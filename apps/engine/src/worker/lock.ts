@@ -13,7 +13,15 @@
  *    57P01 admin_shutdown) TIDAK menjadi unhandled exception; ditandai LOCK LOST.
  */
 
-import { Client } from "@neondatabase/serverless";
+import { Client, neonConfig } from "@neondatabase/serverless";
+import fs from "node:fs";
+import path from "node:path";
+import { getDbDriver, resolvePgliteDir } from "@tahansoe/db";
+
+// Nonaktifkan coalesceWrites pada koneksi WebSocket agar write tidak dijadwalkan
+// via setTimeout(..., 0) yang dapat melempar "Sent before connected" sebagai
+// uncaughtException bila socket belum siap/menutup saat timer terpanggil.
+neonConfig.coalesceWrites = false;
 
 /** Key advisory lock unik untuk research worker (Arbitrum One + research prefix). */
 export const RESEARCH_WORKER_ADVISORY_LOCK_KEY = 42161001;
@@ -106,7 +114,7 @@ export interface OpenLockOptions {
   /** Backoff dasar (ms) — dilipatduakan tiap percobaan (default 1000 → 1,2,4,8,16s). */
   baseBackoffMs?: number;
   /** Logger (default: stderr). */
-  logger?: { warn: (m: string) => void };
+  logger?: { warn: (m: string) => void; info?: (m: string) => void; error?: (m: string) => void };
   /** Sleep injectable (test). */
   sleep?: (ms: number) => Promise<void>;
   /** Dipanggil saat Client meng-emit error setelah connect (LOCK LOST). */
@@ -116,6 +124,16 @@ export interface OpenLockOptions {
    * @neondatabase/serverless. Harus mengekspos connect/end/on/query.
    */
   makeClient?: (directUrl: string) => LockPgClient;
+  /** Driver database ("neon" | "pglite"). Jika tidak dispesifikasikan, ditentukan via getDbDriver(). */
+  driver?: "neon" | "pglite";
+  /** Direktori penyimpanan file lock PGlite. Default: resolvePgliteDir(). */
+  dataDir?: string;
+  /** Batas waktu stale lock PGlite (ms). Default: 120_000 (2 menit). */
+  staleTimeoutMs?: number;
+  /** Interval update heartbeat PGlite (ms). Default: 15_000. */
+  heartbeatIntervalMs?: number;
+  /** PID proses yang memegang lock (injectable untuk test). Default: process.pid. */
+  pid?: number;
 }
 
 /** Antarmuka minimal client pg/neon yang dipakai lock (memudahkan test). */
@@ -196,15 +214,241 @@ export interface AdvisoryLock {
   release: () => Promise<void>;
 }
 
+export interface PgliteLockOptions {
+  dataDir?: string;
+  staleTimeoutMs?: number;
+  heartbeatIntervalMs?: number;
+  logger?: { warn: (m: string) => void; info?: (m: string) => void; error?: (m: string) => void };
+  pid?: number;
+}
+
+export interface LockFileData {
+  pid: number;
+  acquiredAt: string;
+  heartbeatAt: string;
+  key: number;
+}
+
+function isProcessAlive(pid: number): boolean {
+  if (pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err: unknown) {
+    const e = err as { code?: string };
+    return e?.code === "EPERM";
+  }
+}
+
 /**
- * Buka koneksi (retry) lalu coba ambil advisory lock. Error server-side setelah
- * ini menandai `isLost()` true (bukan crash). Gagal konek total → lempar.
+ * Buka file-based advisory lock untuk driver PGlite di PGLITE_DATA_DIR (ADR 0010 §3).
+ * Menulis `lock-${key}.json` dengan PID dan heartbeat timestamp.
+ * Stale jika heartbeat > 2 menit atau PID proses sudah mati.
+ */
+export async function openPgliteFileLock(
+  key: number,
+  opts: PgliteLockOptions = {},
+): Promise<AdvisoryLock> {
+  const dataDir = opts.dataDir ?? resolvePgliteDir();
+  try {
+    fs.mkdirSync(dataDir, { recursive: true });
+  } catch {
+    /* abaikan jika direktori sudah ada */
+  }
+
+  const lockPath = path.join(dataDir, `lock-${key}.json`);
+  const myPid = opts.pid ?? process.pid;
+  const staleTimeoutMs = opts.staleTimeoutMs ?? 120_000;
+  const nowIso = new Date().toISOString();
+  const payload: LockFileData = {
+    pid: myPid,
+    acquiredAt: nowIso,
+    heartbeatAt: nowIso,
+    key,
+  };
+  const payloadStr = JSON.stringify(payload, null, 2);
+
+  let acquired = false;
+  try {
+    fs.writeFileSync(lockPath, payloadStr, { flag: "wx" });
+    acquired = true;
+  } catch (err: unknown) {
+    const e = err as { code?: string };
+    if (e?.code === "EEXIST") {
+      let isStale = false;
+      let existingData: LockFileData | null = null;
+      try {
+        const content = fs.readFileSync(lockPath, "utf-8");
+        existingData = JSON.parse(content);
+      } catch {
+        isStale = true;
+      }
+
+      if (existingData) {
+        const heartbeatTime = new Date(existingData.heartbeatAt).getTime();
+        const ageMs = Date.now() - heartbeatTime;
+        const dead = typeof existingData.pid === "number" && !isProcessAlive(existingData.pid);
+        if (dead || ageMs > staleTimeoutMs) {
+          isStale = true;
+          opts.logger?.warn?.(
+            `stale lock file ${lockPath} terdeteksi (pid=${existingData.pid}, dead=${dead}, age=${Math.round(ageMs / 1000)}s) — mengambil alih lock.`,
+          );
+        }
+      }
+
+      if (isStale) {
+        try {
+          fs.unlinkSync(lockPath);
+        } catch {
+          /* abaikan */
+        }
+        try {
+          fs.writeFileSync(lockPath, payloadStr, { flag: "wx" });
+          acquired = true;
+        } catch {
+          acquired = false;
+        }
+      }
+    }
+  }
+
+  if (!acquired) {
+    return {
+      acquired: false,
+      isLost: () => false,
+      release: async () => {},
+    };
+  }
+
+  const intervalMs = opts.heartbeatIntervalMs ?? 15_000;
+  const heartbeatTimer = setInterval(() => {
+    try {
+      if (fs.existsSync(lockPath)) {
+        const content = fs.readFileSync(lockPath, "utf-8");
+        const current = JSON.parse(content);
+        if (current.pid === myPid && current.key === key) {
+          current.heartbeatAt = new Date().toISOString();
+          fs.writeFileSync(lockPath, JSON.stringify(current, null, 2));
+        }
+      }
+    } catch {
+      /* abaikan error write heartbeat */
+    }
+  }, intervalMs);
+  heartbeatTimer.unref();
+
+  const onExit = () => {
+    try {
+      if (fs.existsSync(lockPath)) {
+        const content = fs.readFileSync(lockPath, "utf-8");
+        const current = JSON.parse(content);
+        if (current.pid === myPid && current.key === key) {
+          fs.unlinkSync(lockPath);
+        }
+      }
+    } catch {
+      /* abaikan */
+    }
+  };
+  process.once("exit", onExit);
+
+  return {
+    acquired: true,
+    isLost: () => false,
+    release: async () => {
+      clearInterval(heartbeatTimer);
+      process.removeListener("exit", onExit);
+      try {
+        if (fs.existsSync(lockPath)) {
+          const content = await fs.promises.readFile(lockPath, "utf-8");
+          const current = JSON.parse(content);
+          if (current.pid === myPid && current.key === key) {
+            await fs.promises.unlink(lockPath);
+          }
+        }
+      } catch {
+        /* abaikan */
+      }
+    },
+  };
+}
+
+/**
+ * Buat client PGlite yang kompatibel dengan AdvisoryLockClient.
+ * Mengintersep query `SELECT pg_try_advisory_lock(${key})` dan `SELECT pg_advisory_unlock(${key})`
+ * menggunakan file-based lock di PGLITE_DATA_DIR.
+ */
+export function createPgliteLockClient(dataDir?: string): AdvisoryLockClient {
+  const heldLocks = new Map<number, AdvisoryLock>();
+  return {
+    async query(sql: string, _params?: unknown[]): Promise<{ rows: any[] }> {
+      const tryMatch = sql.match(/pg_try_advisory_lock\s*\(\s*(\d+)\s*\)/i);
+      if (tryMatch) {
+        const key = parseInt(tryMatch[1]!, 10);
+        const lock = await openPgliteFileLock(key, { dataDir });
+        if (lock.acquired) {
+          heldLocks.set(key, lock);
+          return { rows: [{ locked: true }] };
+        }
+        return { rows: [{ locked: false }] };
+      }
+      const unlockMatch = sql.match(/pg_advisory_unlock\s*\(\s*(\d+)\s*\)/i);
+      if (unlockMatch) {
+        const key = parseInt(unlockMatch[1]!, 10);
+        const lock = heldLocks.get(key);
+        if (lock) {
+          await lock.release();
+          heldLocks.delete(key);
+          return { rows: [{ unlocked: true }] };
+        }
+        return { rows: [{ unlocked: false }] };
+      }
+      return { rows: [] };
+    },
+    async end(): Promise<void> {
+      for (const [_key, lock] of heldLocks.entries()) {
+        try {
+          await lock.release();
+        } catch {
+          /* abaikan */
+        }
+      }
+      heldLocks.clear();
+    },
+  };
+}
+
+/**
+ * Buka koneksi (retry) lalu coba ambil advisory lock.
+ * Jika driver PGlite, memakai file lock di PGLITE_DATA_DIR.
+ * Error server-side setelah ini menandai `isLost()` true (bukan crash).
  */
 export async function openAdvisoryLock(
-  databaseUrl: string,
+  databaseUrl: string | undefined,
   key: number,
   opts: OpenLockOptions = {},
 ): Promise<AdvisoryLock> {
+  const driver =
+    opts.driver ??
+    (databaseUrl && process.env.DB_DRIVER !== "pglite" ? "neon" : getDbDriver());
+  if (driver === "pglite") {
+    return openPgliteFileLock(key, {
+      dataDir: opts.dataDir,
+      staleTimeoutMs: opts.staleTimeoutMs,
+      heartbeatIntervalMs: opts.heartbeatIntervalMs,
+      logger: opts.logger,
+      pid: opts.pid,
+    });
+  }
+
+  if (!databaseUrl) {
+    return {
+      acquired: false,
+      isLost: () => false,
+      release: async () => {},
+    };
+  }
+
   let lost = false;
   const client = await createNeonLockClient(databaseUrl, {
     ...opts,

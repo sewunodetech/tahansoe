@@ -49,3 +49,6 @@ next-env.d.ts
 *.mkv
 *.m4v
 *.avi
+
+# local database / pglite (ADR 0010)
+.data/

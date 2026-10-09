@@ -29,6 +29,7 @@ export const rolesSchema = z
     debate: roleListSchema.optional(),
     assessor: roleListSchema.optional(),
     reflector: roleListSchema.optional(),
+    chat: roleListSchema.optional(),
   })
   .strict();
 
@@ -51,6 +52,63 @@ export const estimateSchema = z
   })
   .strict();
 
+/** Preferensi alert per chat. */
+export const gatewayAlertPreferencesSchema = z
+  .object({
+    regime: z.boolean().optional(),
+    sequencer: z.boolean().optional(),
+    depeg: z.boolean().optional(),
+    pool: z.boolean().optional(),
+    oracle: z.boolean().optional(),
+    daily: z.boolean().optional(),
+    /** Timestamp kedaluwarsa bisukan alert per jenis (ms epoch). */
+    mutedUntil: z.record(z.string(), z.number()).optional(),
+  })
+  .strict();
+
+export type GatewayAlertPreferences = z.infer<typeof gatewayAlertPreferencesSchema>;
+
+/** Chat yang diizinkan untuk kanal gateway. */
+export const gatewayAllowedChatSchema = z
+  .object({
+    id: z.union([z.string(), z.number()]).transform((v) => String(v)),
+    label: z.string().optional(),
+    subscribed: z.boolean().default(true),
+    alerts: gatewayAlertPreferencesSchema.default({}),
+    pairedAt: z.string().optional(),
+  })
+  .strict();
+
+export type GatewayAllowedChat = z.infer<typeof gatewayAllowedChatSchema>;
+
+export const telegramChannelSchema = z
+  .object({
+    enabled: z.boolean().default(true),
+    allowedChats: z.array(gatewayAllowedChatSchema).default([]),
+  })
+  .strict();
+
+export type TelegramChannelSettings = z.infer<typeof telegramChannelSchema>;
+
+export const gatewayChannelsSchema = z
+  .object({
+    telegram: telegramChannelSchema.optional(),
+  })
+  .strict();
+
+export type GatewayChannelsSettings = z.infer<typeof gatewayChannelsSchema>;
+
+export const gatewaySchema = z
+  .object({
+    channels: gatewayChannelsSchema.default({}),
+    alertPollSec: z.number().int().positive().default(60),
+    qaPerDay: z.number().int().positive().default(20),
+    dailySummary: z.boolean().default(false),
+  })
+  .strict();
+
+export type GatewaySettings = z.infer<typeof gatewaySchema>;
+
 /** Skema utama settings.json (version 2). */
 export const settingsSchema = z
   .object({
@@ -61,6 +119,8 @@ export const settingsSchema = z
     /** Harga manual opsional per model, menimpa pricing remote. */
     modelPrices: z.record(z.string(), modelPriceSchema).default({}),
     estimate: estimateSchema.default({}),
+    /** Konfigurasi gateway kanal (Telegram, alert, pairing, Q&A limit). */
+    gateway: gatewaySchema.optional(),
   })
   .strict();
 

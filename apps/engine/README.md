@@ -49,25 +49,43 @@ User yang meminjam di Aave (mis. collateral ETH, pinjam USDC) dilikuidasi saat *
 
 ### Contoh output
 
+Run nyata `tahansoe analyze --dry` dengan `gpt-6-luna`, 9 Okt 2026 13:06 UTC:
+
 ```
  ▲ TAHANSOE  risk research · Arbitrum One · gateway router.bynara.id
-  ✔ sources               16.3s
-  ✔ analyst:geopolitics  agnes-2.5-flash  38.3s
-  ✔ analyst:macro        agnes-2.5-flash  28.4s
-  ✔ analyst:onchain      agnes-2.5-flash  45.1s
-  ✔ analyst:market       agnes-2.5-flash  53.4s
-  ✔ debate                1m 32s
-  ✔ assessor             agnes-2.5-flash  1m 28s
-╭─ RISK REPORT ────────────────────────────────────────────╮
-│ Proposed regime (research) ● CALM   Direction ↕ VOLATILITY│
-│ Confidence █████░░░░░ 0.45 (cap 0.60)   Horizon 72h      │
-│ Top paths  T10 sequencer · T1 price · T2 volatility       │
-│ No change suggested: your static policy applies           │
-╰──────────────────────────────────────────────────────────╯
- 24.5k tok · Rp 3 · not a trading signal
+  ✔ sources               3.2s
+  ✔ analyst:onchain      gpt-6-luna  7.7s
+  ✔ analyst:geopolitics  gpt-6-luna  7.7s
+  ✔ analyst:macro        gpt-6-luna  9.0s
+  ✔ analyst:market       gpt-6-luna  9.8s
+  ✔ debate                12.4s
+  ✔ assessor             gpt-6-luna  21.0s
+╭─ RISK REPORT · 2026-10-09 13:06 UTC ───────────────────────────────╮
+│ Proposed regime (research)  ● ELEVATED       Direction  ▼ DOWN     │
+│ Confidence █████░░░░░ 0.48 (cap 0.60)   Horizon 72h                │
+│ Top paths                                                          │
+│   T1  Collateral price drop    █████░░░░ sev 0.58                  │
+│   T3  Leverage cascade         █████░░░░ sev 0.55                  │
+│   T2  Volatility spike         █████░░░░ sev 0.52                  │
+│   T9  Protocol incident        █░░░░░░░░ sev 0.15                  │
+│ Key evidence                                                       │
+│   • Bitcoin was reported about 4% lower on the we… — NEWS          │
+│   • Major stablecoins are reported within the nor… — ONCHAIN       │
+│   • Arbitrum sequencer status is verified UP. A r… — ONCHAIN       │
+│ Consider a higher buffer within your approved band                 │
+╰────────────────────────────────────────────────────────────────────╯
+ 45.2k tok · Rp 13 · 46.4s · not a trading signal
 ```
 
-Biaya operasional dengan `agnes-2.5-flash` via gateway Bynara: sekitar **Rp 3–6 per analisa**, atau sekitar Rp 2 ribu per bulan pada 12 analisa per hari.
+Model default: **`gpt-6-luna`** (OpenAI) untuk semua peran, cadangan `deepseek-v4-flash`. Dipilih lewat eval 9 Okt 2026 (prompt 2026.10.2): **24/24 lulus**, 0 bocoran injeksi, skenario 8/8, output 100% valid.
+
+| Model | Pembuat | Eval | Biaya per analisa |
+|---|---|---|---|
+| `gpt-6-luna` | OpenAI | **24/24**, injeksi 16/16, skenario 100% | ~Rp 5–15 |
+| `agnes-2.5-flash` | Bynara (asal-usul tidak jelas) | 21/24 (bocoran injeksi, output terlalu panjang) | ~Rp 3 |
+| `deepseek-v4-flash` | DeepSeek | 15/24 sebagai assessor (prompt lama) | ~Rp 6 |
+
+Biaya operasional sekitar **Rp 5–15 per analisa** (tergantung banyaknya berita hari itu), atau sekitar **Rp 2–5 ribu per bulan** pada 12 analisa per hari. Satu analisa penuh selesai dalam ±1 menit. Model bisa diganti kapan saja lewat `tahansoe settings set-role` atau `tahansoe analyze --pick`.
 
 ---
 
@@ -86,7 +104,32 @@ Biaya operasional dengan `agnes-2.5-flash` via gateway Bynara: sekitar **Rp 3–
 
 ## 2. Cara Pakai
 
-### Setup Environment
+Tahansoe beroperasi sebagai **agent mandiri (autonomous risk agent)**: dijalankan sekali oleh operator di server/komputer lokal, lalu dipakai oleh user **lewat Telegram**. Terminal CLI/REPL disediakan untuk operator & debugging.
+
+### Alur Utama (Agent Model)
+
+1. **Setup** — Konfigurasi gateway LLM, model, database, dan pairing bot Telegram:
+   ```bash
+   npm run tahansoe -- setup
+   ```
+   *(Atau non-interaktif: `npm run tahansoe -- setup --yes --db pglite --model gpt-6-luna --telegram-token-env BOT_TOKEN`)*
+
+2. **Start (Jalankan Agent)** — Satu proses jangka panjang yang mengorkestrasi seluruh loop proteksi:
+   ```bash
+   npm run tahansoe -- start
+   ```
+   Menjalankan: scheduler riset multi-agent, sampler harga (60s) & bunga Aave V3 (15m), Risk Fusion v1, settlement berkala, alert proaktif, serta gateway Telegram dalam satu proses terisolasi (I6).
+
+3. **Pakai lewat Telegram** — User menerima peringatan dini (regime naik, depeg, lonjakan bunga) dan mengirim perintah chat (`/status`, `/fuse`, `/carry`, atau pertanyaan bebas).
+
+4. **CLI / REPL untuk Operator** — Operator dapat memantau atau mengaudit secara manual lewat terminal:
+   ```bash
+   npm run tahansoe --            # buka sesi interaktif REPL
+   npm run tahansoe -- analyze    # satu run riset manual + kartu laporan
+   npm run tahansoe -- doctor     # verifikasi kesehatan env & koneksi
+   ```
+
+### Setup Manual Environment
 
 Salin file template `.env.example` ke `apps/engine/.env`:
 
@@ -97,6 +140,18 @@ cp .env.example .env
 Semua script npm engine memuat file `.env` ini secara otomatis via flag Node/tsx (`--env-file-if-exists=.env`).
 
 > **PENTING:** Jangan pernah melakukan commit file `.env` atau mencetak secret / API key ke log console (invariant I8).
+
+### Pilihan Database (Neon vs PGlite — ADR 0010)
+
+Engine mendukung dua opsi driver database Postgres:
+1. **PGlite (embedded Postgres)**: Default untuk pemakaian CLI pribadi/offline tanpa akun database cloud. Data disimpan lokal di `PGLITE_DATA_DIR` (default `apps/engine/.data/pglite`). Migrasi skema berjalan otomatis pada pemakaian pertama. Single-instance worker dijaga via file lock lokal di direktori data.
+   ```env
+   DB_DRIVER=pglite
+   ```
+2. **Neon (Postgres serverless)**: Default jika `DATABASE_URL` diset. Dipakai untuk server, web dashboard multi-user, dan lingkungan produksi.
+   ```env
+   DATABASE_URL=postgresql://user:password@host/dbname
+   ```
 
 ### Konfigurasi LLM (satu gateway — ADR 0009)
 
@@ -135,10 +190,10 @@ FRED_API_KEY=abcdef1234567890
 {
   "version": 2,
   "roles": {
-    "analyst": ["agnes-2.5-flash"],
-    "debate": ["agnes-2.5-flash"],
-    "assessor": ["deepseek-v4.1-flash"],
-    "reflector": ["agnes-2.5-flash"]
+    "analyst": ["gpt-6-luna", "deepseek-v4-flash"],
+    "debate": ["gpt-6-luna", "deepseek-v4-flash"],
+    "assessor": ["gpt-6-luna", "deepseek-v4-flash"],
+    "reflector": ["gpt-6-luna", "deepseek-v4-flash"]
   },
   "pricingUrl": "https://router.bynara.id/api/pricing",
   "modelPrices": {},
@@ -170,9 +225,11 @@ npm run tahansoe -- settle --now 2026-10-09T00:00:00Z --json   # settle sampai w
 npm run tahansoe -- scorecard --days 30     # scorecard akurasi (recall, presisi ≥STRESSED, lead time)
 npm run tahansoe -- fuse                     # satu pass Risk Fusion v1 → risk_assessments per aset
 npm run tahansoe -- fuse --dry --json        # hitung & cetak JSON, TANPA menulis DB
+npm run tahansoe -- carry                    # monitor bunga & carry Aave V3 (tabel reserve + pair + drift HF)
+npm run tahansoe -- carry --json             # ringkasan carry & rate format JSON
 npm run tahansoe -- doctor                  # cek env/DB/RPC/gateway (key disamarkan)
 npm run tahansoe -- schedule run            # scheduler foreground: research + settlement + fusion (Ctrl+C lepas lock)
-npm run tahansoe -- schedule run --with-price   # + price worker di proses yang sama
+npm run tahansoe -- schedule run --with-price   # + price worker & rate sampler T11 di proses yang sama
 npm run tahansoe -- schedule run --no-settle    # scheduler tanpa settlement job
 npm run tahansoe -- schedule run --no-fusion    # scheduler tanpa risk-fusion job
 npm run tahansoe -- schedule run --once     # satu siklus lalu keluar
@@ -181,13 +238,38 @@ npm run tahansoe -- schedule status         # lock + run terakhir dari DB
 
 `settle` dan `scorecard` membaca/menulis tabel `risk_settlements` lewat job settlement (ADR 0005) — butuh `DATABASE_URL`. `settle` memberi label `TRUE_POSITIVE`/`FALSE_POSITIVE`/`MISSED`/`TRUE_NEGATIVE` (idempoten; report tanpa data harga cukup ditandai *insufficient*, bukan dilabeli palsu). `scorecard` meringkas metrik vs target spec §3.6.
 
-`fuse` menjalankan **Risk Fusion v1** (deterministik, spec m2-risk-fusion-v1): membaca `signals` aktif + prior assessment + `price_samples` (AaveOracle, I5), lalu menulis satu baris `risk_assessments` per aset (regime, drawdown h4/h24, recommended trigger/target HF — **belum di-clamp band user**; itu rule engine). `--dry` menghitung & mencetak tanpa menulis DB. Riset `RESEARCH`/`NEWS` sendirian **tidak bisa** mengangkat regime ke `STRESSED`/`CRISIS` (guardrail konfirmasi). Kegagalan DB/harga → di-log & dilewati (policy statis tetap jalan, I6).
+`carry` menampilkan pemantauan risiko bunga & carry Aave V3 (jalur T11, spec m3-carry-interest-monitoring): tabel reserve (supply APY, borrow APY, utilization / kink, status: ok / near kink / past kink), drift HF 1.50 → 1.45 untuk 5 pasangan representatif, dan skenario lonjakan utilization 95%. Tanpa rekomendasi trading atau kata saran investasi.
 
-**`schedule run` juga menjalankan settlement DAN fusion** secara periodik di proses yang sama, masing-masing di bawah advisory lock Postgres TERPISAH (research `42161001`, settlement `42161002`, fusion `42161003`). Settlement tiap `SETTLE_INTERVAL_MIN` (default 60); fusion tiap `FUSION_INTERVAL_MIN` (default 15) **dan** segera setelah setiap research run sukses. Kegagalan job di-log, tidak pernah menjatuhkan scheduler; dashboard menampilkan "Last settle: …" dan "Fusion: REGIME per aset, HH:MM UTC". Nonaktifkan dengan `--no-settle` / `--no-fusion`. Instance lain yang memegang lock → job tersebut dilewati di proses ini.
+`fuse` menjalankan **Risk Fusion v1** (deterministik, spec m2-risk-fusion-v1): membaca `signals` aktif + prior assessment + `price_samples` (AaveOracle, I5), memancarkan sinyal deterministik T11 dari `rate_samples`, lalu menulis satu baris `risk_assessments` per aset (regime, drawdown h4/h24, recommended trigger/target HF — **belum di-clamp band user**; itu rule engine). `--dry` menghitung & mencetak tanpa menulis DB. Riset `RESEARCH`/`NEWS` sendirian **tidak bisa** mengangkat regime ke `STRESSED`/`CRISIS` (guardrail konfirmasi). Begitu pula sinyal T11 sendirian maksimal ELEVATED tanpa konfirmasi T7 / modul lain. Kegagalan DB/harga → di-log & dilewati (policy statis tetap jalan, I6).
+
+**`schedule run` juga menjalankan settlement DAN fusion** secara periodik di proses yang sama, masing-masing di bawah advisory lock Postgres TERPISAH (research `42161001`, settlement `42161002`, fusion `42161003`). Saat `--with-price` disertakan, worker juga menjalankan sampler harga (tiap 60s) dan sampler bunga T11 (tiap `RATE_SAMPLE_INTERVAL_MIN`, default 15 menit) ke tabel `rate_samples`. Settlement tiap `SETTLE_INTERVAL_MIN` (default 60); fusion tiap `FUSION_INTERVAL_MIN` (default 15) **dan** segera setelah setiap research run sukses. Kegagalan job di-log, tidak pernah menjatuhkan scheduler; dashboard menampilkan "Last settle: …" dan "Fusion: REGIME per aset, HH:MM UTC". Nonaktifkan dengan `--no-settle` / `--no-fusion`. Instance lain yang memegang lock → job tersebut dilewati di proses ini.
 
 Opsi global: `--json` (output mesin, hanya di stdout), `--no-color` (nonaktifkan ANSI; otomatis mati pada pipe/`NO_COLOR`/`TERM=dumb`). Exit code: `0` ok · `1` error · `2` konfigurasi salah (mis. `LLM_API_URL`/`LLM_API_KEY` belum diisi). Setiap kartu laporan diakhiri "not a trading signal"; CLI tidak pernah melakukan aksi on-chain dan tidak pernah mencetak secret.
 
-### 3.2 Menjaga scheduler tetap hidup (foreground)
+### 3.2 Mode Interaktif (REPL) & Tanya-Jawab Grounded (`ask`)
+
+Menjalankan `npm run tahansoe` (tanpa argumen) di terminal interaktif (TTY) membuka sesi REPL berbasis `node:readline` dan `picocolors`:
+
+```bash
+npm run tahansoe
+```
+
+Fitur sesi interaktif:
+- **Banner + Status baris:** menampilkan regime per aset terakhir, waktu UTC, dan jumlah sinyal aktif yang sedang termonitor.
+- **Slash Commands:** memanggil fungsi command yang ada in-process:
+  `/analyze [--dry]`, `/fuse`, `/carry`, `/history`, `/report [id|latest]`, `/settle`, `/scorecard`, `/models`, `/settings`, `/doctor`, `/status`, `/help`, `/clear`, `/exit`.
+  Lengkap dengan autocomplete Tab dan riwayat input in-memory (↑/↓).
+- **Penanganan Proses Latar:** `schedule run` tidak dijalankan di dalam REPL (proses jangka panjang; jalankan terpisah via `tahansoe schedule run`). REPL menampilkan petunjuk bila user mengetik `/schedule`.
+- **Grounded Q&A (Non-slash input):** dijawab model gateway (peran `chat` di `settings.json`, default sama dengan analyst) secara terstruktur dan grounded hanya dari data tersimpan (laporan riset 24h, assessment per aset, sinyal aktif terdeduplikasi, monitor carry Aave, harga & volatilitas, serta kalender makro).
+- **Aturan Non-Goals:** dilarang memberi prediksi harga, rekomendasi beli/jual, ranking yield, saran pindah aset, atau jaminan anti-likuidasi. Pertanyaan tersebut ditolak singkat disertai penjelasan risiko posisi yang relevan.
+- **Helper Scripting (`ask`):** untuk menjalankan tanya-jawab satu kali tanpa REPL (berguna untuk scripting dan CI):
+
+```bash
+npm run tahansoe -- ask "kenapa USDC ELEVATED?"
+npm run tahansoe -- ask "harus beli token apa biar untung?" --json
+```
+
+### 3.3 Menjaga scheduler tetap hidup (foreground)
 
 `tahansoe schedule run` berjalan di foreground (spec §7). Untuk produksi, jaga agar tetap hidup lewat process manager:
 
@@ -209,7 +291,7 @@ Centang "Run whether user is logged on or not" dan "Restart on failure" (mis. ti
 
 Advisory lock Postgres memastikan hanya satu instance scheduler aktif; instance kedua keluar bersih. Ctrl+C / SIGTERM melepas lock sebelum keluar.
 
-### 3.3 Script npm (alias ke `tahansoe`)
+### 3.4 Script npm (alias ke `tahansoe`)
 
 | Perintah | Penjelasan |
 |----------|------------|

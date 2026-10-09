@@ -16,6 +16,7 @@
 import type { RiskAssessment, Signal } from "@tahansoe/domain";
 import { fuseWithReasons, type PriceSample, type PriorRegime } from "./index.ts";
 import { ASSESSMENT_TTL_MIN, FUSION_VERSION } from "./config.ts";
+import { dedupeSignals, rowToSignal } from "../signals/dedupe.ts";
 
 /** Aset default yang dinilai per run (chain Arbitrum One). */
 export const DEFAULT_FUSION_ASSETS = ["ETH", "USDC"] as const;
@@ -37,10 +38,13 @@ export interface FusionRunResult {
   now: Date;
   dry: boolean;
   results: AssetFusionResult[];
+  activeSignals?: Signal[];
 }
 
 /** Dependensi I/O injectable (default: DB nyata). */
 export interface FusionDeps {
+  /** Pancarkan sinyal deterministik (mis. carry T11) sebelum fusion tick. */
+  emitSignals: (opts: { chainId: number; now: Date; dry: boolean }) => Promise<Signal[]>;
   /** Sinyal aktif (expires_at > now) untuk chain, sebagai Signal domain. */
   loadActiveSignals: (chainId: number, now: Date) => Promise<Signal[]>;
   /** Prior assessment per aset (hysteresis). */
@@ -79,14 +83,32 @@ export async function runFusion(options: RunFusionOptions = {}): Promise<FusionR
 
   const out: FusionRunResult = { chainId, now, dry, results: [] };
 
+  // Pancarkan sinyal deterministik (mis. carry T11, oracle, depeg, macro) sebelum membaca sinyal aktif
+  let dryEmittedSignals: Signal[] = [];
+  try {
+    const emitted = await deps.emitSignals({ chainId, now, dry });
+    if (dry && emitted.length > 0) {
+      dryEmittedSignals = emitted;
+    }
+  } catch (err) {
+    warn(`gagal memancarkan sinyal deterministik: ${errMsg(err)} — lanjut dengan sinyal yang ada.`);
+  }
+
   // Muat sinyal aktif sekali untuk semua aset. Gagal → degradasi: tanpa assessment.
   let allSignals: Signal[];
   try {
     allSignals = await deps.loadActiveSignals(chainId, now);
+    if (dry && dryEmittedSignals.length > 0) {
+      allSignals = [...allSignals, ...dryEmittedSignals];
+    }
   } catch (err) {
     warn(`gagal memuat signals: ${errMsg(err)} — fusion dilewati (policy statis berlaku).`);
     return out;
   }
+
+  // Defensif: deduplikasi sinyal aktif berdasarkan stable key, simpan yang terbaru
+  allSignals = dedupeSignals(allSignals);
+  out.activeSignals = allSignals;
 
   for (const asset of assets) {
     const signalsForAsset = allSignals.filter((s) => s.assets.includes(asset));
@@ -144,6 +166,9 @@ function errMsg(err: unknown): string {
 async function resolveDeps(partial?: Partial<FusionDeps>): Promise<FusionDeps> {
   const p = partial ?? {};
   return {
+    emitSignals:
+      p.emitSignals ??
+      (async (opts) => (await import("../signals/emit.ts")).emitDeterministicSignals(opts)),
     loadActiveSignals: p.loadActiveSignals ?? defaultLoadActiveSignals,
     loadPrior: p.loadPrior ?? (async (chainId, asset) => (await import("../db/assessments.ts")).latestAssessment(chainId, asset)),
     loadPriceSamples: p.loadPriceSamples ?? defaultLoadPriceSamples,
@@ -152,16 +177,17 @@ async function resolveDeps(partial?: Partial<FusionDeps>): Promise<FusionDeps> {
   };
 }
 
-/** Default: baca signals aktif dari DB → Signal domain. */
+/** Default: baca signals aktif dari DB → Signal domain (dideduplikasi). */
 async function defaultLoadActiveSignals(chainId: number, now: Date): Promise<Signal[]> {
   const { getDb, signals } = await import("@tahansoe/db");
-  const { and, eq, gt } = await import("drizzle-orm");
+  const { and, eq, gt, desc } = await import("drizzle-orm");
   const db = getDb();
   const rows = await db
     .select()
     .from(signals)
-    .where(and(eq(signals.chainId, chainId), gt(signals.expiresAt, now)));
-  return rows.map(rowToSignal);
+    .where(and(eq(signals.chainId, chainId), gt(signals.expiresAt, now)))
+    .orderBy(desc(signals.observedAt));
+  return dedupeSignals(rows.map(rowToSignal));
 }
 
 /** Default: baca price_samples AaveOracle (I5) dalam jendela 24 jam. */
@@ -184,41 +210,6 @@ async function defaultLoadPriceSamples(chainId: number, asset: string, now: Date
     )
     .orderBy(asc(priceSamples.sampledAt));
   return rows.map((r) => ({ price: Number(r.priceUsd), sampledAt: r.sampledAt }));
-}
-
-/** Petakan baris DB `signals` → Signal domain (validasi ringan, abaikan yang cacat). */
-function rowToSignal(row: {
-  id: string;
-  module: string;
-  paths: unknown;
-  assets: unknown;
-  direction: string;
-  severity: string;
-  confidence: string;
-  horizonHours: number;
-  observedAt: Date;
-  expiresAt: Date;
-  evidence: unknown;
-}): Signal {
-  const paths = Array.isArray(row.paths) ? (row.paths as Signal["paths"]) : undefined;
-  const assets = Array.isArray(row.assets) ? (row.assets as string[]) : [];
-  const direction = (["DOWN", "UP", "VOLATILITY"] as const).includes(row.direction as never)
-    ? (row.direction as Signal["direction"])
-    : "DOWN";
-  const evidence = Array.isArray(row.evidence) ? (row.evidence as Signal["evidence"]) : [];
-  return {
-    id: row.id,
-    module: row.module as Signal["module"],
-    paths,
-    assets,
-    direction,
-    severity: Number(row.severity),
-    confidence: Number(row.confidence),
-    horizonHours: row.horizonHours,
-    observedAt: row.observedAt,
-    expiresAt: row.expiresAt,
-    evidence,
-  };
 }
 
 /** Ringkasan satu baris per-aset untuk dashboard/log. */

@@ -10,6 +10,11 @@ import { dirname, resolve } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "../../..");
 
-for (const file of ["apps/web/.env.local", "apps/web/.env", ".env"]) {
+for (const file of [
+  "apps/web/.env.local",
+  "apps/web/.env",
+  "apps/engine/.env",
+  ".env",
+]) {
   config({ path: resolve(repoRoot, file), quiet: true });
 }

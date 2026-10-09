@@ -13,6 +13,7 @@
     "lint": "npm run lint -w @tahansoe/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
+    "tahansoe": "npm run tahansoe -w @tahansoe/engine --",
     "db:migrate": "tsx packages/db/scripts/migrate.ts",
     "db:check": "tsx packages/db/scripts/check-db.ts",
     "db:reset": "tsx packages/db/scripts/reset-db.ts",

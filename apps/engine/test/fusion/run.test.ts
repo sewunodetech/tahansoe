@@ -20,6 +20,7 @@ const rank = (r: string) => REGIMES.indexOf(r as (typeof REGIMES)[number]);
 /** DB palsu: signals dari list, prior null, tanpa harga; menangkap tulisan. */
 function mockDeps(signals: Signal[], written: RiskAssessment[]): Partial<FusionDeps> {
   return {
+    emitSignals: async () => [],
     loadActiveSignals: async () => signals,
     loadPrior: async () => null,
     loadPriceSamples: async () => [],

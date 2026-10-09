@@ -283,6 +283,7 @@ describe("PriceWorker", () => {
       client: mockClient,
       clock: mockClock,
       intervalSec: 60,
+      withRateSampler: false,
       logger: { info: () => {}, warn: () => {}, error: () => {} },
       onSampleCompleted: (samples) => {
         if (samples && samples.length === 4) sampleCompleted = true;
@@ -353,6 +354,7 @@ describe("PriceWorker", () => {
       client: failingClient,
       clock: mockClock,
       intervalSec: 60,
+      withRateSampler: false,
       logger: {
         info: () => {},
         warn: () => {},
@@ -370,6 +372,42 @@ describe("PriceWorker", () => {
     const retryTimer = scheduledTimers[0];
     assert.ok(retryTimer, "Interval timer berikutnya harus terjadwal");
     assert.equal(retryTimer.ms, 60000);
+
+    await worker.stop();
+  });
+
+  it("menjadwalkan rate timer saat withRateSampler aktif", async () => {
+    const mockLockClient: AdvisoryLockClient = {
+      query: async () => ({ rows: [{ locked: true }] }),
+    };
+
+    const scheduledTimers: Array<{ fn: () => void; ms: number }> = [];
+    const mockClock: PriceWorkerClock = {
+      now: () => new Date(),
+      setTimeout: (fn, ms) => {
+        const item = { fn, ms };
+        scheduledTimers.push(item);
+        return item;
+      },
+      clearTimeout: () => {},
+    };
+
+    const worker = new PriceWorker({
+      lockClient: mockLockClient,
+      clock: mockClock,
+      intervalSec: 60,
+      rateIntervalMin: 15,
+      withRateSampler: true,
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+    });
+
+    const started = await worker.start();
+    assert.equal(started, true);
+    assert.equal(scheduledTimers.length, 2);
+    const priceTimer = scheduledTimers.find((t) => t.ms === 60000);
+    const rateTimer = scheduledTimers.find((t) => t.ms === 15 * 60 * 1000);
+    assert.ok(priceTimer, "Price timer harus terjadwal");
+    assert.ok(rateTimer, "Rate timer harus terjadwal");
 
     await worker.stop();
   });

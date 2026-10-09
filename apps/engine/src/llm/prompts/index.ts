@@ -25,7 +25,8 @@ export type PromptRole =
   | "hawk"
   | "dove"
   | "assessor"
-  | "reflector";
+  | "reflector"
+  | "chat";
 
 const CACHE = new Map<PromptRole, string>();
 

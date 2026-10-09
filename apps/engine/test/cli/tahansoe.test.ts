@@ -314,3 +314,62 @@ test("history: tanpa DATABASE_URL → exit 1 (json)", async () => {
     if (prev !== undefined) process.env.DATABASE_URL = prev;
   }
 });
+
+// --- main dispatch --------------------------------------------------------
+
+test("main dispatch: start --help → exit 0", async () => {
+  const { main } = await import("../../src/cli/tahansoe.ts");
+  const origWrite = process.stdout.write;
+  const chunks: string[] = [];
+  process.stdout.write = ((s: string) => {
+    chunks.push(s);
+    return true;
+  }) as any;
+
+  try {
+    const code = await main(["start", "--help"]);
+    assert.equal(code, 0);
+    assert.match(chunks.join(""), /tahansoe start/);
+  } finally {
+    process.stdout.write = origWrite;
+  }
+});
+
+test("main dispatch: gateway subcommand tidak dikenal → exit 1", async () => {
+  const { main } = await import("../../src/cli/tahansoe.ts");
+  const origErr = process.stderr.write;
+  const errs: string[] = [];
+  process.stderr.write = ((s: string) => {
+    errs.push(s);
+    return true;
+  }) as any;
+
+  try {
+    const code = await main(["gateway", "unknown-subcommand"]);
+    assert.equal(code, 1);
+    assert.match(errs.join(""), /subcommand gateway tidak dikenal/);
+  } finally {
+    process.stderr.write = origErr;
+  }
+});
+
+test("main dispatch: --help mencantumkan start dan gateway", async () => {
+  const { main } = await import("../../src/cli/tahansoe.ts");
+  const origWrite = process.stdout.write;
+  const chunks: string[] = [];
+  process.stdout.write = ((s: string) => {
+    chunks.push(s);
+    return true;
+  }) as any;
+
+  try {
+    const code = await main(["--help"]);
+    assert.equal(code, 0);
+    const out = chunks.join("");
+    assert.match(out, /start/);
+    assert.match(out, /gateway/);
+  } finally {
+    process.stdout.write = origWrite;
+  }
+});
+

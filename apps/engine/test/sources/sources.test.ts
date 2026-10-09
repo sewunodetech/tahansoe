@@ -276,6 +276,7 @@ describe("Data Sources: RSS Feed Adapter", () => {
     const res = await fetchRssEvents({
       feeds: mockFeeds,
       fetchFn: mockFetch,
+      now: new Date("2026-10-08T18:00:00Z"),
     });
 
     assert.ok(res.events.length > 0, "feed BBC harus tetap berhasil diambil");
@@ -511,6 +512,7 @@ describe("Data Sources: collectResearchInputs Orchestrator", () => {
       assets: ["ETH", "USDC"],
       timeoutMs: 500,
       fetchFn: mockFetch,
+      now: new Date("2026-10-08T18:00:00Z"),
     });
 
     assert.equal(gdeltCalled, false, "GDELT tidak boleh dipanggil saat flag mati");

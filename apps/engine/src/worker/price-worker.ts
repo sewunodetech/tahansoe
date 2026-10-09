@@ -22,12 +22,16 @@ import {
   type AdvisoryLockClient,
 } from "./lock.ts";
 import { sampleOnce, type SampledPrice } from "../sources/price-sampler.ts";
+import { sampleRatesOnce, type SampleRatesResult } from "../sources/rate-sampler.ts";
 
 /** Key advisory lock unik untuk price worker (Arbitrum One + price suffix). */
 export const PRICE_WORKER_ADVISORY_LOCK_KEY = 42161002;
 
 /** Interval sampling harga standar: 60 detik. */
 export const DEFAULT_PRICE_SAMPLE_INTERVAL_SEC = 60;
+
+/** Interval sampling bunga reserve standar: 15 menit. */
+export const DEFAULT_RATE_SAMPLE_INTERVAL_MIN = 15;
 
 export interface PriceWorkerClock {
   now: () => Date;
@@ -53,24 +57,32 @@ export interface PriceWorkerOptions {
   logger?: PriceWorkerLogger;
   exitFn?: (code: number) => void;
   onSampleCompleted?: (samples: SampledPrice[] | null) => void;
+  onRateSampleCompleted?: (result: SampleRatesResult | null) => void;
+  rateIntervalMin?: number;
+  withRateSampler?: boolean;
   envOverrides?: Record<string, string | undefined>;
 }
 
 export class PriceWorker {
   private isRunning = false;
   private isExecuting = false;
+  private isExecutingRate = false;
   private scheduledTimer: any = null;
+  private rateScheduledTimer: any = null;
   private lockClient: AdvisoryLockClient | null | undefined;
   private readonly clock: PriceWorkerClock;
   private readonly env: Record<string, string | undefined>;
   private readonly chainId: number;
   private readonly rpcUrl?: string;
   private readonly intervalSec: number;
+  private readonly rateIntervalMin: number;
+  private readonly withRateSampler: boolean;
   private readonly logger: PriceWorkerLogger;
   private readonly exitFn: (code: number) => void;
   private readonly client?: PublicClient;
   private readonly db?: Db;
   private readonly onSampleCompleted?: (samples: SampledPrice[] | null) => void;
+  private readonly onRateSampleCompleted?: (result: SampleRatesResult | null) => void;
   private signalCleanupRegistered = false;
 
   constructor(opts: PriceWorkerOptions = {}) {
@@ -85,6 +97,7 @@ export class PriceWorker {
     this.env = opts.envOverrides ?? process.env;
     this.chainId = opts.chainId ?? 42161;
     this.rpcUrl = opts.rpcUrl ?? this.env.ARBITRUM_RPC_URL;
+    this.withRateSampler = opts.withRateSampler ?? true;
 
     const envInterval = Number(this.env.PRICE_SAMPLE_INTERVAL_SEC);
     this.intervalSec =
@@ -93,6 +106,13 @@ export class PriceWorker {
         ? envInterval
         : DEFAULT_PRICE_SAMPLE_INTERVAL_SEC);
 
+    const envRateInterval = Number(this.env.RATE_SAMPLE_INTERVAL_MIN);
+    this.rateIntervalMin =
+      opts.rateIntervalMin ??
+      (!isNaN(envRateInterval) && envRateInterval > 0
+        ? envRateInterval
+        : DEFAULT_RATE_SAMPLE_INTERVAL_MIN);
+
     this.logger = opts.logger ?? {
       info: (msg) => console.log(msg),
       warn: (msg) => console.warn(msg),
@@ -100,6 +120,7 @@ export class PriceWorker {
     };
     this.exitFn = opts.exitFn ?? ((code) => process.exit(code));
     this.onSampleCompleted = opts.onSampleCompleted;
+    this.onRateSampleCompleted = opts.onRateSampleCompleted;
   }
 
   /**
@@ -148,6 +169,9 @@ export class PriceWorker {
 
     // Jalankan sample pertama segera
     await this.executeSample();
+    if (this.withRateSampler) {
+      await this.executeRateSample();
+    }
 
     return true;
   }
@@ -162,6 +186,11 @@ export class PriceWorker {
     if (this.scheduledTimer) {
       this.clock.clearTimeout(this.scheduledTimer);
       this.scheduledTimer = null;
+    }
+
+    if (this.rateScheduledTimer) {
+      this.clock.clearTimeout(this.rateScheduledTimer);
+      this.rateScheduledTimer = null;
     }
 
     if (this.lockClient) {
@@ -235,6 +264,61 @@ export class PriceWorker {
     }
   }
 
+  /**
+   * Eksekusi satu kali sampling bunga reserve dengan anti-overlap guard dan ketahanan error.
+   */
+  async executeRateSample(): Promise<void> {
+    if (!this.isRunning || !this.withRateSampler) return;
+
+    if (this.isExecutingRate) {
+      this.logger.warn(
+        "[price-worker] rate sampling skipped: previous rate sample is still running (anti-overlap guard)",
+      );
+      return;
+    }
+
+    this.isExecutingRate = true;
+    const now = this.clock.now();
+
+    try {
+      const result = await sampleRatesOnce({
+        chainId: this.chainId,
+        rpcUrl: this.rpcUrl,
+        client: this.client,
+        db: this.db,
+        now,
+      });
+
+      const usdcRate = result.reserves.find((r) => r.asset === "USDC");
+      const wethRate = result.reserves.find((r) => r.asset === "WETH");
+
+      this.logger.info(
+        `[price-worker:rates] ${now.toISOString()} | ` +
+          `sampled ${result.reserves.length} reserves | ` +
+          `USDC: util ${( (usdcRate?.utilization ?? 0) * 100).toFixed(1)}% (borrow ${( (usdcRate?.borrowApr ?? 0) * 100).toFixed(1)}%) | ` +
+          `WETH: util ${( (wethRate?.utilization ?? 0) * 100).toFixed(1)}% | ` +
+          `next in ${this.rateIntervalMin}m`,
+      );
+
+      this.onRateSampleCompleted?.(result);
+    } catch (err) {
+      this.logger.error(
+        `[price-worker:rates] error saat sampling bunga: ${String(err)} (will retry in ${this.rateIntervalMin}m)`,
+      );
+      this.onRateSampleCompleted?.(null);
+    } finally {
+      this.isExecutingRate = false;
+
+      // Jadwalkan run berikutnya jika worker masih aktif
+      if (this.isRunning) {
+        this.rateScheduledTimer = this.clock.setTimeout(
+          () => void this.executeRateSample(),
+          this.rateIntervalMin * 60 * 1000,
+        );
+      }
+    }
+  }
+
   private setupProcessSignals(): void {
     if (this.signalCleanupRegistered) return;
     if (typeof process === "undefined" || !process.on) return;
@@ -249,6 +333,20 @@ export class PriceWorker {
     process.once("SIGTERM", () => void shutdownHandler("SIGTERM"));
     this.signalCleanupRegistered = true;
   }
+}
+
+/**
+ * Helper untuk memulai PriceWorker sebagai service di dalam proses (mis. schedule run --with-price).
+ * Mengembalikan fungsi async untuk shutdown bersih.
+ */
+export async function startPriceWorker(
+  opts: PriceWorkerOptions = {},
+): Promise<() => Promise<void>> {
+  const worker = new PriceWorker(opts);
+  await worker.start();
+  return async () => {
+    await worker.stop();
+  };
 }
 
 // Entry point CLI jika dieksekusi langsung

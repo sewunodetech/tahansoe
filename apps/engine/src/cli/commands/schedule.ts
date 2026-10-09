@@ -192,12 +192,15 @@ export class SettleTicker {
   }
 }
 
-/** Lock settlement default via Neon advisory lock (retry + error handler + lost). */
-async function defaultSettleLock(): Promise<{ acquired: boolean; release: () => Promise<void>; isLost: () => boolean }> {
+/** Lock settlement default (Neon advisory lock atau PGlite file lock). */
+export async function defaultSettleLock(): Promise<{ acquired: boolean; release: () => Promise<void>; isLost: () => boolean }> {
+  const { getDbDriver } = await import("@tahansoe/db");
+  const driver = getDbDriver();
   const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) return { acquired: false, release: async () => {}, isLost: () => false };
+  if (driver !== "pglite" && !dbUrl) return { acquired: false, release: async () => {}, isLost: () => false };
   const { openAdvisoryLock } = await import("../../worker/lock.ts");
   return openAdvisoryLock(dbUrl, SETTLE_ADVISORY_LOCK_KEY, {
+    driver,
     logger: { warn: (m) => process.stderr.write(`[settle] ${m}\n`) },
   });
 }
@@ -207,6 +210,7 @@ export interface FusionTickStatus {
   lastAt: Date | null;
   perAsset: string; // "ETH ELEVATED · USDC CALM"
   heldLock: boolean;
+  signalCounts?: Record<string, number>;
 }
 
 /**
@@ -274,6 +278,11 @@ export class FusionTicker {
       this.status.lastAt = new Date();
       this.status.perAsset =
         result.results.map((r) => `${r.asset} ${r.assessment ? r.assessment.regime : "—"}`).join(" · ") || "—";
+      const counts: Record<string, number> = {};
+      for (const s of result.activeSignals ?? []) {
+        counts[s.module] = (counts[s.module] ?? 0) + 1;
+      }
+      this.status.signalCounts = counts;
       this.logger.info(`[fusion] ${this.status.lastAt.toISOString().slice(11, 16)} UTC · ${this.status.perAsset}`);
     } catch (err) {
       this.logger.error(`[fusion] job gagal: ${err instanceof Error ? err.message : String(err)}`);
@@ -282,11 +291,15 @@ export class FusionTicker {
     }
   }
 
-  /** Baris dashboard "Fusion: REGIME per asset, HH:MM UTC". */
+  /** Baris dashboard "Fusion: REGIME per asset, HH:MM UTC (signals: ...)". */
   dashboardLine(): string {
     if (!this.status.heldLock) return "Fusion: (handled by another instance)";
     if (!this.status.lastAt) return "Fusion: (pending)";
-    return `Fusion: ${this.status.perAsset}, ${this.status.lastAt.toISOString().slice(11, 16)} UTC`;
+    const countParts = Object.entries(this.status.signalCounts ?? {})
+      .map(([mod, cnt]) => `${mod} ${cnt}`)
+      .join(", ");
+    const signalSuffix = countParts ? ` (signals: ${countParts})` : "";
+    return `Fusion: ${this.status.perAsset}, ${this.status.lastAt.toISOString().slice(11, 16)} UTC${signalSuffix}`;
   }
 
   async stop(): Promise<void> {
@@ -305,24 +318,27 @@ export class FusionTicker {
   }
 }
 
-/** Lock fusion default via Neon advisory lock (retry + error handler + lost). */
-async function defaultFusionLock(): Promise<{ acquired: boolean; release: () => Promise<void>; isLost: () => boolean }> {
+/** Lock fusion default (Neon advisory lock atau PGlite file lock). */
+export async function defaultFusionLock(): Promise<{ acquired: boolean; release: () => Promise<void>; isLost: () => boolean }> {
+  const { getDbDriver } = await import("@tahansoe/db");
+  const driver = getDbDriver();
   const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) return { acquired: false, release: async () => {}, isLost: () => false };
+  if (driver !== "pglite" && !dbUrl) return { acquired: false, release: async () => {}, isLost: () => false };
   const { openAdvisoryLock } = await import("../../worker/lock.ts");
   return openAdvisoryLock(dbUrl, FUSION_ADVISORY_LOCK_KEY, {
+    driver,
     logger: { warn: (m) => process.stderr.write(`[fusion] ${m}\n`) },
   });
 }
 
 /** Clock yang tidak pernah menjadwalkan timer nyata (untuk --once & test). */
-const noTimerClock = {
+export const noTimerClock = {
   now: () => new Date(),
   setTimeout: (_fn: () => void, _ms: number): unknown => null,
   clearTimeout: (_id: unknown): void => {},
 };
 
-async function defaultMakeWorker(opts: Parameters<NonNullable<ScheduleDeps["makeWorker"]>>[0]) {
+export async function defaultMakeWorker(opts: Parameters<NonNullable<ScheduleDeps["makeWorker"]>>[0]) {
   const { ResearchWorker } = await import("../../worker/research-worker.ts");
   return new ResearchWorker(opts as never);
 }
@@ -386,30 +402,8 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
   // Guard ini memperlakukan error koneksi Neon/WS sebagai LOCK LOST (log, lanjut) —
   // ticker akan re-acquire pada tick berikutnya. Hanya aktif selama proses jadwal
   // berjalan (kecuali test yang meng-inject makeWorker, agar tidak menelan error uji).
-  const installGuards = !deps.makeWorker;
-  const isNeonTransient = (err: unknown): boolean => {
-    const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
-    return (
-      msg.includes("sent before connected") ||
-      msg.includes("websocket") ||
-      msg.includes("57p01") ||
-      msg.includes("terminating connection") ||
-      msg.includes("connection terminated") ||
-      msg.includes("fetch failed")
-    );
-  };
-  const onUncaught = (err: unknown): void => {
-    const message = err instanceof Error ? err.message : String(err);
-    if (isNeonTransient(err)) {
-      logger.warn(`[schedule] error koneksi Neon diabaikan (lock lost, re-acquire di tick berikutnya): ${message}`);
-    } else {
-      // Error tak dikenal: tetap log, jangan crash scheduler long-running.
-      logger.error(`[schedule] uncaught: ${message}`);
-    }
-  };
-  if (installGuards) {
-    process.on("uncaughtException", onUncaught);
-    process.on("unhandledRejection", onUncaught);
+  if (!deps.makeWorker) {
+    attachNeonTransientGuards(logger, "schedule");
   }
 
   // --with-price: jalankan price worker di proses yang sama (best-effort).
@@ -463,6 +457,8 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
     }
 
     if (stopPrice) await stopPrice();
+    const { getDbDriver, resetDbClient } = await import("@tahansoe/db");
+    if (getDbDriver() === "pglite") await resetDbClient();
     return started || reportProduced ? EXIT_OK : EXIT_ERROR;
   }
 
@@ -522,6 +518,8 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
         if (ticker) await ticker.stop();
         await worker.stop();
         if (stopPrice) await stopPrice();
+        const { getDbDriver, resetDbClient } = await import("@tahansoe/db");
+        if (getDbDriver() === "pglite") await resetDbClient();
       } finally {
         resolve();
       }
@@ -532,8 +530,42 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
   return EXIT_OK;
 }
 
+/**
+ * Jaring pengaman: abaikan error koneksi Neon transien agar tidak mematikan proses long-running.
+ */
+export function attachNeonTransientGuards(
+  logger: { warn: (m: string) => void; error: (m: string) => void },
+  scope = "schedule",
+): () => void {
+  const isNeonTransient = (err: unknown): boolean => {
+    const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+    return (
+      msg.includes("sent before connected") ||
+      msg.includes("websocket") ||
+      msg.includes("57p01") ||
+      msg.includes("terminating connection") ||
+      msg.includes("connection terminated") ||
+      msg.includes("fetch failed")
+    );
+  };
+  const onUncaught = (err: unknown): void => {
+    const message = err instanceof Error ? err.message : String(err);
+    if (isNeonTransient(err)) {
+      logger.warn(`[${scope}] error koneksi Neon diabaikan (lock lost, re-acquire di tick berikutnya): ${message}`);
+    } else {
+      logger.error(`[${scope}] uncaught: ${message}`);
+    }
+  };
+  process.on("uncaughtException", onUncaught);
+  process.on("unhandledRejection", onUncaught);
+  return () => {
+    process.off("uncaughtException", onUncaught);
+    process.off("unhandledRejection", onUncaught);
+  };
+}
+
 /** One-shot fusion untuk --once: lock → runFusion → log "[fusion] ETH=CALM USDC=CALM" → release. */
-async function runFusionOnce(
+export async function runFusionOnce(
   deps: ScheduleDeps,
   logger: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void },
   write: boolean,
@@ -564,7 +596,7 @@ async function runFusionOnce(
 }
 
 /** One-shot settlement untuk --once: lock → job → log "[settle] evaluated N settled M insufficient K" → release. */
-async function runSettleOnce(
+export async function runSettleOnce(
   deps: ScheduleDeps,
   logger: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void },
 ): Promise<void> {
@@ -594,7 +626,9 @@ async function runSettleOnce(
 
 /** Status default: lock held? + run terakhir dari DB. */
 async function defaultStatus(): Promise<string> {
-  if (!process.env.DATABASE_URL) return "scheduler status: DATABASE_URL belum diset.";
+  const { getDbDriver } = await import("@tahansoe/db");
+  const driver = getDbDriver();
+  if (driver !== "pglite" && !process.env.DATABASE_URL) return "scheduler status: DATABASE_URL belum diset.";
   try {
     const { recentReports } = await import("../../db/history.ts");
     const rows = await recentReports(1);

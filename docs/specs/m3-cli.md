@@ -1,9 +1,9 @@
 # Spec: Tahansoe CLI (`tahansoe`) — analisa langsung & scheduler dari terminal
 
 - **Milestone:** M3 (research agents) — tooling operator/developer
-- **Status:** In progress (implementasi parsial aktif, 2026-10-09)
+- **Status:** In progress (REPL & grounded Q&A selesai; setup wizard pending)
 - **Pemilik:** Kiro (shell + command), Antigravity (renderer + test), Claude Code (review)
-- **Terkait:** [m3-research-agents](m3-research-agents.md), [m2-risk-fusion-v1](m2-risk-fusion-v1.md), [ADR 0009](../decisions/0009-single-openai-compatible-gateway.md), [ADR 0006](../decisions/0006-business-model-free-info-paid-automation.md)
+- **Terkait:** [m3-research-agents](m3-research-agents.md), [m2-risk-fusion-v1](m2-risk-fusion-v1.md), [ADR 0009](../decisions/0009-single-openai-compatible-gateway.md), [ADR 0010](../decisions/0010-local-pglite-database-option.md), [ADR 0006](../decisions/0006-business-model-free-info-paid-automation.md)
 
 ## 1. Tujuan
 
@@ -11,8 +11,10 @@ Saat ini engine punya 15 script npm yang terpisah (`research`, `research:once`, 
 
 ### 1.1 Catatan Implementasi (9 Okt 2026)
 
-- **Command terimplementasi:** `analyze` (dengan live progress dan kartu laporan), `schedule` (`run`/`status` dengan `--once` dan `--with-price`), `history`, `report`, `doctor`, `models`, `settings`, `eval`.
+- **Command terimplementasi:** `analyze` (dengan live progress dan kartu laporan), `schedule` (`run`/`status` dengan `--once` dan `--with-price`), `history`, `report`, `doctor`, `models`, `settings`, `eval`, `carry`, `fuse`, `settle`, `scorecard`, `ask`.
+- **Mode interaktif (REPL) & Q&A:** Mode REPL (`tahansoe` tanpa argumen di TTY) dan command `tahansoe ask "<pertanyaan>"` telah terimplementasi dengan grounded Q&A (data laporan, sinyal aktif, rate_samples, makro) dan penolakan tegas atas permintaan prediksi harga / sinyal trading (non-goals).
 - **Deviasi tata letak renderer:** Seluruh helper rendering terminal (banner, box, bar, sparkline, progress, kartu laporan, penyamaran host, sanitasi teks) ditempatkan terpusat di `apps/engine/src/cli/render.ts` (bukan di subfolder `src/cli/ui/` seperti rencana awal). Deviasi ini menyederhanakan pemeliharaan file tanpa mengurangi cakupan unit test maupun fungsionalitas UI.
+- **Pending di backlog:** Wizard interaktif `tahansoe setup` untuk inisialisasi awal provider DB (PGlite/Neon) dan API key.
 
 ## 2. Scope
 
@@ -103,7 +105,38 @@ Pada non-TTY (cron, pipe) tidak ada animasi; satu baris log per run (format work
 - **Aksesibilitas:** hormati `NO_COLOR`, `--no-color`, lebar terminal (`process.stdout.columns`, min 60), fallback ASCII jika `TERM=dumb`. Exit code: 0 ok, 1 error, 2 config salah (mis. env LLM hilang).
 - **Warna regime:** CALM hijau, ELEVATED kuning, STRESSED oranye/magenta, CRISIS merah. Selaras dengan token di `DESIGN.md` bila ada padanannya.
 
+### 3.5 Mode interaktif (REPL) — tambahan 9 Okt 2026
+
+`tahansoe` tanpa argumen di terminal interaktif (TTY) membuka sesi seperti CLI AI agent. Non-TTY tetap mencetak banner + daftar command (perilaku lama).
+
+```
+ ▲ TAHANSOE  risk research · Arbitrum One · gpt-6-luna
+ Last: ELEVATED (ETH, USDC) · 14:06 UTC · 8 active signals
+ Type /help for commands, or ask a question about the latest analysis.
+
+ › /carry
+ (tabel carry seperti `tahansoe carry`)
+ › kenapa USDC ELEVATED?
+ USDC is ELEVATED mainly because of on-chain interest-rate stress, not price:
+ • USDC.e pool 92.1% utilized, past its 90% kink (borrow APR 18.3%)  [signal ONCHAIN T11, 14:06]
+ • Negative carry WETH→USDC −4.7%/yr → HF 1.50→1.45 in ~265 days     [rate_samples 14:00]
+ Research (14:01) proposed ELEVATED with confidence 0.48 (cap 0.60).
+ informational · not investment advice
+```
+
+**Slash command** (memanggil fungsi command yang sudah ada, tanpa proses baru): `/analyze [--dry]`, `/fuse`, `/carry`, `/history`, `/report [id|latest]`, `/settle`, `/scorecard`, `/models`, `/settings`, `/doctor`, `/status`, `/help`, `/clear`, `/exit`. Autocomplete dengan Tab, riwayat input dengan ↑/↓. `schedule run` tidak tersedia di REPL (proses jangka panjang; jalankan terpisah).
+
+**Tanya-jawab (Q&A):**
+- Dijawab model gateway (peran baru `chat` di `settings.json`, default sama dengan analyst) **hanya dari data tersimpan**: laporan riset terbaru + 24 jam terakhir, risk assessment terbaru per aset, sinyal aktif, `rate_samples` terbaru/carry, ringkasan `price_samples`, kalender makro mendatang. Konteks dirakit kode (deterministik), bukan oleh model; tanpa tools.
+- Jawaban mengikuti bahasa pertanyaan user (Indonesia/Inggris). System prompt berbahasa Inggris.
+- Wajib menyebut sumber per poin (jenis data + waktu), dan menyatakan "data tidak tersedia, jalankan /analyze" bila konteks kosong atau basi (> 6 jam).
+- Dilarang: prediksi harga, saran beli/jual, ranking yield, saran pindah aset, janji anti-likuidasi (positioning: bertahan lama, bukan cepat kaya). Pertanyaan semacam itu dijawab dengan penolakan singkat + penjelasan risiko posisi yang relevan.
+- Riwayat percakapan dalam sesi (maks. 10 giliran) ikut dikirim; tidak disimpan ke DB.
+- Output melewati `redactInstructions` (data berita bisa berisi injeksi) dan disanitasi dari kode ANSI sebelum dicetak. Biaya per jawaban dicatat di budget harian dan ditampilkan kecil di bawah jawaban.
+
 ## 4. Dampak keamanan
+
+- REPL Q&A (§3.5): model tanpa tools, konteks dirakit kode, output diredaksi + disanitasi, tidak ada aksi on-chain dari REPL; batas Non-Goals ditegakkan di prompt dan dicek di eval (pertanyaan "harus beli apa?" → penolakan).
 
 - I2: CLI hanya membaca dan menulis laporan riset/settings; tidak ada aksi on-chain, tanpa private key.
 - I5/I8: kartu laporan menampilkan konten eksternal (judul berita) sebagai **teks**. Karakter kontrol/ANSI dari sumber eksternal **dibuang** sebelum dicetak, untuk mencegah injeksi escape sequence ke terminal.
@@ -112,13 +145,15 @@ Pada non-TTY (cron, pipe) tidak ada animasi; satu baris log per run (format work
 
 ## 5. Kriteria penerimaan
 
-- [ ] `npm run tahansoe -- analyze --fake` menampilkan progress + kartu laporan tanpa jaringan/LLM.
-- [ ] `analyze --json` mengeluarkan JSON valid saja di stdout (log ke stderr).
-- [ ] `schedule run` memakai worker yang ada; Ctrl+C melepas lock dengan bersih; `schedule status` membaca DB.
-- [ ] `history`, `report latest`, `models`, `settings`, `doctor` berfungsi; output non-TTY tanpa kode ANSI.
-- [ ] Teks eksternal dengan escape ANSI disanitasi (ada test).
-- [ ] Script npm lama tetap jalan (alias).
-- [ ] Typecheck 0 error, `npm test` hijau.
+- [x] `npm run tahansoe -- analyze --fake` menampilkan progress + kartu laporan tanpa jaringan/LLM.
+- [x] `analyze --json` mengeluarkan JSON valid saja di stdout (log ke stderr).
+- [x] `schedule run` memakai worker yang ada; Ctrl+C melepas lock dengan bersih; `schedule status` membaca DB.
+- [x] `history`, `report latest`, `models`, `settings`, `doctor` berfungsi; output non-TTY tanpa kode ANSI.
+- [x] Teks eksternal dengan escape ANSI disanitasi (ada test).
+- [x] Script npm lama tetap jalan (alias).
+- [x] Typecheck 0 error, `npm test` hijau.
+- [x] Mode REPL interaktif dan grounded Q&A (`tahansoe ask` / REPL chat) terimplementasi dengan guardrail non-goals.
+- [ ] Wizard `tahansoe setup` (konfigurasi interaktif DB PGlite/Neon & gateway LLM; pending di backlog).
 
 ## 6. Rencana test
 

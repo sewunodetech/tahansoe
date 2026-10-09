@@ -18,6 +18,7 @@ import {
   CONFIRMING_MODULES,
   HYSTERESIS_COOLDOWN_MIN,
   HYSTERESIS_MARGIN,
+  CARRY_THRESHOLDS,
 } from "./config.ts";
 
 const rank = (r: Regime): number => REGIMES.indexOf(r);
@@ -165,6 +166,24 @@ export function decideRegime(input: DecideRegimeInput): DecideRegimeResult {
     if (!hasConfirming) {
       candidate = "ELEVATED";
       reasons.push("GUARDRAIL-RESEARCH-UNCONFIRMED");
+    }
+  }
+
+  // (3b) GUARDRAIL T11 sendirian (spec m3 §3.3): bila sinyal hanya T11 (tanpa T7 atau jalur/konfirmasi lain),
+  // regime kandidat maksimal ELEVATED. STRESSED hanya bila disertai T7 atau konfirmasi lain.
+  if (rank(candidate) > rank(CARRY_THRESHOLDS.maxRegimeT11Alone)) {
+    // Hanya sinyal TERKONFIRMASI yang dihitung: RESEARCH/NEWS/SOCIAL tidak boleh
+    // "menumpang" T11 untuk lolos ke STRESSED (T11 mengonfirmasi bunga, bukan tesis riset).
+    const confirmed = active.filter((s) => CONFIRMING_MODULES.has(s.module));
+    const isT11Only =
+      confirmed.length > 0 &&
+      confirmed.every((s) => {
+        const p = s.paths ?? [];
+        return p.length > 0 && p.every((path) => path === "T11");
+      });
+    if (isT11Only) {
+      candidate = CARRY_THRESHOLDS.maxRegimeT11Alone;
+      reasons.push("GUARDRAIL-T11-ALONE");
     }
   }
 
