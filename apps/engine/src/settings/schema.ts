@@ -1,40 +1,26 @@
 /**
- * Skema settings NON-RAHASIA Core Risk Engine (ADR 0008; keputusan: konfigurasi
- * provider/model/pricing di file settings, SECRET tetap di .env).
+ * Skema settings NON-RAHASIA Core Risk Engine v2 (ADR 0009 — satu gateway).
  *
  * File: apps/engine/settings.json (per mesin, di-gitignore) atau path dari env
  * TAHANSOE_SETTINGS. Contoh commit: apps/engine/settings.example.json.
  *
- * INVARIAN KEAMANAN (security.md I8): API key TIDAK PERNAH disimpan di settings —
- * hanya NAMA env var-nya (`apiKeyEnv`). Validasi zod menolak bentuk yang salah dan
- * memberi pesan error jelas (bukan crash diam-diam).
+ * v2 TIDAK memuat daftar provider dan TIDAK memuat nama env key: gateway dan key
+ * ada di .env (`LLM_API_URL`, `LLM_API_KEY`). Settings hanya menyimpan:
+ *  - roles: daftar NAMA MODEL (tanpa awalan provider) per peran, berurutan fallback;
+ *  - pricingUrl: URL harga opsional (Bynara/OpenRouter);
+ *  - modelPrices: harga manual opsional (USD/1M token), menimpa remote;
+ *  - estimate: parameter estimasi biaya.
+ *
+ * INVARIAN KEAMANAN (security.md I8): API key TIDAK PERNAH disimpan di settings.
+ * Validasi zod menolak bentuk salah dengan pesan jelas.
  */
 
 import { z } from "zod";
 
-/** Versi skema settings. Naikkan bila bentuk berubah (migrasi di loader). */
-export const SETTINGS_VERSION = 1 as const;
+/** Versi skema settings saat ini. v1 dimigrasikan ke v2 saat dibaca. */
+export const SETTINGS_VERSION = 2 as const;
 
-/** Satu provider OpenAI-compatible. API key dirujuk lewat NAMA env var, bukan nilainya. */
-export const providerSchema = z
-  .object({
-    /** Base URL OpenAI-compatible (".../v1" atau ".../v1/chat/completions"). */
-    baseUrl: z.string().min(1, "baseUrl wajib"),
-    /**
-     * NAMA env var yang memuat API key (mis. "LLM_API_KEY"). Opsional untuk
-     * provider lokal tanpa auth (mis. Ollama). JANGAN isi nilai key di sini.
-     */
-    apiKeyEnv: z.string().min(1).optional(),
-    /** URL daftar harga opsional (Bynara `/api/pricing` atau OpenRouter `/api/v1/models`). */
-    pricingUrl: z.string().min(1).optional(),
-    /** True untuk provider lokal (Ollama): tersedia walau tanpa apiKeyEnv. */
-    local: z.boolean().optional(),
-  })
-  .strict();
-
-export type ProviderSettings = z.infer<typeof providerSchema>;
-
-/** Daftar fallback "provider:model" per peran. */
+/** Daftar fallback NAMA MODEL (tanpa awalan provider) per peran. */
 const roleListSchema = z.array(z.string().min(1));
 
 export const rolesSchema = z
@@ -65,12 +51,13 @@ export const estimateSchema = z
   })
   .strict();
 
-/** Skema utama settings.json (version 1). */
+/** Skema utama settings.json (version 2). */
 export const settingsSchema = z
   .object({
     version: z.literal(SETTINGS_VERSION),
-    providers: z.record(z.string(), providerSchema).default({}),
     roles: rolesSchema.default({}),
+    /** URL daftar harga gateway (Bynara `/api/pricing` atau OpenRouter `/api/v1/models`). */
+    pricingUrl: z.string().min(1).optional(),
     /** Harga manual opsional per model, menimpa pricing remote. */
     modelPrices: z.record(z.string(), modelPriceSchema).default({}),
     estimate: estimateSchema.default({}),
@@ -81,5 +68,29 @@ export type Settings = z.infer<typeof settingsSchema>;
 
 /** Settings kosong valid (dipakai saat file tidak ada). */
 export function emptySettings(): Settings {
-  return { version: SETTINGS_VERSION, providers: {}, roles: {}, modelPrices: {}, estimate: {} };
+  return { version: SETTINGS_VERSION, roles: {}, modelPrices: {}, estimate: {} };
+}
+
+/** Nama provider lama (ADR 0008) yang awalannya di-strip saat migrasi/baca. */
+export const KNOWN_OLD_PROVIDERS = new Set([
+  "bynara",
+  "gemini",
+  "openrouter",
+  "groq",
+  "anthropic",
+  "ollama",
+  "custom",
+]);
+
+/**
+ * Buang awalan "provider:" dari sebuah spec model HANYA jika awalannya cocok
+ * dengan nama provider lama yang dikenal. Model id yang sah mengandung ":"
+ * (mis. "meta-llama/x:free") TIDAK diubah karena "meta-llama/x" bukan provider.
+ */
+export function stripProviderPrefix(spec: string): string {
+  const idx = spec.indexOf(":");
+  if (idx <= 0) return spec.trim();
+  const prefix = spec.slice(0, idx).trim().toLowerCase();
+  if (KNOWN_OLD_PROVIDERS.has(prefix)) return spec.slice(idx + 1).trim();
+  return spec.trim();
 }

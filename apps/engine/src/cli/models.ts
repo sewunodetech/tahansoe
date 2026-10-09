@@ -13,9 +13,9 @@
  */
 
 import { pathToFileURL } from "node:url";
-import { normalizeBaseUrl, resolvedProviders } from "../llm/registry.ts";
+import { normalizeBaseUrl, gatewayConfig } from "../llm/registry.ts";
 import { loadPricing, type ModelPrice, type FetchLike, type PricingCacheStore } from "../llm/pricing.ts";
-import { loadSettingsSync } from "../settings/settings.ts";
+import { loadSettingsSync, gatewayPricingUrl } from "../settings/settings.ts";
 import {
   estimateCost,
   tokenProfileFromDb,
@@ -141,13 +141,13 @@ export function formatRows(rows: ModelRow[], profile: TokenProfile): string {
 /**
  * Logika utama (dipisah agar bisa diuji dengan fetch injectable).
  *
- * Sumber harga: untuk SETIAP provider di settings yang punya `pricingUrl`, muat
- * harga (dengan API key dari apiKeyEnv provider itu). Harga manual settings.modelPrices
- * (JSON) menimpa remote. Daftar model: dari provider `baseURL`/models bila ada.
+ * Sumber: satu gateway (LLM_API_URL + LLM_API_KEY). Harga dari pricingUrl di
+ * settings (format Bynara/OpenRouter) + harga manual settings.modelPrices (menimpa).
+ * Daftar model dari `{gateway}/models`.
  */
 export async function runModelsCli(args: {
   filter?: string;
-  /** Override langsung (test): satu provider. */
+  /** Override langsung (test). */
   baseURL?: string;
   apiKey?: string;
   pricingUrl?: string;
@@ -158,47 +158,28 @@ export async function runModelsCli(args: {
 }): Promise<{ output: string; warnings: string[] }> {
   const fetchImpl = args.fetchImpl ?? (globalThis.fetch as unknown as FetchLike);
   const warnings: string[] = [];
-  const prices = new Map<string, ModelPrice>();
 
-  // Harga manual dari settings.modelPrices (JSON), bila ada.
   const { settings } = loadSettingsSync();
+  const g = gatewayConfig();
+  const baseURL = args.baseURL ?? g.baseURL;
+  const apiKey = args.apiKey ?? g.apiKey;
+  const pricingUrl = args.pricingUrl ?? gatewayPricingUrl(settings) ?? "";
   const manualJson =
     args.modelPricesJson ??
     (Object.keys(settings.modelPrices).length > 0 ? JSON.stringify(settings.modelPrices) : "");
 
-  // Kumpulan (baseURL, apiKey, pricingUrl) yang akan diperiksa.
-  const sources: Array<{ baseURL: string; apiKey: string; pricingUrl?: string }> = [];
-  if (args.baseURL != null || args.pricingUrl != null) {
-    // Mode test/override: satu sumber eksplisit.
-    sources.push({ baseURL: args.baseURL ?? "", apiKey: args.apiKey ?? "", pricingUrl: args.pricingUrl });
-  } else {
-    for (const p of Object.values(resolvedProviders())) {
-      sources.push({ baseURL: p.baseURL, apiKey: p.apiKey, pricingUrl: p.pricingUrl });
-    }
-  }
+  // Harga: dari pricingUrl + manual (manual menimpa).
+  const { prices, warnings: w } = await loadPricing({
+    apiKey,
+    fetchImpl,
+    cache: args.cache,
+    pricingUrl,
+    modelPricesJson: manualJson,
+  });
+  warnings.push(...w);
 
-  // Muat harga per sumber yang punya pricingUrl (manual hanya sekali, di sumber pertama).
-  let manualApplied = false;
-  for (const s of sources) {
-    const { prices: p, warnings: w } = await loadPricing({
-      apiKey: s.apiKey,
-      fetchImpl,
-      cache: args.cache,
-      pricingUrl: s.pricingUrl ?? "",
-      modelPricesJson: manualApplied ? "" : manualJson,
-    });
-    manualApplied = true;
-    for (const [m, price] of p) prices.set(m, price);
-    warnings.push(...w);
-  }
-
-  // Daftar model dari endpoint provider pertama yang punya baseURL.
-  let modelIds: string[] | null = null;
-  for (const s of sources) {
-    if (!s.baseURL) continue;
-    modelIds = await fetchModelList(s.baseURL, s.apiKey, fetchImpl);
-    if (modelIds) break;
-  }
+  // Daftar model dari gateway /models (bila base URL ada).
+  const modelIds = baseURL ? await fetchModelList(baseURL, apiKey, fetchImpl) : null;
 
   const profile = args.profile ?? DEFAULT_TOKEN_PROFILE;
   let rows = buildRows(prices, modelIds, profile);
@@ -211,7 +192,7 @@ export async function runModelsCli(args: {
   const lines: string[] = [];
   if (modelIds) lines.push(`Model dari endpoint: ${modelIds.length}. Dengan harga: ${rows.filter((r) => r.estimate).length}.`);
   else lines.push(`(endpoint /models tidak tersedia — daftar dari pricing)`);
-  if (prices.size === 0) lines.push("(tidak ada harga dimuat — set pricingUrl provider di settings.json atau modelPrices)");
+  if (prices.size === 0) lines.push("(tidak ada harga dimuat — set pricingUrl di settings.json atau modelPrices)");
   lines.push("");
   lines.push(formatRows(rows, profile));
 

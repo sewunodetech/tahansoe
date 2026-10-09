@@ -18,7 +18,6 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { LlmProvider, LlmRequest, LlmResult, LlmUsage } from "./provider.ts";
 import { budget as defaultBudget, type Budget } from "./budget.ts";
-import { env } from "../config.ts";
 
 /** Token output maksimum per panggilan (spec §3.4). */
 const MAX_OUTPUT_TOKENS = 16000;
@@ -51,11 +50,16 @@ export class AnthropicProvider implements LlmProvider {
    * @param budget akumulator biaya (default: instance global).
    * @param client opsional — untuk test, suntik client palsu agar tanpa API/env.
    *   Produksi: biarkan undefined; provider membuat `new Anthropic(...)` dari env.
+   *
+   * CATATAN (ADR 0009): AnthropicProvider TIDAK lagi dipakai di jalur produksi
+   * (registry memakai satu gateway OpenAI-compatible). File dipertahankan untuk
+   * kemungkinan pemakaian langsung/eksperimen; key dibaca langsung dari env.
    */
   constructor(budget: Budget = defaultBudget, client?: MessagesParseClient) {
     this.budget = budget;
     this.client =
-      client ?? (new Anthropic({ apiKey: env.anthropicApiKey() }) as unknown as MessagesParseClient);
+      client ??
+      (new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" }) as unknown as MessagesParseClient);
   }
 
   async structured<T>(req: LlmRequest<T>): Promise<LlmResult<T>> {

@@ -1,68 +1,59 @@
 /**
- * Unit test provider generik (offline): customProviders, normalizeBaseUrl,
- * parseRoleSpec dengan model tanpa prefix & model berisi ':'. Memanipulasi
- * env lewat objek literal (customProviders menerima envVars), tidak menyentuh
- * process.env global kecuali untuk parseRoleSpec yang membaca default.
+ * Unit test konfigurasi gateway (ADR 0009): gatewayConfig membaca LLM_API_URL +
+ * LLM_API_KEY, alias usang LLM_BASE_URL, normalisasi URL, isGatewayConfigured.
+ * Offline: memanipulasi process.env lalu memulihkannya.
  */
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-// Isolasi dari settings.json lokal (lihat registry.test.ts).
-process.env.TAHANSOE_SETTINGS = "/__tahansoe_no_settings__/registry-generic.test.json";
+process.env.TAHANSOE_SETTINGS = "/__tahansoe_no_settings__/gateway.test.json";
 
-import { customProviders, normalizeBaseUrl, parseRoleSpec } from "../../src/llm/registry.ts";
+import { gatewayConfig, isGatewayConfigured } from "../../src/llm/registry.ts";
 
-test("normalizeBaseUrl: buang /chat/completions & trailing slash", () => {
-  assert.equal(normalizeBaseUrl("https://router.bynara.id/v1/chat/completions"), "https://router.bynara.id/v1");
-  assert.equal(normalizeBaseUrl("https://router.bynara.id/v1/"), "https://router.bynara.id/v1");
-  assert.equal(normalizeBaseUrl("https://x/v1/chat/completions/"), "https://x/v1");
-  assert.equal(normalizeBaseUrl("  https://x/v1  "), "https://x/v1");
-});
+function withEnv(vars: Record<string, string | undefined>, fn: () => void): void {
+  const keys = ["LLM_API_URL", "LLM_BASE_URL", "LLM_API_KEY"];
+  const prev: Record<string, string | undefined> = {};
+  for (const k of keys) prev[k] = process.env[k];
+  try {
+    for (const k of keys) delete process.env[k];
+    for (const [k, v] of Object.entries(vars)) if (v !== undefined) process.env[k] = v;
+    fn();
+  } finally {
+    for (const k of keys) {
+      if (prev[k] === undefined) delete process.env[k];
+      else process.env[k] = prev[k]!;
+    }
+  }
+}
 
-test("customProviders: LLM_BASE_URL + LLM_PROVIDER_NAME", () => {
-  const out = customProviders({
-    LLM_BASE_URL: "https://router.bynara.id/v1/chat/completions",
-    LLM_API_KEY: "secret",
-    LLM_PROVIDER_NAME: "Bynara",
+test("gatewayConfig: LLM_API_URL dinormalisasi (buang /chat/completions)", () => {
+  withEnv({ LLM_API_URL: "https://router.bynara.id/v1/chat/completions", LLM_API_KEY: "k" }, () => {
+    const g = gatewayConfig();
+    assert.equal(g.baseURL, "https://router.bynara.id/v1");
+    assert.equal(g.apiKey, "k");
+    assert.equal(isGatewayConfigured(), true);
   });
-  assert.deepEqual(out.bynara, { baseURL: "https://router.bynara.id/v1", apiKey: "secret" });
 });
 
-test("customProviders: default nama 'custom' bila LLM_PROVIDER_NAME kosong", () => {
-  const out = customProviders({ LLM_BASE_URL: "https://x/v1" });
-  assert.ok(out.custom);
-  assert.equal(out.custom.baseURL, "https://x/v1");
-  assert.equal(out.custom.apiKey, "");
-});
-
-test("customProviders: LLM_PROVIDER_<NAMA>_BASE_URL/_API_KEY", () => {
-  const out = customProviders({
-    LLM_PROVIDER_DEEPSEEK_BASE_URL: "https://api.deepseek.com/v1/chat/completions",
-    LLM_PROVIDER_DEEPSEEK_API_KEY: "dk",
+test("gatewayConfig: alias usang LLM_BASE_URL dipakai bila LLM_API_URL kosong", () => {
+  withEnv({ LLM_BASE_URL: "https://x/v1", LLM_API_KEY: "k" }, () => {
+    assert.equal(gatewayConfig().baseURL, "https://x/v1");
+    assert.equal(isGatewayConfigured(), true);
   });
-  assert.deepEqual(out.deepseek, { baseURL: "https://api.deepseek.com/v1", apiKey: "dk" });
 });
 
-test("parseRoleSpec: model tanpa prefix → provider generik default (fallback)", () => {
-  const out = parseRoleSpec("deepseek-v4.1-flash", "custom");
-  assert.deepEqual(out, [{ provider: "custom", model: "deepseek-v4.1-flash" }]);
+test("gatewayConfig: LLM_API_URL menang atas LLM_BASE_URL", () => {
+  withEnv({ LLM_API_URL: "https://primary/v1", LLM_BASE_URL: "https://legacy/v1", LLM_API_KEY: "k" }, () => {
+    assert.equal(gatewayConfig().baseURL, "https://primary/v1");
+  });
 });
 
-test("parseRoleSpec: tanpa fallback & tanpa provider dikenal → dilewati", () => {
-  const out = parseRoleSpec("deepseek-v4.1-flash", null);
-  assert.deepEqual(out, []);
-});
-
-test("parseRoleSpec: model berisi ':' (openrouter free) tetap utuh", () => {
-  const out = parseRoleSpec("openrouter:meta-llama/llama-3.3-70b-instruct:free", null);
-  assert.deepEqual(out, [{ provider: "openrouter", model: "meta-llama/llama-3.3-70b-instruct:free" }]);
-});
-
-test("parseRoleSpec: campuran provider dikenal + model polos dengan fallback", () => {
-  const out = parseRoleSpec("groq:llama, flash-model", "custom");
-  assert.deepEqual(out, [
-    { provider: "groq", model: "llama" },
-    { provider: "custom", model: "flash-model" },
-  ]);
+test("isGatewayConfigured: false bila URL atau key kosong", () => {
+  withEnv({ LLM_API_URL: "https://x/v1" }, () => {
+    assert.equal(isGatewayConfigured(), false, "tanpa key → belum siap");
+  });
+  withEnv({ LLM_API_KEY: "k" }, () => {
+    assert.equal(isGatewayConfigured(), false, "tanpa URL → belum siap");
+  });
 });

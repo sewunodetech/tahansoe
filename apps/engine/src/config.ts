@@ -36,9 +36,16 @@ function optionalEnv(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
 
+/** Peringatan deprecated LLM_BASE_URL dicetak sekali per proses. */
+let warnedLlmBaseUrlAlias = false;
+
 /**
  * Konfigurasi env. Dipanggil malas (lazy) oleh pemanggil yang butuh LLM/DB,
  * supaya modul yang tidak butuh (mis. test unit murni) tidak gagal karena env.
+ *
+ * LLM (ADR 0009 — satu pintu): hanya DUA secret, `LLM_API_URL` + `LLM_API_KEY`.
+ * Model/pricing non-rahasia ada di settings.json. `LLM_BASE_URL` masih dibaca
+ * sebagai alias usang `LLM_API_URL` (satu rilis, dengan peringatan sekali).
  */
 export const env = {
   /** Koneksi Neon Postgres. Dipakai context builder, settlement, reflection. */
@@ -54,42 +61,29 @@ export const env = {
   /** RPC Arbitrum untuk data teknikal on-chain (AaveOracle, reserve, perp DEX). */
   arbitrumRpcUrl: () => optionalEnv("ARBITRUM_RPC_URL", ""),
 
-  // --- Kunci LLM per provider (ADR 0008). KOSONG = provider dianggap tidak tersedia.
-  // Server-only; JANGAN pernah di-log (security.md I8).
-  anthropicApiKey: () => optionalEnv("ANTHROPIC_API_KEY", ""),
-  geminiApiKey: () => optionalEnv("GEMINI_API_KEY", ""),
-  openrouterApiKey: () => optionalEnv("OPENROUTER_API_KEY", ""),
-  groqApiKey: () => optionalEnv("GROQ_API_KEY", ""),
+  // --- Gateway LLM OpenAI-compatible TUNGGAL (ADR 0009). Server-only (security.md I8).
   /**
-   * Ollama lokal: tanpa API key. KOSONG jika tak diset → provider dianggap TIDAK
-   * tersedia (server lokal mungkin tidak berjalan). Set eksplisit untuk mengaktifkan,
-   * mis. OLLAMA_BASE_URL=http://localhost:11434/v1
+   * URL gateway OpenAI-compatible. Boleh ditulis sampai ".../v1" atau
+   * ".../v1/chat/completions" (dinormalisasi di registry). KOSONG = LLM tidak
+   * tersedia (registry memberi error jelas). Alias usang: `LLM_BASE_URL`.
    */
-  ollamaBaseUrl: () => optionalEnv("OLLAMA_BASE_URL", ""),
-
-  // --- Provider OpenAI-compatible GENERIK (endpoint apa pun, mis. router pihak ketiga).
-  // LLM_BASE_URL boleh ditulis sampai ".../v1" atau ".../v1/chat/completions"
-  // (dinormalisasi). Provider tambahan: LLM_PROVIDER_<NAMA>_BASE_URL + _API_KEY.
-  llmBaseUrl: () => optionalEnv("LLM_BASE_URL", ""),
+  llmApiUrl: () => {
+    const primary = process.env.LLM_API_URL?.trim();
+    if (primary) return primary;
+    const legacy = process.env.LLM_BASE_URL?.trim();
+    if (legacy) {
+      if (!warnedLlmBaseUrlAlias) {
+        warnedLlmBaseUrlAlias = true;
+        console.warn(
+          "[engine/config] deprecated: LLM_BASE_URL dibaca sebagai alias LLM_API_URL — pindahkan ke LLM_API_URL di apps/engine/.env.",
+        );
+      }
+      return legacy;
+    }
+    return "";
+  },
+  /** API key gateway. KOSONG = tidak tersedia. JANGAN pernah di-log (I8). */
   llmApiKey: () => optionalEnv("LLM_API_KEY", ""),
-  /** Nama provider untuk LLM_BASE_URL (dipakai di "nama:model"). Default "custom". */
-  llmProviderName: () => optionalEnv("LLM_PROVIDER_NAME", "custom").trim().toLowerCase() || "custom",
-  /** Model default untuk SEMUA peran bila LLM_<PERAN> kosong. */
-  llmModel: () => optionalEnv("LLM_MODEL", ""),
-  /**
-   * URL daftar harga opsional. Format yang dikenali: Bynara (`/api/pricing`,
-   * credit per 1k token + usd_to_idr) dan OpenRouter (`/api/v1/models`, USD per token).
-   */
-  llmPricingUrl: () => optionalEnv("LLM_PRICING_URL", ""),
-  /** Harga manual (JSON): {"model":{"inputPerM":0.3,"outputPerM":1.2}} dalam USD per 1 juta token. */
-  llmModelPricesJson: () => optionalEnv("LLM_MODEL_PRICES", ""),
-
-  // --- Pemilihan provider:model per peran (ADR 0008 §2–§3). Format:
-  // "provider:model,provider:model" (daftar fallback dipisah koma). Kosong = default.
-  llmAnalyst: () => optionalEnv("LLM_ANALYST", ""),
-  llmDebate: () => optionalEnv("LLM_DEBATE", ""),
-  llmAssessor: () => optionalEnv("LLM_ASSESSOR", ""),
-  llmReflector: () => optionalEnv("LLM_REFLECTOR", ""),
 } as const;
 
 /**

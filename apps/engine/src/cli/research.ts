@@ -20,8 +20,8 @@
 import { createInterface } from "node:readline/promises";
 import { pathToFileURL } from "node:url";
 
-import { loadSettingsSync, writeSettings, settingsPath } from "../settings/settings.ts";
-import { defaultProviderName } from "../settings/settings.ts";
+import { loadSettingsSync, writeSettings, settingsPath, gatewayPricingUrl } from "../settings/settings.ts";
+import { gatewayConfig, isGatewayConfigured, gatewayError } from "../llm/registry.ts";
 import type { Settings } from "../settings/schema.ts";
 import { loadPricing, type ModelPrice } from "../llm/pricing.ts";
 import {
@@ -35,7 +35,8 @@ import { buildRows, formatRows } from "./models.ts";
 
 /**
  * Tulis pilihan model per peran ke settings.json (atomik), tanpa menyentuh field
- * lain (providers/modelPrices/estimate dipertahankan). TIDAK mencetak isi file.
+ * lain (pricingUrl/modelPrices/estimate dipertahankan). Nama model polos (tanpa
+ * awalan provider). TIDAK mencetak isi file.
  */
 export async function writeRoleModelsToSettings(
   roles: { analyst: string[]; debate: string[]; assessor: string[]; reflector: string[] },
@@ -53,11 +54,6 @@ export async function writeRoleModelsToSettings(
     },
   };
   await writeSettings(next, path);
-}
-
-/** Spec "provider:model" (provider = default dari settings bila ada). */
-function specFor(provider: string, model: string): string {
-  return `${provider}:${model}`;
 }
 
 function usd(n: number): string {
@@ -84,58 +80,81 @@ function comboEstimate(
   return { perRunUsd, perMonthUsd: perRunUsd * RUNS_PER_DAY_CALM * 30 };
 }
 
-/** Muat harga dari semua provider settings yang punya pricingUrl + modelPrices manual. */
-async function loadAllPricing(): Promise<{ prices: Map<string, ModelPrice>; provider: string | null }> {
+/** Muat harga dari pricingUrl gateway (settings) + modelPrices manual. */
+async function loadGatewayPricing(): Promise<Map<string, ModelPrice>> {
   const { settings } = loadSettingsSync();
-  const prices = new Map<string, ModelPrice>();
   const manualJson = Object.keys(settings.modelPrices).length > 0 ? JSON.stringify(settings.modelPrices) : "";
-  let manualApplied = false;
-  for (const [, p] of Object.entries(settings.providers)) {
-    if (!p.pricingUrl && !manualJson) continue;
-    const apiKey = p.apiKeyEnv ? (process.env[p.apiKeyEnv]?.trim() ?? "") : "";
-    const { prices: pr, warnings } = await loadPricing({
-      apiKey,
-      pricingUrl: p.pricingUrl ?? "",
-      modelPricesJson: manualApplied ? "" : manualJson,
-    });
-    manualApplied = true;
-    for (const [m, price] of pr) prices.set(m, price);
-    for (const w of warnings) console.error(w);
-  }
-  // Bila tidak ada provider di settings, coba env lama (loadPricing default membaca env).
-  if (prices.size === 0) {
-    const { prices: pr, warnings } = await loadPricing({ modelPricesJson: manualJson });
-    for (const [m, price] of pr) prices.set(m, price);
-    for (const w of warnings) console.error(w);
-  }
-  return { prices, provider: defaultProviderName(settings) };
+  const apiKey = gatewayConfig().apiKey;
+  const { prices, warnings } = await loadPricing({
+    apiKey,
+    pricingUrl: gatewayPricingUrl(settings) ?? "",
+    modelPricesJson: manualJson,
+  });
+  for (const w of warnings) console.error(w);
+  return prices;
 }
 
-async function main(): Promise<void> {
+/** Jalankan alur run (dry/DB) memakai roles dari settings.json. */
+async function runNow(mode: "d" | "s"): Promise<void> {
+  if (mode === "s") process.env.RESEARCH_ENABLED = "true";
+  const { runResearch } = await import("../agents/run.ts");
+  const result = await runResearch({
+    trigger: "SCHEDULED",
+    chainId: 42161,
+    assets: ["ETH", "USDC"],
+    dry: mode === "d",
+  });
+  if (!result.report) {
+    console.error(`Run menghasilkan null. Alasan: ${result.reason ?? "tidak diketahui"}`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`Run selesai (regime=${result.report.proposedRegime}). Output: ${result.outDir ?? "(DB)"}`);
+}
+
+async function main(argv: string[]): Promise<void> {
+  const nonInteractive = argv.includes("--yes") || argv.includes("--ci") || process.env.CI === "true";
+
+  // Gateway wajib ada untuk menjalankan run (dan untuk --yes).
+  if (!isGatewayConfigured()) {
+    console.error(gatewayError());
+    // Masih boleh menampilkan daftar model bila ada pricing, tapi run butuh gateway.
+  }
+
+  // NON-INTERAKTIF (--yes / CI): pakai roles tersimpan di settings.json, lalu dry-run.
+  if (nonInteractive) {
+    if (!isGatewayConfigured()) {
+      process.exitCode = 1;
+      return;
+    }
+    console.log("[research] mode non-interaktif: memakai roles dari settings.json, dry-run.");
+    await runNow("d");
+    return;
+  }
+
   if (!process.stdin.isTTY) {
     console.log(
       [
-        "research.ts interaktif butuh TTY (terminal).",
+        "research.ts interaktif butuh TTY (terminal). Pakai --yes untuk mode non-interaktif (dry-run dgn settings tersimpan).",
         "Jalankan langsung di terminal:",
         "  npm run research:pick      (atau)",
         "  tsx --env-file-if-exists=.env src/cli/research.ts",
         "",
-        "Untuk melihat daftar model + harga tanpa interaksi:",
+        "Daftar model + harga tanpa interaksi:",
         "  tsx --env-file-if-exists=.env src/cli/models.ts --filter flash",
         "",
-        "Konfigurasi provider/model ada di settings.json (lihat: src/cli/settings.ts show).",
+        "Konfigurasi model per peran ada di settings.json (lihat: src/cli/settings.ts show).",
       ].join("\n"),
     );
     return;
   }
 
-  const { prices, provider } = await loadAllPricing();
+  const prices = await loadGatewayPricing();
   if (prices.size === 0) {
-    console.error("Tidak ada harga dimuat (set pricingUrl provider di settings.json atau modelPrices). Keluar.");
+    console.error("Tidak ada harga dimuat (set pricingUrl di settings.json atau modelPrices). Keluar.");
     process.exitCode = 1;
     return;
   }
-  const providerName = provider ?? "custom";
 
   const dbProfile = await tokenProfileFromDb(5);
   const profile = dbProfile ?? DEFAULT_TOKEN_PROFILE;
@@ -150,6 +169,7 @@ async function main(): Promise<void> {
 
     const mode = (await rl.question("Mode — [1] satu model untuk semua peran, [2] analyst+debate murah + assessor model lain: ")).trim();
 
+    // Nama model POLOS (tanpa awalan provider; gateway tunggal).
     let analyst: string, debate: string, assessor: string, reflector: string;
 
     if (mode === "2") {
@@ -160,8 +180,8 @@ async function main(): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      analyst = debate = reflector = specFor(providerName, cheap);
-      assessor = specFor(providerName, strong);
+      analyst = debate = reflector = cheap;
+      assessor = strong;
       const combo = comboEstimate(prices, cheap, strong, profile);
       if (combo) console.log(`\nEstimasi kombinasi: ${usd(combo.perRunUsd)}/run · ${usd(combo.perMonthUsd)}/bulan (${RUNS_PER_DAY_CALM} run/hari CALM).`);
     } else {
@@ -171,7 +191,7 @@ async function main(): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      analyst = debate = assessor = reflector = specFor(providerName, one);
+      analyst = debate = assessor = reflector = one;
       const e = estimateCost(prices.get(one)!, profile);
       console.log(`\nEstimasi: ${usd(e.perRunUsd)}/run · ${usd(e.perDayUsd)}/hari · ${usd(e.perMonthUsd)}/bulan.`);
       if (prices.get(one)!.reasoning) console.log("Catatan: model reasoning — output token bisa lebih besar dari estimasi.");
@@ -190,21 +210,13 @@ async function main(): Promise<void> {
 
     const run = (await rl.question("\nJalankan sekarang? [d] dry-run · [s] simpan ke DB · [n] tidak: ")).trim().toLowerCase();
     if (run === "d" || run === "s") {
-      if (run === "s") process.env.RESEARCH_ENABLED = "true";
-      const { runResearch } = await import("../agents/run.ts");
-      rl.close();
-      const result = await runResearch({
-        trigger: "SCHEDULED",
-        chainId: 42161,
-        assets: ["ETH", "USDC"],
-        dry: run === "d",
-      });
-      if (!result.report) {
-        console.error(`Run menghasilkan null. Alasan: ${result.reason ?? "tidak diketahui"}`);
+      if (!isGatewayConfigured()) {
+        console.error(gatewayError());
         process.exitCode = 1;
         return;
       }
-      console.log(`Run selesai (regime=${result.report.proposedRegime}). Output: ${result.outDir ?? "(DB)"}`);
+      rl.close();
+      await runNow(run);
       return;
     }
     console.log("Selesai (tanpa menjalankan run).");
@@ -215,7 +227,7 @@ async function main(): Promise<void> {
 
 const invoked = process.argv[1];
 if (invoked && import.meta.url === pathToFileURL(invoked).href) {
-  main().catch((err) => {
+  main(process.argv.slice(2)).catch((err) => {
     console.error("[engine] research CLI gagal:", err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
   });

@@ -1,43 +1,32 @@
 /**
- * CLI pengelola settings NON-RAHASIA (ADR 0008).
+ * CLI pengelola settings NON-RAHASIA v2 (ADR 0009 — satu gateway).
  *
  *   tsx --env-file-if-exists=.env src/cli/settings.ts <command> [args]
  *
  * Commands:
- *   show                                  Tampilkan settings efektif + sumber tiap
- *                                         nilai (tanpa secret; tandai provider yang
- *                                         env key-nya belum ada).
- *   init                                  Salin settings.example.json → settings.json
- *                                         bila belum ada.
- *   set-role <role> <provider:model[,…]>  Set daftar fallback model untuk sebuah peran.
- *   add-provider <name> <baseUrl> [--key-env NAME] [--pricing-url URL] [--local]
- *   remove-provider <name>
- *   set <path> <value>                    Set nilai generik, mis. `set estimate.runsPerDay 24`.
+ *   show                               Settings efektif + status gateway (tanpa secret).
+ *   init                               Salin settings.example.json → settings.json (bila belum ada).
+ *   set-role <role> <model[,model]>    Set daftar fallback NAMA MODEL untuk sebuah peran.
+ *   set <path> <value>                 Set nilai generik, mis. `set estimate.runsPerDay 24`.
  *
- * Penulisan atomik (tmp lalu rename), JSON rapi 2 spasi. JANGAN cetak secret (I8).
+ * Gateway (LLM_API_URL/LLM_API_KEY) ada di .env, bukan di settings. Penulisan
+ * atomik (tmp lalu rename), JSON rapi 2 spasi. JANGAN cetak secret (I8).
  */
 
 import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
-import {
-  loadSettings,
-  writeSettings,
-  settingsPath,
-  settingsExamplePath,
-  resolveProviders,
-  resolveRoleSpecList,
-} from "../settings/settings.ts";
-import { emptySettings, type Settings } from "../settings/schema.ts";
+import { loadSettings, writeSettings, settingsPath, settingsExamplePath, parseSettings } from "../settings/settings.ts";
+import { emptySettings, stripProviderPrefix, type Settings } from "../settings/schema.ts";
+import { gatewayConfig, isGatewayConfigured } from "../llm/registry.ts";
 
 type Role = "analyst" | "debate" | "assessor" | "reflector";
 const ROLES: Role[] = ["analyst", "debate", "assessor", "reflector"];
 
-/** Terapkan `set <path> <value>` pada objek settings (mutasi salinan). Pure. */
+/** Terapkan `set <path> <value>` pada objek settings (salinan). Pure. */
 export function applyGenericSet(settings: Settings, path: string, rawValue: string): Settings {
   const parts = path.split(".");
   if (parts.length === 0) throw new Error("path kosong");
-  // Nilai: coba number/boolean, selain itu string.
   let value: unknown = rawValue;
   if (rawValue === "true") value = true;
   else if (rawValue === "false") value = false;
@@ -54,61 +43,36 @@ export function applyGenericSet(settings: Settings, path: string, rawValue: stri
   return next as unknown as Settings;
 }
 
-/** Format `show` jadi teks (tanpa secret). Pure untuk test. */
+/** Format `show` jadi teks (tanpa secret). Pure untuk test (env & gateway di-inject). */
 export function formatShow(
   settings: Settings,
   path: string,
   exists: boolean,
-  envVars: Record<string, string | undefined> = process.env,
+  gateway: { baseURL: string; apiKey: string },
 ): string {
   const lines: string[] = [];
   lines.push(`settings: ${path}${exists ? "" : " (belum ada — pakai default; jalankan `init`)"}`);
   lines.push(`version: ${settings.version}`);
   lines.push("");
 
-  const { providers, warnings } = resolveProviders(settings, envVars);
-  lines.push("providers:");
-  const names = Object.keys(providers).sort();
-  if (names.length === 0) lines.push("  (none)");
-  for (const name of names) {
-    const p = providers[name]!;
-    const keyState = p.local
-      ? "local (no key)"
-      : p.apiKeyEnv
-        ? p.apiKey.length > 0
-          ? `key via ${p.apiKeyEnv} ✓`
-          : `key via ${p.apiKeyEnv} ✗ (env belum diisi → provider TIDAK tersedia)`
-        : "no apiKeyEnv (base-only)";
-    const pricing = p.pricingUrl ? ` · pricingUrl: ${p.pricingUrl}` : "";
-    lines.push(`  ${name} [${p.source}]: ${p.baseURL} · ${keyState}${pricing}`);
-  }
-
+  // Gateway: tampilkan URL + status key (tanpa nilai).
+  const configured = gateway.baseURL.length > 0 && gateway.apiKey.length > 0;
+  const keyState = gateway.apiKey.length > 0 ? "LLM_API_KEY ✓" : "LLM_API_KEY ✗ (belum diisi)";
+  const urlState = gateway.baseURL.length > 0 ? gateway.baseURL : "(LLM_API_URL belum diisi)";
+  lines.push(`gateway: ${urlState} · ${keyState} → ${configured ? "siap" : "BELUM siap"}`);
   lines.push("");
-  lines.push("roles:");
+
+  lines.push("roles (nama model, urutan fallback):");
   for (const role of ROLES) {
-    const { list } = resolveRoleSpecList(role, settings, envVars);
+    const list = settings.roles[role];
     lines.push(`  ${role}: ${list && list.length ? list.join(", ") : "(default)"}`);
   }
 
   lines.push("");
+  lines.push(`pricingUrl: ${settings.pricingUrl ?? "(none)"}`);
   lines.push(`modelPrices: ${Object.keys(settings.modelPrices).length} entri (manual, USD/1M)`);
   lines.push(`estimate.runsPerDay: ${settings.estimate.runsPerDay ?? "(default 12)"}`);
-
-  if (warnings.length > 0) {
-    lines.push("");
-    lines.push("peringatan:");
-    for (const w of warnings) lines.push(`  - ${w}`);
-  }
   return lines.join("\n");
-}
-
-/** Ambil flag `--name value` dari argv; mengembalikan nilai atau undefined. */
-function flag(argv: string[], name: string): string | undefined {
-  const i = argv.indexOf(name);
-  return i >= 0 ? argv[i + 1] : undefined;
-}
-function hasFlag(argv: string[], name: string): boolean {
-  return argv.includes(name);
 }
 
 async function main(argv: string[]): Promise<void> {
@@ -116,8 +80,12 @@ async function main(argv: string[]): Promise<void> {
   const path = settingsPath();
 
   if (cmd === "show") {
-    const { settings, exists } = await loadSettings(path);
-    console.log(formatShow(settings, path, exists));
+    const { settings, exists, warnings } = await loadSettings(path);
+    for (const w of warnings) console.error(w);
+    console.log(formatShow(settings, path, exists, gatewayConfig()));
+    if (!isGatewayConfigured()) {
+      console.error("\nCatatan: set LLM_API_URL + LLM_API_KEY di apps/engine/.env agar gateway siap.");
+    }
     return;
   }
 
@@ -130,7 +98,7 @@ async function main(argv: string[]): Promise<void> {
     let example: Settings;
     try {
       const raw = await readFile(settingsExamplePath(), "utf8");
-      example = JSON.parse(raw) as Settings;
+      example = parseSettings(raw, settingsExamplePath()).settings; // validasi + migrasi bila perlu
     } catch {
       example = emptySettings();
     }
@@ -143,56 +111,15 @@ async function main(argv: string[]): Promise<void> {
     const role = argv[1] as Role;
     const spec = argv[2];
     if (!ROLES.includes(role) || !spec) {
-      console.error("pakai: set-role <analyst|debate|assessor|reflector> <provider:model[,provider:model]>");
+      console.error("pakai: set-role <analyst|debate|assessor|reflector> <model[,model]>");
       process.exitCode = 1;
       return;
     }
     const { settings } = await loadSettings(path);
-    const list = spec.split(",").map((s) => s.trim()).filter(Boolean);
+    const list = spec.split(",").map((s) => stripProviderPrefix(s.trim())).filter(Boolean);
     const next: Settings = { ...settings, roles: { ...settings.roles, [role]: list } };
     await writeSettings(next, path);
     console.log(`roles.${role} = ${list.join(", ")}`);
-    return;
-  }
-
-  if (cmd === "add-provider") {
-    const name = argv[1]?.toLowerCase();
-    const baseUrl = argv[2];
-    if (!name || !baseUrl) {
-      console.error("pakai: add-provider <name> <baseUrl> [--key-env NAME] [--pricing-url URL] [--local]");
-      process.exitCode = 1;
-      return;
-    }
-    const { settings } = await loadSettings(path);
-    const provider = {
-      baseUrl,
-      ...(flag(argv, "--key-env") ? { apiKeyEnv: flag(argv, "--key-env") } : {}),
-      ...(flag(argv, "--pricing-url") ? { pricingUrl: flag(argv, "--pricing-url") } : {}),
-      ...(hasFlag(argv, "--local") ? { local: true } : {}),
-    };
-    const next: Settings = { ...settings, providers: { ...settings.providers, [name]: provider } };
-    await writeSettings(next, path);
-    console.log(`provider "${name}" ditambahkan (baseUrl: ${baseUrl}).`);
-    return;
-  }
-
-  if (cmd === "remove-provider") {
-    const name = argv[1]?.toLowerCase();
-    if (!name) {
-      console.error("pakai: remove-provider <name>");
-      process.exitCode = 1;
-      return;
-    }
-    const { settings } = await loadSettings(path);
-    const providers = { ...settings.providers };
-    if (!(name in providers)) {
-      console.error(`provider "${name}" tidak ada di settings.`);
-      process.exitCode = 1;
-      return;
-    }
-    delete providers[name];
-    await writeSettings({ ...settings, providers }, path);
-    console.log(`provider "${name}" dihapus.`);
     return;
   }
 
@@ -211,11 +138,7 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
-  console.error(
-    [
-      "Commands: show | init | set-role <role> <spec> | add-provider <name> <baseUrl> [--key-env N] [--pricing-url U] [--local] | remove-provider <name> | set <path> <value>",
-    ].join("\n"),
-  );
+  console.error("Commands: show | init | set-role <role> <model[,model]> | set <path> <value>");
   process.exitCode = cmd ? 1 : 0;
 }
 

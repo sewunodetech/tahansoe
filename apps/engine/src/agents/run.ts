@@ -476,14 +476,14 @@ async function main(argv: string[]): Promise<void> {
       collector = fixtureCollector;
     }
   } else {
-    // Provider nyata dipilih per peran via router (ADR 0008). Log ketersediaan
-    // provider (tanpa nilai key) untuk diagnosa.
+    // Model dipilih per peran via router di gateway tunggal (ADR 0009). Log
+    // ketersediaan gateway (tanpa nilai key) untuk diagnosa.
     const { providerAvailability, resolveRole } = await import("../llm/registry.ts");
     console.error(`[engine] mode: ${dry ? "DRY (tanpa DB)" : "NON-DRY (simpan ke DB)"}`);
-    console.error(`[engine] provider availability: ${JSON.stringify(providerAvailability())}`);
+    console.error(`[engine] gateway: ${JSON.stringify(providerAvailability())}`);
     for (const role of ["analyst", "debate", "assessor", "reflector"] as const) {
-      const chain = resolveRole(role).map((e) => `${e.provider}:${e.model}`).join(" → ");
-      console.error(`[engine] role ${role}: ${chain || "(none available)"}`);
+      const chain = resolveRole(role).map((e) => e.model).join(" → ");
+      console.error(`[engine] role ${role}: ${chain || "(none)"}`);
     }
   }
 

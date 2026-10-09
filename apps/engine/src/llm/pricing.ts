@@ -144,8 +144,10 @@ export async function loadPricing(opts?: {
   fetchImpl?: FetchLike;
   cache?: PricingCacheStore;
 }): Promise<PricingResult> {
-  const pricingUrl = opts?.pricingUrl ?? env.llmPricingUrl();
-  const modelPricesJson = opts?.modelPricesJson ?? env.llmModelPricesJson();
+  // ADR 0009: pricingUrl & modelPrices datang dari settings.json (diteruskan oleh
+  // pemanggil), bukan dari env. apiKey = gateway key (LLM_API_KEY) sebagai default.
+  const pricingUrl = opts?.pricingUrl ?? "";
+  const modelPricesJson = opts?.modelPricesJson ?? "";
   const apiKey = opts?.apiKey ?? env.llmApiKey();
   const fetchImpl = opts?.fetchImpl ?? (globalThis.fetch as unknown as FetchLike);
   const cache = opts?.cache ?? fileCacheStore;

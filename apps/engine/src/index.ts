@@ -8,7 +8,6 @@
 
 import { env, config } from "./config.ts";
 import { runResearch } from "./agents/run.ts";
-import { AnthropicProvider } from "./llm/anthropic.ts";
 
 /**
  * TODO(dev):
@@ -25,7 +24,6 @@ export async function start(): Promise<void> {
   }
   void config;
   void runResearch;
-  void AnthropicProvider;
   throw new Error("[engine] scheduler belum diimplementasikan — lihat TODO (spec §3.2).");
 }
 

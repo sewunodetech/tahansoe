@@ -23,8 +23,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.1",
+    "@clack/prompts": "^0.11.0",
     "@tahansoe/db": "*",
     "@tahansoe/domain": "*",
+    "picocolors": "^1.1.1",
     "viem": "^2.55.19",
     "zod": "^4.1.12"
   },

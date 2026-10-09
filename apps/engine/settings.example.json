@@ -1,39 +1,12 @@
 {
-  "version": 1,
-  "providers": {
-    "bynara": {
-      "baseUrl": "https://router.bynara.id/v1",
-      "apiKeyEnv": "LLM_API_KEY",
-      "pricingUrl": "https://router.bynara.id/api/pricing"
-    },
-    "gemini": {
-      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
-      "apiKeyEnv": "GEMINI_API_KEY"
-    },
-    "openrouter": {
-      "baseUrl": "https://openrouter.ai/api/v1",
-      "apiKeyEnv": "OPENROUTER_API_KEY",
-      "pricingUrl": "https://openrouter.ai/api/v1/models"
-    },
-    "groq": {
-      "baseUrl": "https://api.groq.com/openai/v1",
-      "apiKeyEnv": "GROQ_API_KEY"
-    },
-    "anthropic": {
-      "baseUrl": "https://api.anthropic.com/v1",
-      "apiKeyEnv": "ANTHROPIC_API_KEY"
-    },
-    "ollama": {
-      "baseUrl": "http://localhost:11434/v1",
-      "local": true
-    }
-  },
+  "version": 2,
   "roles": {
-    "analyst": ["bynara:agnes-2.5-flash", "gemini:gemini-flash-lite-latest"],
-    "debate": ["bynara:agnes-2.5-flash", "gemini:gemini-flash-lite-latest"],
-    "assessor": ["bynara:deepseek-v4.1-flash", "gemini:gemini-flash-latest"],
-    "reflector": ["bynara:agnes-2.5-flash", "gemini:gemini-flash-lite-latest"]
+    "analyst": ["agnes-2.5-flash"],
+    "debate": ["agnes-2.5-flash"],
+    "assessor": ["deepseek-v4.1-flash"],
+    "reflector": ["agnes-2.5-flash"]
   },
+  "pricingUrl": "https://router.bynara.id/api/pricing",
   "modelPrices": {},
   "estimate": {
     "runsPerDay": 12

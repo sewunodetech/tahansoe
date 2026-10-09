@@ -1,16 +1,15 @@
 /**
- * Loader, resolver, dan writer settings NON-RAHASIA (ADR 0008).
+ * Loader, migrasi, dan writer settings NON-RAHASIA v2 (ADR 0009 — satu gateway).
  *
- * PRIORITAS (tinggi → rendah):
- *   1. settings.json (atau TAHANSOE_SETTINGS)       — sumber utama
- *   2. env lama (LLM_BASE_URL, LLM_MODEL, LLM_ANALYST, …) — DEPRECATED, dengan peringatan
- *   3. default bawaan (registry.ts)
+ * PRIORITAS peran (tinggi → rendah):
+ *   1. settings.json (roles.<peran> = daftar NAMA MODEL)
+ *   2. default bawaan (registry.ts) bila kosong
  *
- * SECRET tetap dari .env: provider menyimpan `apiKeyEnv` (NAMA env), nilai key
- * diambil dari process.env saat resolusi. Settings TIDAK PERNAH memuat key (I8).
+ * Gateway (`LLM_API_URL`) dan key (`LLM_API_KEY`) ada di .env, BUKAN di settings.
+ * File v1 (punya `providers`) otomatis dimigrasikan ke v2 saat dibaca: ambil roles,
+ * strip awalan provider, bawa pricingUrl dari provider pertama yang punya.
  *
- * Semua I/O di sini; validasi lewat schema.ts. Penulisan atomik (tulis file
- * sementara lalu rename) agar file tidak pernah setengah tertulis.
+ * Semua I/O di sini; validasi lewat schema.ts. Penulisan atomik (tmp lalu rename).
  */
 
 import { readFileSync } from "node:fs";
@@ -21,8 +20,9 @@ import { fileURLToPath } from "node:url";
 import {
   settingsSchema,
   emptySettings,
+  stripProviderPrefix,
+  SETTINGS_VERSION,
   type Settings,
-  type ProviderSettings,
 } from "./schema.ts";
 
 /** Root paket engine (apps/engine), dari lokasi file ini (src/settings). */
@@ -43,7 +43,6 @@ export function settingsExamplePath(): string {
   return join(engineRoot(), "settings.example.json");
 }
 
-/** Hasil load: settings efektif, apakah file ada, dan peringatan (mis. deprecated env). */
 export interface LoadResult {
   settings: Settings;
   exists: boolean;
@@ -51,38 +50,41 @@ export interface LoadResult {
   warnings: string[];
 }
 
-/**
- * Baca & validasi settings dari disk (sinkron agar bisa dipakai resolver registry
- * yang sinkron). File tidak ada → settings kosong valid (perilaku lama tetap jalan).
- * JSON/schema rusak → melempar Error dengan pesan jelas (bukan diam-diam).
- */
-export function loadSettingsSync(
-  path: string = settingsPath(),
-): LoadResult {
-  const warnings: string[] = [];
+/** Baca & validasi settings (sinkron). File tidak ada → settings kosong valid. */
+export function loadSettingsSync(path: string = settingsPath()): LoadResult {
   let raw: string;
   try {
     raw = readFileSync(path, "utf8");
   } catch {
-    return { settings: emptySettings(), exists: false, path, warnings };
+    return { settings: emptySettings(), exists: false, path, warnings: [] };
   }
-  return { settings: parseSettings(raw, path), exists: true, path, warnings };
+  const { settings, warnings } = parseSettings(raw, path);
+  return { settings, exists: true, path, warnings };
 }
 
 /** Versi async (dipakai CLI). */
 export async function loadSettings(path: string = settingsPath()): Promise<LoadResult> {
-  const warnings: string[] = [];
   let raw: string;
   try {
     raw = await readFile(path, "utf8");
   } catch {
-    return { settings: emptySettings(), exists: false, path, warnings };
+    return { settings: emptySettings(), exists: false, path, warnings: [] };
   }
-  return { settings: parseSettings(raw, path), exists: true, path, warnings };
+  const { settings, warnings } = parseSettings(raw, path);
+  return { settings, exists: true, path, warnings };
 }
 
-/** Parse + validasi string JSON settings. Melempar Error jelas bila gagal. */
-export function parseSettings(raw: string, path = "<memory>"): Settings {
+/** Hasil parse: settings v2 + peringatan (mis. migrasi dari v1). */
+export interface ParseResult {
+  settings: Settings;
+  warnings: string[];
+}
+
+/**
+ * Parse + validasi string JSON settings. v1 dimigrasikan ke v2. Melempar Error
+ * jelas bila JSON rusak atau versi tak dikenal.
+ */
+export function parseSettings(raw: string, path = "<memory>"): ParseResult {
   let json: unknown;
   try {
     json = JSON.parse(raw);
@@ -91,31 +93,74 @@ export function parseSettings(raw: string, path = "<memory>"): Settings {
       `[engine/settings] ${path} bukan JSON valid: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
-  // Cek versi lebih dulu agar pesannya jelas.
-  if (json && typeof json === "object" && "version" in json) {
-    const v = (json as { version: unknown }).version;
-    if (v !== 1) {
-      throw new Error(
-        `[engine/settings] ${path}: versi skema ${String(v)} tidak didukung (harap "version": 1).`,
-      );
-    }
+  const version = json && typeof json === "object" ? (json as { version?: unknown }).version : undefined;
+  const warnings: string[] = [];
+
+  let candidate: unknown = json;
+  if (version === 1) {
+    candidate = migrateV1toV2(json as Record<string, unknown>, warnings);
+  } else if (version !== SETTINGS_VERSION) {
+    throw new Error(
+      `[engine/settings] ${path}: versi skema ${String(version)} tidak didukung (harap "version": ${SETTINGS_VERSION} atau 1 untuk migrasi).`,
+    );
   }
-  const parsed = settingsSchema.safeParse(json);
+
+  const parsed = settingsSchema.safeParse(candidate);
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((i) => `  - ${i.path.join(".") || "(root)"}: ${i.message}`)
       .join("\n");
     throw new Error(`[engine/settings] ${path} tidak valid:\n${issues}`);
   }
-  return parsed.data;
+  return { settings: parsed.data, warnings };
+}
+
+/**
+ * Migrasi settings v1 (punya `providers`) → v2. Ambil roles & strip awalan
+ * provider dari tiap entri; bawa pricingUrl dari provider PERTAMA yang punya.
+ */
+export function migrateV1toV2(v1: Record<string, unknown>, warnings: string[] = []): Settings {
+  const rolesIn = (v1.roles ?? {}) as Record<string, unknown>;
+  const roles: Settings["roles"] = {};
+  for (const role of ["analyst", "debate", "assessor", "reflector"] as const) {
+    const list = rolesIn[role];
+    if (Array.isArray(list)) {
+      const cleaned = list
+        .filter((x): x is string => typeof x === "string")
+        .map((x) => stripProviderPrefix(x))
+        .filter(Boolean);
+      if (cleaned.length > 0) roles[role] = cleaned;
+    }
+  }
+
+  // pricingUrl: dari provider pertama yang punya (urutan Object.entries stabil).
+  let pricingUrl: string | undefined;
+  const providers = (v1.providers ?? {}) as Record<string, { pricingUrl?: unknown }>;
+  for (const p of Object.values(providers)) {
+    if (typeof p?.pricingUrl === "string" && p.pricingUrl.trim()) {
+      pricingUrl = p.pricingUrl.trim();
+      break;
+    }
+  }
+
+  const modelPrices = (v1.modelPrices ?? {}) as Settings["modelPrices"];
+  const estimate = (v1.estimate ?? {}) as Settings["estimate"];
+
+  warnings.push(
+    "[engine/settings] settings.json v1 dimigrasikan ke v2 (providers dibuang; awalan provider pada roles di-strip). Simpan ulang untuk permanen.",
+  );
+
+  return {
+    version: SETTINGS_VERSION,
+    roles,
+    ...(pricingUrl ? { pricingUrl } : {}),
+    modelPrices,
+    estimate,
+  };
 }
 
 /** Tulis settings ke disk secara atomik (tmp lalu rename), JSON rapi 2 spasi. */
-export async function writeSettings(
-  settings: Settings,
-  path: string = settingsPath(),
-): Promise<void> {
-  // Validasi sebelum menulis agar file di disk selalu valid.
+export async function writeSettings(settings: Settings, path: string = settingsPath()): Promise<void> {
   const checked = settingsSchema.parse(settings);
   await mkdir(dirname(path), { recursive: true });
   const tmp = `${path}.tmp-${process.pid}-${Date.now()}`;
@@ -125,128 +170,23 @@ export async function writeSettings(
 }
 
 // ---------------------------------------------------------------------------
-// Resolver: gabungkan settings + env (deprecated) → bentuk yang dipakai registry.
+// Resolver peran (dari settings v2). Tidak ada lagi provider di settings.
 // ---------------------------------------------------------------------------
 
-/** Provider yang sudah teresolusi: baseURL, apiKey (dari env), pricingUrl, local, sumber. */
-export interface ResolvedProvider {
-  name: string;
-  baseURL: string;
-  /** Nilai API key hasil resolusi apiKeyEnv (kosong = tidak tersedia, kecuali local). */
-  apiKey: string;
-  /** NAMA env var key (untuk ditampilkan, tanpa nilai). */
-  apiKeyEnv?: string;
-  pricingUrl?: string;
-  local?: boolean;
-  /** "settings" | "env" (deprecated). */
-  source: "settings" | "env";
-}
-
-/** Normalisasi base URL: buang "/chat/completions" & trailing slash. */
-function normalizeBaseUrl(url: string): string {
-  return url.trim().replace(/\/+$/, "").replace(/\/chat\/completions$/i, "").replace(/\/+$/, "");
-}
+export type RoleName = "analyst" | "debate" | "assessor" | "reflector";
 
 /**
- * Resolusi provider dari settings + env lama. Settings menang; env yang masih
- * dipakai memunculkan peringatan "deprecated". Nilai key diambil dari env via
- * apiKeyEnv (tidak pernah dari settings).
+ * Daftar NAMA MODEL untuk sebuah peran dari settings (sudah tanpa awalan provider;
+ * strip defensif tetap diterapkan untuk kompat bila file belum ditulis ulang).
+ * null bila peran tidak diset (registry pakai default).
  */
-export function resolveProviders(
-  settings: Settings,
-  envVars: Record<string, string | undefined> = process.env,
-): { providers: Record<string, ResolvedProvider>; warnings: string[] } {
-  const providers: Record<string, ResolvedProvider> = {};
-  const warnings: string[] = [];
-
-  // 1. Dari settings (sumber utama).
-  for (const [name, p] of Object.entries(settings.providers)) {
-    providers[name.toLowerCase()] = {
-      name: name.toLowerCase(),
-      baseURL: normalizeBaseUrl(p.baseUrl),
-      apiKey: p.apiKeyEnv ? (envVars[p.apiKeyEnv]?.trim() ?? "") : "",
-      apiKeyEnv: p.apiKeyEnv,
-      pricingUrl: p.pricingUrl,
-      local: p.local,
-      source: "settings",
-    };
-  }
-
-  // 2. Dari env lama (DEPRECATED). Hanya mengisi provider yang BELUM ada di settings.
-  const base = envVars.LLM_BASE_URL?.trim();
-  if (base) {
-    const name = (envVars.LLM_PROVIDER_NAME ?? "custom").trim().toLowerCase() || "custom";
-    if (!providers[name]) {
-      providers[name] = {
-        name,
-        baseURL: normalizeBaseUrl(base),
-        apiKey: envVars.LLM_API_KEY?.trim() ?? "",
-        apiKeyEnv: "LLM_API_KEY",
-        pricingUrl: envVars.LLM_PRICING_URL?.trim() || undefined,
-        source: "env",
-      };
-      warnings.push(
-        `[engine/settings] deprecated: LLM_BASE_URL/LLM_API_KEY/LLM_PROVIDER_NAME dari .env — pindahkan ke settings.json (providers.${name}).`,
-      );
-    }
-  }
-  for (const [key, value] of Object.entries(envVars)) {
-    const m = /^LLM_PROVIDER_([A-Z0-9_]+)_BASE_URL$/.exec(key);
-    if (!m || !value?.trim()) continue;
-    const name = m[1]!.toLowerCase();
-    if (providers[name]) continue;
-    providers[name] = {
-      name,
-      baseURL: normalizeBaseUrl(value),
-      apiKey: envVars[`LLM_PROVIDER_${m[1]}_API_KEY`]?.trim() ?? "",
-      apiKeyEnv: `LLM_PROVIDER_${m[1]}_API_KEY`,
-      source: "env",
-    };
-    warnings.push(
-      `[engine/settings] deprecated: LLM_PROVIDER_${m[1]}_BASE_URL dari .env — pindahkan ke settings.json (providers.${name}).`,
-    );
-  }
-
-  return { providers, warnings };
+export function resolveRoleSpecList(role: RoleName, settings: Settings): string[] | null {
+  const list = settings.roles[role];
+  if (!list || list.length === 0) return null;
+  return list.map((s) => stripProviderPrefix(s)).filter(Boolean);
 }
 
-/**
- * Spec peran "provider:model,…" dari settings → env lama (deprecated) → null.
- * Mengembalikan daftar string (satu per entri fallback) + peringatan.
- */
-export function resolveRoleSpecList(
-  role: "analyst" | "debate" | "assessor" | "reflector",
-  settings: Settings,
-  envVars: Record<string, string | undefined> = process.env,
-): { list: string[] | null; warnings: string[] } {
-  const warnings: string[] = [];
-  const fromSettings = settings.roles[role];
-  if (fromSettings && fromSettings.length > 0) return { list: fromSettings, warnings };
-
-  const envName =
-    role === "analyst" ? "LLM_ANALYST" : role === "debate" ? "LLM_DEBATE" : role === "assessor" ? "LLM_ASSESSOR" : "LLM_REFLECTOR";
-  const envVal = envVars[envName]?.trim();
-  if (envVal) {
-    warnings.push(`[engine/settings] deprecated: ${envName} dari .env — pindahkan ke settings.json (roles.${role}).`);
-    return { list: envVal.split(",").map((s) => s.trim()).filter(Boolean), warnings };
-  }
-  // Juga dukung LLM_MODEL lama (satu model untuk semua peran) sebagai fallback.
-  const legacyModel = envVars.LLM_MODEL?.trim();
-  const legacyBase = envVars.LLM_BASE_URL?.trim();
-  if (legacyModel && legacyBase) {
-    const name = (envVars.LLM_PROVIDER_NAME ?? "custom").trim().toLowerCase() || "custom";
-    warnings.push(`[engine/settings] deprecated: LLM_MODEL dari .env — pindahkan ke settings.json (roles.${role}).`);
-    return { list: [`${name}:${legacyModel}`], warnings };
-  }
-  return { list: null, warnings };
-}
-
-/** Default model lokasi tidak diset: dipakai registry untuk "provider:model" tanpa prefix. */
-export function defaultProviderName(settings: Settings, envVars: Record<string, string | undefined> = process.env): string | null {
-  // Provider pertama di settings yang punya baseURL dianggap default generik.
-  const names = Object.keys(settings.providers);
-  if (names.length > 0) return names[0]!.toLowerCase();
-  const base = envVars.LLM_BASE_URL?.trim();
-  if (base) return (envVars.LLM_PROVIDER_NAME ?? "custom").trim().toLowerCase() || "custom";
-  return null;
+/** URL harga gateway dari settings (atau undefined). */
+export function gatewayPricingUrl(settings: Settings): string | undefined {
+  return settings.pricingUrl;
 }
