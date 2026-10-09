@@ -44,3 +44,4 @@ import "./sources/aave-rates.test.ts";
 import "./cli/carry.test.ts";
 import "./signals/carry.test.ts";
 import "./signals/deterministic.test.ts";
+import "./worker/lock-pglite.test.ts";

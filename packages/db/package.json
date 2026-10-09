@@ -10,6 +10,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
     "generate": "drizzle-kit generate"
   },
   "dependencies": {

@@ -19,6 +19,7 @@
 - Guardian v1 ter-deploy di Arbitrum Sepolia: `0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E`
 - Dokumentasi & workflow agent (PRD v0.3, BRD, architecture, security, ADR)
 - Struktur monorepo npm workspaces (ADR 0007): `apps/web`, `apps/engine`, `packages/db`, `packages/domain`
+- **Pilihan Database Lokal: PGlite di Samping Neon (ADR 0010):** Dual-driver di `@tahansoe/db` via env `DB_DRIVER` (`pglite` vs `neon`). PGlite embedded Postgres berbasis WASM (`@electric-sql/pglite`) dengan penyimpanan lokal di `PGLITE_DATA_DIR` (default `apps/engine/.data/pglite`, gitignored) dan auto-migrasi skema idempoten. Single-instance advisory lock untuk worker/scheduler diimplementasikan via file lock lokal (`lock-${key}.json`, PID + heartbeat, stale takeover >2 menit atau dead PID). `apps/web` tetap di Neon; CLI engine dapat berjalan offline tanpa akun cloud DB. Unit & integration test lulus 100% di kedua driver.
 
 ### Core Risk Engine & Research Agents (M3)
 - **Pipeline Riset Multi-Agent Penuh:** 4 analis domain paralel (Geopolitics, Macro, Market, Onchain) $\rightarrow$ debat dialektika Hawk vs Dove $\rightarrow$ sintesis Risk Assessor $\rightarrow$ pemetaan ke `Signal` (`RESEARCH`, confidence cap $\le 0.6$).
@@ -66,6 +67,13 @@
   - Eksekusi idempotent (`runSettlementJob`) aman terhadap eksekusi berulang tanpa duplikasi baris di `risk_settlements`.
   - Scorecard generator & CLI tabel ASCII (`apps/engine/src/cli/scorecard.ts`) menghitung Recall, Presisi (≥ STRESSED), Median Lead Time, dan pelacakan laporan yang kekurangan data.
   - 31 unit test offline lulus 100% dan terverifikasi live pada database Neon.
+- **CLI Mode Interaktif (REPL) & Tanya-Jawab Grounded (`tahansoe ask` & REPL) (9 Okt 2026 — spec m3-cli §3.5):**
+  - Prompt interaktif terminal `tahansoe` tanpa argumen: REPL readline dengan banner, status line terkini, autocomplete Tab untuk slash commands (`/analyze`, `/fuse`, `/carry`, `/history`, `/report`, `/settle`, `/scorecard`, `/models`, `/settings`, `/doctor`, `/status`, `/help`, `/clear`, `/exit`).
+  - Command non-interaktif `tahansoe ask "<question>"` (`--json`, `--no-color`) untuk scripting & verifikasi CI/CD.
+  - Runtime pricing otomatis dibootstrap dari gateway pricing/settings (`bootstrapBudgetPricing`), menampilkan estimasi biaya aktual dalam IDR ("Rp 1" – "Rp 2") tanpa fallback warning palsu.
+  - Pelacakan kesegaran data per-sumber (`report`, `assessments`, `signals`, `rate_samples`, `price_samples`) dengan ambang 6 jam; penanda eksplisit `STALE since <time>` diteruskan ke model, dan baris penutup otomatis mencantumkan sumber stale berserta rekomendasi refresh (`schedule run --with-price` atau `/analyze`).
+  - Guardrail keamanan: penolakan ketat instruksi trading, saran investasi, prediksi harga token, dan jaminan anti-likuidasi (PRD §11); redaksi prompt injection tersisip (`redactInstructions`); sanitasi karakter kontrol terminal; footer "informational · not investment advice".
+  - 20 unit test offline lulus 100% dan terverifikasi live dengan gateway Bynara / `gpt-6-luna`.
 
 ---
 
@@ -109,7 +117,7 @@
 ## Backlog / ide
 
 - **(Dikerjakan paling akhir, permintaan user 9 Okt 2026) `tahansoe setup` wizard:** input `LLM_API_URL` + `LLM_API_KEY` (tersembunyi) → tes `/models` → pilih model + estimasi biaya → simpan `settings.json`; pilih database & RPC; tutup dengan `doctor`. Secret hanya ke `.env` (gitignored), tidak pernah dicetak ulang.
-- **(Dikerjakan paling akhir) Pilihan database lokal:** `DB_DRIVER=pglite` (Postgres embedded, data di `apps/engine/.data/`, tanpa server/akun — skema & query Drizzle tetap sama) atau `DB_DRIVER=neon` (server, web dashboard, produksi). Dipilih PGlite, bukan SQLite, karena SQLite butuh tulis ulang skema/query (enum, jsonb, timestamptz, advisory lock). Butuh ADR baru (menyentuh ADR 0007 / `packages/db`).
+- [x] **Pilihan database lokal (selesai — ADR 0010):** `DB_DRIVER=pglite` (Postgres embedded, data di `apps/engine/.data/`, tanpa server/akun — skema & query Drizzle tetap sama) di samping `DB_DRIVER=neon`. Auto-migrasi dan file advisory lock selesai.
 
 - EIP-7702 untuk smart account tanpa migrasi wallet
 - `repayWithATokens` sebagai opsi sumber dana tanpa modal idle

@@ -15,8 +15,8 @@ export async function historyCommand(
   argv: string[],
   deps: { stdout?: (s: string) => void; stderr?: (s: string) => void } = {},
 ): Promise<number> {
-  const writeOut = deps.stdout ?? ((s: string) => void writeOut(s));
-  const writeErr = deps.stderr ?? ((s: string) => void writeErr(s));
+  const writeOut = deps.stdout ?? ((s: string) => void process.stdout.write(s));
+  const writeErr = deps.stderr ?? ((s: string) => void process.stderr.write(s));
   let parsed;
   try {
     parsed = parseArgs({

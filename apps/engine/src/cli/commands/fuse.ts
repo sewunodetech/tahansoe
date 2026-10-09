@@ -49,7 +49,10 @@ export async function fuseCommand(argv: string[], deps: FuseDeps = {}): Promise<
   // npm/PowerShell: --dry sering dibaca sebagai --dry-run.
   const dry = flagOrNpm(parsed.values.dry, "dry", ["dry_run"]);
 
-  if (!deps.run && !process.env.DATABASE_URL) {
+  const { getDbDriver, resetDbClient } = await import("@tahansoe/db");
+  const driver = getDbDriver();
+
+  if (!deps.run && driver !== "pglite" && !process.env.DATABASE_URL) {
     if (json) writeOut(JSON.stringify({ ok: false, reason: "DATABASE_URL not set" }) + "\n");
     else writeErr("DATABASE_URL belum diset — fusion butuh koneksi DB (atau pakai --dry setelah set DB).\n");
     return EXIT_ERROR;
@@ -64,6 +67,7 @@ export async function fuseCommand(argv: string[], deps: FuseDeps = {}): Promise<
     const msg = err instanceof Error ? err.message : String(err);
     if (json) writeOut(JSON.stringify({ ok: false, reason: msg }) + "\n");
     else writeErr(`fusion gagal: ${msg}\n`);
+    if (driver === "pglite") await resetDbClient();
     return EXIT_ERROR;
   }
 
@@ -133,5 +137,6 @@ export async function fuseCommand(argv: string[], deps: FuseDeps = {}): Promise<
 
   writeOut(box(theme, "RISK FUSION", lines, Math.min(theme.width, 74)) + "\n");
   writeOut(dim(theme, " not a trading signal\n"));
+  if (driver === "pglite") await resetDbClient();
   return EXIT_OK;
 }
