@@ -15,6 +15,7 @@ import {
   slashCompleter,
   dispatchSlashCommand,
   SCHEDULE_HINT,
+  START_HINT,
   SLASH_COMMANDS,
 } from "../../../src/cli/repl/repl.ts";
 import { type ReplContext, createDefaultSourceFreshness } from "../../../src/cli/repl/context.ts";
@@ -145,6 +146,24 @@ test("dispatchSlashCommand: /schedule menampilkan hint bahwa proses dijalankan t
     await dispatchSlashCommand("schedule", ["run"], dummyContext, dummyTheme);
     const out = chunks.join("");
     assert.match(out, /schedule run tidak tersedia di REPL/);
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+});
+
+test("dispatchSlashCommand: /start menampilkan hint bahwa proses dijalankan terpisah", async () => {
+  const originalWrite = process.stdout.write;
+  const chunks: string[] = [];
+  process.stdout.write = ((chunk: string) => {
+    chunks.push(chunk);
+    return true;
+  }) as unknown as typeof process.stdout.write;
+
+  try {
+    await dispatchSlashCommand("start", [], dummyContext, dummyTheme);
+    const out = chunks.join("");
+    assert.match(out, /start tidak tersedia di REPL/);
+    assert.match(out, /tahansoe start/);
   } finally {
     process.stdout.write = originalWrite;
   }

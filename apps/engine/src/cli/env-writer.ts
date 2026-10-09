@@ -24,6 +24,7 @@ export interface WriteEnvOptions {
   envPath?: string;
   examplePath?: string;
   updates: Record<string, string>;
+  commentedDefaults?: string[];
 }
 
 /**
@@ -48,13 +49,17 @@ export async function writeEnvUpdates(options: WriteEnvOptions): Promise<string>
     }
   }
 
-  const updatedContent = applyEnvUpdates(baseContent, options.updates);
+  const updatedContent = applyEnvUpdates(baseContent, options.updates, options.commentedDefaults);
   await mkdir(dirname(targetPath), { recursive: true }).catch(() => {});
   await writeFile(targetPath, updatedContent, "utf8");
   return targetPath;
 }
 
-export function applyEnvUpdates(content: string, updates: Record<string, string>): string {
+export function applyEnvUpdates(
+  content: string,
+  updates: Record<string, string>,
+  commentedDefaults?: string[],
+): string {
   const remaining = new Map(Object.entries(updates));
   // Pertahankan gaya akhir baris file (LF). Pecah dengan mempertahankan baris.
   const lines = content.length === 0 ? [] : content.split("\n");
@@ -72,11 +77,19 @@ export function applyEnvUpdates(content: string, updates: Record<string, string>
 
   // Kunci baru: tambahkan di akhir.
   if (remaining.size > 0) {
-    // Pastikan ada pemisah: jika file tidak kosong dan baris terakhir bukan kosong.
-    if (out.length > 0 && out[out.length - 1]!.trim() !== "") {
-      // biarkan; kita hanya append baris baru di bawah
-    }
     for (const [key, value] of remaining) out.push(`${key}=${value}`);
+  }
+
+  // Tambahkan baris komentar default jika variabelnya belum pernah disebutkan
+  if (commentedDefaults && commentedDefaults.length > 0) {
+    const fullTextSoFar = out.join("\n");
+    for (const def of commentedDefaults) {
+      const m = /(?:#\s*)?([A-Za-z_][A-Za-z0-9_]*)=/.exec(def);
+      const varName = m ? m[1]! : null;
+      if (varName && !fullTextSoFar.includes(varName)) {
+        out.push(def);
+      }
+    }
   }
 
   let result = out.join("\n");

@@ -104,24 +104,30 @@ Biaya operasional sekitar **Rp 5–15 per analisa** (tergantung banyaknya berita
 
 ## 2. Cara Pakai
 
-### Mulai Cepat (Setup Wizard)
+Tahansoe beroperasi sebagai **agent mandiri (autonomous risk agent)**: dijalankan sekali oleh operator di server/komputer lokal, lalu dipakai oleh user **lewat Telegram**. Terminal CLI/REPL disediakan untuk operator & debugging.
 
-Jalankan wizard interaktif untuk mengonfigurasi LLM gateway, memilih model default (`gpt-6-luna`), memilih database (`pglite` lokal atau `neon`), dan memverifikasi koneksi dalam satu langkah:
+### Alur Utama (Agent Model)
 
-```bash
-# Dari root monorepo
-npm run tahansoe -- setup
+1. **Setup** — Konfigurasi gateway LLM, model, database, dan pairing bot Telegram:
+   ```bash
+   npm run tahansoe -- setup
+   ```
+   *(Atau non-interaktif: `npm run tahansoe -- setup --yes --db pglite --model gpt-6-luna --telegram-token-env BOT_TOKEN`)*
 
-# Atau dari apps/engine
-npm run tahansoe -- setup
-```
+2. **Start (Jalankan Agent)** — Satu proses jangka panjang yang mengorkestrasi seluruh loop proteksi:
+   ```bash
+   npm run tahansoe -- start
+   ```
+   Menjalankan: scheduler riset multi-agent, sampler harga (60s) & bunga Aave V3 (15m), Risk Fusion v1, settlement berkala, alert proaktif, serta gateway Telegram dalam satu proses terisolasi (I6).
 
-Wizard ini secara aman memperbarui `apps/engine/.env` (hanya secret) dan `settings.json` (peran model), lalu menjalankan `doctor` untuk memastikan seluruh komponen siap digunakan.
+3. **Pakai lewat Telegram** — User menerima peringatan dini (regime naik, depeg, lonjakan bunga) dan mengirim perintah chat (`/status`, `/fuse`, `/carry`, atau pertanyaan bebas).
 
-Atau jalankan non-interaktif di script/CI:
-```bash
-npm run tahansoe -- setup --yes --db pglite --model gpt-6-luna
-```
+4. **CLI / REPL untuk Operator** — Operator dapat memantau atau mengaudit secara manual lewat terminal:
+   ```bash
+   npm run tahansoe --            # buka sesi interaktif REPL
+   npm run tahansoe -- analyze    # satu run riset manual + kartu laporan
+   npm run tahansoe -- doctor     # verifikasi kesehatan env & koneksi
+   ```
 
 ### Setup Manual Environment
 

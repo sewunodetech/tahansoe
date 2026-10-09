@@ -23,7 +23,19 @@ import {
   stripProviderPrefix,
   SETTINGS_VERSION,
   type Settings,
+  type GatewayAlertPreferences,
+  type GatewayAllowedChat,
+  type GatewaySettings,
 } from "./schema.ts";
+
+export type {
+  Settings,
+  GatewayAlertPreferences,
+  GatewayAllowedChat,
+  GatewaySettings,
+};
+
+export { emptySettings };
 
 /** Root paket engine (apps/engine), dari lokasi file ini (src/settings). */
 function engineRoot(): string {
@@ -190,3 +202,332 @@ export function resolveRoleSpecList(role: RoleName, settings: Settings): string[
 export function gatewayPricingUrl(settings: Settings): string | undefined {
   return settings.pricingUrl;
 }
+
+// ---------------------------------------------------------------------------
+// Helper Konfigurasi Gateway (Telegram allowlist, subscription, alerts).
+// ---------------------------------------------------------------------------
+
+export type AlertType = "regime" | "sequencer" | "depeg" | "pool" | "oracle" | "daily";
+
+/**
+ * Periksa apakah chatId diizinkan berdasarkan allowedChats di settings
+ * atau TELEGRAM_ALLOWED_CHAT_IDS dari environment.
+ */
+export function isChatAllowed(
+  chatId: string | number,
+  settings: Settings,
+  envAllowed: string | undefined = process.env.TELEGRAM_ALLOWED_CHAT_IDS,
+): boolean {
+  const idStr = String(chatId).trim();
+  if (!idStr) return false;
+
+  // 1. Cek env TELEGRAM_ALLOWED_CHAT_IDS (koma-terpisah)
+  if (envAllowed) {
+    const envIds = envAllowed
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (envIds.includes(idStr)) return true;
+  }
+
+  // 2. Cek settings.gateway.channels.telegram.allowedChats
+  const allowed = settings.gateway?.channels?.telegram?.allowedChats;
+  if (Array.isArray(allowed)) {
+    return allowed.some((c) => String(c.id).trim() === idStr);
+  }
+
+  return false;
+}
+
+/**
+ * Cek apakah chat berlangganan notifikasi/alert (default true untuk chat yang allowed).
+ */
+export function isChatSubscribed(chatId: string | number, settings: Settings): boolean {
+  const idStr = String(chatId).trim();
+  const allowed = settings.gateway?.channels?.telegram?.allowedChats;
+  if (!Array.isArray(allowed)) return true;
+  const chat = allowed.find((c) => String(c.id).trim() === idStr);
+  if (!chat) return true;
+  return chat.subscribed !== false;
+}
+
+/**
+ * Dapatkan preferensi alert efektif untuk sebuah chat (memperhitungkan mute sementara).
+ * Default: regime, sequencer, depeg, pool, oracle = true; daily = false.
+ */
+export function getChatAlertPreferences(
+  chatId: string | number,
+  settings: Settings,
+  nowMs: number = Date.now(),
+): Record<AlertType, boolean> {
+  const idStr = String(chatId).trim();
+  const allowed = settings.gateway?.channels?.telegram?.allowedChats;
+  const chat = allowed?.find((c) => String(c.id).trim() === idStr);
+  const prefs = chat?.alerts;
+
+  const isMuted = (type: string) => {
+    const until = prefs?.mutedUntil?.[type];
+    return typeof until === "number" && nowMs < until;
+  };
+
+  return {
+    regime: !isMuted("regime") && (prefs?.regime ?? true),
+    sequencer: !isMuted("sequencer") && (prefs?.sequencer ?? true),
+    depeg: !isMuted("depeg") && (prefs?.depeg ?? true),
+    pool: !isMuted("pool") && (prefs?.pool ?? true),
+    oracle: !isMuted("oracle") && (prefs?.oracle ?? true),
+    daily: !isMuted("daily") && (prefs?.daily ?? false),
+  };
+}
+
+/**
+ * Bisukan alert jenis tertentu selama durationHours (default 6 jam) untuk sebuah chat di settings.json.
+ */
+export async function muteChatAlert(
+  chatId: string | number,
+  alertType: AlertType,
+  durationHours = 6,
+  path: string = settingsPath(),
+): Promise<Settings> {
+  const { settings } = await loadSettings(path);
+  const idStr = String(chatId).trim();
+
+  const currentGateway = settings.gateway ?? {
+    channels: {},
+    alertPollSec: 60,
+    qaPerDay: 20,
+    dailySummary: false,
+  };
+  const telegram = currentGateway.channels.telegram ?? {
+    enabled: true,
+    allowedChats: [],
+  };
+
+  const existingIdx = telegram.allowedChats.findIndex((c) => String(c.id).trim() === idStr);
+  const nextAllowedChats = [...telegram.allowedChats];
+  const mutedUntilMs = Date.now() + durationHours * 3600_000;
+
+  if (existingIdx >= 0) {
+    const existing = nextAllowedChats[existingIdx]!;
+    nextAllowedChats[existingIdx] = {
+      ...existing,
+      alerts: {
+        ...existing.alerts,
+        mutedUntil: {
+          ...(existing.alerts?.mutedUntil ?? {}),
+          [alertType]: mutedUntilMs,
+        },
+      },
+    };
+  } else {
+    nextAllowedChats.push({
+      id: idStr,
+      subscribed: true,
+      alerts: {
+        mutedUntil: {
+          [alertType]: mutedUntilMs,
+        },
+      },
+      pairedAt: new Date().toISOString(),
+    });
+  }
+
+  const updatedSettings: Settings = {
+    ...settings,
+    gateway: {
+      ...currentGateway,
+      channels: {
+        ...currentGateway.channels,
+        telegram: {
+          ...telegram,
+          allowedChats: nextAllowedChats,
+        },
+      },
+    },
+  };
+
+  await writeSettings(updatedSettings, path);
+  return updatedSettings;
+}
+
+/**
+ * Tambahkan atau perbarui allowed chat di settings.json (dipanggil saat pairing sukses).
+ */
+export async function addAllowedChat(
+  chatId: string | number,
+  label?: string,
+  options: { subscribed?: boolean; alerts?: GatewayAlertPreferences } = {},
+  path: string = settingsPath(),
+): Promise<Settings> {
+  const { settings } = await loadSettings(path);
+  const idStr = String(chatId).trim();
+
+  const currentGateway = settings.gateway ?? {
+    channels: {},
+    alertPollSec: 60,
+    qaPerDay: 20,
+    dailySummary: false,
+  };
+
+  const telegram = currentGateway.channels.telegram ?? {
+    enabled: true,
+    allowedChats: [],
+  };
+
+  const existingIdx = telegram.allowedChats.findIndex((c) => String(c.id).trim() === idStr);
+  const updatedChat: GatewayAllowedChat = {
+    id: idStr,
+    label: label ?? (existingIdx >= 0 ? telegram.allowedChats[existingIdx]!.label : undefined),
+    subscribed: options.subscribed ?? (existingIdx >= 0 ? telegram.allowedChats[existingIdx]!.subscribed : true),
+    alerts: {
+      ...(existingIdx >= 0 ? telegram.allowedChats[existingIdx]!.alerts : {}),
+      ...(options.alerts ?? {}),
+    },
+    pairedAt: new Date().toISOString(),
+  };
+
+  const nextAllowedChats = [...telegram.allowedChats];
+  if (existingIdx >= 0) {
+    nextAllowedChats[existingIdx] = updatedChat;
+  } else {
+    nextAllowedChats.push(updatedChat);
+  }
+
+  const updatedSettings: Settings = {
+    ...settings,
+    gateway: {
+      ...currentGateway,
+      channels: {
+        ...currentGateway.channels,
+        telegram: {
+          ...telegram,
+          allowedChats: nextAllowedChats,
+        },
+      },
+    },
+  };
+
+  await writeSettings(updatedSettings, path);
+  return updatedSettings;
+}
+
+/**
+ * Perbarui status langganan chat di settings.json.
+ */
+export async function updateChatSubscription(
+  chatId: string | number,
+  subscribed: boolean,
+  path: string = settingsPath(),
+): Promise<Settings> {
+  const { settings } = await loadSettings(path);
+  const idStr = String(chatId).trim();
+
+  const currentGateway = settings.gateway ?? {
+    channels: {},
+    alertPollSec: 60,
+    qaPerDay: 20,
+    dailySummary: false,
+  };
+  const telegram = currentGateway.channels.telegram ?? {
+    enabled: true,
+    allowedChats: [],
+  };
+
+  const existingIdx = telegram.allowedChats.findIndex((c) => String(c.id).trim() === idStr);
+  const nextAllowedChats = [...telegram.allowedChats];
+
+  if (existingIdx >= 0) {
+    nextAllowedChats[existingIdx] = {
+      ...nextAllowedChats[existingIdx]!,
+      subscribed,
+    };
+  } else {
+    nextAllowedChats.push({
+      id: idStr,
+      subscribed,
+      alerts: {},
+      pairedAt: new Date().toISOString(),
+    });
+  }
+
+  const updatedSettings: Settings = {
+    ...settings,
+    gateway: {
+      ...currentGateway,
+      channels: {
+        ...currentGateway.channels,
+        telegram: {
+          ...telegram,
+          allowedChats: nextAllowedChats,
+        },
+      },
+    },
+  };
+
+  await writeSettings(updatedSettings, path);
+  return updatedSettings;
+}
+
+/**
+ * Perbarui preferensi jenis alert per chat di settings.json.
+ */
+export async function updateChatAlertPreference(
+  chatId: string | number,
+  alertType: AlertType,
+  enabled: boolean,
+  path: string = settingsPath(),
+): Promise<Settings> {
+  const { settings } = await loadSettings(path);
+  const idStr = String(chatId).trim();
+
+  const currentGateway = settings.gateway ?? {
+    channels: {},
+    alertPollSec: 60,
+    qaPerDay: 20,
+    dailySummary: false,
+  };
+  const telegram = currentGateway.channels.telegram ?? {
+    enabled: true,
+    allowedChats: [],
+  };
+
+  const existingIdx = telegram.allowedChats.findIndex((c) => String(c.id).trim() === idStr);
+  const nextAllowedChats = [...telegram.allowedChats];
+
+  if (existingIdx >= 0) {
+    nextAllowedChats[existingIdx] = {
+      ...nextAllowedChats[existingIdx]!,
+      alerts: {
+        ...nextAllowedChats[existingIdx]!.alerts,
+        [alertType]: enabled,
+      },
+    };
+  } else {
+    nextAllowedChats.push({
+      id: idStr,
+      subscribed: true,
+      alerts: {
+        [alertType]: enabled,
+      },
+      pairedAt: new Date().toISOString(),
+    });
+  }
+
+  const updatedSettings: Settings = {
+    ...settings,
+    gateway: {
+      ...currentGateway,
+      channels: {
+        ...currentGateway.channels,
+        telegram: {
+          ...telegram,
+          allowedChats: nextAllowedChats,
+        },
+      },
+    },
+  };
+
+  await writeSettings(updatedSettings, path);
+  return updatedSettings;
+}
+

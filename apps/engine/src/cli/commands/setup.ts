@@ -27,20 +27,22 @@ import { writeEnvUpdates, defaultEnvPath } from "../env-writer.ts";
 import { loadSettingsSync, writeSettings, settingsPath } from "../../settings/settings.ts";
 import { runDoctor, formatDoctor, type DoctorFetch, type CheckResult } from "./doctor.ts";
 
-export const SETUP_HELP = `tahansoe setup — wizard konfigurasi awal (gateway, models, database)
+export const SETUP_HELP = `tahansoe setup — wizard konfigurasi awal (gateway, models, database, telegram)
 
 Usage: tahansoe setup [options]
 
 Options:
-  --yes                  Mode non-interaktif (otomatis dengan opsi yang diberikan/default)
-  --llm-url <url>        URL endpoint LLM gateway (default: https://router.bynara.id/v1)
-  --llm-key-env <NAME>   Nama env var yang memuat LLM_API_KEY (jangan lewat argv)
-  --db <pglite|neon>     Pilihan database: pglite (lokal, default) atau neon (cloud)
-  --model <name>         Model acuan untuk seluruh peran (default: gpt-6-luna)
-  --target-env <path>    Override path file .env target (default: apps/engine/.env).
-                         (Bukan --env-file: nama itu ditangkap Node.js sebelum sampai ke CLI.)
-  --no-color             Nonaktifkan ANSI colors
-  --help                 Tampilkan bantuan ini`;
+  --yes                        Mode non-interaktif (otomatis dengan opsi yang diberikan/default)
+  --llm-url <url>              URL endpoint LLM gateway (default: https://router.bynara.id/v1)
+  --llm-key-env <NAME>         Nama env var yang memuat LLM_API_KEY (jangan lewat argv)
+  --db <pglite|neon>           Pilihan database: pglite (lokal, default) atau neon (cloud)
+  --model <name>               Model acuan untuk seluruh peran (default: gpt-6-luna)
+  --telegram-token-env <NAME>  Nama env var yang memuat TELEGRAM_BOT_TOKEN (jangan lewat argv)
+  --skip-telegram              Lewati langkah konfigurasi Telegram
+  --target-env <path>          Override path file .env target (default: apps/engine/.env).
+                               (Bukan --env-file: nama itu ditangkap Node.js sebelum sampai ke CLI.)
+  --no-color                   Nonaktifkan ANSI colors
+  --help                       Tampilkan bantuan ini`;
 
 export interface SetupDeps {
   stdin?: NodeJS.ReadableStream;
@@ -53,6 +55,49 @@ export interface SetupDeps {
   ensureDbImpl?: () => Promise<unknown>;
   runDoctorImpl?: (deps?: Record<string, unknown>) => Promise<CheckResult[]>;
   env?: NodeJS.ProcessEnv;
+  telegramGetMe?: (token: string) => Promise<{ ok: boolean; username?: string; error?: string }>;
+  startGateway?: (opts?: unknown) => Promise<{
+    stop: () => Promise<void>;
+    pairing?: {
+      createPairingCode: (channel: string) => { code: string; expiresAt: Date | number };
+      pairingStatus: (code: string) => { status: "pending" | "paired" | "expired"; chatId?: string | number };
+    };
+  }>;
+  sleepImpl?: (ms: number) => Promise<void>;
+}
+
+/** Sensor chat ID agar id privat tidak tercetak penuh ke log/layar. */
+export function maskChatId(chatId: string | number): string {
+  const s = String(chatId).trim();
+  if (!s || s.length <= 4) return "****";
+  return `${s.slice(0, 2)}****${s.slice(-2)}`;
+}
+
+export async function defaultTelegramGetMe(
+  token: string,
+): Promise<{ ok: boolean; username?: string; error?: string }> {
+  try {
+    // @ts-ignore - concurrently built by Antigravity #1
+    const { telegramGetMe } = await import("../../gateway/telegram/api.ts");
+    return await telegramGetMe(token);
+  } catch {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+      const data = (await res.json()) as any;
+      if (data?.ok && data?.result?.username) {
+        return { ok: true, username: data.result.username };
+      }
+      return { ok: false, error: data?.description || `HTTP ${res.status}` };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+}
+
+async function defaultStartGateway(opts?: unknown) {
+  // @ts-ignore - concurrently built by Antigravity #1
+  const { startGateway } = await import("../../gateway/index.ts");
+  return startGateway(opts);
 }
 
 /**
@@ -185,6 +230,8 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
         "llm-key-env": { type: "string" },
         db: { type: "string" },
         model: { type: "string" },
+        "telegram-token-env": { type: "string" },
+        "skip-telegram": { type: "boolean" },
         "target-env": { type: "string" },
         "no-color": { type: "boolean" },
         help: { type: "boolean" },
@@ -220,6 +267,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   let selectedModel = "gpt-6-luna";
   let arbitrumRpcUrl = "";
   let fredApiKey = "";
+  let telegramToken = "";
 
   // -------------------------------------------------------------------------
   // 1. LLM Gateway & API Key
@@ -236,6 +284,56 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
       databaseUrl = env.DATABASE_URL || "";
     }
     selectedModel = f.model || "gpt-6-luna";
+
+    const skipTelegram = Boolean(f["skip-telegram"]);
+    if (!skipTelegram) {
+      if (f["telegram-token-env"]) {
+        telegramToken = env[String(f["telegram-token-env"])] || "";
+      } else {
+        telegramToken = env.TELEGRAM_BOT_TOKEN || "";
+      }
+
+      if (telegramToken) {
+        writeOut("Memvalidasi bot token Telegram...\n");
+        const getMe = deps.telegramGetMe ?? defaultTelegramGetMe;
+        const meRes = await getMe(telegramToken);
+        if (meRes.ok && meRes.username) {
+          writeOut(pc.green(`✔ Bot Telegram terverifikasi: @${meRes.username}\n`));
+          try {
+            const startGw = deps.startGateway ?? defaultStartGateway;
+            const gw = await startGw({
+              logger: { info: () => {}, warn: () => {}, error: () => {} },
+            });
+            if (gw?.pairing) {
+              const { code } = gw.pairing.createPairingCode("telegram");
+              writeOut(`Send /start ${code} to @${meRes.username} within 10 minutes\n`);
+              const sleep = deps.sleepImpl ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+              let paired = false;
+              let expired = false;
+              const maxPolls = 200;
+              for (let i = 0; i < maxPolls; i++) {
+                const pStatus = gw.pairing.pairingStatus(code);
+                if (pStatus.status === "paired") {
+                  paired = true;
+                  writeOut(pc.green(`✔ Berhasil terhubung dengan chat ${maskChatId(pStatus.chatId ?? "")}\n`));
+                  break;
+                } else if (pStatus.status === "expired") {
+                  expired = true;
+                  writeOut(pc.yellow("Kode pairing kedaluwarsa.\n"));
+                  break;
+                }
+                await sleep(3000);
+              }
+            }
+            if (gw) await gw.stop();
+          } catch (gwErr) {
+            writeErr(pc.yellow(`Perhatian: temporary gateway pairing: ${gwErr instanceof Error ? gwErr.message : String(gwErr)}\n`));
+          }
+        } else {
+          writeErr(pc.yellow(`Perhatian: Token Telegram tidak valid: ${meRes.error ?? "gagal verifikasi"}\n`));
+        }
+      }
+    }
   } else {
     // Mode Interaktif
     writeOut(pc.cyan("1. LLM Gateway (OpenAI-compatible)\n"));
@@ -331,9 +429,124 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
     }
 
     // -----------------------------------------------------------------------
-    // 4. Pengaturan Tambahan (Opsional)
+    // 4. Kanal & Notifikasi Telegram (Opsional)
     // -----------------------------------------------------------------------
-    writeOut(pc.cyan("4. Pengaturan Opsional\n"));
+    const skipTelegram = Boolean(f["skip-telegram"]);
+    if (!skipTelegram) {
+      writeOut(pc.cyan("4. Kanal & Notifikasi Telegram (Opsional)\n"));
+      writeOut("  Hubungkan bot Telegram untuk menerima alert risiko & perintah chat.\n");
+      writeOut("  Buat bot baru di @BotFather di Telegram untuk mendapatkan bot token.\n");
+
+      const existingTgToken = env.TELEGRAM_BOT_TOKEN || "";
+      const tgPrompt = existingTgToken
+        ? "  TELEGRAM_BOT_TOKEN [set (hidden), Enter = simpan]: "
+        : "  TELEGRAM_BOT_TOKEN [Enter = lewati]: ";
+
+      let tgReady = false;
+      while (!tgReady) {
+        telegramToken = await askHidden(tgPrompt, {
+          input: deps.stdin,
+          output: deps.outputStream,
+          existing: existingTgToken,
+        });
+
+        if (!telegramToken) {
+          writeOut("  Langkah Telegram dilewati.\n\n");
+          tgReady = true;
+          break;
+        }
+
+        writeOut("  Memverifikasi token bot Telegram...\n");
+        const getMe = deps.telegramGetMe ?? defaultTelegramGetMe;
+        const meRes = await getMe(telegramToken);
+        if (meRes.ok && meRes.username) {
+          writeOut(pc.green(`  ✔ Bot terhubung: @${meRes.username}\n\n`));
+          tgReady = true;
+
+          // Temporary in-process gateway pairing
+          writeOut(pc.cyan("  Pairing Chat Telegram:\n"));
+          let gw: any = null;
+          try {
+            const startGw = deps.startGateway ?? defaultStartGateway;
+            gw = await startGw({
+              logger: { info: () => {}, warn: () => {}, error: () => {} },
+            });
+            if (gw?.pairing) {
+              const { code } = gw.pairing.createPairingCode("telegram");
+              writeOut(`  Send ${pc.bold(`/start ${code}`)} to @${meRes.username} within 10 minutes\n`);
+              writeOut("  Menunggu pesan pairing (Ctrl+C untuk melewati)...\n");
+
+              let aborted = false;
+              const onSigInt = () => {
+                aborted = true;
+              };
+              process.once("SIGINT", onSigInt);
+
+              const sleep = deps.sleepImpl ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+              let pollCount = 0;
+              const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+              while (!aborted) {
+                if (process.stdout.isTTY) {
+                  const spinChar = SPINNER[pollCount % SPINNER.length];
+                  process.stdout.write(`\r  ${spinChar} Menunggu /start ${code}...`);
+                }
+                await sleep(3000);
+                if (aborted) break;
+                pollCount++;
+                const pStatus = gw.pairing.pairingStatus(code);
+                if (pStatus.status === "paired") {
+                  if (process.stdout.isTTY) process.stdout.write("\r\x1b[K");
+                  writeOut(pc.green(`  ✔ Berhasil terhubung dengan chat ${maskChatId(pStatus.chatId ?? "")}\n\n`));
+                  break;
+                } else if (pStatus.status === "expired") {
+                  if (process.stdout.isTTY) process.stdout.write("\r\x1b[K");
+                  writeOut(pc.yellow("  Kode pairing telah kedaluwarsa. Anda dapat melakukan pairing nanti.\n\n"));
+                  break;
+                }
+              }
+              process.removeListener("SIGINT", onSigInt);
+              if (aborted) {
+                if (process.stdout.isTTY) process.stdout.write("\r\x1b[K");
+                writeOut("\n  Pairing dilewati.\n\n");
+              }
+            } else {
+              writeOut("  Pairing API tidak tersedia, pairing dilewati.\n\n");
+            }
+          } catch (err) {
+            writeErr(pc.yellow(`  Gagal menjalankan gateway pairing: ${err instanceof Error ? err.message : String(err)}\n\n`));
+          } finally {
+            if (gw) {
+              try {
+                await gw.stop();
+              } catch {
+                /* abaikan */
+              }
+            }
+          }
+        } else {
+          writeOut(pc.yellow(`  ✖ Token Telegram tidak valid: ${meRes.error ?? "HTTP error"}\n`));
+          const action = await askQuestion("  Pilihan: [r] Coba lagi / [s] Lewati Telegram / [c] Tetap simpan token [c]: ", {
+            input: deps.stdin,
+            output: deps.outputStream,
+            defaultValue: "c",
+          });
+          const act = action.toLowerCase();
+          if (act === "s") {
+            telegramToken = "";
+            tgReady = true;
+            writeOut("\n");
+          } else if (act !== "r") {
+            tgReady = true;
+            writeOut("\n");
+          }
+        }
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // 5. Pengaturan Tambahan (Opsional)
+    // -----------------------------------------------------------------------
+    writeOut(pc.cyan("5. Pengaturan Tambahan (Opsional)\n"));
     const rpcPrompt = "  ARBITRUM_RPC_URL [Enter = RPC publik https://arb1.arbitrum.io/rpc]: ";
     arbitrumRpcUrl = await askQuestion(rpcPrompt, {
       input: deps.stdin,
@@ -351,7 +564,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   }
 
   // -------------------------------------------------------------------------
-  // 5. Eksekusi Migrasi DB (PGlite)
+  // 6. Eksekusi Migrasi DB (PGlite)
   // -------------------------------------------------------------------------
   if (dbDriver === "pglite") {
     process.env.DB_DRIVER = "pglite";
@@ -371,7 +584,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   }
 
   // -------------------------------------------------------------------------
-  // 6. Penulisan ke .env via env-writer & settings.json
+  // 7. Penulisan ke .env via env-writer & settings.json
   // -------------------------------------------------------------------------
   writeOut("Menyimpan konfigurasi...\n");
 
@@ -394,10 +607,17 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   if (fredApiKey) {
     envUpdates.FRED_API_KEY = fredApiKey;
   }
+  if (telegramToken) {
+    envUpdates.TELEGRAM_BOT_TOKEN = telegramToken;
+  }
 
   await writeEnvUpdates({
     envPath: targetEnvPath,
     updates: envUpdates,
+    commentedDefaults: [
+      "# TELEGRAM_ALLOWED_CHAT_IDS=",
+      "# GATEWAY_ALERT_POLL_SEC=60",
+    ],
   });
 
   // Terapkan ke proses saat ini agar doctor langsung mendeteksi perubahan
@@ -409,6 +629,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   else if (databaseUrl) env.DATABASE_URL = databaseUrl;
   if (arbitrumRpcUrl) env.ARBITRUM_RPC_URL = arbitrumRpcUrl;
   if (fredApiKey) env.FRED_API_KEY = fredApiKey;
+  if (telegramToken) env.TELEGRAM_BOT_TOKEN = telegramToken;
 
   // Update settings.json
   try {
@@ -431,7 +652,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   writeOut(pc.green(`✔ Konfigurasi tersimpan di .env dan settings.json.\n\n`));
 
   // -------------------------------------------------------------------------
-  // 7. Menjalankan Doctor & Menampilkan Langkah Berikutnya
+  // 8. Menjalankan Doctor & Menampilkan Langkah Berikutnya
   // -------------------------------------------------------------------------
   writeOut(pc.bold("Pemeriksaan Kesehatan Konfigurasi (Doctor):\n"));
   try {
@@ -446,6 +667,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   }
 
   writeOut(pc.bold("Setup selesai! Langkah selanjutnya:\n"));
+  writeOut("  tahansoe start                 — jalankan agent mandiri penuh (riset + fusi + gateway Telegram)\n");
   writeOut("  tahansoe                       — buka mode interaktif REPL & tanya-jawab\n");
   writeOut("  tahansoe analyze               — jalankan satu putaran riset & kartu laporan\n");
   writeOut("  tahansoe schedule run --with-price — jalankan worker riset berkala di background\n\n");

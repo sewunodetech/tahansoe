@@ -11,8 +11,10 @@ import { detectTheme, banner, dim, bold, maskHost, regimeColor } from "./render.
 import { EXIT_OK, EXIT_ERROR, EXIT_CONFIG } from "./commands/args.ts";
 
 const COMMANDS = [
+  ["start", "Run the standalone risk agent in one process"],
   ["analyze", "Run one risk-research pass + report card"],
   ["schedule", "Run the scheduler (foreground) or show status"],
+  ["gateway", "Channel gateway operations (gateway run)"],
   ["history", "Recent research reports (table + sparkline)"],
   ["report", "Show a full report by <id|latest>"],
   ["models", "List gateway models + prices + cost estimate"],
@@ -108,6 +110,27 @@ export async function main(argv: string[]): Promise<number> {
   }
 
   switch (cmd) {
+    case "start": {
+      const { startCommand } = await import("./commands/start.ts");
+      return startCommand(rest);
+    }
+    case "gateway": {
+      const sub = rest[0];
+      const subRest = rest.slice(1);
+      if (sub === "run") {
+        try {
+          // @ts-ignore - concurrently built by Antigravity #1
+          const { gatewayRunCommand } = await import("../gateway/cli.ts");
+          const res = await gatewayRunCommand(subRest);
+          return typeof res === "number" ? res : EXIT_OK;
+        } catch (err) {
+          process.stderr.write(`[gateway] gagal memuat gateway: ${err instanceof Error ? err.message : String(err)}\n`);
+          return EXIT_ERROR;
+        }
+      }
+      process.stderr.write(`subcommand gateway tidak dikenal: ${sub ?? "(kosong)"} (pakai: tahansoe gateway run)\n`);
+      return EXIT_ERROR;
+    }
     case "analyze": {
       const { analyzeCommand } = await import("./commands/analyze.ts");
       return analyzeCommand(rest);

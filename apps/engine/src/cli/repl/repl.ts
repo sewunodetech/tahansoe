@@ -33,6 +33,7 @@ export const SLASH_COMMANDS: Array<[string, string]> = [
   ["/doctor", "Check environment & connectivity"],
   ["/setup", "Run initial setup wizard (gateway, models, DB)"],
   ["/status", "Show current market regime status line"],
+  ["/start", "Hint: run 'tahansoe start' in a separate terminal"],
   ["/help", "Show available slash commands and tips"],
   ["/clear", "Clear terminal screen"],
   ["/exit", "Exit the interactive session"],
@@ -40,6 +41,9 @@ export const SLASH_COMMANDS: Array<[string, string]> = [
 
 export const SCHEDULE_HINT =
   "schedule run tidak tersedia di REPL (proses background jangka panjang; jalankan terpisah di terminal lain: tahansoe schedule run)";
+
+export const START_HINT =
+  "start tidak tersedia di REPL (proses agent mandiri jangka panjang; jalankan terpisah di terminal lain: tahansoe start)";
 
 export const REPL_HINT = "Type /help for commands, or ask a question about the latest analysis.\n";
 
@@ -116,6 +120,9 @@ export async function dispatchSlashCommand(
       process.stdout.write(
         pc.dim("\nAny other text is answered by the grounded risk research agent.\n"),
       );
+      process.stdout.write(
+        pc.dim("Tip: Jalankan 'tahansoe start' di terminal terpisah untuk menjalankan agent mandiri penuh.\n"),
+      );
       return;
     }
 
@@ -126,6 +133,11 @@ export async function dispatchSlashCommand(
 
     case "schedule": {
       process.stdout.write(pc.yellow(`\n${SCHEDULE_HINT}\n\n`));
+      return;
+    }
+
+    case "start": {
+      process.stdout.write(pc.yellow(`\n${START_HINT}\n\n`));
       return;
     }
 
