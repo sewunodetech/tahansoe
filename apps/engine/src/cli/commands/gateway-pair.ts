@@ -258,18 +258,41 @@ export async function gatewayPairCommand(argv: string[], deps: GatewayPairDeps =
   const deleteWebhookRequested = Boolean(parsed.values["delete-webhook"]);
   const getWebhookInfo = deps.telegramGetWebhookInfo ?? defaultTelegramGetWebhookInfo;
 
-  if (deleteWebhookRequested) {
-    let host = "";
-    try {
-      const info = await getWebhookInfo(token);
-      if (info?.ok && info.host) {
-        host = info.host;
-      }
-    } catch {
-      /* abaikan */
+  // Cek webhook DI AWAL (sebelum membuat kode): bila bot memakai webhook, pesan
+  // /start tidak akan pernah sampai ke Tahansoe, jadi jangan tampilkan kode.
+  let activeWebhookHost = "";
+  try {
+    const info = await getWebhookInfo(token);
+    if (info?.ok && info.host) {
+      activeWebhookHost = info.host;
     }
+  } catch {
+    /* abaikan: polling nanti tetap mendeteksi 409 */
+  }
 
-    const targetHost = host || "external host";
+  if (activeWebhookHost && !deleteWebhookRequested) {
+    writeOut(
+      pc.yellow(
+        `This bot uses a webhook to ${activeWebhookHost}. Messages go there, not to Tahansoe, so pairing cannot work yet.
+`,
+      ),
+    );
+    const interactive = Boolean(deps.confirmDeleteWebhook || deps.inputStream || (process.stdin.isTTY && process.stdout.isTTY));
+    if (!interactive) {
+      writeOut("Use a dedicated bot, or run: tahansoe gateway pair --delete-webhook\n");
+      return EXIT_ERROR;
+    }
+  }
+
+  if (deleteWebhookRequested || activeWebhookHost) {
+    const host = activeWebhookHost;
+    if (!host) {
+      writeOut("No active webhook on this bot; nothing to delete.\n");
+    }
+  }
+
+  if (activeWebhookHost) {
+    const targetHost = activeWebhookHost;
     let confirmed = false;
     if (deps.confirmDeleteWebhook) {
       confirmed = await deps.confirmDeleteWebhook(targetHost);

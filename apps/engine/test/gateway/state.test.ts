@@ -106,12 +106,7 @@ test("state: proteksi isolasi test — defaultStatePath dan penulisan ke path pr
     /Test pollution guard: Attempted to access\/write production state path/,
   );
 
-  // 3. Verifikasi file produksi di disk tidak terpolusi dan valid
-  const raw = await readFile(realProdPath, "utf8");
-  const parsed = JSON.parse(raw);
-  assert.deepEqual(parsed.sentAlerts, {});
-  assert.deepEqual(parsed.qaCounters, {});
-  assert.deepEqual(parsed.failedPairingAttempts, {});
-  assert.deepEqual(parsed.pendingPairings, {});
-  assert.deepEqual(parsed.assetRegimes, {});
+  // (Isi file produksi sengaja TIDAK diperiksa: file itu berisi state runtime nyata
+  //  milik user, mis. kode pairing yang sedang menunggu. Guard di atas sudah menjamin
+  //  test tidak bisa menulis ke sana.)
 });

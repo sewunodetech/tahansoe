@@ -430,3 +430,31 @@ test("gatewayStatusCommand: menampilkan Mode: webhook to <host> dan pesan instru
   }
 });
 
+
+test("gatewayPairCommand: webhook aktif dicek DI AWAL - tanpa konfirmasi tidak membuat kode pairing", async () => {
+  const stdoutChunks: string[] = [];
+  let codeCreated = false;
+  let deleteCalled = false;
+  const { gatewayPairCommand } = await import("../../src/cli/commands/gateway-pair.ts");
+  const exitCode = await gatewayPairCommand([], {
+    env: { TELEGRAM_BOT_TOKEN: "fake_wh_token" },
+    stdout: (s: string) => stdoutChunks.push(s),
+    telegramGetMe: async () => ({ ok: true, username: "WebhookBot" }),
+    telegramGetWebhookInfo: async () => ({ ok: true, host: "n8n.example.com" }),
+    confirmDeleteWebhook: async () => false,
+    createPairingCode: () => {
+      codeCreated = true;
+      return { code: "SHOULDNOTSHOW", expiresAt: Date.now() + 600000 };
+    },
+    telegramDeleteWebhook: async () => {
+      deleteCalled = true;
+      return { ok: true, result: true };
+    },
+  } as any);
+  const out = stdoutChunks.join("");
+  assert.equal(codeCreated, false, "kode pairing tidak boleh dibuat selama webhook aktif");
+  assert.equal(deleteCalled, false, "webhook tidak dihapus tanpa konfirmasi");
+  assert.doesNotMatch(out, /SHOULDNOTSHOW/);
+  assert.match(out, /webhook to n8n\.example\.com/);
+  assert.equal(exitCode, EXIT_OK);
+});
