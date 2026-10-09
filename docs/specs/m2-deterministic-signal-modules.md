@@ -1,9 +1,14 @@
 # Spec: Modul sinyal deterministik — Oracle Monitor, Depeg, Kalender Makro
 
 - **Milestone:** M2 — "Oracle Monitor (staleness, deviasi, sequencer uptime)" dan "Macro calendar" ([PRD §10](../prd.md#10-roadmap-eksekusi))
-- **Status:** Approved (user, 2026-10-09)
+- **Status:** Done (2026-10-09)
 - **Pemilik:** Antigravity (implementasi), Claude Code (review)
 - **Terkait:** [m2-risk-fusion-v1](m2-risk-fusion-v1.md) (aturan R-SEQUENCER-DOWN, R-DEPEG-CONFIRMED, R-ORACLE-DEVIATION, R-MACRO-SOON), [m3-carry-interest-monitoring](m3-carry-interest-monitoring.md) (pola emitter `src/signals/emit.ts`), [risk-transmission](../knowledge/risk-transmission.md)
+
+> **Catatan Implementasi (2026-10-09, commit 1803000):**
+> - Emitter deterministik diintegrasikan ke `src/signals/emit.ts` dengan stable dedupe keys (`${module}:${primaryPath}:${asset}:${type}`) agar skor tidak menumpuk berulang saat fusion tick 15 menit.
+> - Guardrail fusion memastikan hanya modul terkonfirmasi (`ORACLE`, `ONCHAIN`, `MACRO`) yang dapat menaikkan regime ke `STRESSED`/`CRISIS`; modul `RESEARCH` tetap dibatasi cap severity 0.6 (unconfirmed).
+> - Depeg LST/LRT (T5) dan LST yield sengaja tidak disertakan pada rilis ini (ditunda ke v2).
 
 ## 1. Tujuan
 
@@ -64,10 +69,10 @@ Dari `fetchMacroCalendarEvents` (FOMC JSON resmi + BLS CPI/NFP): untuk setiap ev
 
 ## 5. Kriteria penerimaan
 
-- [ ] Fungsi murni untuk keempat emitter dengan unit test ambang (termasuk batas 1% depeg, capped USDC, masa tenggang sequencer).
-- [ ] Replay: sequencer down → STRESSED; USDC 0,95 → CRISIS; USDC 0,995 → tidak ada sinyal; FOMC dalam 12 jam → ELEVATED; kondisi normal → tidak ada sinyal ORACLE/T4.
-- [ ] Live satu fusion tick di research-dev: sinyal tersimpan dengan benar, `tahansoe fuse` menampilkannya.
-- [ ] Typecheck 0 error, semua test hijau.
+- [x] Fungsi murni untuk keempat emitter dengan unit test ambang (termasuk batas 1% depeg, capped USDC, masa tenggang sequencer).
+- [x] Replay: sequencer down → STRESSED; USDC 0,95 → CRISIS; USDC 0,995 → tidak ada sinyal; FOMC dalam 12 jam → ELEVATED; kondisi normal → tidak ada sinyal ORACLE/T4.
+- [x] Live satu fusion tick di research-dev: sinyal tersimpan dengan benar, `tahansoe fuse` menampilkannya.
+- [x] Typecheck 0 error, semua test hijau.
 
 ## 6. Rencana test
 

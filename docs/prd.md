@@ -440,22 +440,22 @@ User menyatakan niat ("jaga posisiku konservatif, tahan drop 30%"). LLM menerjem
 - [ ] Identitas user berbasis wallet (lepas `chainId` dari tabel `users`)
 
 ### Milestone 2 — Core Risk Engine v1 (`core-dev`)
-- [ ] Kerangka engine: signal bus, penyimpanan `signals` & `risk_assessments`, scheduler
-- [ ] Oracle Monitor (staleness, deviasi, sequencer uptime)
+- [x] Kerangka engine: signal bus, penyimpanan `signals` & `risk_assessments`, scheduler
+- [x] Oracle Monitor (staleness, deviasi, sequencer uptime)
 - [ ] Technical module (EWMA/GARCH volatility, funding, OI)
-- [ ] Macro calendar
-- [ ] Risk Fusion v1 (aturan + kuantitatif) → `RiskAssessment` + explanation
-- [ ] Dry-run: tampilkan rekomendasi trigger di dashboard & Telegram tanpa mengubah on-chain
+- [x] Macro calendar
+- [x] Risk Fusion v1 (aturan + kuantitatif) → `RiskAssessment` + explanation
+- [ ] Dry-run: tampilkan rekomendasi trigger di dashboard & Telegram tanpa mengubah on-chain (sebagian: CLI `analyze --dry` dan `tahansoe fuse`)
 - [ ] Framework backtest + skenario historis §6.4 (+ periode tenang)
-- [ ] Settlement deterministik + scorecard mingguan untuk `RiskAssessment` (ADR 0005)
+- [x] Settlement deterministik + scorecard untuk `RiskAssessment` ([ADR 0005](decisions/0005-reflection-loop.md)) — settlement tiap 60 menit di `schedule run`; scorecard lewat `tahansoe scorecard` (rekap mingguan otomatis belum)
 
 ### Milestone 3 — Intelligence
-- [ ] News & geopolitics ingestion + klasifikasi LLM (structured output, multi-source confirmation)
+- [ ] News & geopolitics ingestion + klasifikasi LLM (sebagian: ingestion RSS feed & data makro via multi-agent pipeline)
 - [ ] Social sentiment
-- [ ] Fundamental/on-chain module (utilization, exchange flow, depeg, LST ratio)
+- [ ] Fundamental/on-chain module (sebagian: carry & interest rate monitoring T11, reserve utilization Aave V3, depeg stablecoin T4; exchange flow & LST ratio belum)
 - [ ] Kalibrasi regime → buffer via backtest
-- [ ] Research agents multi-agent → sinyal `RESEARCH` (ADR 0004, [spec](specs/m3-research-agents.md))
-- [ ] Reflection loop (lessons) + set eval (berita berlabel, injection, skenario)
+- [x] Research agents multi-agent → sinyal `RESEARCH` ([ADR 0004](decisions/0004-multi-agent-research-layer.md), [spec](specs/m3-research-agents.md))
+- [ ] Reflection loop (lessons) + set eval (sebagian: set eval injection & skenario + runner selesai, settlement otomatis jalan; reflector yang menulis lessons dari hasil settlement belum diuji dengan data nyata)
 - [ ] Shadow mode bertahap: shadow → notify → dry-run rekomendasi
 
 ### Milestone 4 — Guardian v2

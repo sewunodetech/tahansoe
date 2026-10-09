@@ -35,17 +35,22 @@
   - Konfigurasi model per peran (`analyst`, `debate`, `assessor`, `reflector`) dan harga token disimpan di `settings.json` v2 (non-rahasia, di-gitignore) sebagai daftar nama model murni (*plain model names*) dengan fallback berantai.
   - JSON Schema di-embed langsung ke dalam system prompt, didukung toleransi ekstraksi teks, 1x repair retry jika schema tidak valid, lalu fallback ke model berikutnya.
   - Perhitungan budget harian terintegrasi dinamis dengan harga gateway (`settings.modelPrices` > `pricingUrl` > fallback konservatif).
-- **CLI Terpadu `tahansoe` (9 Okt 2026 — spec m3-cli):**
+- **CLI Terpadu `tahansoe` (9 Okt 2026 — [spec m3-cli](specs/m3-cli.md)):**
   - Satu pintu interaksi terminal operator (`apps/engine/src/cli/tahansoe.ts`, helper terpusat di `render.ts`).
-  - Mendukung subcommand: `analyze` (live progress per tahap + kartu laporan), `schedule` (`run` foreground dengan PostgreSQL session advisory lock & live dashboard, `status`), `history`, `report` (`<id|latest>` format `--md` atau `--json`), `doctor`, `models`, `settings`, `eval`.
-- **Live Run Perdana via Gateway Bynara (9 Okt 2026):**
-  - Uji coba live penuh pertama kali berhasil menggunakan gateway Bynara dengan model `agnes-2.5-flash` untuk seluruh peran.
+  - Mendukung subcommand lengkap: `analyze` (live progress per tahap + kartu laporan), `schedule` (`run` foreground dengan advisory lock & live dashboard, `status`), `history`, `report` (`<id|latest>` format `--md` atau `--json`), `doctor`, `models`, `settings`, `eval`, `carry`, `fuse`, `settle`, `scorecard`, `ask`.
+  - Mode interaktif (REPL) dengan slash commands dan grounded Q&A (`tahansoe ask` / REPL chat) dengan guardrail penolakan trading/prediksi harga.
 - **Carry & Interest-Rate Monitoring — jalur T11 (9 Okt 2026, [spec](specs/m3-carry-interest-monitoring.md)):**
   - Tabel `rate_samples` + sampler bunga Aave V3 Arbitrum tiap 15 menit (`RATE_SAMPLE_INTERVAL_MIN`), on-chain via Pool/strategy (I5).
-  - **Pemancar sinyal deterministik pertama** (`src/signals/`): kink proximity, lonjakan bunga (≥ 2× atau > 20% APR stablecoin), carry negatif 5 pasangan representatif; T7 bila utilization ≥ 98%. Guardrail: T11 tanpa konfirmasi lain maksimal ELEVATED (dihitung dari modul terkonfirmasi saja; property test).
+  - Pemancar sinyal deterministik T11 (`src/signals/emit.ts`): kink proximity, lonjakan bunga (≥ 2× atau > 20% APR stablecoin), carry negatif 5 pasangan representatif; T7 bila utilization ≥ 98%. Guardrail: T11 tanpa konfirmasi lain maksimal ELEVATED (dihitung dari modul terkonfirmasi saja; property test).
   - `tahansoe carry`: tabel reserve + "HF 1.50 → 1.45 dalam N hari" + skenario lewat kink; tanpa kata ranking/saran investasi (test).
   - Verifikasi live: USDC.e util 92,1% (borrow 18–20%), GHO 93%, USDC native 91,7% lewat kink; WETH→USDC carry −4,7%/thn (≈ 265 hari ke HF 1.45). Fusion ETH/USDC naik CALM → ELEVATED dari sinyal on-chain.
-- [ ] Modul deterministik lain belum memancarkan sinyal ke `signals` (oracle monitor/deviasi & sequencer, kalender makro); pola `src/signals/emit.ts` siap dipakai.
+- **Modul Sinyal Deterministik & Deduplikasi (9 Okt 2026, [spec](specs/m2-deterministic-signal-modules.md), commit 1803000):**
+  - Modul deterministik lengkap memancarkan sinyal terkonfirmasi via `src/signals/emit.ts`:
+    - `ORACLE`: Sequencer uptime (T10, down = 1.0, grace period 1 jam = 0.7), staleness & deviasi AaveOracle vs Chainlink proxy (T8).
+    - `ONCHAIN`: Depeg stablecoin USDC/USDT/DAI > 1% (T4, linear s.d. 5%), suku bunga dekat kink & negative carry (T11), reserve kering (T7).
+    - `MACRO`: Event ekonomi resmi FOMC, CPI, NFP dalam rentang 48 jam mendatang (T1/T2, severity 0.4–0.6, horizon terstruktur).
+  - **Stable dedupe keys:** Menggunakan `getSignalDedupeKey(s)` (`${module}:${primaryPath}:${asset}:${type}`) untuk mencegah penggandaan skor sinyal di tabel `signals` saat fusion tick berulang (15 menit).
+  - **Risk Fusion v1 Terintegrasi:** Menggabungkan sinyal terkonfirmasi (`ONCHAIN`, `ORACLE`, `MACRO`) dan sinyal `RESEARCH`. Guardrail deterministik menjamin sinyal riset AI unconfirmed (cap confidence 0.60) tidak pernah bisa menaikkan regime ke `STRESSED`/`CRISIS` sendirian tanpa konfirmasi pasar nyata. Status sinyal dan hasil fusion dapat langsung diinspeksi via `tahansoe fuse`.
 - **Pemilihan model final (9 Okt 2026, prompt 2026.10.2 + redaksi instruksi):** `gpt-6-luna` (OpenAI) lolos eval **24/24** (injeksi 16/16 tanpa bocoran, skenario 8/8, schema 100%), biaya eval Rp 110 (~Rp 4,6 per kasus). Dipakai sebagai default semua peran, cadangan `deepseek-v4-flash`. `agnes-2.5-flash` ditinggalkan karena asal-usul model tidak jelas dan masih ada bocoran injeksi/overrun schema.
   - Mengonsumsi ~36.5k token dengan biaya operasional sangat efisien (~Rp6/run) dan menghasilkan proposal regime `CALM`.
 - **Penyimpanan Database Neon Postgres:** Tabel `research_reports` (dengan diagnostik per-peran audit G7) dan `signals` (`RESEARCH`), serta skrip inspeksi riwayat `tahansoe history`.
@@ -80,12 +85,12 @@
 ## Gap yang diketahui
 
 ### Evaluasi & Model LLM
-- [ ] `hawkCase`/`doveCase` pada assessor terkadang melebihi batasan skema 800 karakter (`inj-ignore-schema`, `scn-protocol-exploit`); pertimbangkan relaksasi skema ke 1200 karakter atau penegasan instruksi ringkas.
-- [ ] 1 kasus injeksi tersisa (`inj-unknown-source-claim`) masih membocorkan instruksi jarum ke output teks sintesis assessor pada `agnes-2.5-flash`.
+- [ ] Batasan skema 800 karakter untuk `hawkCase`/`doveCase` terkadang ketat pada model selain `gpt-6-luna`; pertimbangkan relaksasi ke 1200 karakter bila diperlukan saat evaluasi model alternatif.
 
 ### Engine, Fusion & Settlement
-- [ ] Job settlement (`src/reflection/settle-job.ts`) belum dijadwalkan secara berkala di background scheduler (saat ini dijalankan manual via CLI / direct runner).
-- [ ] Risk Fusion deterministik v1 (menggabungkan sinyal teknikal/on-chain dan sinyal `RESEARCH`) belum diintegrasikan penuh ke loop utama `apps/engine`.
+- [ ] Scorecard belum direkap otomatis mingguan (settlement sendiri sudah berjalan tiap 60 menit di `tahansoe schedule run`, lock terpisah; data scorecard baru bermakna setelah scheduler jalan beberapa hari).
+- [ ] Modul teknikal lanjutan M2 (volatilitas realized EWMA/GARCH, funding rate ekstrem, open interest perp DEX) belum diimplementasikan.
+- [ ] Wizard interaktif `tahansoe setup` belum diimplementasikan (pending di backlog).
 - [ ] Pengiriman notifikasi alert Telegram langsung dari server engine belum ada (saat ini masih dipicu dari browser di web app).
 - [ ] Host deployment untuk long-running engine worker di lingkungan cloud/VPS belum dipilih.
 
@@ -106,11 +111,11 @@
 
 ## Next steps (urutan disarankan)
 
-1. **Jalankan Eval Live dengan Model Murah:** Menggunakan router OpenAI-compatible generik (mis. Bynara/OpenRouter) pada eval set injection & scenarios untuk menentukan kombinasi model per peran termurah yang lolos eval (spec §3.4).
-2. **Implementasi Risk Fusion Deterministik v1 (M2):** Menggabungkan sinyal on-chain/teknikal dengan sinyal `RESEARCH`, menjamin aturan bahwa sinyal riset saja tidak pernah menaikkan regime ke `STRESSED`/`CRISIS` tanpa konfirmasi pasar.
-3. **Automasi Settlement Terjadwal:** Mengaktifkan pengecekan outcome horizon di engine worker untuk menghasilkan label `TRUE_POSITIVE`/`FALSE_POSITIVE`/`MISSED` dan scorecard periodik.
-4. **Implementasi Notifikasi Telegram Server:** Memindahkan trigger alert Telegram dari frontend browser ke engine worker agar alert tetap terkirim saat user tidak membuka web.
-5. **Implementasi Integrasi Web On-chain (Spec M1):** Menghubungkan settings web ke `TahansoeGuardian` v1 (`approve` + `setPolicy`), membaca posisi Aave nyata via wagmi/viem, dan menyelesaikan transisi dashboard demo.
+1. **Wizard Interaktif `tahansoe setup` (Backlog prioritas):** Panduan CLI interaktif untuk inisialisasi `.env` (`LLM_API_URL`, `LLM_API_KEY`), pemilihan provider database (PGlite/Neon, [ADR 0010](decisions/0010-local-pglite-database-option.md)), verifikasi gateway via `/models`, dan verifikasi kesehatan sistem via `doctor`.
+2. **Jalankan scheduler beberapa hari** (`tahansoe schedule run --with-price`) agar settlement otomatis (sudah tiap 60 menit) menghasilkan label `TRUE_POSITIVE`/`FALSE_POSITIVE`/`MISSED` nyata, lalu uji reflector (lessons) dan rekap scorecard mingguan.
+3. **Implementasi Notifikasi Telegram Server:** Memindahkan trigger alert Telegram dari frontend browser ke engine worker agar alert tetap terkirim saat user tidak membuka web.
+4. **Implementasi Integrasi Web On-chain (Spec M1):** Menghubungkan settings web ke `TahansoeGuardian` v1 (`approve` + `setPolicy`), membaca posisi Aave nyata via wagmi/viem, dan menyelesaikan transisi dashboard demo.
+5. **Modul Teknikal Lanjutan M2:** Volatilitas realized (EWMA), funding rate ekstrem, dan open interest pada perp DEX Arbitrum.
 
 ---
 

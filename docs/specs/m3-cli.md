@@ -1,9 +1,9 @@
 # Spec: Tahansoe CLI (`tahansoe`) — analisa langsung & scheduler dari terminal
 
 - **Milestone:** M3 (research agents) — tooling operator/developer
-- **Status:** In progress (implementasi parsial aktif, 2026-10-09)
+- **Status:** In progress (REPL & grounded Q&A selesai; setup wizard pending)
 - **Pemilik:** Kiro (shell + command), Antigravity (renderer + test), Claude Code (review)
-- **Terkait:** [m3-research-agents](m3-research-agents.md), [m2-risk-fusion-v1](m2-risk-fusion-v1.md), [ADR 0009](../decisions/0009-single-openai-compatible-gateway.md), [ADR 0006](../decisions/0006-business-model-free-info-paid-automation.md)
+- **Terkait:** [m3-research-agents](m3-research-agents.md), [m2-risk-fusion-v1](m2-risk-fusion-v1.md), [ADR 0009](../decisions/0009-single-openai-compatible-gateway.md), [ADR 0010](../decisions/0010-local-pglite-database-option.md), [ADR 0006](../decisions/0006-business-model-free-info-paid-automation.md)
 
 ## 1. Tujuan
 
@@ -11,8 +11,10 @@ Saat ini engine punya 15 script npm yang terpisah (`research`, `research:once`, 
 
 ### 1.1 Catatan Implementasi (9 Okt 2026)
 
-- **Command terimplementasi:** `analyze` (dengan live progress dan kartu laporan), `schedule` (`run`/`status` dengan `--once` dan `--with-price`), `history`, `report`, `doctor`, `models`, `settings`, `eval`.
+- **Command terimplementasi:** `analyze` (dengan live progress dan kartu laporan), `schedule` (`run`/`status` dengan `--once` dan `--with-price`), `history`, `report`, `doctor`, `models`, `settings`, `eval`, `carry`, `fuse`, `settle`, `scorecard`, `ask`.
+- **Mode interaktif (REPL) & Q&A:** Mode REPL (`tahansoe` tanpa argumen di TTY) dan command `tahansoe ask "<pertanyaan>"` telah terimplementasi dengan grounded Q&A (data laporan, sinyal aktif, rate_samples, makro) dan penolakan tegas atas permintaan prediksi harga / sinyal trading (non-goals).
 - **Deviasi tata letak renderer:** Seluruh helper rendering terminal (banner, box, bar, sparkline, progress, kartu laporan, penyamaran host, sanitasi teks) ditempatkan terpusat di `apps/engine/src/cli/render.ts` (bukan di subfolder `src/cli/ui/` seperti rencana awal). Deviasi ini menyederhanakan pemeliharaan file tanpa mengurangi cakupan unit test maupun fungsionalitas UI.
+- **Pending di backlog:** Wizard interaktif `tahansoe setup` untuk inisialisasi awal provider DB (PGlite/Neon) dan API key.
 
 ## 2. Scope
 
@@ -143,13 +145,15 @@ Pada non-TTY (cron, pipe) tidak ada animasi; satu baris log per run (format work
 
 ## 5. Kriteria penerimaan
 
-- [ ] `npm run tahansoe -- analyze --fake` menampilkan progress + kartu laporan tanpa jaringan/LLM.
-- [ ] `analyze --json` mengeluarkan JSON valid saja di stdout (log ke stderr).
-- [ ] `schedule run` memakai worker yang ada; Ctrl+C melepas lock dengan bersih; `schedule status` membaca DB.
-- [ ] `history`, `report latest`, `models`, `settings`, `doctor` berfungsi; output non-TTY tanpa kode ANSI.
-- [ ] Teks eksternal dengan escape ANSI disanitasi (ada test).
-- [ ] Script npm lama tetap jalan (alias).
-- [ ] Typecheck 0 error, `npm test` hijau.
+- [x] `npm run tahansoe -- analyze --fake` menampilkan progress + kartu laporan tanpa jaringan/LLM.
+- [x] `analyze --json` mengeluarkan JSON valid saja di stdout (log ke stderr).
+- [x] `schedule run` memakai worker yang ada; Ctrl+C melepas lock dengan bersih; `schedule status` membaca DB.
+- [x] `history`, `report latest`, `models`, `settings`, `doctor` berfungsi; output non-TTY tanpa kode ANSI.
+- [x] Teks eksternal dengan escape ANSI disanitasi (ada test).
+- [x] Script npm lama tetap jalan (alias).
+- [x] Typecheck 0 error, `npm test` hijau.
+- [x] Mode REPL interaktif dan grounded Q&A (`tahansoe ask` / REPL chat) terimplementasi dengan guardrail non-goals.
+- [ ] Wizard `tahansoe setup` (konfigurasi interaktif DB PGlite/Neon & gateway LLM; pending di backlog).
 
 ## 6. Rencana test
 

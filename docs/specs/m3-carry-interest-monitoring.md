@@ -1,9 +1,14 @@
 # Spec: Carry & Interest-Rate Monitoring (jalur T11)
 
 - **Milestone:** M3 — "Fundamental/on-chain module (utilization, …)" ([PRD §10](../prd.md#10-roadmap-eksekusi))
-- **Status:** Approved (user, 2026-10-09)
+- **Status:** Done (2026-10-09)
 - **Pemilik:** Antigravity / Kiro (implementasi), Claude Code (review)
 - **Terkait:** [risk-transmission](../knowledge/risk-transmission.md), [m2-risk-fusion-v1](m2-risk-fusion-v1.md), [m3-research-agents](m3-research-agents.md), [m3-cli](m3-cli.md), PRD §11 (Non-Goals)
+
+> **Catatan Implementasi (2026-10-09, commit 10a49e6):**
+> - Jalur transmisi T11 (bunga & carry) diintegrasikan ke `@tahansoe/domain`, Zod schema, emitter sinyal deterministik di `src/signals/emit.ts`, CLI, dan knowledge base.
+> - Tabel `rate_samples` di `packages/db` mencatat supply APY, borrow APR variable, utilization, dan kurva suku bunga reserve Aave V3 Arbitrum.
+> - Command `tahansoe carry` tersedia untuk melihat borrow rate, carry drift representatif, dan peringatan kink proximity tanpa ranking yield.
 
 ## 1. Tujuan
 
@@ -103,11 +108,11 @@ Tanpa kata "best", "recommend", "switch to". `--json` tersedia.
 
 ## 5. Kriteria penerimaan
 
-- [ ] `T11` ada di domain, schema research, fusion config, knowledge doc, dan label CLI; test lama tetap hijau.
-- [ ] `rate_samples` terisi tiap interval pada research-dev; konversi ray → APY/APR teruji terhadap nilai yang tampil di app Aave (selisih < 0,1 poin).
-- [ ] Sinyal T11/T7 terpancar sesuai ambang; T11 sendirian tidak pernah > ELEVATED (property test).
-- [ ] `tahansoe carry` menampilkan tabel reserve dan HF drift; output tidak mengandung kata ranking/saran investasi (test).
-- [ ] Analyst on-chain menerima konteks bunga; eval tetap lolos (0 injection leak, skenario ≥ 70%).
+- [x] `T11` ada di domain, schema research, fusion config, knowledge doc, dan label CLI; test lama tetap hijau.
+- [x] `rate_samples` terisi tiap interval pada research-dev; konversi ray → APY/APR teruji terhadap nilai yang tampil di app Aave (selisih < 0,1 poin).
+- [x] Sinyal T11/T7 terpancar sesuai ambang; T11 sendirian tidak pernah > ELEVATED (property test).
+- [x] `tahansoe carry` menampilkan tabel reserve dan HF drift; output tidak mengandung kata ranking/saran investasi (test).
+- [x] Analyst on-chain menerima konteks bunga; eval tetap lolos (0 injection leak, skenario ≥ 70%).
 
 ## 6. Rencana test
 

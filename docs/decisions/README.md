@@ -17,4 +17,5 @@ Aturan:
 | 0007 | [Struktur monorepo, Next.js + worker terpisah, tanpa indexer dulu](0007-monorepo-structure-and-runtime.md) | Accepted |
 | 0008 | [Multi-provider LLM: adapter OpenAI-compatible, model per peran, fallback](0008-multi-provider-llm.md) | Sebagian di-supersede oleh [0009](0009-single-openai-compatible-gateway.md) |
 | 0009 | [Satu pintu LLM: gateway OpenAI-compatible tunggal (`LLM_API_URL` + `LLM_API_KEY`)](0009-single-openai-compatible-gateway.md) | Accepted |
+| 0010 | [Pilihan database lokal: PGlite (embedded Postgres) di samping Neon](0010-local-pglite-database-option.md) | Accepted |
 
