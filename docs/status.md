@@ -108,6 +108,9 @@
 
 ## Backlog / ide
 
+- **(Dikerjakan paling akhir, permintaan user 9 Okt 2026) `tahansoe setup` wizard:** input `LLM_API_URL` + `LLM_API_KEY` (tersembunyi) → tes `/models` → pilih model + estimasi biaya → simpan `settings.json`; pilih database & RPC; tutup dengan `doctor`. Secret hanya ke `.env` (gitignored), tidak pernah dicetak ulang.
+- **(Dikerjakan paling akhir) Pilihan database lokal:** `DB_DRIVER=pglite` (Postgres embedded, data di `apps/engine/.data/`, tanpa server/akun — skema & query Drizzle tetap sama) atau `DB_DRIVER=neon` (server, web dashboard, produksi). Dipilih PGlite, bukan SQLite, karena SQLite butuh tulis ulang skema/query (enum, jsonb, timestamptz, advisory lock). Butuh ADR baru (menyentuh ADR 0007 / `packages/db`).
+
 - EIP-7702 untuk smart account tanpa migrasi wallet
 - `repayWithATokens` sebagai opsi sumber dana tanpa modal idle
 - API risk score untuk partner B2B
