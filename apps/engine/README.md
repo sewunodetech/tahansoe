@@ -116,6 +116,18 @@ Semua script npm engine memuat file `.env` ini secara otomatis via flag Node/tsx
 
 > **PENTING:** Jangan pernah melakukan commit file `.env` atau mencetak secret / API key ke log console (invariant I8).
 
+### Pilihan Database (Neon vs PGlite — ADR 0010)
+
+Engine mendukung dua opsi driver database Postgres:
+1. **PGlite (embedded Postgres)**: Default untuk pemakaian CLI pribadi/offline tanpa akun database cloud. Data disimpan lokal di `PGLITE_DATA_DIR` (default `apps/engine/.data/pglite`). Migrasi skema berjalan otomatis pada pemakaian pertama. Single-instance worker dijaga via file lock lokal di direktori data.
+   ```env
+   DB_DRIVER=pglite
+   ```
+2. **Neon (Postgres serverless)**: Default jika `DATABASE_URL` diset. Dipakai untuk server, web dashboard multi-user, dan lingkungan produksi.
+   ```env
+   DATABASE_URL=postgresql://user:password@host/dbname
+   ```
+
 ### Konfigurasi LLM (satu gateway — ADR 0009)
 
 Engine memanggil LLM lewat **satu endpoint OpenAI-compatible**. Di `.env` cukup DUA secret:
@@ -209,7 +221,30 @@ npm run tahansoe -- schedule status         # lock + run terakhir dari DB
 
 Opsi global: `--json` (output mesin, hanya di stdout), `--no-color` (nonaktifkan ANSI; otomatis mati pada pipe/`NO_COLOR`/`TERM=dumb`). Exit code: `0` ok · `1` error · `2` konfigurasi salah (mis. `LLM_API_URL`/`LLM_API_KEY` belum diisi). Setiap kartu laporan diakhiri "not a trading signal"; CLI tidak pernah melakukan aksi on-chain dan tidak pernah mencetak secret.
 
-### 3.2 Menjaga scheduler tetap hidup (foreground)
+### 3.2 Mode Interaktif (REPL) & Tanya-Jawab Grounded (`ask`)
+
+Menjalankan `npm run tahansoe` (tanpa argumen) di terminal interaktif (TTY) membuka sesi REPL berbasis `node:readline` dan `picocolors`:
+
+```bash
+npm run tahansoe
+```
+
+Fitur sesi interaktif:
+- **Banner + Status baris:** menampilkan regime per aset terakhir, waktu UTC, dan jumlah sinyal aktif yang sedang termonitor.
+- **Slash Commands:** memanggil fungsi command yang ada in-process:
+  `/analyze [--dry]`, `/fuse`, `/carry`, `/history`, `/report [id|latest]`, `/settle`, `/scorecard`, `/models`, `/settings`, `/doctor`, `/status`, `/help`, `/clear`, `/exit`.
+  Lengkap dengan autocomplete Tab dan riwayat input in-memory (↑/↓).
+- **Penanganan Proses Latar:** `schedule run` tidak dijalankan di dalam REPL (proses jangka panjang; jalankan terpisah via `tahansoe schedule run`). REPL menampilkan petunjuk bila user mengetik `/schedule`.
+- **Grounded Q&A (Non-slash input):** dijawab model gateway (peran `chat` di `settings.json`, default sama dengan analyst) secara terstruktur dan grounded hanya dari data tersimpan (laporan riset 24h, assessment per aset, sinyal aktif terdeduplikasi, monitor carry Aave, harga & volatilitas, serta kalender makro).
+- **Aturan Non-Goals:** dilarang memberi prediksi harga, rekomendasi beli/jual, ranking yield, saran pindah aset, atau jaminan anti-likuidasi. Pertanyaan tersebut ditolak singkat disertai penjelasan risiko posisi yang relevan.
+- **Helper Scripting (`ask`):** untuk menjalankan tanya-jawab satu kali tanpa REPL (berguna untuk scripting dan CI):
+
+```bash
+npm run tahansoe -- ask "kenapa USDC ELEVATED?"
+npm run tahansoe -- ask "harus beli token apa biar untung?" --json
+```
+
+### 3.3 Menjaga scheduler tetap hidup (foreground)
 
 `tahansoe schedule run` berjalan di foreground (spec §7). Untuk produksi, jaga agar tetap hidup lewat process manager:
 
@@ -231,7 +266,7 @@ Centang "Run whether user is logged on or not" dan "Restart on failure" (mis. ti
 
 Advisory lock Postgres memastikan hanya satu instance scheduler aktif; instance kedua keluar bersih. Ctrl+C / SIGTERM melepas lock sebelum keluar.
 
-### 3.3 Script npm (alias ke `tahansoe`)
+### 3.4 Script npm (alias ke `tahansoe`)
 
 | Perintah | Penjelasan |
 |----------|------------|

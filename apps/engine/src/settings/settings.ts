@@ -122,7 +122,7 @@ export function parseSettings(raw: string, path = "<memory>"): ParseResult {
 export function migrateV1toV2(v1: Record<string, unknown>, warnings: string[] = []): Settings {
   const rolesIn = (v1.roles ?? {}) as Record<string, unknown>;
   const roles: Settings["roles"] = {};
-  for (const role of ["analyst", "debate", "assessor", "reflector"] as const) {
+  for (const role of ["analyst", "debate", "assessor", "reflector", "chat"] as const) {
     const list = rolesIn[role];
     if (Array.isArray(list)) {
       const cleaned = list
@@ -173,7 +173,7 @@ export async function writeSettings(settings: Settings, path: string = settingsP
 // Resolver peran (dari settings v2). Tidak ada lagi provider di settings.
 // ---------------------------------------------------------------------------
 
-export type RoleName = "analyst" | "debate" | "assessor" | "reflector";
+export type RoleName = "analyst" | "debate" | "assessor" | "reflector" | "chat";
 
 /**
  * Daftar NAMA MODEL untuk sebuah peran dari settings (sudah tanpa awalan provider;

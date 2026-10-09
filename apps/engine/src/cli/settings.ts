@@ -20,8 +20,8 @@ import { loadSettings, writeSettings, settingsPath, settingsExamplePath, parseSe
 import { emptySettings, stripProviderPrefix, type Settings } from "../settings/schema.ts";
 import { gatewayConfig, isGatewayConfigured } from "../llm/registry.ts";
 
-type Role = "analyst" | "debate" | "assessor" | "reflector";
-const ROLES: Role[] = ["analyst", "debate", "assessor", "reflector"];
+type Role = "analyst" | "debate" | "assessor" | "reflector" | "chat";
+const ROLES: Role[] = ["analyst", "debate", "assessor", "reflector", "chat"];
 
 /** Terapkan `set <path> <value>` pada objek settings (salinan). Pure. */
 export function applyGenericSet(settings: Settings, path: string, rawValue: string): Settings {
@@ -111,7 +111,7 @@ export async function settingsMain(argv: string[]): Promise<void> {
     const role = argv[1] as Role;
     const spec = argv[2];
     if (!ROLES.includes(role) || !spec) {
-      console.error("pakai: set-role <analyst|debate|assessor|reflector> <model[,model]>");
+      console.error("pakai: set-role <analyst|debate|assessor|reflector|chat> <model[,model]>");
       process.exitCode = 1;
       return;
     }

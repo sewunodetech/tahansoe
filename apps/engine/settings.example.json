@@ -16,6 +16,10 @@
     "reflector": [
       "gpt-6-luna",
       "deepseek-v4-flash"
+    ],
+    "chat": [
+      "gpt-6-luna",
+      "deepseek-v4-flash"
     ]
   },
   "pricingUrl": "https://router.bynara.id/api/pricing",

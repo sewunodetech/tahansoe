@@ -22,6 +22,7 @@ const COMMANDS = [
   ["settle", "Settle due research reports (ADR 0005)"],
   ["scorecard", "Research-agent accuracy scorecard"],
   ["carry", "Aave V3 carry & interest-rate risk monitor"],
+  ["ask", "Ask grounded risk research question (non-interactive)"],
   ["doctor", "Check env & connectivity"],
 ] as const;
 
@@ -88,6 +89,11 @@ export async function main(argv: string[]): Promise<number> {
   const rest = argv.slice(1);
 
   if (!cmd) {
+    if (Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY)) {
+      const { startRepl } = await import("./repl/repl.ts");
+      await startRepl();
+      return EXIT_OK;
+    }
     await quickStatus();
     return EXIT_OK;
   }
@@ -144,6 +150,10 @@ export async function main(argv: string[]): Promise<number> {
     case "carry": {
       const { carryCommand } = await import("./commands/carry.ts");
       return carryCommand(rest);
+    }
+    case "ask": {
+      const { askCommand } = await import("./commands/ask.ts");
+      return askCommand(rest);
     }
     default:
       process.stderr.write(`perintah tidak dikenal: ${cmd}\n\n${TOP_HELP}\n`);

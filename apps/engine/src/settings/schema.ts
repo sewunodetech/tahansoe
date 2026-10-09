@@ -29,6 +29,7 @@ export const rolesSchema = z
     debate: roleListSchema.optional(),
     assessor: roleListSchema.optional(),
     reflector: roleListSchema.optional(),
+    chat: roleListSchema.optional(),
   })
   .strict();
 

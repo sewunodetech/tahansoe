@@ -16,7 +16,7 @@ import { env } from "../config.ts";
 import { loadSettingsSync, resolveRoleSpecList } from "../settings/settings.ts";
 import { stripProviderPrefix } from "../settings/schema.ts";
 
-export type Role = "analyst" | "debate" | "assessor" | "reflector";
+export type Role = "analyst" | "debate" | "assessor" | "reflector" | "chat";
 
 /** Satu entri pilihan: nama model (di gateway tunggal). */
 export interface RoleEntry {
@@ -66,6 +66,7 @@ export function gatewayError(): string {
  * contoh Bynara (lihat settings.example.json); user menimpanya via `research`.
  */
 export function defaultSpecFor(role: Role): RoleEntry[] {
+  if (role === "chat") return defaultSpecFor("analyst");
   const models = role === "assessor" ? ["deepseek-v4.1-flash", "agnes-2.5-flash"] : ["agnes-2.5-flash"];
   return models.map((model) => ({ model }));
 }
@@ -89,6 +90,11 @@ export function resolveRole(role: Role): RoleEntry[] {
   const { settings } = loadSettingsSync();
   const list = resolveRoleSpecList(role, settings);
   if (list && list.length > 0) return parseRoleSpec(list);
+  if (role === "chat") {
+    const analystList = resolveRoleSpecList("analyst", settings);
+    if (analystList && analystList.length > 0) return parseRoleSpec(analystList);
+    return defaultSpecFor("analyst");
+  }
   return defaultSpecFor(role);
 }
 
