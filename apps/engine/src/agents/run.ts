@@ -1,0 +1,603 @@
+/**
+ * Orkestrasi satu research run (spec §3.2, ADR 0004).
+ *
+ * Alur (urutan & guard WAJIB sesuai spec):
+ *   kill switch / budget → buildContext → 4 analyst paralel →
+ *   (≥3 sukses) → debat → pilih lessons → assessor → simpan → emit Signal.
+ *
+ * MODE DRY (`--dry`): tanpa DB. saveReport & emitSignal menulis file ke
+ * apps/engine/out/<ISO>/{report.json,analysts.json,debate.json,report.md}.
+ * MODE FAKE (`--fake`): memakai FakeProvider (tanpa API) untuk end-to-end lokal.
+ *
+ * Jika kill switch mati, budget habis, < 3 analyst sukses, atau assessor null:
+ * TIDAK ada report & TIDAK ada sinyal; fusion tetap jalan (invariant I6).
+ */
+
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { dirname } from "node:path";
+
+import type { LlmProvider } from "../llm/provider.ts";
+import { isNonRetryableStatus } from "../llm/provider.ts";
+import { routerForRole } from "../llm/registry.ts";
+import { budget as defaultBudget, type Budget } from "../llm/budget.ts";
+import { env, config, type ResearchTrigger } from "../config.ts";
+import { ANALYSTS, runAnalyst, type AnalystOutcome } from "./analysts.ts";
+import { runDebate, type DebateResult } from "./debate.ts";
+import { runAssessor, type AssessorOutcome } from "./assessor.ts";
+import { toSignal } from "./to-signal.ts";
+import { buildContext } from "./context.ts";
+import type { ResearchInputCollector, ResearchContext } from "./context.ts";
+import { selectLessons } from "../reflection/lessons.ts";
+import type { AnalystReport, ResearchReport, ResearchSignal } from "./schemas.ts";
+
+export interface RunParams {
+  trigger: ResearchTrigger;
+  chainId: number;
+  assets: string[];
+  /**
+   * Provider tunggal untuk SEMUA peran (dipakai test & mode --fake). Bila tidak
+   * diberikan, provider dipilih per peran dari env/default via router (ADR 0008).
+   */
+  provider?: LlmProvider;
+  budget?: Budget;
+  /** MODE DRY: jangan sentuh DB; tulis hasil ke file. */
+  dry?: boolean;
+  /** Direktori output untuk mode dry (default: apps/engine/out/<ISO>). */
+  outDir?: string;
+  /**
+   * Pengumpul input dapat di-inject (default: collectResearchInputs via buildContext).
+   * Test & mode --fake memakai collector fixture agar tidak menyentuh jaringan.
+   */
+  collector?: ResearchInputCollector;
+  /**
+   * Hook progres opsional (CLI/worker) — dipanggil di batas tahap pipeline.
+   * TIDAK mengubah perilaku pipeline; default no-op. JANGAN memuat secret.
+   */
+  onProgress?: (event: ProgressEvent) => void;
+}
+
+/** Tahap pipeline untuk event progres. */
+export type ProgressStage = "sources" | "analysts" | "debate" | "lessons" | "assessor" | "save";
+
+/** Event progres dari runResearch (spec m3-cli §3.4). Deterministik; tanpa secret. */
+export type ProgressEvent =
+  | { type: "stage_start"; stage: ProgressStage; label?: string }
+  | { type: "stage_done"; stage: ProgressStage; ms: number; detail?: string }
+  | { type: "analyst_done"; domain: string; ok: boolean; ms: number; usedModel?: string; reason?: string }
+  | { type: "error"; stage: ProgressStage; message: string };
+
+export interface RunResult {
+  report: ResearchReport | null;
+  /** Direktori output bila mode dry menulis file. */
+  outDir?: string;
+  /**
+   * Alasan run menghasilkan null (kill switch / budget / analyst gagal / assessor
+   * gagal). Kosong bila sukses. JANGAN memuat secret (API key tidak pernah dicetak).
+   */
+  reason?: string;
+  /** Diagnostik per peran + usage + durasi (audit G7). */
+  diagnostics?: RunDiagnostics;
+  /** Id baris research_reports yang tersimpan (hanya mode non-dry). */
+  reportId?: string;
+  /** Id baris signals yang tersimpan (hanya mode non-dry). */
+  signalId?: string;
+}
+
+/** Diagnostik satu peran LLM (audit G7). */
+export interface RoleDiag {
+  role: string; // analyst:geopolitics | hawk | dove | assessor | ...
+  ok: boolean;
+  usedModel?: string;
+  reason?: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** Diagnostik satu run: per peran, total token, durasi. */
+export interface RunDiagnostics {
+  roles: RoleDiag[];
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  durationMs: number;
+}
+
+function buildDiagnostics(args: {
+  startedAtMs: number;
+  analystOutcomes: AnalystOutcome[];
+  debate?: DebateResult;
+  assessor?: AssessorOutcome;
+}): RunDiagnostics {
+  const roles: RoleDiag[] = [];
+  for (const o of args.analystOutcomes) {
+    roles.push({
+      role: `analyst:${o.domain.toLowerCase()}`,
+      ok: o.report !== null,
+      usedModel: o.usedModel,
+      reason: o.report === null ? o.reason : undefined,
+      inputTokens: o.usage?.inputTokens ?? 0,
+      outputTokens: o.usage?.outputTokens ?? 0,
+    });
+  }
+  if (args.debate) {
+    for (const d of args.debate.diagnostics) {
+      roles.push({
+        role: d.side,
+        ok: d.ok,
+        usedModel: d.usedModel,
+        reason: d.ok ? undefined : d.reason,
+        inputTokens: d.usage?.inputTokens ?? 0,
+        outputTokens: d.usage?.outputTokens ?? 0,
+      });
+    }
+  }
+  if (args.assessor) {
+    roles.push({
+      role: "assessor",
+      ok: args.assessor.report !== null,
+      usedModel: args.assessor.usedModel,
+      reason: args.assessor.report === null ? args.assessor.reason : undefined,
+      inputTokens: args.assessor.usage?.inputTokens ?? 0,
+      outputTokens: args.assessor.usage?.outputTokens ?? 0,
+    });
+  }
+  const totalInputTokens = roles.reduce((s, r) => s + r.inputTokens, 0);
+  const totalOutputTokens = roles.reduce((s, r) => s + r.outputTokens, 0);
+  return {
+    roles,
+    totalInputTokens,
+    totalOutputTokens,
+    durationMs: Date.now() - args.startedAtMs,
+  };
+}
+
+/**
+ * Jalankan satu run. Mengembalikan report (atau null bila di-skip/gagal) dan,
+ * untuk mode dry, direktori output yang ditulis.
+ */
+export async function runResearch(params: RunParams): Promise<RunResult> {
+  const { trigger, chainId, assets, dry, collector } = params;
+  const budget = params.budget ?? defaultBudget;
+  const startedAtMs = Date.now();
+
+  // Emitter progres aman: tidak pernah melempar (hook jahat tidak boleh menjatuhkan run).
+  const emit = (event: ProgressEvent): void => {
+    try {
+      params.onProgress?.(event);
+    } catch {
+      /* abaikan error hook */
+    }
+  };
+
+  // Guard 1: kill switch & budget. Mode dry melewati kill switch (dijalankan
+  // manual oleh dev), tetapi tetap menghormati budget.
+  if (!dry && !env.researchEnabled()) {
+    return { report: null, reason: "RESEARCH_ENABLED=false (kill switch aktif)" };
+  }
+  if (budget.exceeded()) {
+    return {
+      report: null,
+      reason: `budget harian habis (terpakai $${budget.spentToday().toFixed(4)})`,
+    };
+  }
+
+  // Provider per peran: jika params.provider diberikan (test/--fake), pakai untuk
+  // semua peran; selain itu bangun router dari env/default (ADR 0008).
+  // Untuk run NYATA (tanpa provider inject), muat harga model gateway ke budget
+  // dari sumber yang sama dengan picker (settings.modelPrices → pricingUrl) agar
+  // costOf tidak jatuh ke fallback konservatif (cli-fix §2).
+  if (!params.provider) {
+    const { bootstrapBudgetPricing } = await import("../llm/pricing-bootstrap.ts");
+    await bootstrapBudgetPricing().catch(() => 0);
+  }
+  const analystProvider = params.provider ?? routerForRole("analyst", budget);
+  const debateProvider = params.provider ?? routerForRole("debate", budget);
+  const assessorProvider = params.provider ?? routerForRole("assessor", budget);
+
+  const sourcesStart = Date.now();
+  emit({ type: "stage_start", stage: "sources", label: "Collecting inputs" });
+  const ctx = await buildContext({ chainId, assets, dry, collector });
+  emit({ type: "stage_done", stage: "sources", ms: Date.now() - sourcesStart });
+
+  // Jalankan 4 analyst SECARA PARALEL (limit konkurensi = 4; mereka independen).
+  // Satu gagal tidak membatalkan yang lain. Setelah settle, GUARD fail-fast tetap
+  // berlaku: jika analyst pertama gagal non-retryable (400/401/403 — auth/kredit),
+  // error itu pasti terulang di peran lain, jadi hentikan run (tanpa memanggil
+  // debate/assessor). (cli-polish §5: analis konkuren; semantik pipeline tetap.)
+  const analystsStart = Date.now();
+  emit({ type: "stage_start", stage: "analysts", label: "Running analysts" });
+  const settled = await Promise.allSettled(
+    ANALYSTS.map(async (domain) => {
+      const s = Date.now();
+      const outcome = await runAnalyst(analystProvider, domain, ctx);
+      emit({
+        type: "analyst_done",
+        domain: domain.toLowerCase(),
+        ok: outcome.report !== null,
+        ms: Date.now() - s,
+        usedModel: outcome.usedModel,
+        reason: outcome.report === null ? outcome.reason : undefined,
+      });
+      return outcome;
+    }),
+  );
+  const outcomes: AnalystOutcome[] = [];
+  for (const r of settled) {
+    if (r.status === "fulfilled") outcomes.push(r.value);
+    // Promise ditolak (bug tak terduga) diabaikan di penghitungan sukses.
+  }
+  emit({ type: "stage_done", stage: "analysts", ms: Date.now() - analystsStart });
+
+  // GUARD fail-fast: analyst pertama (ANALYSTS[0]) gagal non-retryable → hentikan.
+  const first = outcomes.find((o) => o.domain === ANALYSTS[0]);
+  if (first && first.report === null && isNonRetryableStatus(first.status)) {
+    const reason =
+      `semua panggilan kemungkinan gagal: analyst ${ANALYSTS[0]!.toLowerCase()} ` +
+      `gagal dengan error non-retryable (${first.reason}). Menghentikan run lebih awal.`;
+    emit({ type: "error", stage: "analysts", message: reason });
+    return {
+      report: null,
+      reason,
+      diagnostics: buildDiagnostics({ startedAtMs, analystOutcomes: outcomes }),
+    };
+  }
+
+  const reports = outcomes.flatMap((o) => (o.report ? [o.report] : []));
+
+  // Guard 2: terlalu banyak gagal → jangan menilai (spec §3.2). Sertakan alasan
+  // per peran yang gagal (pesan error pertama), tanpa pernah mencetak API key.
+  if (reports.length < config.minAnalystsRequired) {
+    const failures = outcomes
+      .filter((o) => o.report === null)
+      .map((o) => `analyst ${o.domain.toLowerCase()}: ${o.reason ?? "unknown"}`);
+    const reason =
+      `hanya ${reports.length}/${ANALYSTS.length} analyst sukses ` +
+      `(butuh ${config.minAnalystsRequired}). Kegagalan: ${failures.join("; ")}`;
+    emit({ type: "error", stage: "analysts", message: reason });
+    return {
+      report: null,
+      reason,
+      diagnostics: buildDiagnostics({ startedAtMs, analystOutcomes: outcomes }),
+    };
+  }
+
+  const debateStart = Date.now();
+  emit({ type: "stage_start", stage: "debate", label: "Hawk vs Dove" });
+  const debate = await runDebate(debateProvider, reports, { rounds: config.debateRounds });
+  emit({ type: "stage_done", stage: "debate", ms: Date.now() - debateStart });
+
+  const lessons = await selectLessons(reports).catch(() => []);
+
+  const assessorStart = Date.now();
+  emit({ type: "stage_start", stage: "assessor", label: "Risk assessor" });
+  const assessorOutcome = await runAssessor(assessorProvider, { ctx, reports, debate, lessons });
+  emit({
+    type: "stage_done",
+    stage: "assessor",
+    ms: Date.now() - assessorStart,
+    detail: assessorOutcome.usedModel,
+  });
+  const report = assessorOutcome.report;
+
+  // Rakit diagnostik run (audit G7): status per peran, model terpakai, usage, durasi.
+  const diagnostics = buildDiagnostics({
+    startedAtMs,
+    analystOutcomes: outcomes,
+    debate,
+    assessor: assessorOutcome,
+  });
+
+  // Guard 3: assessor gagal (refusal/schema) → tidak ada sinyal.
+  if (!report) {
+    emit({ type: "error", stage: "assessor", message: assessorOutcome.reason ?? "unknown" });
+    return {
+      report: null,
+      reason: `risk assessor gagal: ${assessorOutcome.reason ?? "unknown"}`,
+      diagnostics,
+    };
+  }
+
+  const signal = toSignal(report);
+
+  // Peta peran → model terpakai (dari diagnostics) untuk kolom models.
+  const models: Record<string, string> = {};
+  for (const r of diagnostics.roles) if (r.usedModel) models[r.role] = r.usedModel;
+
+  // NON-DRY: simpan ke DB (research_reports + signals) dulu, lalu tetap tulis file.
+  const saveStart = Date.now();
+  emit({ type: "stage_start", stage: "save", label: dry ? "Writing report (dry)" : "Saving to DB" });
+  let reportId: string | undefined;
+  let signalId: string | undefined;
+  if (!dry) {
+    const { saveResearch } = await import("../db/store.ts");
+    const saved = await saveResearch({
+      trigger,
+      chainId,
+      report,
+      analystReports: reports,
+      debate,
+      signal,
+      diagnostics,
+      models,
+    });
+    reportId = saved.reportId;
+    signalId = saved.signalId;
+  }
+
+  // Tulis salinan file ke out/ untuk dibaca manusia (dry MAUPUN non-dry).
+  const outDir = params.outDir ?? defaultOutDir();
+  await saveReportToFiles(outDir, {
+    trigger,
+    chainId,
+    report,
+    reports,
+    debate,
+    signal,
+    ctx,
+    diagnostics,
+  });
+
+  emit({ type: "stage_done", stage: "save", ms: Date.now() - saveStart, detail: reportId });
+  return { report, outDir, diagnostics, reportId, signalId };
+}
+
+/** apps/engine/out/<ISO-timestamp> dengan karakter aman untuk nama folder. */
+function defaultOutDir(now: Date = new Date()): string {
+  const here = dirname(fileURLToPath(import.meta.url)); // src/agents
+  const engineRoot = join(here, "..", ".."); // apps/engine
+  const stamp = now.toISOString().replace(/[:.]/g, "-");
+  return join(engineRoot, "out", stamp);
+}
+
+/**
+ * Ringkasan INPUT untuk audit (spec m3-research-agents, G7): dari mana analisis
+ * berasal dan sumber mana yang gagal/dilewati. Deterministik (urutan stabil).
+ */
+export interface InputsSummary {
+  /** Jumlah market/news event per category (mis. "geopolitics:BBC"). */
+  marketEventsByCategory: Record<string, number>;
+  /** Jumlah signal per module (ORACLE/ONCHAIN/MACRO/...). */
+  signalsByModule: Record<string, number>;
+  /** Catatan chain (mis. USDC capped, no sentinel). */
+  chainNotes: string[];
+  /** Sumber yang gagal / dilewati (mis. "FRED: FRED_API_KEY tidak dikonfigurasi"). */
+  warnings: string[];
+}
+
+/** Hitung ringkasan input dari konteks (counts per category/module, catatan, warnings). */
+export function summarizeInputs(ctx: ResearchContext): InputsSummary {
+  const marketEventsByCategory: Record<string, number> = {};
+  for (const e of ctx.marketEvents) {
+    marketEventsByCategory[e.category] = (marketEventsByCategory[e.category] ?? 0) + 1;
+  }
+  const signalsByModule: Record<string, number> = {};
+  for (const s of ctx.signals) {
+    signalsByModule[s.module] = (signalsByModule[s.module] ?? 0) + 1;
+  }
+  return {
+    marketEventsByCategory: sortRecord(marketEventsByCategory),
+    signalsByModule: sortRecord(signalsByModule),
+    chainNotes: [...ctx.chainNotes].sort(),
+    warnings: [...ctx.warnings].sort(),
+  };
+}
+
+/** Record dengan kunci terurut (output deterministik). */
+function sortRecord(rec: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const k of Object.keys(rec).sort()) out[k] = rec[k]!;
+  return out;
+}
+
+/** Tulis 4 file hasil run ke outDir (mode dry). */
+async function saveReportToFiles(
+  outDir: string,
+  args: {
+    trigger: ResearchTrigger;
+    chainId: number;
+    report: ResearchReport;
+    reports: AnalystReport[];
+    debate: DebateResult;
+    signal: ResearchSignal;
+    ctx: ResearchContext;
+    diagnostics: RunDiagnostics;
+  },
+): Promise<void> {
+  await mkdir(outDir, { recursive: true });
+  const inputs = summarizeInputs(args.ctx);
+  await Promise.all([
+    writeFile(
+      join(outDir, "report.json"),
+      JSON.stringify(
+        {
+          trigger: args.trigger,
+          chainId: args.chainId,
+          report: args.report,
+          signal: args.signal,
+          inputs,
+          diagnostics: args.diagnostics,
+        },
+        null,
+        2,
+      ),
+    ),
+    writeFile(join(outDir, "analysts.json"), JSON.stringify(args.reports, null, 2)),
+    writeFile(join(outDir, "debate.json"), JSON.stringify(args.debate, null, 2)),
+    writeFile(
+      join(outDir, "report.md"),
+      renderReportMarkdown(args.report, args.signal, inputs, args.diagnostics),
+    ),
+  ]);
+}
+
+/** Ringkasan report yang bisa dibaca manusia (English). */
+export function renderReportMarkdown(
+  report: ResearchReport,
+  signal: ResearchSignal,
+  inputs?: InputsSummary,
+  diagnostics?: RunDiagnostics,
+): string {
+  const lines: string[] = [];
+  lines.push(`# Research Report`);
+  lines.push("");
+  lines.push(`- Assets: ${report.assets.join(", ")}`);
+  lines.push(`- Proposed regime: **${report.proposedRegime}**`);
+  lines.push(`- Direction: ${report.direction}`);
+  lines.push(`- Confidence: ${report.confidence.toFixed(2)} (signal capped at ${signal.confidence.toFixed(2)})`);
+  lines.push(`- Horizon: ${report.horizonHours}h`);
+  lines.push(`- Emitted signal severity: ${signal.severity.toFixed(2)}`);
+
+  lines.push("");
+  lines.push(`## Transmission paths`);
+  if (report.paths.length === 0) lines.push("(none)");
+  else
+    for (const p of [...report.paths].sort((a, b) => b.severity - a.severity)) {
+      lines.push(`- **${p.path}** (severity ${p.severity.toFixed(2)}): ${p.rationale}`);
+    }
+
+  lines.push("");
+  lines.push(`## Key developments`);
+  if (report.keyDevelopments.length === 0) lines.push("(none)");
+  else
+    for (const d of report.keyDevelopments) {
+      lines.push(`- ${d.summary}`);
+      for (const e of d.evidence) lines.push(`  - evidence (${e.source}): ${e.summary}`);
+    }
+
+  lines.push("");
+  lines.push(`## Hawk vs Dove`);
+  lines.push(`**Hawk:** ${report.hawkCase}`);
+  lines.push("");
+  lines.push(`**Dove:** ${report.doveCase}`);
+
+  if (inputs) {
+    lines.push("");
+    lines.push(`## Inputs`);
+    lines.push("");
+    lines.push(`### Market / news events by category`);
+    const cats = Object.entries(inputs.marketEventsByCategory);
+    if (cats.length === 0) lines.push("(none)");
+    else for (const [cat, n] of cats) lines.push(`- ${cat}: ${n}`);
+
+    lines.push("");
+    lines.push(`### Signals by module`);
+    const mods = Object.entries(inputs.signalsByModule);
+    if (mods.length === 0) lines.push("(none)");
+    else for (const [mod, n] of mods) lines.push(`- ${mod}: ${n}`);
+
+    lines.push("");
+    lines.push(`### Chain notes`);
+    if (inputs.chainNotes.length === 0) lines.push("(none)");
+    else for (const n of inputs.chainNotes) lines.push(`- ${n}`);
+
+    lines.push("");
+    lines.push(`### Source warnings (skipped / failed)`);
+    if (inputs.warnings.length === 0) lines.push("(none)");
+    else for (const w of inputs.warnings) lines.push(`- ${w}`);
+  }
+
+  if (diagnostics) {
+    lines.push("");
+    lines.push(`## Run diagnostics`);
+    lines.push("");
+    lines.push(`- Duration: ${(diagnostics.durationMs / 1000).toFixed(1)}s`);
+    lines.push(
+      `- Total tokens: ${diagnostics.totalInputTokens} in / ${diagnostics.totalOutputTokens} out`,
+    );
+    lines.push("");
+    lines.push(`| Role | Status | Model used | Tokens (in/out) | Reason |`);
+    lines.push(`|------|--------|------------|-----------------|--------|`);
+    for (const r of diagnostics.roles) {
+      const status = r.ok ? "ok" : "FAILED";
+      const model = r.usedModel ?? "-";
+      const toks = `${r.inputTokens}/${r.outputTokens}`;
+      const reason = r.reason ? r.reason.replace(/\|/g, "/").slice(0, 160) : "-";
+      lines.push(`| ${r.role} | ${status} | ${model} | ${toks} | ${reason} |`);
+    }
+  }
+
+  return lines.join("\n") + "\n";
+}
+
+// ---------------------------------------------------------------------------
+// CLI: `tsx src/agents/run.ts --dry [--fake]`
+// ---------------------------------------------------------------------------
+
+async function main(argv: string[]): Promise<void> {
+  // Catatan: saat dijalankan via `npm run ... -- --fake`, npm bisa "menelan"
+  // flag tak dikenal menjadi env `npm_config_fake`. Dukung keduanya.
+  const dry = argv.includes("--dry") || process.env.npm_config_dry === "true";
+  const fake = argv.includes("--fake") || process.env.npm_config_fake === "true";
+  // Secara default --fake juga memakai sumber fixture (offline). Pakai
+  // --live-sources untuk fake LLM + sumber data LIVE (menyentuh jaringan).
+  const liveSources =
+    argv.includes("--live-sources") || process.env.npm_config_live_sources === "true";
+
+  let provider: LlmProvider | undefined;
+  let collector: ResearchInputCollector | undefined;
+  if (fake) {
+    provider = await makeFakeProvider();
+    // --fake default offline (fixture collector); --live-sources untuk sumber live.
+    if (!liveSources) {
+      const { fixtureCollector } = await import("../../test/fixtures/research-fixtures.ts");
+      collector = fixtureCollector;
+    }
+  } else {
+    // Model dipilih per peran via router di gateway tunggal (ADR 0009). Log
+    // ketersediaan gateway (tanpa nilai key) untuk diagnosa.
+    const { providerAvailability, resolveRole } = await import("../llm/registry.ts");
+    console.error(`[engine] mode: ${dry ? "DRY (tanpa DB)" : "NON-DRY (simpan ke DB)"}`);
+    console.error(`[engine] gateway: ${JSON.stringify(providerAvailability())}`);
+    for (const role of ["analyst", "debate", "assessor", "reflector"] as const) {
+      const chain = resolveRole(role).map((e) => e.model).join(" → ");
+      console.error(`[engine] role ${role}: ${chain || "(none)"}`);
+    }
+  }
+
+  const result = await runResearch({
+    trigger: "SCHEDULED",
+    chainId: 42161,
+    assets: ["ETH", "USDC"],
+    provider,
+    collector,
+    dry,
+  });
+
+  if (!result.report) {
+    console.error(
+      `[engine] run menghasilkan null (skip/gagal). Alasan: ${result.reason ?? "tidak diketahui"}`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+  if (!dry) {
+    console.log(
+      `[engine] tersimpan ke DB — research_reports.id=${result.reportId} signals.id=${result.signalId}`,
+    );
+  }
+  console.log(
+    `[engine] run selesai (regime=${result.report.proposedRegime}). Output: ${result.outDir}`,
+  );
+}
+
+/**
+ * FakeProvider deterministik dari test/, untuk `--fake` (tanpa API).
+ * Diimpor secara dinamis agar kode produksi tidak bergantung pada folder test.
+ */
+async function makeFakeProvider(): Promise<LlmProvider> {
+  const { FakeProvider } = await import("../../test/fake-provider.ts");
+  const { fakeScript } = await import("../../test/fixtures/research-fixtures.ts");
+  return new FakeProvider(fakeScript(), undefined, "fake");
+}
+
+const invokedPath = process.argv[1];
+const isMain = invokedPath
+  ? import.meta.url === pathToFileURL(invokedPath).href
+  : false;
+if (isMain) {
+  main(process.argv.slice(2)).catch((err) => {
+    console.error("[engine] run gagal:", err);
+    process.exitCode = 1;
+  });
+}

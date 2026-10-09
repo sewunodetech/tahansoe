@@ -1,0 +1,6 @@
+node_modules/
+.env
+*.tsbuildinfo
+out/
+.cache/
+settings.json

@@ -1,0 +1,58 @@
+# CI (ADR 0007). Satu install npm workspaces untuk apps/* (web, engine) dan packages/*.
+name: CI
+
+on:
+  push:
+    branches: [master, core-dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workspaces:
+    name: Workspaces (typecheck + test + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # Koneksi DB lazy: build tidak butuh DATABASE_URL.
+      - name: Build web
+        run: npm run build
+
+  lint:
+    name: Web lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  contracts:
+    name: Contracts (forge test, tanpa fork)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: Install dependencies (lib/ di-gitignore)
+        run: forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts@v5.1.0 --no-git
+      - run: forge build
+      # Fork test butuh RPC Arbitrum Sepolia; dijalankan manual / job terpisah dengan secret.
+      - run: forge test --no-match-contract Fork -vv

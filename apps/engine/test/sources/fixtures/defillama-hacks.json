@@ -1,0 +1,50 @@
+[
+  {
+    "date": 1791288000,
+    "name": "DeFi Protocol Alpha",
+    "amount": 15000000,
+    "chain": ["Arbitrum"],
+    "classification": "Flash Loan Attack",
+    "technique": "Price Manipulation"
+  },
+  {
+    "date": 1790942400,
+    "name": "MegaBridge Network",
+    "amount": 65000000,
+    "chain": ["Ethereum", "Arbitrum"],
+    "classification": "Bridge Exploit",
+    "technique": "Validator Signature Compromise"
+  },
+  {
+    "date": 1791115200,
+    "name": "Unrelated Protocol Beta",
+    "amount": 300000,
+    "chain": ["Solana"],
+    "classification": "Logic Error",
+    "technique": "Improper Validation"
+  },
+  {
+    "date": 1791028800,
+    "name": "Tiny Protocol Gamma",
+    "amount": 25000,
+    "chain": ["Base"],
+    "classification": "Access Control",
+    "technique": "Missing modifier"
+  },
+  {
+    "date": 1791288000,
+    "name": "Tiny Arbitrum App",
+    "amount": 18000,
+    "chain": ["Arbitrum"],
+    "classification": "Oracle Deviation",
+    "technique": "Spot price manipulation"
+  },
+  {
+    "date": 1790164800,
+    "name": "Old Yield Vault",
+    "amount": 500000,
+    "chain": ["Arbitrum"],
+    "classification": "Reentrancy",
+    "technique": "Read-only reentrancy"
+  }
+]

@@ -1,0 +1,134 @@
+{
+  "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+  "verifiedAt": "2026-10-08",
+  "meetings": [
+    {
+      "year": 2026,
+      "month": 1,
+      "startDay": 27,
+      "endDay": 28,
+      "endDate": "2026-01-28",
+      "hasSep": false
+    },
+    {
+      "year": 2026,
+      "month": 3,
+      "startDay": 17,
+      "endDay": 18,
+      "endDate": "2026-03-18",
+      "hasSep": true
+    },
+    {
+      "year": 2026,
+      "month": 4,
+      "startDay": 28,
+      "endDay": 29,
+      "endDate": "2026-04-29",
+      "hasSep": false
+    },
+    {
+      "year": 2026,
+      "month": 6,
+      "startDay": 16,
+      "endDay": 17,
+      "endDate": "2026-06-17",
+      "hasSep": true
+    },
+    {
+      "year": 2026,
+      "month": 7,
+      "startDay": 28,
+      "endDay": 29,
+      "endDate": "2026-07-29",
+      "hasSep": false
+    },
+    {
+      "year": 2026,
+      "month": 9,
+      "startDay": 15,
+      "endDay": 16,
+      "endDate": "2026-09-16",
+      "hasSep": true
+    },
+    {
+      "year": 2026,
+      "month": 10,
+      "startDay": 27,
+      "endDay": 28,
+      "endDate": "2026-10-28",
+      "hasSep": false
+    },
+    {
+      "year": 2026,
+      "month": 12,
+      "startDay": 8,
+      "endDay": 9,
+      "endDate": "2026-12-09",
+      "hasSep": true
+    },
+    {
+      "year": 2027,
+      "month": 1,
+      "startDay": 26,
+      "endDay": 27,
+      "endDate": "2027-01-27",
+      "hasSep": false
+    },
+    {
+      "year": 2027,
+      "month": 3,
+      "startDay": 16,
+      "endDay": 17,
+      "endDate": "2027-03-17",
+      "hasSep": true
+    },
+    {
+      "year": 2027,
+      "month": 4,
+      "startDay": 27,
+      "endDay": 28,
+      "endDate": "2027-04-28",
+      "hasSep": false
+    },
+    {
+      "year": 2027,
+      "month": 6,
+      "startDay": 8,
+      "endDay": 9,
+      "endDate": "2027-06-09",
+      "hasSep": true
+    },
+    {
+      "year": 2027,
+      "month": 7,
+      "startDay": 27,
+      "endDay": 28,
+      "endDate": "2027-07-28",
+      "hasSep": false
+    },
+    {
+      "year": 2027,
+      "month": 9,
+      "startDay": 14,
+      "endDay": 15,
+      "endDate": "2027-09-15",
+      "hasSep": true
+    },
+    {
+      "year": 2027,
+      "month": 10,
+      "startDay": 26,
+      "endDay": 27,
+      "endDate": "2027-10-27",
+      "hasSep": false
+    },
+    {
+      "year": 2027,
+      "month": 12,
+      "startDay": 7,
+      "endDay": 8,
+      "endDate": "2027-12-08",
+      "hasSep": true
+    }
+  ]
+}

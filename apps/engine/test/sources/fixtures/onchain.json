@@ -1,0 +1,25 @@
+{
+  "wethAavePrice": "265000000000",
+  "usdcAavePrice": "100000000",
+  "ethChainlink": {
+    "roundId": "18446744073709551616",
+    "answer": "265250000000",
+    "startedAt": "1728390000",
+    "updatedAt": "1728390000",
+    "answeredInRound": "18446744073709551616"
+  },
+  "usdcChainlink": {
+    "roundId": "18446744073709551617",
+    "answer": "99980000",
+    "startedAt": "1728390000",
+    "updatedAt": "1728390000",
+    "answeredInRound": "18446744073709551617"
+  },
+  "sequencerFeed": {
+    "roundId": "1",
+    "answer": "0",
+    "startedAt": "1728000000",
+    "updatedAt": "1728000000",
+    "answeredInRound": "1"
+  }
+}

@@ -1,6 +1,6 @@
 # Tahansoe — Security Invariants & Threat Model
 
-**Last updated:** 7 Oktober 2026
+**Last updated:** 8 Oktober 2026
 
 Dokumen ini adalah prioritas tertinggi di antara semua dokumen proyek. Setiap perubahan di `contracts/`, `engine/`, keeper, auth, atau API yang menerima input eksternal wajib dicek terhadap dokumen ini.
 
@@ -53,6 +53,9 @@ Setiap fitur yang tidak bisa memenuhi semua invariant di atas **tidak boleh di-m
 | Halusinasi / klasifikasi salah | Clamp ke band, fallback statis, logging `drivers` + `modelVersion`, evaluasi lewat backtest |
 | Data basi | Setiap sinyal punya `expiresAt`, assessment punya `validUntil` |
 | Divergensi oracle | Sumber non-protokol hanya untuk peringatan dini (I5) |
+| Research agents terlalu yakin / berhalusinasi (ADR 0004) | Output hanya `Signal` dengan confidence ≤ 0.6; tidak bisa sendirian menaikkan regime ke `STRESSED`/`CRISIS`; agent tanpa tools |
+| Peracunan pelajaran reflection (ADR 0005) | Lesson diperlakukan sebagai data tak tepercaya (≤ 600 karakter, maksimal 5 per run); lesson tidak pernah mengubah aturan, prompt, atau konfigurasi |
+| Biaya LLM habis / refusal pada topik perang & exploit | Budget harian dengan hard stop; fallback model; jika gagal, jalur LLM berhenti dan modul deterministik tetap jalan (I6) |
 
 ### 2.4 Web app & API
 
@@ -74,6 +77,7 @@ Setiap fitur yang tidak bisa memenuhi semua invariant di atas **tidak boleh di-m
 | S3 | Proteksi `/dashboard` hanya di sisi client. Tambah pengecekan sesi di server/proxy saat dashboard mulai menampilkan data asli. | `hooks/useAuthGuard.ts` | Low (data saat ini simulasi) |
 | S4 | Alert dipicu dari browser — bukan isu keamanan langsung, tapi melanggar ekspektasi monitoring 24/7. Pindahkan ke engine. | `lib/simulation-engine.tsx` | High (produk) |
 | S5 | Kontrak belum diaudit. | `contracts/` | Gate sebelum mainnet |
+| S6 | Aave V3 di Arbitrum One **tidak** memasang PriceOracleSentinel (diverifikasi 8 Okt 2026): tidak ada grace period setelah sequencer pulih. Engine wajib menaikkan regime saat sequencer down, dan keeper harus siap memanggil `protect` di blok pertama setelah pulih. | `engine/` (rencana) | High (desain) |
 
 Perbarui tabel ini saat temuan diperbaiki atau ditemukan.
 

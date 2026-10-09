@@ -1,0 +1,17 @@
+# Normalisasi line ending (ADR 0007). Repo disimpan dengan LF; working copy
+# mengikuti OS. Menghilangkan diff "berubah semua" antar Windows/macOS/Linux.
+* text=auto
+
+# Skrip shell harus LF di semua OS.
+*.sh text eol=lf
+
+# Biner — jangan pernah dinormalisasi.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.gif binary
+*.woff binary
+*.woff2 binary
+*.mp4 binary

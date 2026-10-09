@@ -46,6 +46,7 @@ Detail lengkap di [`docs/security.md`](docs/security.md). Ringkasnya:
 | [`docs/decisions/`](docs/decisions/) | ADR — keputusan arsitektur beserta alasannya | Sebelum mengusulkan perubahan arah |
 | [`docs/specs/`](docs/specs/) | Spec per fitur | Sebelum dan selama implementasi fitur |
 | [`docs/glossary.md`](docs/glossary.md) | Istilah (HF, Intent, Regime, Band, dll.) | Saat ragu istilah |
+| [`docs/knowledge/`](docs/knowledge/) | Pengetahuan domain: jalur event → likuidasi, katalog event historis, alamat & catatan Arbitrum terverifikasi | Saat mendesain sinyal, fusion, research agents, atau backtest |
 | [`DESIGN.md`](DESIGN.md) | Design system UI (token, tipografi, komponen) | Setiap perubahan UI |
 | [`contracts/README.md`](contracts/README.md) | Kontrak, test, deploy, alamat | Setiap perubahan di `contracts/` |
 
@@ -60,12 +61,15 @@ Urutan prioritas jika dokumen bertentangan: **security.md > ADR terbaru > prd.md
 4. Mengubah arah arsitektur, chain, model keamanan, atau dependensi besar → tulis ADR baru di `docs/decisions/` dari `0000-template.md`. Jangan mengubah ADR lama yang sudah `Accepted`; buat ADR baru yang men-*supersede*.
 
 ### Selama mengerjakan
+- Bahasa: dokumen di `docs/` berbahasa Indonesia (lihat `docs/README.md`); **prompt LLM, instruksi inline ke model, dan deskripsi schema output berbahasa Inggris**.
 - Ikuti konvensi kode di sekitarnya. Web app: Next.js App Router (baca docs Next di `node_modules/next/dist/docs/` dulu). Kontrak: Foundry, Solidity 0.8.26, OpenZeppelin v5.
-- Engine baru tinggal di `engine/` (lihat `docs/architecture.md`), bukan di dalam `app/`.
+- Engine tinggal di `apps/engine/`, bukan di dalam `app/`. Kode bersama web & engine hanya lewat `packages/*` ([ADR 0007](docs/decisions/0007-monorepo-structure-and-runtime.md)); web dan engine tidak saling import.
+- Beberapa agent bisa bekerja di worktree yang sama. Sentuh hanya folder yang ditugaskan, jangan memindahkan folder di luar fase yang sedang berjalan, dan jangan commit kecuali diminta koordinator.
+- **Kesulitan? Minta bantuan, jangan berputar sendiri.** Jika satu masalah (error test, API, tooling, spec ambigu) belum terpecahkan setelah ~10 menit atau 3 percobaan berbeda, tanyakan ke koordinator: `orca orchestration ask` untuk pertanyaan yang memblokir, atau pesan `--type escalation` jika task tidak bisa diselesaikan. Sertakan masalah, apa yang sudah dicoba, dan opsi yang dipertimbangkan.
 - Jangan menambah fitur di luar scope tugas. Catat ide tambahan di `docs/status.md` → "Backlog/ide".
 
 ### Sebelum selesai (Definition of Done)
-- [ ] `npm run lint` bersih untuk perubahan web/engine; `forge test` hijau untuk perubahan kontrak.
+- [ ] `npm run typecheck` + `npm test` hijau; `npm run lint` tidak menambah error baru; `forge test` hijau untuk perubahan kontrak.
 - [ ] Tidak ada invariant di §2 yang dilanggar (cek ulang diff secara adversarial).
 - [ ] `docs/status.md` diperbarui (apa yang selesai, gap baru).
 - [ ] Checkbox milestone di `docs/prd.md` §10 diperbarui jika ada yang selesai.
@@ -86,12 +90,14 @@ Urutan prioritas jika dokumen bertentangan: **security.md > ADR terbaru > prd.md
 ## 6. Perintah
 
 ```bash
-# Web app
+# Web app + packages (npm workspaces, jalankan dari root)
 npm install
-npm run dev            # http://localhost:3000
+npm run dev            # http://localhost:3000 (apps/web)
 npm run lint
+npm run typecheck      # semua workspace
+npm test               # semua workspace
 npm run build
-npx tsx scripts/migrate.ts   # setup DB (idempotent)
+npm run db:migrate     # setup DB (idempotent), env dari apps/web/.env
 
 # Kontrak
 cd contracts

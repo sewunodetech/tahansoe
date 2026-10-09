@@ -1,0 +1,45 @@
+{
+  "name": "@tahansoe/engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Core Risk Engine — research agents (multi-agent) + reflection loop. Lihat docs/specs/m3-research-agents.md.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --test test/all.test.ts",
+    "tahansoe": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts",
+    "research": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts analyze",
+    "settings": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts settings",
+    "models": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts models",
+    "research:pick": "tsx --env-file-if-exists=.env src/cli/research.ts",
+    "research:run": "tsx --env-file-if-exists=.env src/index.ts",
+    "research:dry": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts analyze --dry",
+    "research:once": "tsx --env-file-if-exists=.env src/agents/run.ts",
+    "research:worker": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts schedule run",
+    "worker:price": "tsx --env-file-if-exists=.env src/worker/price-worker.ts",
+    "research:history": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts history",
+    "eval": "tsx --env-file-if-exists=.env src/eval/runner.ts",
+    "doctor": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts doctor",
+    "settle": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts settle",
+    "scorecard": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts scorecard",
+    "reflect:settle": "tsx --env-file-if-exists=.env src/reflection/settle.ts",
+    "reflect:daily": "tsx --env-file-if-exists=.env src/reflection/reflect.ts"
+  },
+  "bin": {
+    "tahansoe": "./bin/tahansoe.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1",
+    "@clack/prompts": "^0.11.0",
+    "@tahansoe/db": "*",
+    "@tahansoe/domain": "*",
+    "picocolors": "^1.1.1",
+    "viem": "^2.55.19",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.20.6",
+    "typescript": "^5"
+  }
+}

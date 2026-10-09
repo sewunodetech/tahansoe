@@ -23,3 +23,13 @@
 | **Sequencer uptime feed** | Feed Chainlink di L2 yang menandai apakah sequencer sedang down. |
 | **Dry-run** | Menjalankan engine/rule tanpa mengirim transaksi; hanya mencatat dan menampilkan rekomendasi. |
 | **Chain registry** | Konfigurasi terpusat untuk semua hal spesifik chain (RPC, alamat, feeds). |
+| **Transmission path (T1–T10)** | Jalur bagaimana event dunia nyata berujung likuidasi: harga, volatilitas, leverage cascade, depeg stablecoin, depeg LST, gas, likuiditas reserve, oracle, insiden protokol, sequencer. Lihat [knowledge](knowledge/risk-transmission.md). |
+| **Research agents** | Lapis multi-agent di engine: analyst paralel → debat Hawk/Dove → Risk Assessor. Output-nya satu `Signal` `RESEARCH` ([ADR 0004](decisions/0004-multi-agent-research-layer.md)). |
+| **Hawk / Dove** | Dua agent debat: Hawk berargumen risiko naik, Dove berargumen sinyal hanya noise atau sudah ter-price-in. |
+| **Risk Assessor** | Agent yang menyimpulkan laporan analyst dan debat menjadi `ResearchReport`. Tidak memutuskan regime final; itu tugas fusion. |
+| **ResearchReport** | Output terstruktur research agents: proposed regime, jalur yang dinilai, perkembangan kunci, argumen Hawk/Dove, confidence, horizon. |
+| **Settlement** | Pelabelan penilaian risiko setelah horizonnya: `TRUE_POSITIVE`, `FALSE_POSITIVE`, `MISSED`, `TRUE_NEGATIVE`, plus lead time ([ADR 0005](decisions/0005-reflection-loop.md)). |
+| **Lesson (reflection)** | Pelajaran singkat dari settlement yang disisipkan sebagai konteks ke Risk Assessor. Tidak pernah mengubah aturan. |
+| **Lead time** | Selisih waktu antara regime pertama kali ≥ `STRESSED` dan titik terburuk sebuah event. |
+| **Shadow mode** | Engine jalan live, tetapi hasilnya hanya terlihat oleh tim; tahap pertama sebelum berdampak ke user. |
+| **Drop tolerance** | Penurunan harga collateral yang bisa ditahan sebelum HF = 1: `1 − 1/HF`. Bahasa yang dipakai untuk menjelaskan risiko ke user. |

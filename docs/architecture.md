@@ -1,6 +1,6 @@
 # Tahansoe — Architecture
 
-**Last updated:** 7 Oktober 2026
+**Last updated:** 8 Oktober 2026
 **Dokumen terkait:** [PRD](prd.md) · [Security](security.md) · [ADR](decisions/)
 
 Dokumen ini menjelaskan *bagaimana* sistem dibangun. Bagian bertanda **(rencana)** belum ada di kode; detail finalnya dikunci di spec masing-masing di `docs/specs/`.
@@ -33,14 +33,17 @@ Dokumen ini menjelaskan *bagaimana* sistem dibangun. Bagian bertanda **(rencana)
 | Web app (landing, dashboard, API) | `app/`, `components/`, `hooks/`, `lib/` | Ada; dashboard masih memakai simulasi |
 | Auth (SIWE + iron-session) | `app/api/auth/`, `lib/session.ts` | Ada |
 | Telegram (link, webhook, alert) | `app/api/telegram/`, `app/api/alerts/` | Ada; alert dipicu dari browser |
-| Database | `lib/schema.ts`, `scripts/migrate.ts` | Ada; sebagian tabel belum dipakai |
+| Database | `packages/db/src/schema.ts`, `packages/db/scripts/migrate.ts` | Ada; sebagian tabel belum dipakai |
 | Guardian v1 | `contracts/src/TahansoeGuardian.sol` | Live di Arbitrum Sepolia |
-| Core Risk Engine | `engine/` | **(rencana)** — fokus branch `core-dev` |
+| Core Risk Engine | `apps/engine/` (workspace `@tahansoe/engine`, ADR 0007) | Research layer (boilerplate) sedang dibangun; modul M2 **(rencana)** |
 | Keeper | `engine/src/keeper/` | **(rencana)** |
+| Paket bersama | `packages/domain/` (tipe, chain registry, rumus HF), `packages/db/` (skema Drizzle tunggal + script DB) | Ada — ADR 0007 |
 
 ---
 
 ## 2. Struktur repo
+
+> **Struktur repo ([ADR 0007](decisions/0007-monorepo-structure-and-runtime.md)):** npm workspaces. Sudah jalan: `apps/web` (Next.js), `packages/db` (skema & koneksi tunggal), `packages/domain` (tipe, chain registry, rumus HF). `apps/engine` (Core Risk Engine). Pohon di bawah menunjukkan isi engine (`apps/engine/`). Path `app/`, `components/`, `hooks/`, `lib/` di dokumen ini relatif terhadap `apps/web/`; `lib/schema.ts` kini `packages/db/src/schema.ts`.
 
 ```
 app/                    Next.js App Router (UI + API routes)
@@ -48,7 +51,7 @@ components/             UI (landing/, ui/, providers/)
 hooks/                  React hooks (auth, telegram)
 lib/                    Shared: db, schema, session, wagmi, simulasi
 contracts/              Foundry: src/, test/, script/, broadcast/
-engine/                 (rencana) Core Risk Engine — service Node.js terpisah
+engine/                 (apps/engine) Core Risk Engine — service Node.js
   src/
     chains/             Chain registry: RPC, alamat Aave/Guardian, feeds, sequencer
     adapters/           ProtocolAdapter: aave-v3/, morpho-blue/
@@ -59,8 +62,13 @@ engine/                 (rencana) Core Risk Engine — service Node.js terpisah
       macro/            Kalender ekonomi
       news/             Ingestion + klasifikasi LLM
       social/           Sentimen sosial
-    llm/                Interface provider-agnostic + schema output
+    sources/            Adapter data eksternal: RSS berita, FRED API, kalender makro, DefiLlama, on-chain
+    llm/                Gateway tunggal OpenAI-compatible (ADR 0009), pricing, budget, router
+    agents/             Research agents: analyst → debat Hawk/Dove → assessor (ADR 0004)
+    reflection/         Settlement job (src/reflection/settle-job.ts), outcome evaluation, scorecard, lessons (ADR 0005)
     fusion/             Signals → RiskAssessment (regime, drawdown, trigger)
+    cli/                CLI terpadu (apps/engine/src/cli/tahansoe.ts, commands/, render.ts)
+    worker/             Scheduled Research Worker (advisory lock, background runner)
     policy/             Rule engine deterministik → Intent
     keeper/             Loop needsProtection → protect; (v2) setDynamicTrigger
     notify/             Telegram dari server
@@ -126,6 +134,10 @@ Interval awal (dapat dikalibrasi):
 | Social | 5 menit |
 | Macro calendar | Harian + pengingat menjelang event |
 | Fusion | Saat ada sinyal baru, minimal tiap 5 menit |
+| Research agents | Tiap 2 jam (CALM), tiap 1 jam (≥ ELEVATED), + saat regime naik (cooldown 30 menit) |
+| Settlement | Tiap jam; reflection harian (batch) |
+
+Research agents membaca dari DB dan menulis satu `Signal` (`module: "RESEARCH"`) per run. Sinyal itu masuk fusion seperti sinyal lain. Detail: [spec m3-research-agents](specs/m3-research-agents.md).
 
 ---
 
@@ -152,11 +164,13 @@ Alamat Aave diambil dari `bgd-labs/aave-address-book`. Menambah chain = menambah
 
 Chain aktif saat ini: **Arbitrum Sepolia (421614)**. Berikutnya: Arbitrum One (42161).
 
+Alamat Arbitrum One yang sudah diverifikasi on-chain (8 Okt 2026), beserta dua temuan yang memengaruhi desain (harga USDC ber-cap di AaveOracle; tanpa PriceOracleSentinel): [knowledge/risk-transmission.md §4](knowledge/risk-transmission.md#4-catatan-khusus-arbitrum-one).
+
 ---
 
 ## 5. Data model
 
-Skema saat ini di `lib/schema.ts`.
+Skema saat ini di `packages/db/src/schema.ts` (satu-satunya sumber, ADR 0007).
 
 | Tabel | Fungsi | Status |
 |-------|--------|--------|
@@ -171,6 +185,9 @@ Skema saat ini di `lib/schema.ts`.
 | `signals` | Sinyal dari semua modul | **(rencana)** |
 | `risk_assessments` | Output fusion | **(rencana)** |
 | `market_events` | Event berita/geopolitik yang sudah dideduplikasi | **(rencana)** |
+| `research_reports` | Output research agents (report, laporan analyst, debat, versi prompt/model, usage) | **(rencana)** — ADR 0004 |
+| `risk_settlements` | Label TP/FP/MISSED/TN + lead time + outcome mentah | **(rencana)** — ADR 0005 |
+| `research_lessons` | Pelajaran hasil reflection (≤ 600 karakter, bisa dinonaktifkan) | **(rencana)** — ADR 0005 |
 
 Kolom `chainId` wajib ada di setiap tabel yang menyimpan data on-chain (positions, policies, intents).
 
@@ -193,10 +210,13 @@ Konvensi angka:
 | Area | Pilihan |
 |------|---------|
 | Web | Next.js 16 (App Router), React 19, Tailwind v4, wagmi + viem |
-| Engine | Node.js + TypeScript, viem, dijalankan sebagai long-running worker **(rencana)** |
-| DB | Neon Postgres + Drizzle |
+| Engine | Node.js 22 + TypeScript, viem, background Scheduled Research Worker dengan PostgreSQL session advisory lock di host yang selalu hidup |
+| Data on-chain & riset | RPC + multicall untuk state; AaveOracle + Chainlink proxy + Sequencer Uptime Feed di Arbitrum One; data makro FRED API, kalender resmi FOMC/BLS, DefiLlama (depeg & hacks), dan RSS outlet berita terkurasi |
+| Monorepo | npm workspaces (ADR 0007) — `apps/web`, `apps/engine`, `packages/db`, `packages/domain` |
+| CI | GitHub Actions: typecheck + test + build semua workspace, lint web (blocking), `forge test` tanpa fork (`.github/workflows/ci.yml`) |
+| DB | Neon Postgres + Drizzle ORM |
 | Kontrak | Foundry, Solidity 0.8.26, OpenZeppelin v5 |
-| LLM | Provider-agnostic interface; output divalidasi schema **(rencana)** |
+| LLM | Gateway tunggal OpenAI-compatible (`LLM_API_URL` + `LLM_API_KEY`, [ADR 0009](decisions/0009-single-openai-compatible-gateway.md)), router peran + fallback berantai model di `settings.json` v2, zod schema validation (di-embed dalam system prompt + 1 retry repair), budget harian terhitung dari pricing gateway |
 | Notifikasi | Telegram Bot API |
 | Automation (prod) | Chainlink Automation + cron cadangan |
 
@@ -204,12 +224,23 @@ Konvensi angka:
 
 ## 8. Environment
 
-| Variabel | Dipakai oleh |
-|----------|--------------|
-| `DATABASE_URL` | app, engine, scripts |
-| `SESSION_SECRET`, `NEXT_PUBLIC_APP_DOMAIN` | app |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` | app, engine |
-| `NEXT_PUBLIC_WC_PROJECT_ID` | app |
-| `ARB_SEPOLIA_RPC_URL`, `ARBISCAN_API_KEY` | contracts, engine |
-| `KEEPER_PRIVATE_KEY` atau signer eksternal | engine/keeper **(rencana)** — hanya di environment server |
-| API key data/LLM | engine **(rencana)** |
+Semua variabel environment di bawah bersifat server-only kecuali yang diawali `NEXT_PUBLIC_`:
+
+| Variabel | Dipakai oleh | Deskripsi |
+|----------|--------------|-----------|
+| `DATABASE_URL` | app, engine, scripts | Koneksi PostgreSQL (Neon serverless / direct session) |
+| `SESSION_SECRET`, `NEXT_PUBLIC_APP_DOMAIN` | app | Autentikasi sesi wallet & domain web |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` | app, engine | Bot notifikasi dan webhook Telegram |
+| `NEXT_PUBLIC_WC_PROJECT_ID` | app | WalletConnect project id |
+| `ARB_SEPOLIA_RPC_URL`, `ARBISCAN_API_KEY` | contracts, engine | RPC & verifikasi blok Arbitrum Sepolia |
+| `KEEPER_PRIVATE_KEY` atau signer eksternal | engine/keeper **(rencana)** | Private key eksekusi transaksi proteksi Guardian |
+| `LLM_API_URL` | engine | Endpoint gateway OpenAI-compatible tunggal (dinormalisasi s.d. `/v1`, ADR 0009) |
+| `LLM_API_KEY` | engine | API key gateway OpenAI-compatible (secret server-only, tidak pernah di-log) |
+| `LLM_DAILY_BUDGET_USD` | engine | Batas biaya LLM harian (USD); jika habis, riset dihentikan sampai hari berikutnya |
+| `RESEARCH_ENABLED` | engine | Kill switch lapis riset (default `false`) |
+| `FRED_API_KEY` | engine | API key data makro FRED Federal Reserve (key gratis) |
+| `RESEARCH_GDELT_ENABLED` | engine | Toggle agregator GDELT DOC 2.0 (default `false`) |
+| `ARBITRUM_RPC_URL` | engine | RPC Arbitrum One untuk polling on-chain |
+
+> **Catatan Konfigurasi Non-Rahasia:** Pengaturan model per peran (`roles`: `analyst`, `debate`, `assessor`, `reflector` beserta fallback berantai), `pricingUrl`, dan override harga token `modelPrices` disimpan di `settings.json` v2 (non-rahasia, per-mesin, di-gitignore) dan dikelola lewat `tahansoe settings`. Kunci lama per-provider (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, dll.) telah digantikan oleh gateway tunggal (ADR 0009).
+
