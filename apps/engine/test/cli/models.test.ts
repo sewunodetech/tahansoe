@@ -9,10 +9,26 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fetchModelList, buildRows, formatRows, runModelsCli } from "../../src/cli/models.ts";
-import type { ModelPrice, FetchLike } from "../../src/llm/pricing.ts";
+import type { ModelPrice, FetchLike, PricingCacheStore } from "../../src/llm/pricing.ts";
 import { DEFAULT_TOKEN_PROFILE } from "../../src/llm/estimate.ts";
 
 const USD_TO_IDR = 17891.619611;
+
+/** Cache in-memory agar test tidak menulis ke apps/engine/.cache. */
+function memCache(): PricingCacheStore {
+  const store = new Map<string, { fetchedAt: number; payload: unknown }>();
+  return {
+    async read(url) {
+      return store.get(url) ?? null;
+    },
+    async write(url, entry) {
+      store.set(url, entry);
+    },
+    now() {
+      return Date.now();
+    },
+  };
+}
 
 function priceMap(): Map<string, ModelPrice> {
   return new Map<string, ModelPrice>([
@@ -77,6 +93,7 @@ test("runModelsCli: --filter menyaring model", async () => {
     apiKey: "",
     pricingUrl: "https://router.bynara.id/api/pricing",
     fetchImpl,
+    cache: memCache(),
     profile: DEFAULT_TOKEN_PROFILE,
   });
   assert.match(output, /cheap-flash/);

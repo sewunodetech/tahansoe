@@ -23,3 +23,5 @@ import "./llm/pricing.test.ts";
 import "./llm/registry-generic.test.ts";
 import "./cli/env-writer.test.ts";
 import "./cli/models.test.ts";
+import "./settings/settings.test.ts";
+import "./cli/settings-cli.test.ts";

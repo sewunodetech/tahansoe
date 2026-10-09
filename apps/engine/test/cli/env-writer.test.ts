@@ -1,17 +1,12 @@
 /**
- * Unit test penulis .env (offline, in-memory + file sementara):
- *  - update kunci yang ada tanpa menyentuh komentar/kunci lain/urutan
- *  - tambah kunci baru di akhir
- *  - penulisan ke file sementara benar-benar hanya mengubah baris target
+ * Unit test penulis .env minimal `applyEnvUpdates` (util teks murni; MASIH ada
+ * untuk kompatibilitas, tapi research CLI kini menulis ke settings.json —
+ * lihat test/cli/settings-writer.test.ts).
  */
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { applyEnvUpdates } from "../../src/cli/env-writer.ts";
-import { writeRoleModelsToEnv } from "../../src/cli/research.ts";
 
 test("applyEnvUpdates: ganti kunci yang ada, pertahankan baris lain", () => {
   const input = [
@@ -28,7 +23,6 @@ test("applyEnvUpdates: ganti kunci yang ada, pertahankan baris lain", () => {
   assert.match(out, /^LLM_ANALYST=custom:a$/m);
   assert.match(out, /^LLM_ASSESSOR=custom:b$/m);
   assert.match(out, /RESEARCH_ENABLED=false/);
-  // kunci lain tidak hilang
   assert.equal(out.split("\n").filter((l) => l.startsWith("DATABASE_URL")).length, 1);
 });
 
@@ -49,32 +43,4 @@ test("applyEnvUpdates: tidak mengubah baris komentar yang menyerupai kunci", () 
   const out = applyEnvUpdates(input, { LLM_ANALYST: "new" });
   assert.match(out, /# LLM_ANALYST=jangan-diubah/);
   assert.match(out, /^LLM_ANALYST=new$/m);
-});
-
-test("writeRoleModelsToEnv: file sementara, baris lain tidak berubah", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "tahansoe-env-"));
-  const envPath = join(dir, ".env");
-  try {
-    await writeFile(
-      envPath,
-      ["DATABASE_URL=postgres://secret-keep", "# catatan", "LLM_ANALYST=lama", "FRED_API_KEY=xyz"].join("\n") + "\n",
-      "utf8",
-    );
-    await writeRoleModelsToEnv(envPath, {
-      analyst: "bynara:deepseek-v4.1-flash",
-      debate: "bynara:deepseek-v4.1-flash",
-      assessor: "bynara:gpt-strong",
-      reflector: "bynara:deepseek-v4.1-flash",
-    });
-    const after = await readFile(envPath, "utf8");
-    assert.match(after, /DATABASE_URL=postgres:\/\/secret-keep/, "baris lain dipertahankan");
-    assert.match(after, /# catatan/);
-    assert.match(after, /FRED_API_KEY=xyz/);
-    assert.match(after, /^LLM_ANALYST=bynara:deepseek-v4\.1-flash$/m);
-    assert.match(after, /^LLM_DEBATE=bynara:deepseek-v4\.1-flash$/m);
-    assert.match(after, /^LLM_ASSESSOR=bynara:gpt-strong$/m);
-    assert.match(after, /^LLM_REFLECTOR=bynara:deepseek-v4\.1-flash$/m);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
 });

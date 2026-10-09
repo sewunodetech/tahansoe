@@ -1,5 +1,5 @@
 /**
- * CLI interaktif: pilih model + lihat estimasi biaya, simpan ke .env, lalu jalankan.
+ * CLI interaktif: pilih model + lihat estimasi biaya, SIMPAN ke settings.json, run.
  *
  *   tsx --env-file-if-exists=.env src/cli/research.ts
  *
@@ -9,8 +9,8 @@
  *   2. Tampilkan 15 model termurah; user bisa ketik nama model lain.
  *   3. Mode: [1] satu model untuk semua peran, [2] analyst+debate murah, assessor lain.
  *   4. Tampilkan estimasi biaya kombinasi.
- *   5. "simpan ke .env? (y/n)" → tulis LLM_ANALYST/DEBATE/ASSESSOR/REFLECTOR
- *      TANPA menyentuh baris lain, TANPA mencetak secret.
+ *   5. "simpan ke settings.json? (y/n)" → tulis roles.{analyst,debate,assessor,reflector}
+ *      secara atomik, TANPA menyentuh field lain, TANPA mencetak secret.
  *   6. Jalankan sekarang: [d] dry-run, [s] simpan ke DB, [n] tidak.
  *
  * JANGAN pernah cetak API key / DATABASE_URL (I8). Memakai alur run yang ada
@@ -18,11 +18,11 @@
  */
 
 import { createInterface } from "node:readline/promises";
-import { readFile, writeFile } from "node:fs/promises";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { dirname, join } from "node:path";
+import { pathToFileURL } from "node:url";
 
-import { env } from "../config.ts";
+import { loadSettingsSync, writeSettings, settingsPath } from "../settings/settings.ts";
+import { defaultProviderName } from "../settings/settings.ts";
+import type { Settings } from "../settings/schema.ts";
 import { loadPricing, type ModelPrice } from "../llm/pricing.ts";
 import {
   estimateCost,
@@ -32,38 +32,30 @@ import {
   type TokenProfile,
 } from "../llm/estimate.ts";
 import { buildRows, formatRows } from "./models.ts";
-import { applyEnvUpdates } from "./env-writer.ts";
-
-/** Path apps/engine/.env (di root paket engine). */
-function engineEnvPath(): string {
-  const here = dirname(fileURLToPath(import.meta.url)); // src/cli
-  return join(here, "..", "..", ".env"); // apps/engine/.env
-}
 
 /**
- * Tulis pilihan model per peran ke .env tanpa menyentuh baris lain. Membaca file
- * lama bila ada, menerapkan update, menulis kembali. TIDAK mencetak isi file.
+ * Tulis pilihan model per peran ke settings.json (atomik), tanpa menyentuh field
+ * lain (providers/modelPrices/estimate dipertahankan). TIDAK mencetak isi file.
  */
-export async function writeRoleModelsToEnv(
-  envPath: string,
-  roles: { analyst: string; debate: string; assessor: string; reflector: string },
+export async function writeRoleModelsToSettings(
+  roles: { analyst: string[]; debate: string[]; assessor: string[]; reflector: string[] },
+  path: string = settingsPath(),
 ): Promise<void> {
-  let existing = "";
-  try {
-    existing = await readFile(envPath, "utf8");
-  } catch {
-    existing = ""; // file belum ada → buat baru
-  }
-  const updated = applyEnvUpdates(existing, {
-    LLM_ANALYST: roles.analyst,
-    LLM_DEBATE: roles.debate,
-    LLM_ASSESSOR: roles.assessor,
-    LLM_REFLECTOR: roles.reflector,
-  });
-  await writeFile(envPath, updated, "utf8");
+  const { settings } = loadSettingsSync(path);
+  const next: Settings = {
+    ...settings,
+    roles: {
+      ...settings.roles,
+      analyst: roles.analyst,
+      debate: roles.debate,
+      assessor: roles.assessor,
+      reflector: roles.reflector,
+    },
+  };
+  await writeSettings(next, path);
 }
 
-/** Prefix provider generik untuk spec per peran (mis. "custom:deepseek-v4.1-flash"). */
+/** Spec "provider:model" (provider = default dari settings bila ada). */
 function specFor(provider: string, model: string): string {
   return `${provider}:${model}`;
 }
@@ -82,8 +74,6 @@ function comboEstimate(
   const pa = prices.get(modelA);
   const pb = prices.get(modelB);
   if (!pa || !pb) return null;
-  // Pisahkan profil: assessor ~ (9000 in / 1700 out) dari profil default; sisanya
-  // (analyst+debate) = total - assessor. Pakai proporsi default untuk estimasi.
   const assessorIn = 9000;
   const assessorOut = 1700;
   const restIn = Math.max(0, profile.inputTokens - assessorIn);
@@ -92,6 +82,33 @@ function comboEstimate(
   const eB = estimateCost(pb, { inputTokens: assessorIn, outputTokens: assessorOut, source: "" });
   const perRunUsd = eA.perRunUsd + eB.perRunUsd;
   return { perRunUsd, perMonthUsd: perRunUsd * RUNS_PER_DAY_CALM * 30 };
+}
+
+/** Muat harga dari semua provider settings yang punya pricingUrl + modelPrices manual. */
+async function loadAllPricing(): Promise<{ prices: Map<string, ModelPrice>; provider: string | null }> {
+  const { settings } = loadSettingsSync();
+  const prices = new Map<string, ModelPrice>();
+  const manualJson = Object.keys(settings.modelPrices).length > 0 ? JSON.stringify(settings.modelPrices) : "";
+  let manualApplied = false;
+  for (const [, p] of Object.entries(settings.providers)) {
+    if (!p.pricingUrl && !manualJson) continue;
+    const apiKey = p.apiKeyEnv ? (process.env[p.apiKeyEnv]?.trim() ?? "") : "";
+    const { prices: pr, warnings } = await loadPricing({
+      apiKey,
+      pricingUrl: p.pricingUrl ?? "",
+      modelPricesJson: manualApplied ? "" : manualJson,
+    });
+    manualApplied = true;
+    for (const [m, price] of pr) prices.set(m, price);
+    for (const w of warnings) console.error(w);
+  }
+  // Bila tidak ada provider di settings, coba env lama (loadPricing default membaca env).
+  if (prices.size === 0) {
+    const { prices: pr, warnings } = await loadPricing({ modelPricesJson: manualJson });
+    for (const [m, price] of pr) prices.set(m, price);
+    for (const w of warnings) console.error(w);
+  }
+  return { prices, provider: defaultProviderName(settings) };
 }
 
 async function main(): Promise<void> {
@@ -105,19 +122,20 @@ async function main(): Promise<void> {
         "",
         "Untuk melihat daftar model + harga tanpa interaksi:",
         "  tsx --env-file-if-exists=.env src/cli/models.ts --filter flash",
+        "",
+        "Konfigurasi provider/model ada di settings.json (lihat: src/cli/settings.ts show).",
       ].join("\n"),
     );
     return;
   }
 
-  const provider = env.llmProviderName();
-  const { prices, warnings } = await loadPricing();
-  for (const w of warnings) console.error(w);
+  const { prices, provider } = await loadAllPricing();
   if (prices.size === 0) {
-    console.error("Tidak ada harga dimuat (set LLM_PRICING_URL atau LLM_MODEL_PRICES). Keluar.");
+    console.error("Tidak ada harga dimuat (set pricingUrl provider di settings.json atau modelPrices). Keluar.");
     process.exitCode = 1;
     return;
   }
+  const providerName = provider ?? "custom";
 
   const dbProfile = await tokenProfileFromDb(5);
   const profile = dbProfile ?? DEFAULT_TOKEN_PROFILE;
@@ -142,8 +160,8 @@ async function main(): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      analyst = debate = reflector = specFor(provider, cheap);
-      assessor = specFor(provider, strong);
+      analyst = debate = reflector = specFor(providerName, cheap);
+      assessor = specFor(providerName, strong);
       const combo = comboEstimate(prices, cheap, strong, profile);
       if (combo) console.log(`\nEstimasi kombinasi: ${usd(combo.perRunUsd)}/run · ${usd(combo.perMonthUsd)}/bulan (${RUNS_PER_DAY_CALM} run/hari CALM).`);
     } else {
@@ -153,27 +171,26 @@ async function main(): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      analyst = debate = assessor = reflector = specFor(provider, one);
+      analyst = debate = assessor = reflector = specFor(providerName, one);
       const e = estimateCost(prices.get(one)!, profile);
       console.log(`\nEstimasi: ${usd(e.perRunUsd)}/run · ${usd(e.perDayUsd)}/hari · ${usd(e.perMonthUsd)}/bulan.`);
       if (prices.get(one)!.reasoning) console.log("Catatan: model reasoning — output token bisa lebih besar dari estimasi.");
     }
 
-    const save = (await rl.question("\nSimpan ke .env? (y/n): ")).trim().toLowerCase();
+    const save = (await rl.question("\nSimpan ke settings.json? (y/n): ")).trim().toLowerCase();
     if (save === "y" || save === "yes") {
-      await writeRoleModelsToEnv(engineEnvPath(), { analyst, debate, assessor, reflector });
-      console.log("Tersimpan ke apps/engine/.env (LLM_ANALYST/DEBATE/ASSESSOR/REFLECTOR).");
+      await writeRoleModelsToSettings({
+        analyst: [analyst],
+        debate: [debate],
+        assessor: [assessor],
+        reflector: [reflector],
+      });
+      console.log(`Tersimpan ke ${settingsPath()} (roles.analyst/debate/assessor/reflector).`);
     }
 
     const run = (await rl.question("\nJalankan sekarang? [d] dry-run · [s] simpan ke DB · [n] tidak: ")).trim().toLowerCase();
     if (run === "d" || run === "s") {
-      // Pakai pilihan ini untuk run saat ini (env proses) agar router memakainya.
-      process.env.LLM_ANALYST = analyst;
-      process.env.LLM_DEBATE = debate;
-      process.env.LLM_ASSESSOR = assessor;
-      process.env.LLM_REFLECTOR = reflector;
       if (run === "s") process.env.RESEARCH_ENABLED = "true";
-
       const { runResearch } = await import("../agents/run.ts");
       rl.close();
       const result = await runResearch({

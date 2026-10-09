@@ -6,6 +6,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
+
+// Isolasi: unit test registry tidak boleh bergantung pada settings.json lokal
+// developer (per mesin, di-gitignore). Arahkan ke path yang pasti tidak ada
+// SEBELUM mengimpor registry agar resolusi memakai default/env, bukan file nyata.
+process.env.TAHANSOE_SETTINGS = "/__tahansoe_no_settings__/registry.test.json";
+
 import { parseRoleSpec, RoleRouter, isProviderAvailable, type RoleEntry } from "../../src/llm/registry.ts";
 import { FakeProvider } from "../fake-provider.ts";
 import { Budget } from "../../src/llm/budget.ts";

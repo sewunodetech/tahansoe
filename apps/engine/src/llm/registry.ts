@@ -17,6 +17,13 @@ import { OpenAICompatibleProvider, type FetchLike } from "./openai-compatible.ts
 import { AnthropicProvider } from "./anthropic.ts";
 import { budget as defaultBudget, type Budget } from "./budget.ts";
 import { env } from "../config.ts";
+import {
+  loadSettingsSync,
+  resolveProviders,
+  resolveRoleSpecList,
+  defaultProviderName,
+  type ResolvedProvider,
+} from "../settings/settings.ts";
 
 /**
  * Nama provider. Built-in: anthropic, gemini, openrouter, groq, ollama. Provider
@@ -55,44 +62,57 @@ export function normalizeBaseUrl(url: string): string {
     .replace(/\/+$/, "");
 }
 
-/** Provider generik yang dikonfigurasi lewat env: nama → {baseURL, apiKey}. */
+/**
+ * Provider teresolusi (settings > env lama). Dibaca ulang tiap panggilan agar
+ * perubahan settings/env di tengah proses (mis. CLI research) langsung terbaca.
+ * Peringatan deprecated di-log sekali per proses (bukan tiap panggilan).
+ */
+let deprecationWarned = false;
+export function resolvedProviders(
+  envVars: Record<string, string | undefined> = process.env,
+): Record<string, ResolvedProvider> {
+  const { settings } = loadSettingsSync();
+  const { providers, warnings } = resolveProviders(settings, envVars);
+  if (!deprecationWarned && warnings.length > 0) {
+    deprecationWarned = true;
+    for (const w of warnings) console.warn(w);
+  }
+  return providers;
+}
+
+/**
+ * KOMPAT: bentuk lama `{ baseURL, apiKey }` per provider generik (settings + env).
+ * Provider built-in (anthropic/gemini/…) TIDAK termasuk di sini — mereka punya
+ * base URL bawaan dan key dari env. Hanya provider dari settings/env generik.
+ */
 export function customProviders(
   envVars: Record<string, string | undefined> = process.env,
 ): Record<string, { baseURL: string; apiKey: string }> {
   const out: Record<string, { baseURL: string; apiKey: string }> = {};
-  const base = envVars.LLM_BASE_URL?.trim();
-  if (base) {
-    const name = (envVars.LLM_PROVIDER_NAME ?? "custom").trim().toLowerCase() || "custom";
-    out[name] = { baseURL: normalizeBaseUrl(base), apiKey: envVars.LLM_API_KEY?.trim() ?? "" };
-  }
-  for (const [key, value] of Object.entries(envVars)) {
-    const m = /^LLM_PROVIDER_([A-Z0-9_]+)_BASE_URL$/.exec(key);
-    if (!m || !value?.trim()) continue;
-    const name = m[1]!.toLowerCase();
-    out[name] = {
-      baseURL: normalizeBaseUrl(value),
-      apiKey: envVars[`LLM_PROVIDER_${m[1]}_API_KEY`]?.trim() ?? "",
-    };
+  for (const [name, p] of Object.entries(resolvedProviders(envVars))) {
+    // Provider built-in tetap diperlakukan built-in (jangan ditimpa oleh default base).
+    out[name] = { baseURL: p.baseURL, apiKey: p.apiKey };
   }
   return out;
 }
 
-/** Nama provider generik default (untuk LLM_BASE_URL), atau null bila tidak diset. */
+/** Nama provider generik default (provider pertama settings / LLM_BASE_URL), atau null. */
 export function defaultCustomProvider(): string | null {
-  return env.llmBaseUrl().trim() ? env.llmProviderName() : null;
+  const { settings } = loadSettingsSync();
+  return defaultProviderName(settings);
 }
 
-/** Base URL untuk provider apa pun (custom lebih dulu, lalu built-in). */
+/** Base URL untuk provider apa pun (settings/env generik lebih dulu, lalu built-in). */
 export function baseUrlFor(provider: ProviderName): string {
-  const custom = customProviders()[provider];
-  if (custom) return custom.baseURL;
+  const resolved = resolvedProviders()[provider];
+  if (resolved) return resolved.baseURL;
   return BUILTIN_BASE_URL[provider]?.() ?? "";
 }
 
 /** API key per provider (kosong = tidak tersedia, kecuali provider lokal). */
 export function apiKeyFor(provider: ProviderName): string {
-  const custom = customProviders()[provider];
-  if (custom) return custom.apiKey;
+  const resolved = resolvedProviders()[provider];
+  if (resolved) return resolved.apiKey;
   switch (provider) {
     case "anthropic":
       return env.anthropicApiKey();
@@ -109,9 +129,14 @@ export function apiKeyFor(provider: ProviderName): string {
 
 /** True jika provider punya kredensial / dapat dipakai. */
 export function isProviderAvailable(provider: ProviderName): boolean {
-  const custom = customProviders()[provider];
-  // Provider generik: tersedia bila base URL diset (key boleh kosong untuk server lokal).
-  if (custom) return custom.baseURL.length > 0;
+  const resolved = resolvedProviders()[provider];
+  if (resolved) {
+    if (resolved.baseURL.length === 0) return false;
+    // Provider dari .env lama (deprecated): kompat lama — cukup base URL.
+    if (resolved.source === "env") return true;
+    // Provider dari settings: butuh local, atau key terisi, atau tanpa apiKeyEnv.
+    return resolved.local === true || resolved.apiKey.length > 0 || resolved.apiKeyEnv === undefined;
+  }
   if (provider === "ollama") return env.ollamaBaseUrl().length > 0;
   if (!(BUILTIN_PROVIDERS as readonly string[]).includes(provider)) return false;
   return apiKeyFor(provider).length > 0;
@@ -121,7 +146,7 @@ export function isProviderAvailable(provider: ProviderName): boolean {
 export function providerAvailability(): Record<string, boolean> {
   const out: Record<string, boolean> = {};
   for (const name of BUILTIN_PROVIDERS) out[name] = isProviderAvailable(name);
-  for (const name of Object.keys(customProviders())) out[name] = isProviderAvailable(name);
+  for (const name of Object.keys(resolvedProviders())) out[name] = isProviderAvailable(name);
   return out;
 }
 
@@ -158,7 +183,7 @@ export function parseRoleSpec(
  * Gemini tak tersedia tetapi Anthropic ada, pakai tier Anthropic yang sekarang.
  */
 export function defaultSpecFor(role: Role): RoleEntry[] {
-  // Model generik dari env (LLM_MODEL di LLM_BASE_URL) didahulukan untuk semua peran.
+  // Model generik dari settings/env (default provider) didahulukan bila LLM_MODEL diset.
   const custom = defaultCustomProvider();
   const head: RoleEntry[] =
     custom && env.llmModel().trim() ? [{ provider: custom, model: env.llmModel().trim() }] : [];
@@ -198,17 +223,11 @@ function anthropicModelFor(role: Role): string {
   return role === "assessor" ? "claude-sonnet-5-5" : "claude-haiku-5-5";
 }
 
-/** Resolusi entri untuk sebuah peran: env > default. Hanya entri yang tersedia. */
+/** Resolusi entri untuk sebuah peran: settings > env (deprecated) > default. Hanya entri tersedia. */
 export function resolveRole(role: Role): RoleEntry[] {
-  const specEnv =
-    role === "analyst"
-      ? env.llmAnalyst()
-      : role === "debate"
-        ? env.llmDebate()
-        : role === "assessor"
-          ? env.llmAssessor()
-          : env.llmReflector();
-  const requested = specEnv ? parseRoleSpec(specEnv) : defaultSpecFor(role);
+  const { settings } = loadSettingsSync();
+  const { list } = resolveRoleSpecList(role, settings);
+  const requested = list && list.length > 0 ? parseRoleSpec(list.join(",")) : defaultSpecFor(role);
   return requested.filter((e) => isProviderAvailable(e.provider));
 }
 

@@ -7,6 +7,10 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+
+// Isolasi dari settings.json lokal (lihat registry.test.ts).
+process.env.TAHANSOE_SETTINGS = "/__tahansoe_no_settings__/registry-generic.test.json";
+
 import { customProviders, normalizeBaseUrl, parseRoleSpec } from "../../src/llm/registry.ts";
 
 test("normalizeBaseUrl: buang /chat/completions & trailing slash", () => {
