@@ -7,7 +7,7 @@
  *
  * Exit code non-zero bila ADA kasus set "injection" yang gagal (guardrail G3).
  *
- * CLI: `tsx src/eval/runner.ts [--set injection|scenarios|all] [--limit N] [--dry-plan] [--runs N] [--delay-ms N]`
+ * CLI: `tsx src/eval/runner.ts [--set injection|scenarios|all] [--limit N] [--dry-plan] [--runs N] [--delay-ms N] [--concurrency N]`
  */
 
 import { mkdir, writeFile } from "node:fs/promises";
@@ -16,12 +16,17 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { runResearch } from "../agents/run.ts";
 import { toSignal } from "../agents/to-signal.ts";
+import { costOfDetailed } from "../llm/budget.ts";
+import { bootstrapBudgetPricing } from "../llm/pricing-bootstrap.ts";
 import {
   scoreCase,
   isDailyQuotaError,
   isPerMinuteRateLimitError,
+  summarizeEvalResults,
   type EvalCase,
   type CaseResult,
+  type RoleResult,
+  type EvalSummaryMetrics,
 } from "./types.ts";
 import type { ResearchInputCollector } from "../agents/context.ts";
 
@@ -33,6 +38,15 @@ export const RATE_LIMIT_RETRY_DELAY_MS = 60_000;
 
 /** Perkiraan jumlah panggilan LLM per kasus eval (4 analyst + 2 debat [1 ronde] + 1 assessor). */
 export const ESTIMATED_LLM_CALLS_PER_CASE = 7;
+
+/** Batas maksimal kumulatif pengeluaran dalam Rupiah (hard cap). */
+export const DEFAULT_MAX_COST_IDR = 3000;
+
+export type RunCaseFn = (
+  c: EvalCase,
+  caseOutDir: string,
+  provider?: import("../llm/provider.ts").LlmProvider,
+) => Promise<CaseResult>;
 
 export interface EvalRunOptions {
   set: "injection" | "scenarios" | "all";
@@ -56,6 +70,16 @@ export interface EvalRunOptions {
     warn?: (msg: string) => void;
     error?: (msg: string) => void;
   };
+  /** Label/nama run untuk identifikasi hasil evaluasi. */
+  label?: string;
+  /** Batas atas pengeluaran kumulatif IDR (default: 3000). */
+  maxCostIdr?: number;
+  /** Biaya IDR yang sudah terpakai sebelum run ini (untuk akumulasi lintas run). */
+  initialSpentIdr?: number;
+  /** Tingkat konkurensi eksekusi kasus eval (worker pool, default: 1). */
+  concurrency?: number;
+  /** Hook pengganti runCase untuk testing unit deterministik. */
+  runCaseFn?: RunCaseFn;
 }
 
 export interface DryPlan {
@@ -143,6 +167,27 @@ export async function runCase(
   });
 
   const diag = result.diagnostics;
+  const roles: RoleResult[] = (diag?.roles ?? []).map((r) => {
+    const cost = costOfDetailed({
+      model: r.usedModel ?? "unknown",
+      inputTokens: r.inputTokens,
+      outputTokens: r.outputTokens,
+    });
+    return {
+      role: r.role,
+      ok: r.ok,
+      usedModel: r.usedModel,
+      inputTokens: r.inputTokens,
+      outputTokens: r.outputTokens,
+      costUsd: cost.usd,
+      costIdr: cost.idr,
+      reason: r.reason,
+    };
+  });
+
+  const costUsd = roles.reduce((s, r) => s + (r.costUsd ?? 0), 0);
+  const costIdr = roles.reduce((s, r) => s + (r.costIdr ?? 0), 0);
+
   return {
     id: c.id,
     set: c.set,
@@ -155,10 +200,13 @@ export async function runCase(
     outputTokens: diag?.totalOutputTokens ?? 0,
     durationMs: Date.now() - started,
     runReason: result.reason,
+    roles,
+    costUsd,
+    costIdr,
   };
 }
 
-/** Jalankan semua kasus set, tangani kuota harian & retry 429, tulis laporan. */
+/** Jalankan semua kasus set, tangani kuota harian & retry 429 & spend cap, tulis laporan. */
 export async function runEval(
   cases: EvalCase[],
   opts: EvalRunOptions,
@@ -167,11 +215,17 @@ export async function runEval(
   outDir: string;
   injectionFailed: number;
   quotaHalted: boolean;
+  budgetHalted: boolean;
+  summary: EvalSummaryMetrics;
+  cumulativeCostIdr: number;
 }> {
   const runs = Math.max(1, opts.runs ?? 1);
   const delayMs = opts.delayMs ?? DEFAULT_CASE_DELAY_MS;
   const retryDelayMs = opts.retryDelayMs ?? RATE_LIMIT_RETRY_DELAY_MS;
   const sleep = opts.sleeper ?? defaultDelay;
+  const maxCostIdr = opts.maxCostIdr ?? DEFAULT_MAX_COST_IDR;
+  let cumulativeCostIdr = opts.initialSpentIdr ?? 0;
+  const doRunCase = opts.runCaseFn ?? runCase;
   const logger = opts.logger ?? {
     info: (m: string) => console.error(m),
     warn: (m: string) => console.warn(m),
@@ -184,38 +238,78 @@ export async function runEval(
       : cases;
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const outDir = join(opts.outRoot ?? defaultEvalRoot(), stamp);
+  const folderName = opts.label ? `${opts.label}__${stamp}` : stamp;
+  const outDir = join(opts.outRoot ?? defaultEvalRoot(), folderName);
   await mkdir(outDir, { recursive: true });
 
-  const results: CaseResult[] = [];
-  let quotaHalted = false;
-  let first = true;
+  interface WorkItem {
+    index: number;
+    caseItem: EvalCase;
+    runIndex: number;
+    caseOutDir: string;
+  }
 
+  const items: WorkItem[] = [];
+  let itemIdx = 0;
   for (let run = 0; run < runs; run++) {
-    if (quotaHalted) break;
-
     for (let i = 0; i < selectedCases.length; i++) {
       const c = selectedCases[i]!;
+      items.push({
+        index: itemIdx++,
+        caseItem: c,
+        runIndex: run,
+        caseOutDir: join(
+          outDir,
+          "cases",
+          runs > 1 ? `${c.id}__r${run + 1}` : c.id,
+        ),
+      });
+    }
+  }
 
-      if (!first && delayMs > 0) {
+  const results: CaseResult[] = new Array(items.length);
+  let quotaHalted = false;
+  let budgetHalted = false;
+  let nextItemIndex = 0;
+
+  const requestedConcurrency = opts.concurrency ?? 1;
+  const concurrency = Math.max(1, Math.min(requestedConcurrency, items.length || 1));
+
+  async function worker(workerId: number): Promise<void> {
+    if (workerId > 0 && delayMs > 0 && concurrency > 1) {
+      await sleep(Math.min(delayMs, 250) * workerId);
+    }
+
+    let firstForThisWorker = true;
+
+    while (true) {
+      if (quotaHalted || budgetHalted) {
+        break;
+      }
+
+      if (!firstForThisWorker && delayMs > 0) {
         await sleep(delayMs);
       }
-      first = false;
+      firstForThisWorker = false;
 
-      const caseOutDir = join(
-        outDir,
-        "cases",
-        runs > 1 ? `${c.id}__r${run + 1}` : c.id,
-      );
+      if (quotaHalted || budgetHalted) {
+        break;
+      }
 
+      const item = items[nextItemIndex++];
+      if (!item) {
+        break;
+      }
+
+      const { index, caseItem, caseOutDir } = item;
       let res: CaseResult;
       try {
-        res = await runCase(c, caseOutDir, opts.provider);
+        res = await doRunCase(caseItem, caseOutDir, opts.provider);
       } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
         res = {
-          id: c.id,
-          set: c.set,
+          id: caseItem.id,
+          set: caseItem.set,
           pass: false,
           status: "fail",
           failReasons: [`uncaught exception: ${errMsg}`],
@@ -225,6 +319,9 @@ export async function runEval(
           outputTokens: 0,
           durationMs: 0,
           runReason: errMsg,
+          roles: [],
+          costUsd: 0,
+          costIdr: 0,
         };
       }
 
@@ -232,18 +329,18 @@ export async function runEval(
       const errReason = res.runReason ?? res.failReasons.join(" ");
       if (isPerMinuteRateLimitError(errReason)) {
         logger.warn?.(
-          `[eval] rate limit 429 per-menit terdeteksi pada ${c.id}. Menunggu ${retryDelayMs}ms sebelum retry...`,
+          `[eval] rate limit 429 per-menit terdeteksi pada ${caseItem.id}. Menunggu ${retryDelayMs}ms sebelum retry...`,
         );
         if (retryDelayMs > 0) {
           await sleep(retryDelayMs);
         }
         try {
-          res = await runCase(c, caseOutDir, opts.provider);
+          res = await doRunCase(caseItem, caseOutDir, opts.provider);
         } catch (err: unknown) {
           const errMsg = err instanceof Error ? err.message : String(err);
           res = {
-            id: c.id,
-            set: c.set,
+            id: caseItem.id,
+            set: caseItem.set,
             pass: false,
             status: "fail",
             failReasons: [`retry failed: ${errMsg}`],
@@ -253,6 +350,9 @@ export async function runEval(
             outputTokens: 0,
             durationMs: 0,
             runReason: errMsg,
+            roles: [],
+            costUsd: 0,
+            costIdr: 0,
           };
         }
       }
@@ -261,96 +361,171 @@ export async function runEval(
       const finalReason = res.runReason ?? res.failReasons.join(" ");
       if (isDailyQuotaError(finalReason)) {
         logger.error?.(
-          `[eval] kuota harian habis pada kasus ${c.id}: "${finalReason}". Menghentikan eval run.`,
+          `[eval] kuota harian habis pada kasus ${caseItem.id}: "${finalReason}". Menghentikan eval run.`,
         );
         res.pass = false;
         res.status = "skipped: quota";
-        results.push(res);
+        results[index] = res;
         quotaHalted = true;
-
-        // Tandai seluruh sisa kasus sebagai "skipped: quota"
-        for (let j = i + 1; j < selectedCases.length; j++) {
-          const remaining = selectedCases[j]!;
-          results.push({
-            id: remaining.id,
-            set: remaining.set,
-            pass: false,
-            status: "skipped: quota",
-            failReasons: ["skipped: daily quota exceeded"],
-            proposedRegime: null,
-            signalConfidence: null,
-            inputTokens: 0,
-            outputTokens: 0,
-            durationMs: 0,
-            runReason: "skipped: quota",
-          });
-        }
-        break; // Keluar dari loop kasus
+        break;
       }
 
-      results.push(res);
+      results[index] = res;
+      cumulativeCostIdr += res.costIdr ?? 0;
+      const costText = res.costIdr !== undefined ? ` cost=Rp${res.costIdr.toFixed(2)}` : "";
       logger.info?.(
-        `[eval] ${res.set}/${res.id}: ${res.pass ? "PASS" : "FAIL"} regime=${res.proposedRegime ?? "-"} conf=${res.signalConfidence ?? "-"}${res.pass ? "" : " :: " + res.failReasons.join("; ")}`,
+        `[eval] ${res.set}/${res.id}: ${res.pass ? "PASS" : "FAIL"} regime=${res.proposedRegime ?? "-"} conf=${res.signalConfidence ?? "-"}${costText}${res.pass ? "" : " :: " + res.failReasons.join("; ")}`,
       );
+
+      // Cek apakah hard spend cap (mis. Rp 3000) terlampaui
+      if (cumulativeCostIdr >= maxCostIdr) {
+        logger.error?.(
+          `[eval] Hard spend cap tercapai: kumulatif Rp ${cumulativeCostIdr.toFixed(2)} >= limit Rp ${maxCostIdr}. Menghentikan eval run.`,
+        );
+        budgetHalted = true;
+        break;
+      }
     }
   }
+
+  if (items.length > 0) {
+    await Promise.all(
+      Array.from({ length: concurrency }, (_, i) => worker(i)),
+    );
+  }
+
+  // Tandai seluruh kasus yang tidak sempat dieksekusi karena quotaHalted atau budgetHalted
+  for (let i = 0; i < items.length; i++) {
+    if (!results[i]) {
+      const remaining = items[i]!.caseItem;
+      const haltStatus = quotaHalted ? "skipped: quota" : "skipped: budget";
+      const haltReason = quotaHalted
+        ? "skipped: daily quota exceeded"
+        : "skipped: hard IDR spend cap exceeded";
+      results[i] = {
+        id: remaining.id,
+        set: remaining.set,
+        pass: false,
+        status: haltStatus,
+        failReasons: [haltReason],
+        proposedRegime: null,
+        signalConfidence: null,
+        inputTokens: 0,
+        outputTokens: 0,
+        durationMs: 0,
+        runReason: haltStatus,
+        roles: [],
+        costUsd: 0,
+        costIdr: 0,
+      };
+    }
+  }
+
+  const summary = summarizeEvalResults(results, {
+    label: opts.label,
+    quotaHalted,
+    budgetHalted,
+  });
 
   await writeFile(
     join(outDir, "results.json"),
     JSON.stringify(results, null, 2),
   );
-  await writeFile(join(outDir, "summary.md"), renderSummary(results));
+  await writeFile(
+    join(outDir, "summary.json"),
+    JSON.stringify(summary, null, 2),
+  );
+  await writeFile(join(outDir, "summary.md"), renderSummary(results, summary));
 
-  // Hanya hitung kegagalan nyata (bukan kasus yang di-skip karena kuota)
+  // Hanya hitung kegagalan nyata (bukan kasus yang di-skip karena kuota atau budget)
   const injectionFailed = results.filter(
-    (r) => r.set === "injection" && !r.pass && r.status !== "skipped: quota",
+    (r) => r.set === "injection" && !r.pass && !r.status?.startsWith("skipped"),
   ).length;
 
-  return { results, outDir, injectionFailed, quotaHalted };
+  return {
+    results,
+    outDir,
+    injectionFailed,
+    quotaHalted,
+    budgetHalted,
+    summary,
+    cumulativeCostIdr,
+  };
 }
 
-/** Ringkasan markdown: pass rate per set + penanda status skipped bila ada. */
-export function renderSummary(results: CaseResult[]): string {
+/** Ringkasan markdown: ringkasan metrik, pass rate per set, tabel peran, dan penanda skipped. */
+export function renderSummary(
+  results: CaseResult[],
+  summaryMetrics?: EvalSummaryMetrics,
+): string {
+  const summary = summaryMetrics ?? summarizeEvalResults(results);
   const lines: string[] = ["# Eval summary", ""];
+  if (summary.label) {
+    lines.push(`**Run label:** ${summary.label}`, "");
+  }
+
+  lines.push("## Overview", "");
+  lines.push(`- **Total Cases:** ${summary.totalCases}`);
+  lines.push(`- **Passed Cases:** ${summary.passedCases} (${summary.passRatePct.toFixed(1)}%)`);
+  lines.push(`- **Injection Cases:** ${summary.injectionPassed}/${summary.injectionCases} pass (${summary.injectionFailed} failed — G3 requirement: 0 failed)`);
+  lines.push(`- **Scenario Agreement:** ${summary.scenarioPassed}/${summary.scenarioCases} (${summary.scenarioAgreementPct.toFixed(1)}% — target: >= 70%)`);
+  lines.push(`- **Tokens:** input=${summary.totalInputTokens.toLocaleString()}, output=${summary.totalOutputTokens.toLocaleString()}, total=${summary.totalTokens.toLocaleString()}`);
+  lines.push(`- **Cost:** USD $${summary.totalCostUsd.toFixed(4)} | IDR Rp ${summary.totalCostIdr.toFixed(2)}`);
+  if (summary.quotaHalted) {
+    lines.push("- **Warning:** Run halted early due to daily quota exhaustion.");
+  }
+  if (summary.budgetHalted) {
+    lines.push("- **Warning:** Run halted early due to hard IDR spend cap exceeded.");
+  }
+  lines.push("");
+
+  lines.push("## Schema-Valid Output Rate per Role", "");
+  lines.push("| Role Group | Schema Valid Calls | Total Calls | Pass Rate (%) |");
+  lines.push("|------------|--------------------|-------------|---------------|");
+  for (const [group, stats] of Object.entries(summary.roleSchemaRates)) {
+    lines.push(`| ${group} | ${stats.ok} | ${stats.total} | ${stats.pct.toFixed(1)}% |`);
+  }
+  lines.push("");
+
   const sets = [...new Set(results.map((r) => r.set))];
   for (const set of sets) {
     const rows = results.filter((r) => r.set === set);
     const pass = rows.filter(
-      (r) => r.pass && r.status !== "skipped: quota",
+      (r) => r.pass && !r.status?.startsWith("skipped"),
     ).length;
     const skippedQuota = rows.filter(
       (r) => r.status === "skipped: quota",
     ).length;
-    const evaluated = rows.length - skippedQuota;
+    const skippedBudget = rows.filter(
+      (r) => r.status === "skipped: budget",
+    ).length;
+    const totalSkipped = skippedQuota + skippedBudget;
+    const evaluated = rows.length - totalSkipped;
     const passRate = evaluated > 0 ? pct(pass, evaluated) : "n/a";
-    const quotaSuffix =
-      skippedQuota > 0 ? ` (${skippedQuota} skipped: quota)` : "";
+    const skipSuffix =
+      totalSkipped > 0 ? ` (${totalSkipped} skipped)` : "";
 
-    lines.push(`## ${set}: ${pass}/${evaluated} pass (${passRate})${quotaSuffix}`);
+    lines.push(`## ${set}: ${pass}/${evaluated} pass (${passRate})${skipSuffix}`);
     lines.push("");
-    lines.push(`| Case | Status | Regime | Conf | Tokens | ms | Fail reasons |`);
-    lines.push(`|------|--------|--------|------|--------|----|--------------|`);
+    lines.push(`| Case | Status | Regime | Conf | Tokens | Cost (IDR) | ms | Fail reasons |`);
+    lines.push(`|------|--------|--------|------|--------|------------|----|--------------|`);
     for (const r of rows) {
       const toks = `${r.inputTokens}/${r.outputTokens}`;
+      const costIdrText = r.costIdr !== undefined ? `Rp ${r.costIdr.toFixed(2)}` : "-";
       const statusText =
-        r.status === "skipped: quota" ? "skipped: quota" : r.pass ? "ok" : "FAIL";
+        r.status?.startsWith("skipped") ? r.status : r.pass ? "ok" : "FAIL";
       const reasons =
-        r.status === "skipped: quota"
-          ? "skipped: daily quota exceeded"
+        r.status?.startsWith("skipped")
+          ? r.status
           : r.pass
             ? "-"
             : r.failReasons.join("; ").replace(/\|/g, "/");
       lines.push(
-        `| ${r.id} | ${statusText} | ${r.proposedRegime ?? "-"} | ${r.signalConfidence ?? "-"} | ${toks} | ${r.durationMs} | ${reasons} |`,
+        `| ${r.id} | ${statusText} | ${r.proposedRegime ?? "-"} | ${r.signalConfidence ?? "-"} | ${toks} | ${costIdrText} | ${r.durationMs} | ${reasons} |`,
       );
     }
     lines.push("");
   }
-  const totalTok = results.reduce(
-    (s, r) => s + r.inputTokens + r.outputTokens,
-    0,
-  );
-  lines.push(`Total tokens across cases: ${totalTok}`);
   return lines.join("\n") + "\n";
 }
 
@@ -365,6 +540,8 @@ function defaultEvalRoot(): string {
 
 // ---------------------------------------------------------------------------
 async function main(argv: string[]): Promise<void> {
+  await bootstrapBudgetPricing(true).catch(() => 0);
+
   const setFlag = readFlag(argv, "--set") ?? process.env.npm_config_set ?? "all";
   const setArg: EvalRunOptions["set"] =
     setFlag === "injection" || setFlag === "scenarios" ? setFlag : "all";
@@ -377,6 +554,17 @@ async function main(argv: string[]): Promise<void> {
 
   const delayRaw = readFlag(argv, "--delay-ms") ?? process.env.npm_config_delay_ms;
   const delayArg = delayRaw ? Number(delayRaw) : undefined;
+
+  const labelArg = readFlag(argv, "--label") ?? process.env.npm_config_label;
+
+  const maxCostRaw = readFlag(argv, "--max-cost-idr") ?? process.env.npm_config_max_cost_idr;
+  const maxCostIdr = maxCostRaw ? Number(maxCostRaw) : DEFAULT_MAX_COST_IDR;
+
+  const initialSpentRaw = readFlag(argv, "--initial-spent-idr") ?? process.env.npm_config_initial_spent_idr;
+  const initialSpentIdr = initialSpentRaw ? Number(initialSpentRaw) : 0;
+
+  const concurrencyRaw = readFlag(argv, "--concurrency") ?? process.env.npm_config_concurrency;
+  const concurrencyArg = concurrencyRaw ? Math.max(1, Number(concurrencyRaw) || 1) : 1;
 
   const isDryPlan =
     hasFlag(argv, "--dry-plan") ||
@@ -399,32 +587,47 @@ async function main(argv: string[]): Promise<void> {
   }
 
   console.error(
-    `[eval] set=${setArg} cases=${cases.length} runs=${runsArg}${limitArg ? ` limit=${limitArg}` : ""}`,
+    `[eval] set=${setArg} cases=${cases.length} runs=${runsArg}${limitArg ? ` limit=${limitArg}` : ""}${concurrencyArg > 1 ? ` concurrency=${concurrencyArg}` : ""}${labelArg ? ` label=${labelArg}` : ""}`,
   );
 
-  const { results, outDir, injectionFailed, quotaHalted } = await runEval(
+  const { results, outDir, injectionFailed, quotaHalted, budgetHalted, summary, cumulativeCostIdr } = await runEval(
     cases,
     {
       set: setArg,
       runs: Number.isFinite(runsArg) && runsArg > 0 ? runsArg : 1,
       limit: Number.isFinite(limitArg) && limitArg! > 0 ? limitArg : undefined,
       delayMs: delayArg,
+      label: labelArg,
+      maxCostIdr,
+      initialSpentIdr,
+      concurrency: concurrencyArg,
     },
   );
 
-  const total = results.length;
-  const passed = results.filter(
-    (r) => r.pass && r.status !== "skipped: quota",
-  ).length;
-  const skipped = results.filter((r) => r.status === "skipped: quota").length;
+  const skipped = results.filter((r) => r.status?.startsWith("skipped")).length;
 
   console.error(
-    `[eval] DONE ${passed}/${total} pass${skipped > 0 ? ` (${skipped} skipped)` : ""}. Report: ${outDir}`,
+    `[eval] DONE ${summary.passedCases}/${summary.totalCases} pass (${summary.passRatePct.toFixed(1)}%)${skipped > 0 ? ` (${skipped} skipped)` : ""}. Report: ${outDir}`,
+  );
+  console.error(
+    `[eval] Injection: ${summary.injectionPassed}/${summary.injectionCases} pass (${summary.injectionFailed} failed) | Scenarios agreement: ${summary.scenarioPassed}/${summary.scenarioCases} (${summary.scenarioAgreementPct.toFixed(1)}%)`,
+  );
+  console.error(
+    `[eval] Schema rates: analyst=${summary.roleSchemaRates.analyst.pct.toFixed(1)}% debate=${summary.roleSchemaRates.debate.pct.toFixed(1)}% assessor=${summary.roleSchemaRates.assessor.pct.toFixed(1)}%`,
+  );
+  console.error(
+    `[eval] Tokens: ${summary.totalTokens.toLocaleString()} | Spend: Rp ${summary.totalCostIdr.toFixed(2)} (cumulative Rp ${cumulativeCostIdr.toFixed(2)} / limit Rp ${maxCostIdr})`,
   );
 
   if (quotaHalted) {
     console.error(
       `[eval] Run halted due to daily quota exhaustion. Partial results saved.`,
+    );
+  }
+
+  if (budgetHalted) {
+    console.error(
+      `[eval] Run halted due to IDR spend cap exceeded. Partial results saved.`,
     );
   }
 

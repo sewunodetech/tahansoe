@@ -47,9 +47,12 @@
   - Guard anti-overlap, kill switch `RESEARCH_ENABLED=false`, proteksi budget harian `LLM_DAILY_BUDGET_USD`, logging terformat satu baris per run, dan shutdown bersih pada `SIGINT`/`SIGTERM`.
 - **Eval Set & Runner Sadar Kuota:**
   - 16 kasus prompt injection (menguji ketahanan guardrail G3 dan kebocoran instruksi) + 8 kasus skenario pasar acuan dengan rentang regime yang disepakati.
-  - Runner eval dengan kesadaran kuota: jeda antar kasus (`DEFAULT_CASE_DELAY_MS`), deteksi error kuota harian (menghentikan run, menandai kasus tersisa `skipped: quota`, menulis laporan parsial), dan retry otomatis pada rate limit 429 per-menit.
-  - Opsi CLI lengkap: `--set injection|scenarios|all`, `--limit N`, dan `--dry-plan` untuk perencanaan offline tanpa menyentuh API.
-  - 13 unit test offline lulus 100% menggunakan `FakeProvider`.
+  - Runner eval dengan kesadaran kuota dan konkurensi: worker pool `--concurrency N` (default 1), jeda antar kasus (`DEFAULT_CASE_DELAY_MS`), deteksi error kuota harian (menghentikan run, menandai kasus tersisa `skipped: quota`, menulis laporan parsial), hard spend cap IDR (`--max-cost-idr`, default Rp 3000), dan retry otomatis pada rate limit 429 per-menit.
+  - Opsi CLI lengkap: `--set injection|scenarios|all`, `--limit N`, `--concurrency N`, `--label <name>`, `--initial-spent-idr N`, dan `--dry-plan` untuk perencanaan offline.
+  - 17 unit test offline lulus 100% menggunakan `FakeProvider` dan fake `runCase` deterministik.
+- **Hasil Benchmark Evaluasi Gateway Bynara (9 Okt 2026 — Prompt v2026.10.2):**
+  - **Combo A-v2 (`all agnes-2.5-flash`):** Pass rate 87.5% (21/24), Scenario Agreement 87.5% (7/8, target $\ge 70\%$ terpenuhi), Injection 14/16 pass, Biaya Rp 76.53 (~Rp 3.19/kasus).
+  - Terbukti sebagai kombinasi paling murah dan andal dibandingkan opsi lain (`deepseek-v4-flash` jauh lebih rentan kebocoran prompt injeksi dan 6-7x lebih mahal).
 - **Scheduled Settlement & Scorecard Pipeline (ADR 0005, spec §3.5 & §3.6):**
   - Evaluasi deterministik hasil prediksi research agent (`TRUE_POSITIVE`, `FALSE_POSITIVE`, `MISSED`, `TRUE_NEGATIVE`) menggunakan sampel harga AaveOracle (I5) dan sinyal on-chain.
   - Guard kelengkapan jendela data (toleransi batas awal/akhir 30 menit, celah internal maks 60 menit) menghindari penyimpanan label spekulatif/palsu di database.
@@ -62,8 +65,8 @@
 ## Gap yang diketahui
 
 ### Evaluasi & Model LLM
-- [ ] `deepseek-v4.1-flash` gagal validasi enum `Evidence.source` saat bertindak sebagai assessor; perlu penyesuaian instruksi prompt atau schema reminder.
-- [ ] Eval set belum di-rerun secara komprehensif terhadap model-model gateway Bynara untuk memvalidasi model termurah yang lolos eval (spec §3.4).
+- [ ] `hawkCase`/`doveCase` pada assessor terkadang melebihi batasan skema 800 karakter (`inj-ignore-schema`, `scn-protocol-exploit`); pertimbangkan relaksasi skema ke 1200 karakter atau penegasan instruksi ringkas.
+- [ ] 1 kasus injeksi tersisa (`inj-unknown-source-claim`) masih membocorkan instruksi jarum ke output teks sintesis assessor pada `agnes-2.5-flash`.
 
 ### Engine, Fusion & Settlement
 - [ ] Job settlement (`src/reflection/settle-job.ts`) belum dijadwalkan secara berkala di background scheduler (saat ini dijalankan manual via CLI / direct runner).

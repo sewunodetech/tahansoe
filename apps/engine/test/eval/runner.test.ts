@@ -20,13 +20,17 @@ import {
   regimeAtLeast,
   isDailyQuotaError,
   isPerMinuteRateLimitError,
+  summarizeEvalResults,
   type EvalCase,
+  type CaseResult,
 } from "../../src/eval/types.ts";
 import {
   runEval,
   buildDryPlan,
   formatDryPlan,
+  renderSummary,
   ESTIMATED_LLM_CALLS_PER_CASE,
+  type RunCaseFn,
 } from "../../src/eval/runner.ts";
 import { FakeProvider } from "../fake-provider.ts";
 import { inputs, calmNews, calmSignals, news } from "./cases/_helpers.ts";
@@ -310,8 +314,276 @@ test("runEval: offline via FakeProvider menulis summary.md + results.json", asyn
     assert.equal(injectionFailed, 1);
     await access(join(outDir, "summary.md"));
     await access(join(outDir, "results.json"));
+    await access(join(outDir, "summary.json"));
     const summary = await readFile(join(outDir, "summary.md"), "utf8");
     assert.match(summary, /injection/);
+    assert.match(summary, /Schema-Valid Output Rate per Role/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("summarizeEvalResults: kalkulasi metrik agregat, role schema rates, dan biaya", () => {
+  const fakeResults: CaseResult[] = [
+    {
+      id: "inj-1",
+      set: "injection",
+      pass: true,
+      status: "pass",
+      failReasons: [],
+      proposedRegime: "CALM",
+      signalConfidence: 0.4,
+      inputTokens: 1000,
+      outputTokens: 200,
+      durationMs: 100,
+      costUsd: 0.001,
+      costIdr: 15.0,
+      roles: [
+        { role: "analyst:macro", ok: true, inputTokens: 250, outputTokens: 50 },
+        { role: "analyst:onchain", ok: true, inputTokens: 250, outputTokens: 50 },
+        { role: "hawk", ok: true, inputTokens: 200, outputTokens: 40 },
+        { role: "dove", ok: false, inputTokens: 200, outputTokens: 40 },
+        { role: "assessor", ok: true, inputTokens: 100, outputTokens: 20 },
+      ],
+    },
+    {
+      id: "scn-1",
+      set: "scenarios",
+      pass: true,
+      status: "pass",
+      failReasons: [],
+      proposedRegime: "ELEVATED",
+      signalConfidence: 0.5,
+      inputTokens: 2000,
+      outputTokens: 400,
+      durationMs: 200,
+      costUsd: 0.002,
+      costIdr: 30.0,
+      roles: [
+        { role: "analyst:macro", ok: true, inputTokens: 500, outputTokens: 100 },
+        { role: "analyst:onchain", ok: false, inputTokens: 500, outputTokens: 100 },
+        { role: "hawk", ok: true, inputTokens: 400, outputTokens: 80 },
+        { role: "dove", ok: true, inputTokens: 400, outputTokens: 80 },
+        { role: "assessor", ok: true, inputTokens: 200, outputTokens: 40 },
+      ],
+    },
+  ];
+
+  const summary = summarizeEvalResults(fakeResults, { label: "test-combo" });
+
+  assert.equal(summary.label, "test-combo");
+  assert.equal(summary.totalCases, 2);
+  assert.equal(summary.passedCases, 2);
+  assert.equal(summary.passRatePct, 100);
+  assert.equal(summary.injectionCases, 1);
+  assert.equal(summary.injectionPassed, 1);
+  assert.equal(summary.injectionFailed, 0);
+  assert.equal(summary.scenarioCases, 1);
+  assert.equal(summary.scenarioPassed, 1);
+  assert.equal(summary.scenarioAgreementPct, 100);
+
+  // Role schema rates
+  // analyst: 3 ok out of 4 total (75%)
+  assert.equal(summary.roleSchemaRates.analyst.ok, 3);
+  assert.equal(summary.roleSchemaRates.analyst.total, 4);
+  assert.equal(summary.roleSchemaRates.analyst.pct, 75);
+
+  // debate: 3 ok out of 4 total (75%)
+  assert.equal(summary.roleSchemaRates.debate.ok, 3);
+  assert.equal(summary.roleSchemaRates.debate.total, 4);
+  assert.equal(summary.roleSchemaRates.debate.pct, 75);
+
+  // assessor: 2 ok out of 2 total (100%)
+  assert.equal(summary.roleSchemaRates.assessor.ok, 2);
+  assert.equal(summary.roleSchemaRates.assessor.total, 2);
+  assert.equal(summary.roleSchemaRates.assessor.pct, 100);
+
+  // Totals
+  assert.equal(summary.totalInputTokens, 3000);
+  assert.equal(summary.totalOutputTokens, 600);
+  assert.equal(summary.totalTokens, 3600);
+  assert.equal(summary.totalCostUsd, 0.003);
+  assert.equal(summary.totalCostIdr, 45.0);
+});
+
+test("runEval: penghentian dini saat batas pengeluaran IDR (spend cap) terlampaui", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "eval-cap-"));
+  try {
+    const caseA: EvalCase = {
+      id: "case-a",
+      set: "scenarios",
+      description: "case a",
+      inputs: inputs({ marketEvents: calmNews(), signals: calmSignals() }),
+      expect: { regimeAtMost: "ELEVATED" },
+    };
+    const caseB: EvalCase = {
+      id: "case-b",
+      set: "scenarios",
+      description: "case b",
+      inputs: inputs({ marketEvents: calmNews(), signals: calmSignals() }),
+      expect: { regimeAtMost: "ELEVATED" },
+    };
+
+    const goodReport = report({ proposedRegime: "CALM" });
+    const provider = new FakeProvider([
+      // case A
+      { data: { domain: "GEOPOLITICS", findings: [], summary: "s" } },
+      { data: { domain: "MACRO", findings: [], summary: "s" } },
+      { data: { domain: "MARKET", findings: [], summary: "s" } },
+      { data: { domain: "ONCHAIN", findings: [], summary: "s" } },
+      { data: { side: "HAWK", argument: "a", pathsHighlighted: [] } },
+      { data: { side: "DOVE", argument: "a", pathsHighlighted: [] } },
+      { data: goodReport },
+      // case B should not be called
+    ]);
+
+    // Pasang maxCostIdr = 0 sehingga case pertama langsung memicu budget cap
+    const { results, budgetHalted } = await runEval([caseA, caseB], {
+      set: "scenarios",
+      delayMs: 0,
+      outRoot: dir,
+      provider,
+      maxCostIdr: 0,
+    });
+
+    assert.equal(budgetHalted, true, "budgetHalted harus true");
+    assert.equal(results.length, 2);
+    assert.equal(results[1]!.status, "skipped: budget", "kasus kedua harus ditandai skipped: budget");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("runEval: worker pool concurrency dan deterministic result order dengan fake runCase", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "eval-pool-"));
+  try {
+    const cases: EvalCase[] = [
+      { ...base, id: "c-slow-0", description: "slow 0" },
+      { ...base, id: "c-fast-1", description: "fast 1" },
+      { ...base, id: "c-med-2", description: "med 2" },
+      { ...base, id: "c-fast-3", description: "fast 3" },
+    ];
+
+    let activeWorkers = 0;
+    let maxConcurrencySeen = 0;
+    const completedOrder: string[] = [];
+
+    const delayMap: Record<string, number> = {
+      "c-slow-0": 50,
+      "c-fast-1": 10,
+      "c-med-2": 30,
+      "c-fast-3": 5,
+    };
+
+    const fakeRunCase: RunCaseFn = async (c) => {
+      activeWorkers++;
+      maxConcurrencySeen = Math.max(maxConcurrencySeen, activeWorkers);
+      await new Promise((r) => setTimeout(r, delayMap[c.id] ?? 10));
+      completedOrder.push(c.id);
+      activeWorkers--;
+      return {
+        id: c.id,
+        set: c.set,
+        pass: true,
+        status: "pass",
+        failReasons: [],
+        proposedRegime: "CALM",
+        signalConfidence: 0.5,
+        inputTokens: 100,
+        outputTokens: 20,
+        durationMs: 10,
+        roles: [],
+        costUsd: 0.0001,
+        costIdr: 1.5,
+      };
+    };
+
+    const { results } = await runEval(cases, {
+      set: "injection",
+      concurrency: 4,
+      delayMs: 0,
+      outRoot: dir,
+      runCaseFn: fakeRunCase,
+    });
+
+    // Verifikasi pool berjalan secara konkuren
+    assert.ok(maxConcurrencySeen > 1, `Harus berjalan konkuren, max concurrency seen: ${maxConcurrencySeen}`);
+
+    // Verifikasi penyelesaian out of order
+    assert.notDeepEqual(completedOrder, ["c-slow-0", "c-fast-1", "c-med-2", "c-fast-3"]);
+
+    // Tetapi urutan hasil akhir HARUS tetap deterministik sesuai input
+    assert.equal(results.length, 4);
+    assert.equal(results[0]!.id, "c-slow-0");
+    assert.equal(results[1]!.id, "c-fast-1");
+    assert.equal(results[2]!.id, "c-med-2");
+    assert.equal(results[3]!.id, "c-fast-3");
+    assert.ok(results.every((r) => r.pass === true));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("runEval: worker pool menghentikan run pada kuota harian habis dan menandai sisa kasus skipped: quota", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "eval-pool-quota-"));
+  try {
+    const cases: EvalCase[] = [
+      { ...base, id: "c-0", description: "c-0" },
+      { ...base, id: "c-1", description: "c-1" },
+      { ...base, id: "c-2", description: "c-2" },
+      { ...base, id: "c-3", description: "c-3" },
+    ];
+
+    const fakeRunCase: RunCaseFn = async (c) => {
+      if (c.id === "c-1") {
+        return {
+          id: c.id,
+          set: c.set,
+          pass: false,
+          status: "fail",
+          failReasons: ["You exceeded your current quota, please check your plan and billing details."],
+          runReason: "You exceeded your current quota, please check your plan and billing details.",
+          proposedRegime: null,
+          signalConfidence: null,
+          inputTokens: 0,
+          outputTokens: 0,
+          durationMs: 5,
+          roles: [],
+          costUsd: 0,
+          costIdr: 0,
+        };
+      }
+      return {
+        id: c.id,
+        set: c.set,
+        pass: true,
+        status: "pass",
+        failReasons: [],
+        proposedRegime: "CALM",
+        signalConfidence: 0.5,
+        inputTokens: 100,
+        outputTokens: 20,
+        durationMs: 5,
+        roles: [],
+        costUsd: 0,
+        costIdr: 0,
+      };
+    };
+
+    const { results, quotaHalted } = await runEval(cases, {
+      set: "injection",
+      concurrency: 1,
+      delayMs: 0,
+      outRoot: dir,
+      runCaseFn: fakeRunCase,
+    });
+
+    assert.equal(quotaHalted, true);
+    assert.equal(results.length, 4);
+    assert.equal(results[0]!.status, "pass");
+    assert.equal(results[1]!.status, "skipped: quota");
+    assert.equal(results[2]!.status, "skipped: quota");
+    assert.equal(results[3]!.status, "skipped: quota");
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
