@@ -143,7 +143,7 @@ export function renderContextAsData(ctx: ResearchContext): string {
   lines.push(
     "T1 price drop | T2 volatility | T3 leverage cascade | T4 stablecoin depeg | " +
       "T5 LST depeg | T6 gas/congestion | T7 reserve liquidity | T8 oracle lag | " +
-      "T9 protocol incident | T10 sequencer down",
+      "T9 protocol incident | T10 sequencer down | T11 interest rate & carry (borrow rate spike / negative carry)",
   );
 
   lines.push("");

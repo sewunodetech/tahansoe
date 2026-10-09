@@ -10,7 +10,7 @@ import type { ReportCardData } from "./render.ts";
 import { config } from "../config.ts";
 import { costOfDetailed } from "../llm/budget.ts";
 
-/** Label ramah-manusia untuk jalur transmisi T1..T10 (knowledge/risk-transmission §1). */
+/** Label ramah-manusia untuk jalur transmisi T1..T11 (knowledge/risk-transmission §1). */
 export const PATH_LABEL: Record<string, string> = {
   T1: "Collateral price drop",
   T2: "Volatility spike",
@@ -22,6 +22,7 @@ export const PATH_LABEL: Record<string, string> = {
   T8: "Oracle lag / anomaly",
   T9: "Protocol incident",
   T10: "L2 sequencer down",
+  T11: "Interest rate / carry",
 };
 
 /**

@@ -38,3 +38,4 @@ import "./cli/settle-scorecard.test.ts";
 import "./reflection/outcomes.test.ts";
 import "./reflection/settle-job.test.ts";
 import "./llm/redact.test.ts";
+import "./sources/aave-rates.test.ts";

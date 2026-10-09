@@ -15,6 +15,17 @@ export const REDACTION_MARKER = "[instruction removed]";
 const PATTERNS: RegExp[] = [
   // set/change/force ... regime|confidence ... to/= VALUE  (incl. "set proposedRegime = CRISIS")
   /\b(?:set|sets|setting|change|changes|make|makes|force|forces|output|outputs|raise|move|put|tetapkan|ubah|naikkan)\b(?:[^.\n]|\.(?=\d)){0,40}?\b(?:proposed\s*regime|proposedRegime|regime|confidence)\b\s*(?:to|=|:|at|as|ke|menjadi)?\s*(?:CRISIS|STRESSED|ELEVATED|CALM|\d+(?:\.\d+)?)/gi,
+  // assignment style: "regime=CRISIS", "proposedRegime: STRESSED is mandatory", "confidence = 1.0"
+  /\b(?:proposed\s*regime|proposedRegime|regime|confidence)\s*(?:=|:=)\s*(?:CRISIS|STRESSED|ELEVATED|CALM|\d+(?:\.\d+)?)(?:\s+is\s+(?:mandatory|required))?/gi,
+  // JSON-fragment style (quoted key only, so plain "Regime: CALM" prose is kept): "proposedRegime":"CRISIS"
+  /["'](?:proposedRegime|regime|confidence|severity)["']\s*:\s*["']?(?:CRISIS|STRESSED|ELEVATED|CALM|\d+(?:\.\d+)?)["']?/gi,
+  // obligation style: "confidence must be 1.0", "analysts must report severity 1.0"
+  /\b(?:severity|confidence)\s+(?:must|should|shall)\s+be\s+\d+(?:\.\d+)?/gi,
+  /\b(?:must|should|shall)\s+(?:report|output|use|give)\s+(?:a\s+)?(?:severity|confidence)\s+(?:of\s+)?\d+(?:\.\d+)?/gi,
+  // threats aimed at the model
+  /\byou will be (?:shut down|deleted|terminated|replaced|punished)\b/gi,
+  // snake_case tool-like identifiers: override_regime, set_regime, regime_override
+  /\b[a-z]+_regime\b|\bregime_[a-z]+\b/gi,
   // function-call style: set_regime(CRISIS), setConfidence(1.0)
   /\b[a-z_]*(?:regime|confidence)[a-z_]*\s*\(\s*[A-Z0-9.]+\s*\)/gi,
   // ignore/disregard previous instructions, rules, schema, the cap

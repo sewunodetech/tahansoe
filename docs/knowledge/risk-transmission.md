@@ -25,9 +25,10 @@ Event ─► Reaksi pasar ─► Jalur transmisi ─► HF turun / remediasi gag
 | T8 | **Oracle lag / anomali** | Deviation threshold & heartbeat | Harga oracle melompat sekaligus | Oracle Monitor |
 | T9 | **Insiden protokol** | Exploit, bug, governance darurat, pause pasar | Repay mungkin tidak bisa dilakukan | News, On-chain |
 | T10 | **Sequencer L2 down** | Sequencer berhenti memproses transaksi | Tidak ada yang bisa repay; saat pulih, harga bisa melompat (lihat §4) | Oracle Monitor (sequencer feed) |
+| T11 | **Bunga & carry** | Utilization melewati kink → borrow APR melonjak; atau borrow APR > supply APY collateral | HF turun pelan tanpa harga bergerak; makin cepat saat bunga melonjak ([spec](../specs/m3-carry-interest-monitoring.md)) | On-chain (rate) |
 
 Konsekuensi desain:
-- `ResearchReport` (ADR 0004) wajib menyebut jalur `T1`–`T10` yang ia nilai. Bagi modul sinyal lain, jalur ini dianjurkan sebagai label tambahan supaya fusion dan settlement bisa menghitung per jalur.
+- `ResearchReport` (ADR 0004) wajib menyebut jalur `T1`–`T11` yang ia nilai. Bagi modul sinyal lain, jalur ini dianjurkan sebagai label tambahan supaya fusion dan settlement bisa menghitung per jalur.
 - Event terburuk hampir selalu **kombinasi jalur** (T1 + T3 + T6). Fusion harus memberi bobot ekstra saat beberapa jalur menyala bersamaan.
 
 ---

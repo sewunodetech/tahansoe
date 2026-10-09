@@ -59,7 +59,7 @@ export type Evidence = z.infer<typeof Evidence>;
 /** Satu temuan analyst, selalu terhubung ke jalur transmisi. */
 export const AnalystFinding = z.object({
   path: TransmissionPathSchema.describe(
-    "Transmission path (T1..T10) this finding maps to; see risk-transmission knowledge.",
+    "Transmission path (T1..T11) this finding maps to; see risk-transmission knowledge.",
   ),
   severity: z
     .number()
@@ -124,7 +124,7 @@ export const ResearchReport = z.object({
   paths: z
     .array(
       z.object({
-        path: TransmissionPathSchema.describe("Transmission path T1..T10."),
+        path: TransmissionPathSchema.describe("Transmission path T1..T11."),
         severity: z
           .number()
           .min(0)

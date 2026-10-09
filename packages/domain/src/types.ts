@@ -23,6 +23,7 @@ export type Hex = `0x${string}`;
  * T8: Oracle lag / anomali
  * T9: Insiden protokol
  * T10: Sequencer L2 down
+ * T11: Bunga & carry (borrow APR melonjak / carry negatif → HF turun tanpa harga bergerak)
  */
 export type TransmissionPath =
   | "T1"
@@ -34,7 +35,8 @@ export type TransmissionPath =
   | "T7"
   | "T8"
   | "T9"
-  | "T10";
+  | "T10"
+  | "T11";
 
 export const TRANSMISSION_PATHS: readonly TransmissionPath[] = [
   "T1",
@@ -47,6 +49,7 @@ export const TRANSMISSION_PATHS: readonly TransmissionPath[] = [
   "T8",
   "T9",
   "T10",
+  "T11",
 ] as const;
 
 /**
@@ -76,7 +79,7 @@ export interface SignalEvidence {
 export interface Signal {
   id: string;
   module: "ORACLE" | "TECHNICAL" | "ONCHAIN" | "MACRO" | "NEWS" | "SOCIAL" | "RESEARCH";
-  paths?: TransmissionPath[];   // T1..T10, lihat knowledge/risk-transmission.md
+  paths?: TransmissionPath[];   // T1..T11, lihat knowledge/risk-transmission.md
   assets: string[];             // mis. ["ETH", "WBTC"]
   direction: "DOWN" | "UP" | "VOLATILITY";
   severity: number;             // 0..1

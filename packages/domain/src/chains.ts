@@ -74,6 +74,8 @@ export const ARBITRUM_ONE: ChainConfig = {
   tokens: {
     WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
     USDC: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    /** USDC bridged (simbol on-chain juga "USDC"); dibedakan lewat alamat. */
+    "USDC.e": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
   },
   explorer: "https://arbiscan.io",
 };
