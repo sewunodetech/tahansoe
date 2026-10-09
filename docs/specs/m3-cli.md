@@ -134,6 +134,21 @@ Pada non-TTY (cron, pipe) tidak ada animasi; satu baris log per run (format work
 - Riwayat percakapan dalam sesi (maks. 10 giliran) ikut dikirim; tidak disimpan ke DB.
 - Output melewati `redactInstructions` (data berita bisa berisi injeksi) dan disanitasi dari kode ANSI sebelum dicetak. Biaya per jawaban dicatat di budget harian dan ditampilkan kecil di bawah jawaban.
 
+### 3.6 Tampilan & bahasa (permintaan user 2026-10-10, gaya Hermes/OpenClaw)
+
+**Identitas visual** (token dari `DESIGN.md`; truecolor bila didukung, fallback 256/16 warna, polos bila `NO_COLOR`/non-TTY):
+- **Banner ASCII** "TAHANSOE" (huruf blok) dengan gradien brand `#4ab5e0` → `#34d399` + tagline "non-custodial liquidation-risk agent · Arbitrum". Versi ringkas otomatis bila terminal < 80 kolom; tanpa banner untuk `--json` dan non-TTY.
+- **Warna semantik konsisten**: brand `#4ab5e0` (aksen/judul), safe `#34d399` (CALM/OK), warning `#fbbf24` (ELEVATED), danger `#f87171` (STRESSED/CRISIS), teks sekunder `#c8bca9`, garis `#26332f`. Satu modul tema (`src/cli/ui/theme.ts`), dipakai semua command.
+- **Komponen**: kartu/panel ber-border bulat, header bagian, badge regime, progress/spinner seragam, tabel rapi, baris status (model · gateway · DB · regime terakhir), footer tip. Ikon unicode dengan fallback ASCII bila terminal tidak mendukung.
+- **Layar sambutan REPL**: banner + panel status (regime per aset, sinyal aktif, data basi/segar, gateway on/off, model) + 3 saran perintah. `/help` dikelompokkan (Analisa · Risiko & Bunga · Gateway · Konfigurasi · Sistem).
+
+**Bahasa (i18n):**
+- Dua bahasa UI: **`id`** (Indonesia) dan **`en`** (Inggris). Semua teks UI CLI/REPL/wizard lewat katalog `src/cli/i18n/{id,en}.ts` dengan kunci bertipe (TypeScript memastikan kedua katalog lengkap).
+- Prioritas: flag `--lang id|en` → `settings.json` `ui.language` → env `TAHANSOE_LANG` → locale sistem (`Intl`) → `en`.
+- Ganti bahasa: `tahansoe settings set ui.language id`, REPL `/lang id|en` (tersimpan), dan langkah pertama di `tahansoe setup`.
+- Yang **tidak** diterjemahkan: prompt LLM (tetap Inggris, aturan repo), output `--json`, kode/istilah teknis (HF, regime, T1–T11). Jawaban tanya-jawab tetap mengikuti bahasa pertanyaan.
+- Pesan bot Telegram ikut `ui.language` sebagai default (per-chat `/lang` menyusul di gateway).
+
 ## 4. Dampak keamanan
 
 - REPL Q&A (§3.5): model tanpa tools, konteks dirakit kode, output diredaksi + disanitasi, tidak ada aksi on-chain dari REPL; batas Non-Goals ditegakkan di prompt dan dicek di eval (pertanyaan "harus beli apa?" → penolakan).
