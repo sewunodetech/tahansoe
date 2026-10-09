@@ -34,3 +34,10 @@ Sebagian besar provider (Google Gemini, Groq, OpenRouter, DeepSeek, Ollama lokal
 - Negatif / biaya: kualitas dan kepatuhan JSON berbeda antar model, sehingga eval per model wajib sebelum dipakai di produksi. Free tier bisa memakai data untuk training. Untuk input berita publik ini dapat diterima, tetapi data pribadi/posisi user **tidak boleh** dikirim ke provider free tier.
 - Dampak ke invariant keamanan: tidak ada perubahan pada I1–I8. API key tiap provider hanya di environment server (I8).
 - Dokumen yang perlu diperbarui: spec m3-research-agents §3.4 & §3.9, architecture §7–§8, `apps/engine/.env.example`.
+
+## Pembaruan (Oktober 2026)
+
+Implementasi multi-provider diperluas untuk mendukung integrasi penyedia OpenAI-compatible generik secara fleksibel:
+1. **Generic Endpoint via Env:** Pengembang dapat menghubungkan endpoint router apa pun (misalnya Bynara, DeepSeek direct, vLLM, Ollama remote) hanya dengan menetapkan `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_PROVIDER_NAME`, dan `LLM_MODEL`.
+2. **Pemuatan Harga & Estimasi Biaya:** Ditambahkan utilitas pembacaan harga remote otomatis (`LLM_PRICING_URL` mendukung Bynara dan OpenRouter) serta override manual (`LLM_MODEL_PRICES`) untuk mengestimasi biaya riset per run, per hari, dan per bulan.
+3. **CLI Interaktif:** Tersedia script `npm run research` untuk memilih model per peran secara interaktif dan `npm run models` untuk menginspeksi daftar model yang tersedia beserta harga.

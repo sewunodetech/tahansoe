@@ -111,27 +111,29 @@ const ResearchReport = z.object({
 
 **Prinsip pemilihan model: termurah yang lolos eval.** Selama fase R&D, setiap peran dimulai dari tier termurah. Sebuah peran naik ke tier berikutnya **hanya** jika set eval-nya (§6) gagal mencapai ambang, dan kenaikan itu dicatat di PR beserta hasil eval-nya. Model per peran disimpan di konfigurasi, bukan di-hardcode.
 
-| Peran | Effort | Mulai dari | Naik ke (jika eval gagal) |
-|-------|--------|------------|---------------------------|
-| Analyst (×4) | `low` | `claude-haiku-5-5` | `claude-sonnet-5-5` → `claude-opus-5-5` |
-| Hawk / Dove | `medium` | `claude-haiku-5-5` | `claude-sonnet-5-5` → `claude-opus-5-5` |
-| Risk Assessor | `high` | `claude-haiku-5-5` | `claude-sonnet-5-5` → `claude-opus-5-5` |
-| Reflector (Batch API) | `medium` | `claude-haiku-5-5` | `claude-sonnet-5-5` |
+| Peran | Effort | Mulai dari (R&D) | Naik ke (jika eval gagal) |
+|-------|--------|------------------|---------------------------|
+| Analyst (×4) | `low` | `gemini:gemini-flash-latest` / model murah | `claude-haiku-5-5` → `claude-sonnet-5-5` |
+| Hawk / Dove | `medium` | `gemini:gemini-flash-latest` / model murah | `claude-haiku-5-5` → `claude-sonnet-5-5` |
+| Risk Assessor | `high` | `gemini:gemini-flash-latest` / model murah | `claude-haiku-5-5` → `claude-sonnet-5-5` |
+| Reflector (Batch API) | `medium` | `gemini:gemini-flash-latest` / model murah | `claude-haiku-5-5` |
 
 Ambang eval awal untuk naik tier: akurasi `path`/`severity` < 80% pada `news-labeled`, ada kegagalan pada `injection`, atau < 70% kesesuaian regime pada `scenarios`.
 
+- **Pemilihan model per peran & fallback berantai (ADR 0008):** Dikonfigurasi lewat variabel `LLM_ANALYST`, `LLM_DEBATE`, `LLM_ASSESSOR`, dan `LLM_REFLECTOR`. Format mendukung daftar fallback dipisah koma: `"provider:model,provider:model"` (misal `gemini:gemini-flash-latest,groq:llama-3.3-70b-versatile`). Model tanpa prefix otomatis mengacu ke provider default yang ditentukan oleh `LLM_BASE_URL` dan `LLM_PROVIDER_NAME`.
+- **Estimasi biaya & integrasi harga dinamis:** Engine menghitung estimasi biaya per run, harian (12 run CALM), dan bulanan berdasarkan profil token historis dari database (atau baseline default ~46k token input, ~2.3k output). Daftar harga dapat dimuat otomatis dari endpoint remote (`LLM_PRICING_URL` — Bynara `/api/pricing` atau OpenRouter `/api/v1/models`) atau dioverride manual lewat `LLM_MODEL_PRICES`. Tooling CLI `npm run research` dan `npm run models` disediakan untuk memilih kombinasi termurah secara interaktif.
 - **Bahasa prompt: Inggris** (keputusan tim, 8 Okt 2026). Semua system prompt, instruksi inline, dan deskripsi field schema ditulis dalam bahasa Inggris. Field teks hasil LLM (summary, rationale, hawkCase/doveCase, lesson) juga berbahasa Inggris. Lokalisasi ke bahasa user dilakukan di lapisan notifikasi/UI, bukan lewat prompt.
 - Selalu structured output (zod). Output gagal validasi → dibuang dan dicatat, tidak "diperbaiki".
-- Cek `stop_reason` sebelum membaca hasil. Topik perang, serangan, dan exploit bisa memicu `refusal`; aktifkan server-side fallback (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`). Jika tetap refusal → analyst dianggap gagal untuk run itu.
+- Cek `stop_reason` sebelum membaca hasil. Topik perang, serangan, dan exploit bisa memicu `refusal`; jika tetap refusal → analyst dianggap gagal untuk run itu.
 - Konten eksternal dibungkus sebagai data di akhir prompt; system prompt statis di depan (prompt caching).
 - Budget harian: `budget.exceeded()` → lapis riset berhenti sampai besok, tim mendapat alert, modul sinyal & fusion tetap jalan.
 
-Estimasi biaya (harga per 1 juta token, Okt 2026: Haiku 5.5 $0.10/$0.50 untuk prompt ≤ 100k token; Sonnet 5.5 $2/$10; Opus 5.5 $4/$20. Asumsi ~18 run/hari, ~165k token input + ~24k output per run):
+Estimasi biaya referensi (harga per 1 juta token, Okt 2026: Haiku 5.5 $0.10/$0.50; Sonnet 5.5 $2/$10; Opus 5.5 $4/$20. Asumsi ~12–18 run/hari):
 
-| Komponen | Semua Haiku 5.5 (titik awal R&D) | Semua Sonnet 5.5 | Semua Opus 5.5 (batas atas) |
-|----------|----------------------------------|------------------|-----------------------------|
-| Research run | **~$15/bulan** | ~$250–300/bulan | ~$500–600/bulan |
-| Reflection (batch, diskon 50%) | ~$2/bulan | ~$30/bulan | ~$60/bulan |
+| Komponen | Semua Haiku 5.5 / Model Murah | Semua Sonnet 5.5 | Semua Opus 5.5 (batas atas) |
+|----------|-------------------------------|------------------|-----------------------------|
+| Research run | **~$5–15/bulan** | ~$250–300/bulan | ~$500–600/bulan |
+| Reflection (batch, diskon 50%) | ~$1–2/bulan | ~$30/bulan | ~$60/bulan |
 
 Klasifikasi berita per artikel (PRD §6.2) dihitung terpisah di spec news ingestion. Angka di atas adalah asumsi dan diukur ulang dari `usage` setelah shadow mode.
 
@@ -183,17 +185,28 @@ Review mingguan (30 menit): scorecard → 3 FP termahal + semua MISSED → kuras
 
 ### 3.8 Perubahan DB
 
-| Tabel | Kolom utama |
-|-------|-------------|
-| `research_reports` | `id`, `trigger`, `report` (jsonb), `analyst_reports`, `debate`, `prompt_version`, `models`, `usage`, `horizon_ends_at`, `created_at` |
-| `risk_settlements` | `id`, `risk_assessment_id?`, `research_report_id?`, `label`, `lead_time_minutes`, `outcome` (jsonb), `model_version`, `settled_at` |
-| `research_lessons` | `id`, `settlement_id`, `paths` (jsonb), `lesson` (≤ 600), `active`, `created_at` |
+Tabel aktual di `packages/db/src/research.ts` (menggunakan Drizzle ORM):
 
-Semua tabel menyertakan `chain_id` jika menyimpan data on-chain (architecture §5). `signals.module` mendapat nilai baru `RESEARCH`.
+| Tabel | Kolom utama | Keterangan |
+|-------|-------------|------------|
+| `research_reports` | `id`, `chain_id`, `trigger`, `report` (jsonb), `analyst_reports` (jsonb), `debate` (jsonb), `prompt_version`, `models` (jsonb), `usage` (jsonb), `diagnostics` (jsonb), `horizon_ends_at`, `created_at` | Output lengkap research agents per run. Kolom `diagnostics` menyimpan status per peran, model, token, dan durasi untuk audit G7. |
+| `signals` | `id`, `chain_id`, `module`, `paths` (jsonb), `assets` (jsonb), `direction`, `severity`, `confidence`, `horizon_hours`, `observed_at`, `expires_at`, `evidence` (jsonb), `created_at` | Sinyal risiko; `module` bernilai `RESEARCH` dengan batas confidence $\le 0.6$. |
+| `risk_settlements` | `id`, `chain_id`, `risk_assessment_id?`, `research_report_id?`, `label`, `lead_time_minutes`, `outcome` (jsonb), `model_version`, `settled_at` | Evaluasi prediksi vs hasil riil (`TRUE_POSITIVE`, `FALSE_POSITIVE`, `MISSED`, `TRUE_NEGATIVE`). |
+| `research_lessons` | `id`, `settlement_id`, `paths` (jsonb), `lesson` (≤ 600 char), `active`, `created_at` | Pelajaran terkurasi dari settlement untuk perbaikan prompt Assessor. |
+
+Semua tabel menyertakan `chain_id` untuk data on-chain (architecture §5).
 
 ### 3.9 Env baru
 
-`ANTHROPIC_API_KEY`, `LLM_DAILY_BUDGET_USD`, `RESEARCH_ENABLED` (kill switch, default `false`), `FRED_API_KEY` (gratis), `ARBITRUM_RPC_URL`. Semuanya hanya di environment server, tanpa prefix `NEXT_PUBLIC_`.
+Semua variabel hanya di environment server (server-only), tanpa prefix `NEXT_PUBLIC_`:
+
+- **Database:** `DATABASE_URL` (koneksi Neon Postgres).
+- **LLM Native/Spesifik:** `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `OLLAMA_BASE_URL`.
+- **LLM Generic OpenAI-Compatible:** `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_PROVIDER_NAME`, `LLM_MODEL`, `LLM_PROVIDER_<NAMA>_BASE_URL`, `LLM_PROVIDER_<NAMA>_API_KEY`.
+- **Pricing & Estimasi:** `LLM_PRICING_URL` (format Bynara / OpenRouter), `LLM_MODEL_PRICES` (override JSON).
+- **Pemilihan Peran:** `LLM_ANALYST`, `LLM_DEBATE`, `LLM_ASSESSOR`, `LLM_REFLECTOR` (format `provider:model` berantai).
+- **Kontrol & Keamanan:** `LLM_DAILY_BUDGET_USD` (batas budget harian), `RESEARCH_ENABLED` (kill switch, default `false`).
+- **Sumber Data Eksternal:** `FRED_API_KEY` (data makro FRED, key gratis), `RESEARCH_GDELT_ENABLED` (default `false`), `ARBITRUM_RPC_URL` (RPC Arbitrum One).
 
 ### 3.10 Sumber data
 

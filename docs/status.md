@@ -1,7 +1,7 @@
 # Status Proyek
 
-**Last updated:** 8 Oktober 2026
-**Milestone aktif:** M1 (integrasi end-to-end) dan M2 (Core Risk Engine v1) — lihat [PRD §10](prd.md#10-roadmap-eksekusi)
+**Last updated:** 9 Oktober 2026
+**Milestone aktif:** M2 (Core Risk Engine v1 / Research Layer) dan M1 (Integrasi on-chain web) — lihat [PRD §10](prd.md#10-roadmap-eksekusi)
 
 > Perbarui file ini di akhir setiap pekerjaan: pindahkan item yang selesai, tambahkan gap baru, dan tulis next step.
 
@@ -9,75 +9,84 @@
 
 ## Sudah jalan
 
+### Web, Dashboard & Kontrak
 - Landing page + dashboard (positions, history, bot, chat placeholder, settings)
 - Login wallet via SIWE + session cookie
 - Simulation engine di dashboard (drift harga ETH, HF, pemilihan strategi)
-- Linking & notifikasi Telegram
-- Skema database (Drizzle) + script migrasi
+- Linking & notifikasi Telegram dari antarmuka web
+- Skema database (Drizzle) + script migrasi di `packages/db`
 - `TahansoeGuardian` v1: hot reserve repay, unit + fuzz test, fork test Aave V3 Arbitrum Sepolia
 - Guardian v1 ter-deploy di Arbitrum Sepolia: `0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E`
-- Dokumentasi & workflow agent (PRD v0.2, BRD, architecture, security, ADR)
-- Struktur repo & runtime: ADR 0007 (*Accepted*) — npm workspaces, Next.js + worker terpisah, tanpa indexer dulu. Fase 0–2 selesai: `.gitattributes`, CI, `packages/domain`, `packages/db` (skema tunggal, termasuk tabel research yang belum dimigrasi), web di `apps/web`, engine di `apps/engine` (typecheck, test 22+16, build hijau)
-- Spec draft (menunggu persetujuan): [M1 integrasi web on-chain](specs/m1-web-onchain-integration.md), [M2 kerangka engine](specs/m2-engine-skeleton.md)
-- Prompt LLM engine berbahasa Inggris (`promptVersion` 2026.10.1)
-- Lint web 0 error; UI menampilkan chain Arbitrum; `arbitrumSepolia` ada di wagmi
-- Model bisnis: ADR 0006 (*Accepted*) — informasi gratis, otomasi Pro, tanpa fee on-chain di v1
-- Desain research agents & reflection: ADR 0004/0005 (*Accepted*), [spec m3-research-agents](specs/m3-research-agents.md), [knowledge/risk-transmission](knowledge/risk-transmission.md), PRD v0.3
+- Dokumentasi & workflow agent (PRD v0.3, BRD, architecture, security, ADR)
+- Struktur monorepo npm workspaces (ADR 0007): `apps/web`, `apps/engine`, `packages/db`, `packages/domain`
+
+### Core Risk Engine & Research Agents (M3)
+- **Pipeline Riset Multi-Agent Penuh:** 4 analis domain paralel (Geopolitics, Macro, Market, Onchain) $\rightarrow$ debat dialektika Hawk vs Dove $\rightarrow$ sintesis Risk Assessor $\rightarrow$ pemetaan ke `Signal` (`RESEARCH`, confidence cap $\le 0.6$).
+- **Adapter Sumber Data Gratis & Kredibel:**
+  - RSS feed outlet berita terkurasi (BBC World, Al Jazeera, The Guardian, CNBC Economy, Federal Reserve, CoinDesk, The Block).
+  - FRED API untuk data makro ekonomi resmi (suku bunga Fed Funds, CPI, kurva yield 10Y-2Y).
+  - Kalender makro resmi: jadwal FOMC dari federalreserve.gov (horizon 30 hari) dan rilis CPI/NFP dari data rilis FRED.
+  - DefiLlama API untuk monitoring peg stablecoin (USDC, USDT, DAI, FRAX) dan insiden hack/exploit protokol DeFi dengan scaling ukuran dan relevansi Tahansoe.
+  - On-chain Arbitrum One: pembacaan oracle Aave vs Chainlink proxy dan Sequencer Uptime Feed.
+- **Multi-Provider LLM & Provider Generik (ADR 0008):**
+  - Adapter `OpenAICompatibleProvider` (mendukung Gemini, Groq, OpenRouter, DeepSeek, Ollama, dan endpoint generik dari `LLM_BASE_URL` seperti Bynara/vLLM) + `AnthropicProvider`.
+  - Router peran (`LLM_ANALYST`, `LLM_DEBATE`, `LLM_ASSESSOR`, `LLM_REFLECTOR`) dengan fallback berantai (`provider:model,provider:model`).
+  - Integrasi daftar harga dinamis (`LLM_PRICING_URL`) membaca otomatis format Bynara dan OpenRouter, serta dukungan harga manual JSON (`LLM_MODEL_PRICES`).
+  - Estimasi biaya riset berdasarkan profil token historis dari database atau baseline default.
+  - CLI interaktif `npm run research` (pemilihan model per peran, pratinjau biaya, auto-write ke `.env`) dan CLI `npm run models` (`--filter`).
+- **Penyimpanan Database Neon Postgres:** Tabel `research_reports` (dengan diagnostik per-peran audit G7) dan `signals` (`RESEARCH`), serta skrip inspeksi riwayat `npm run research:history`.
+- **Scheduled Background Research Worker:**
+  - Single-instance enforcement via PostgreSQL session advisory lock (`pg_try_advisory_lock(42161001)` pada koneksi direct non-pooler) mencegah tabrakan proses.
+  - Penjadwalan adaptif berdasarkan regime hasil terakhir (`CALM` $\rightarrow$ 2 jam; `ELEVATED`/`STRESSED`/`CRISIS` $\rightarrow$ 1 jam; dapat dioverride lewat env).
+  - Guard anti-overlap, kill switch `RESEARCH_ENABLED=false`, proteksi budget harian `LLM_DAILY_BUDGET_USD`, logging terformat satu baris per run, dan shutdown bersih pada `SIGINT`/`SIGTERM`.
+- **Eval Set & Runner Sadar Kuota:**
+  - 16 kasus prompt injection (menguji ketahanan guardrail G3 dan kebocoran instruksi) + 8 kasus skenario pasar acuan dengan rentang regime yang disepakati.
+  - Runner eval dengan kesadaran kuota: jeda antar kasus (`DEFAULT_CASE_DELAY_MS`), deteksi error kuota harian (menghentikan run, menandai kasus tersisa `skipped: quota`, menulis laporan parsial), dan retry otomatis pada rate limit 429 per-menit.
+  - Opsi CLI lengkap: `--set injection|scenarios|all`, `--limit N`, dan `--dry-plan` untuk perencanaan offline tanpa menyentuh API.
+  - 13 unit test offline lulus 100% menggunakan `FakeProvider`.
+
+---
 
 ## Gap yang diketahui
 
-### Produk inti (prioritas tertinggi)
-- [ ] Web app belum terhubung ke kontrak (tidak ada read/write Guardian)
-- [ ] Settings hanya disimpan di localStorage; belum ke kontrak/DB
-- [ ] Dashboard memakai data simulasi, bukan posisi Aave asli
-- [ ] Belum ada keeper/worker; alert Telegram dipicu dari browser (hanya jalan saat tab terbuka)
-- [ ] Core Risk Engine (`engine/`) belum dimulai
+### Evaluasi & Model LLM
+- [ ] Eval live penuh dengan model kandidat belum dijalankan secara komprehensif karena keterbatasan kuota free tier Gemini; perlu dijalankan menggunakan provider generik/Bynara berbayar untuk memvalidasi model termurah yang lolos eval (spec §3.4).
+- [ ] Kualitas penalaran, ketahanan refusal pada topik sensitif, dan kepatuhan format JSON tiap model murah (DeepSeek, Llama 3.3, dsb.) belum diuji secara empiris di bawah beban live.
 
-### Konsistensi
-- [ ] Copy Telegram "execution success" menyebut flash loan; v1 memakai hot reserve
-- [ ] FAQ/landing menyebut Safe Module; v1 memakai approve dari EOA (lihat ADR 0003)
-- [ ] `contracts/README.md` merujuk `.env.example` yang belum ada (`.gitignore` kini mengizinkan `.env.example`; file-nya belum dibuat)
-- [ ] Form waitlist tidak menyimpan email
+### Engine, Fusion & Settlement
+- [ ] Risk Fusion deterministik v1 (menggabungkan sinyal teknikal/on-chain dan sinyal `RESEARCH`) belum diimplementasikan di `apps/engine`.
+- [ ] Proses settlement terjadwal (`reflect:settle`) dan kalkulasi scorecard mingguan otomatis (`scorecard`) belum dijalankan sebagai cron/worker tersendiri di engine.
+- [ ] Pengiriman notifikasi alert Telegram langsung dari server engine belum ada (saat ini masih dipicu dari browser di web app).
+- [ ] Host deployment untuk long-running engine worker di lingkungan cloud/VPS belum dipilih.
 
-### Data & teknis
-- [ ] `users` unik per `(wallet, chainId)` → ganti jadi per wallet
-- [ ] Tabel `positions`, `policies`, `intents`, `notification_logs` belum dipakai
-- [ ] Tabel `guardian_modules` mengasumsikan Safe; tinjau ulang
-- [ ] CI baru ditambahkan (`.github/workflows/ci.yml`); belum terbukti hijau di GitHub
-- [ ] **Vercel: ubah Root Directory proyek ke `apps/web`** saat branch ini di-merge (web sudah pindah); env Vercel tidak berubah. Lokal: pindahkan `.env` ke `apps/web/.env`
-- [ ] Migrasi struktur ADR 0007 fase 3: simulasi & mock data → `apps/web/features/demo/` (bersama M1)
-- [ ] Tabel research (`packages/db/src/research.ts`) belum ada di `packages/db/scripts/migrate.ts`
-- [ ] 12 warning lint lama di web (non-blocking)
-- [ ] Konfigurasi npm mesin dev memakai `legacy-peer-deps=true`; `ethers` (peer dep `siwe`) kini dependensi eksplisit web
-- [ ] Host untuk engine (worker selalu hidup) belum dipilih
-- [ ] Belum ada test untuk web app
+### Produk Web & Kontrak (M1)
+- [ ] Web app belum terhubung ke kontrak Guardian v1 (belum ada read/write on-chain langsung).
+- [ ] Settings user masih disimpan di `localStorage`, belum tersinkronisasi ke kontrak atau database.
+- [ ] Dashboard masih menampilkan data simulasi demo, bukan posisi borrow Aave asli dari wallet terhubung.
+- [ ] Tabel `users` unik per `(wallet, chainId)` $\rightarrow$ perlu disederhanakan per wallet.
+- [ ] Tabel `positions`, `policies`, `intents`, `notification_logs` belum aktif digunakan oleh web app.
 
-### Kontrak
-- [ ] `checkUpkeep` memakai daftar user statis di `checkData`; butuh registry/pagination
-- [ ] Satu policy & satu debt asset per user
-- [ ] Belum ada insentif/biaya keeper
-- [ ] Guardian v2 (risk band, risk agent, dynamic trigger, flash loan) belum ada
-- [ ] Tanpa PriceOracleSentinel di Aave Arbitrum One → keeper harus siap `protect` di blok pertama setelah sequencer pulih (security S6)
-- [ ] Belum diaudit
+### Kontrak & Keamanan
+- [ ] `checkUpkeep` memakai daftar user statis di `checkData`; butuh registry/pagination on-chain.
+- [ ] Satu policy & satu debt asset per user di v1.
+- [ ] Kontrak Guardian v1 belum diaudit formal.
+- [ ] Guardian v2 (risk band dinamis, pergeseran trigger via AI agent, flash loan) direncanakan untuk M4.
 
-### Keamanan
-Lihat [security.md §3](security.md#3-temuan-terbuka).
+---
 
 ## Next steps (urutan disarankan)
 
-> **Prioritas tim (8 Okt 2026): AI research dulu.** Pekerjaan web (spec M1) ditunda sampai research agent berjalan end-to-end. Wave aktif: pipeline research dry-run (LLM + agents) dan sumber data gratis & kredibel (GDELT, FRED, on-chain snapshot; Polymarket dikeluarkan).
+1. **Jalankan Eval Live dengan Model Murah:** Menggunakan router OpenAI-compatible generik (mis. Bynara/OpenRouter) pada eval set injection & scenarios untuk menentukan kombinasi model per peran termurah yang lolos eval (spec §3.4).
+2. **Implementasi Risk Fusion Deterministik v1 (M2):** Menggabungkan sinyal on-chain/teknikal dengan sinyal `RESEARCH`, menjamin aturan bahwa sinyal riset saja tidak pernah menaikkan regime ke `STRESSED`/`CRISIS` tanpa konfirmasi pasar.
+3. **Automasi Settlement Terjadwal:** Mengaktifkan pengecekan outcome horizon di engine worker untuk menghasilkan label `TRUE_POSITIVE`/`FALSE_POSITIVE`/`MISSED` dan scorecard periodik.
+4. **Implementasi Notifikasi Telegram Server:** Memindahkan trigger alert Telegram dari frontend browser ke engine worker agar alert tetap terkirim saat user tidak membuka web.
+5. **Implementasi Integrasi Web On-chain (Spec M1):** Menghubungkan settings web ke `TahansoeGuardian` v1 (`approve` + `setPolicy`), membaca posisi Aave nyata via wagmi/viem, dan menyelesaikan transisi dashboard demo.
 
-1. Setujui spec M1 & M2, lalu implementasi [M2 kerangka engine](specs/m2-engine-skeleton.md) (chain registry, AaveAdapter read, scheduler, event sync, Oracle Monitor, tabel signals/risk_assessments)
-2. Keeper v1 di engine: `needsProtection` → `protect` + log `intents` + Telegram dari server
-3. Web: implementasi [spec M1](specs/m1-web-onchain-integration.md) — Settings → `approve` + `setPolicy`, dashboard baca posisi asli, demo mode
-4. Oracle monitor + technical module + macro calendar → RiskAssessment dry-run
-5. CI
-6. Verifikasi lisensi komersial sumber data research (FRED, GDELT, DefiLlama, Reddit) dan cara baca OI/funding perp DEX on-chain di Arbitrum
-7. Settlement deterministik + scorecard bersamaan dengan Risk Fusion v1 (M2), agar ada baseline sebelum research agents (M3)
+---
 
 ## Backlog / ide
 
-
-- EIP-7702 untuk kemampuan smart account tanpa migrasi wallet
-- `repayWithATokens` sebagai sumber dana tanpa modal idle
+- EIP-7702 untuk smart account tanpa migrasi wallet
+- `repayWithATokens` sebagai opsi sumber dana tanpa modal idle
 - API risk score untuk partner B2B
+- Shadow mode 2 minggu research agents sebelum notifikasi Telegram diaktifkan untuk user

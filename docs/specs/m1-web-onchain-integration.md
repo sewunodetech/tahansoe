@@ -3,7 +3,7 @@
 - **Milestone:** M1 — Dashboard monitoring live & integrasi Guardian on-chain (lihat [PRD §10](../prd.md#10-roadmap-eksekusi))
 - **Status:** Draft
 - **Pemilik:** Antigravity (Agent)
-- **Terkait:** [PRD §7.1, §10](../prd.md), [Architecture §3.1, §4, §5](../architecture.md), [Security §2.4, §4](../security.md), [ADR 0003](../decisions/0003-eoa-erc20-approval-bukan-safe-module.md), [ADR 0006](../decisions/0006-model-bisnis-freemium.md), [ADR 0007](../decisions/0007-monorepo-structure-and-runtime.md), [Spec M2: Engine Skeleton](m2-engine-skeleton.md)
+- **Terkait:** [PRD §7.1, §10](../prd.md), [Architecture §3.1, §4, §5](../architecture.md), [Security §2.4, §4](../security.md), [ADR 0003](../decisions/0003-guardian-v1-eoa-approve.md), [ADR 0006](../decisions/0006-business-model-free-info-paid-automation.md), [ADR 0007](../decisions/0007-monorepo-structure-and-runtime.md), [Spec M2: Engine Skeleton](m2-engine-skeleton.md)
 
 ---
 

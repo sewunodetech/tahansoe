@@ -207,13 +207,13 @@ Konvensi angka:
 | Area | Pilihan |
 |------|---------|
 | Web | Next.js 16 (App Router), React 19, Tailwind v4, wagmi + viem |
-| Engine | Node.js + TypeScript, viem, dijalankan sebagai long-running worker di host yang selalu hidup (bukan Vercel) **(rencana)** |
-| Data on-chain | RPC + multicall untuk state; event sync ringan (cursor block + konfirmasi) untuk event Guardian & `LiquidationCall` Aave; **tanpa indexer khusus** sampai ada ADR baru (ADR 0007) |
-| Monorepo | npm workspaces (ADR 0007) — fase migrasi lihat status.md |
+| Engine | Node.js 22 + TypeScript, viem, background Scheduled Research Worker dengan PostgreSQL session advisory lock di host yang selalu hidup |
+| Data on-chain & riset | RPC + multicall untuk state; AaveOracle + Chainlink proxy + Sequencer Uptime Feed di Arbitrum One; data makro FRED API, kalender resmi FOMC/BLS, DefiLlama (depeg & hacks), dan RSS outlet berita terkurasi |
+| Monorepo | npm workspaces (ADR 0007) — `apps/web`, `apps/engine`, `packages/db`, `packages/domain` |
 | CI | GitHub Actions: typecheck + test + build semua workspace, lint web (blocking), `forge test` tanpa fork (`.github/workflows/ci.yml`) |
-| DB | Neon Postgres + Drizzle |
+| DB | Neon Postgres + Drizzle ORM |
 | Kontrak | Foundry, Solidity 0.8.26, OpenZeppelin v5 |
-| LLM | Provider-agnostic interface; output divalidasi schema. Implementasi pertama: Anthropic (`@anthropic-ai/sdk` + zod) — [ADR 0004](decisions/0004-multi-agent-research-layer.md) **(rencana)** |
+| LLM | Provider-agnostic interface (`apps/engine/src/llm/provider.ts`), adapter `OpenAICompatibleProvider` (Gemini, Groq, OpenRouter, DeepSeek, Ollama, generic endpoint `LLM_BASE_URL`) + `AnthropicProvider`, router peran + fallback berantai, zod schema validation ([ADR 0004](decisions/0004-multi-agent-research-layer.md), [ADR 0008](decisions/0008-multi-provider-llm.md)) |
 | Notifikasi | Telegram Bot API |
 | Automation (prod) | Chainlink Automation + cron cadangan |
 
@@ -221,17 +221,25 @@ Konvensi angka:
 
 ## 8. Environment
 
-| Variabel | Dipakai oleh |
-|----------|--------------|
-| `DATABASE_URL` | app, engine, scripts |
-| `SESSION_SECRET`, `NEXT_PUBLIC_APP_DOMAIN` | app |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` | app, engine |
-| `NEXT_PUBLIC_WC_PROJECT_ID` | app |
-| `ARB_SEPOLIA_RPC_URL`, `ARBISCAN_API_KEY` | contracts, engine |
-| `KEEPER_PRIVATE_KEY` atau signer eksternal | engine/keeper **(rencana)** — hanya di environment server |
-| API key data/LLM | engine **(rencana)** |
-| `ANTHROPIC_API_KEY` | engine — research agents & klasifikasi berita **(rencana)** |
-| `LLM_DAILY_BUDGET_USD` | engine — batas biaya LLM harian; jika terlampaui, jalur LLM berhenti, modul lain tetap jalan **(rencana)** |
-| `RESEARCH_ENABLED` | engine — kill switch research agents (default `false`) **(rencana)** |
-| `FRED_API_KEY` | engine — data makro FRED untuk research agents (key gratis) |
-| `ARBITRUM_RPC_URL` | engine — RPC Arbitrum One berbayar untuk polling on-chain **(rencana)** |
+Semua variabel environment di bawah bersifat server-only kecuali yang diawali `NEXT_PUBLIC_`:
+
+| Variabel | Dipakai oleh | Deskripsi |
+|----------|--------------|-----------|
+| `DATABASE_URL` | app, engine, scripts | Koneksi PostgreSQL (Neon serverless / direct session) |
+| `SESSION_SECRET`, `NEXT_PUBLIC_APP_DOMAIN` | app | Autentikasi sesi wallet & domain web |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` | app, engine | Bot notifikasi dan webhook Telegram |
+| `NEXT_PUBLIC_WC_PROJECT_ID` | app | WalletConnect project id |
+| `ARB_SEPOLIA_RPC_URL`, `ARBISCAN_API_KEY` | contracts, engine | RPC & verifikasi blok Arbitrum Sepolia |
+| `KEEPER_PRIVATE_KEY` atau signer eksternal | engine/keeper **(rencana)** | Private key eksekusi transaksi proteksi Guardian |
+| `ANTHROPIC_API_KEY` | engine | API key Anthropic Claude |
+| `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY` | engine | API key provider LLM alternatif (ADR 0008) |
+| `OLLAMA_BASE_URL` | engine | Base URL endpoint Ollama lokal OpenAI-compatible |
+| `LLM_BASE_URL`, `LLM_API_KEY` | engine | Endpoint & key provider OpenAI-compatible generik (mis. Bynara, custom proxy) |
+| `LLM_PROVIDER_NAME`, `LLM_MODEL` | engine | Nama label provider generik (default: `custom`) dan model default lintas peran |
+| `LLM_PRICING_URL`, `LLM_MODEL_PRICES` | engine | URL daftar harga remote (Bynara/OpenRouter) atau override harga manual JSON |
+| `LLM_ANALYST`, `LLM_DEBATE`, `LLM_ASSESSOR`, `LLM_REFLECTOR` | engine | Pemilihan model & fallback berantai per peran (`provider:model,...`) |
+| `LLM_DAILY_BUDGET_USD` | engine | Batas biaya LLM harian (USD); jika habis, riset dihentikan sampai hari berikutnya |
+| `RESEARCH_ENABLED` | engine | Kill switch lapis riset (default `false`) |
+| `FRED_API_KEY` | engine | API key data makro FRED Federal Reserve (key gratis) |
+| `RESEARCH_GDELT_ENABLED` | engine | Toggle agregator GDELT DOC 2.0 (default `false`) |
+| `ARBITRUM_RPC_URL` | engine | RPC Arbitrum One untuk polling on-chain |
