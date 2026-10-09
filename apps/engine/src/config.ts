@@ -92,7 +92,7 @@ export const env = {
  */
 export const config = {
   /** Versi prompt gabungan; disimpan di research_reports.prompt_version. */
-  promptVersion: "2026.10.1",
+  promptVersion: "2026.10.2",
 
   /** Batas keras confidence sinyal RESEARCH (spec §3.3). JANGAN naikkan tanpa ADR. */
   confidenceCap: 0.6,
