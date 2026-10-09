@@ -7,19 +7,25 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test test/all.test.ts",
-    "research": "tsx --env-file-if-exists=.env src/cli/research.ts",
-    "settings": "tsx --env-file-if-exists=.env src/cli/settings.ts",
-    "models": "tsx --env-file-if-exists=.env src/cli/models.ts",
+    "tahansoe": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts",
+    "research": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts analyze",
+    "settings": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts settings",
+    "models": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts models",
+    "research:pick": "tsx --env-file-if-exists=.env src/cli/research.ts",
     "research:run": "tsx --env-file-if-exists=.env src/index.ts",
-    "research:dry": "tsx --env-file-if-exists=.env src/agents/run.ts --dry",
+    "research:dry": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts analyze --dry",
     "research:once": "tsx --env-file-if-exists=.env src/agents/run.ts",
-    "research:worker": "tsx --env-file-if-exists=.env src/worker/research-worker.ts",
+    "research:worker": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts schedule run",
     "worker:price": "tsx --env-file-if-exists=.env src/worker/price-worker.ts",
-    "research:history": "tsx --env-file-if-exists=.env src/db/history.ts",
+    "research:history": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts history",
     "eval": "tsx --env-file-if-exists=.env src/eval/runner.ts",
+    "doctor": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts doctor",
     "reflect:settle": "tsx --env-file-if-exists=.env src/reflection/settle.ts",
     "reflect:daily": "tsx --env-file-if-exists=.env src/reflection/reflect.ts",
     "scorecard": "tsx --env-file-if-exists=.env src/reflection/scorecard.ts"
+  },
+  "bin": {
+    "tahansoe": "./bin/tahansoe.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.1",

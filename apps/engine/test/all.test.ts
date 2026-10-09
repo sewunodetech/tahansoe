@@ -32,3 +32,4 @@ import "./fusion/guardrail.test.ts";
 import "./fusion/decay.test.ts";
 import "./fusion/drawdown.test.ts";
 import "./fusion/scenarios-replay.test.ts";
+import "./cli/tahansoe.test.ts";

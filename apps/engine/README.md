@@ -93,21 +93,70 @@ FRED_API_KEY=abcdef1234567890
 
 Jalankan perintah berikut dari dalam direktori `apps/engine` (atau dengan flag `-w @tahansoe/engine` dari root monorepo):
 
+### 3.1 CLI terpadu `tahansoe` (spec m3-cli)
+
+Satu pintu untuk semua operasi: `npm run tahansoe -- <command>` (atau binary `tahansoe` setelah `npm link`).
+
+```bash
+npm run tahansoe --                         # banner + status singkat + daftar command
+npm run tahansoe -- analyze --fake          # satu run offline (fixtures) + kartu laporan
+npm run tahansoe -- analyze --assets ETH,USDC --json   # JSON saja di stdout (log ke stderr)
+npm run tahansoe -- analyze --pick          # pilih model dulu (simpan ke settings.json), lalu run
+npm run tahansoe -- history --limit 20      # tabel riwayat + sparkline regime
+npm run tahansoe -- report latest           # laporan lengkap (atau: report <id> [--md|--json])
+npm run tahansoe -- models --filter flash   # daftar model gateway + harga + estimasi
+npm run tahansoe -- settings show           # settings non-rahasia (show|init|set-role|set)
+npm run tahansoe -- doctor                  # cek env/DB/RPC/gateway (key disamarkan)
+npm run tahansoe -- schedule run            # scheduler foreground (Ctrl+C lepas lock)
+npm run tahansoe -- schedule run --with-price   # + price worker di proses yang sama
+npm run tahansoe -- schedule run --once     # satu siklus lalu keluar
+npm run tahansoe -- schedule status         # lock + run terakhir dari DB
+```
+
+Opsi global: `--json` (output mesin, hanya di stdout), `--no-color` (nonaktifkan ANSI; otomatis mati pada pipe/`NO_COLOR`/`TERM=dumb`). Exit code: `0` ok · `1` error · `2` konfigurasi salah (mis. `LLM_API_URL`/`LLM_API_KEY` belum diisi). Setiap kartu laporan diakhiri "not a trading signal"; CLI tidak pernah melakukan aksi on-chain dan tidak pernah mencetak secret.
+
+### 3.2 Menjaga scheduler tetap hidup (foreground)
+
+`tahansoe schedule run` berjalan di foreground (spec §7). Untuk produksi, jaga agar tetap hidup lewat process manager:
+
+**pm2 (Linux/macOS/WSL):**
+
+```bash
+pm2 start npm --name tahansoe-scheduler -- run tahansoe -- schedule run --with-price
+pm2 save && pm2 startup      # auto-start saat boot
+pm2 logs tahansoe-scheduler  # lihat log
+```
+
+**Windows Task Scheduler:** buat Basic Task → Trigger "At startup" → Action "Start a program":
+- Program: `node`
+- Arguments: `node_modules/tsx/dist/cli.mjs --env-file-if-exists=.env src/cli/tahansoe.ts schedule run --with-price`
+- Start in: path absolut ke `apps/engine`
+Centang "Run whether user is logged on or not" dan "Restart on failure" (mis. tiap 1 menit, 3x).
+
+**systemd (Linux):** unit service `ExecStart=/usr/bin/npm run tahansoe -- schedule run --with-price`, `WorkingDirectory=…/apps/engine`, `Restart=always`.
+
+Advisory lock Postgres memastikan hanya satu instance scheduler aktif; instance kedua keluar bersih. Ctrl+C / SIGTERM melepas lock sebelum keluar.
+
+### 3.3 Script npm (alias ke `tahansoe`)
+
 | Perintah | Penjelasan |
 |----------|------------|
-| `npm run research` | CLI interaktif untuk memilih model per peran, melihat estimasi biaya run/harian/bulanan, menyimpan pilihan ke `settings.json`, dan mengeksekusi dry-run/live. Non-interaktif: `--yes` (pakai settings tersimpan, dry-run). |
-| `npm run models` | Menampilkan daftar model yang tersedia dari endpoint provider beserta harga dan estimasi biaya riset (opsi: `--filter <teks>`). |
-| `npm run research:dry` | Menjalankan satu research run dalam mode dry-run tanpa menyentuh database (laporan disimpan di `apps/engine/out/<ISO>/`). |
-| `npm run research:once` | Menjalankan satu research run penuh dan menyimpan hasilnya langsung ke database Neon Postgres (`research_reports` & `signals`). |
-| `npm run research:worker` | Menjalankan background Scheduled Research Worker dengan Postgres advisory lock session-level, adaptasi interval regime, anti-overlap guard, kill switch, dan budget check. |
-| `npm run research:history` | Menampilkan tabel ringkasan riwayat riset yang tersimpan di database Neon Postgres. |
-| `npm run eval` | Menjalankan eval set research agent (16 prompt injection + 8 regime scenarios) dengan opsi `--set injection\|scenarios\|all`, `--limit N`, dan `--dry-plan`. |
-| `npm run research:run` | Menjalankan pipeline riset dari entry point scheduler utama (`src/index.ts`). |
-| `npm run reflect:settle` | Menjalankan proses settlement evaluasi outcome aktual terhadap prediksi horizon sebelumnya (`TRUE_POSITIVE`, `FALSE_POSITIVE`, `MISSED`, `TRUE_NEGATIVE`). |
-| `npm run reflect:daily` | Menjalankan refleksi harian batch untuk merumuskan pelajaran baru (`research_lessons`). |
-| `npm run scorecard` | Menghitung metrik mingguan scorecard engine (recall event, presisi, lead time median, kepatuhan schema). |
-| `npm run test` | Menjalankan seluruh test suite unit engine offline via Node test runner (`test/all.test.ts`). |
-| `npm run typecheck` | Memvalidasi seluruh tipe TypeScript pada engine (`tsc --noEmit -p tsconfig.json`). |
+| `npm run research` | Alias `tahansoe analyze` (interaktif via `research:pick`). Menyimpan pilihan model ke `settings.json`. |
+| `npm run research:pick` | Picker model interaktif (TTY) → simpan ke `settings.json`, opsi dry-run/live. |
+| `npm run models` | Alias `tahansoe models` — daftar model gateway + harga + estimasi (opsi `--filter`). |
+| `npm run doctor` | Alias `tahansoe doctor` — cek env/DB/RPC/gateway. |
+| `npm run research:dry` | Alias `tahansoe analyze --dry` (tanpa DB; laporan di `apps/engine/out/<ISO>/`). |
+| `npm run research:once` | Satu research run penuh, simpan ke DB (`research_reports` & `signals`). |
+| `npm run research:worker` | Alias `tahansoe schedule run` (Scheduled Research Worker, advisory lock, adaptif, kill switch, budget). |
+| `npm run worker:price` | Price worker mandiri (sampling harga AaveOracle). |
+| `npm run research:history` | Alias `tahansoe history`. |
+| `npm run eval` | Eval set research agent (`--set injection\|scenarios\|all`, `--limit N`, `--dry-plan`). |
+| `npm run research:run` | Pipeline riset dari entry scheduler utama (`src/index.ts`). |
+| `npm run reflect:settle` | Settlement outcome aktual vs prediksi horizon (`TRUE_POSITIVE`/`FALSE_POSITIVE`/`MISSED`/`TRUE_NEGATIVE`). |
+| `npm run reflect:daily` | Refleksi harian batch → pelajaran baru (`research_lessons`). |
+| `npm run scorecard` | Metrik mingguan scorecard engine. |
+| `npm run test` | Seluruh test suite unit engine offline (`test/all.test.ts`). |
+| `npm run typecheck` | Validasi tipe TypeScript engine (`tsc --noEmit`). |
 
 ---
 

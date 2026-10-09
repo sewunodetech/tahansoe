@@ -75,7 +75,7 @@ export function formatShow(
   return lines.join("\n");
 }
 
-async function main(argv: string[]): Promise<void> {
+export async function settingsMain(argv: string[]): Promise<void> {
   const cmd = argv[0];
   const path = settingsPath();
 
@@ -144,7 +144,7 @@ async function main(argv: string[]): Promise<void> {
 
 const invoked = process.argv[1];
 if (invoked && import.meta.url === pathToFileURL(invoked).href) {
-  main(process.argv.slice(2)).catch((err) => {
+  settingsMain(process.argv.slice(2)).catch((err) => {
     console.error("[engine] settings CLI gagal:", err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
   });

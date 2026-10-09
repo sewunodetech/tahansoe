@@ -51,7 +51,22 @@ export interface RunParams {
    * Test & mode --fake memakai collector fixture agar tidak menyentuh jaringan.
    */
   collector?: ResearchInputCollector;
+  /**
+   * Hook progres opsional (CLI/worker) — dipanggil di batas tahap pipeline.
+   * TIDAK mengubah perilaku pipeline; default no-op. JANGAN memuat secret.
+   */
+  onProgress?: (event: ProgressEvent) => void;
 }
+
+/** Tahap pipeline untuk event progres. */
+export type ProgressStage = "sources" | "analysts" | "debate" | "lessons" | "assessor" | "save";
+
+/** Event progres dari runResearch (spec m3-cli §3.4). Deterministik; tanpa secret. */
+export type ProgressEvent =
+  | { type: "stage_start"; stage: ProgressStage; label?: string }
+  | { type: "stage_done"; stage: ProgressStage; ms: number; detail?: string }
+  | { type: "analyst_done"; domain: string; ok: boolean; ms: number; usedModel?: string }
+  | { type: "error"; stage: ProgressStage; message: string };
 
 export interface RunResult {
   report: ResearchReport | null;
@@ -146,6 +161,15 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
   const budget = params.budget ?? defaultBudget;
   const startedAtMs = Date.now();
 
+  // Emitter progres aman: tidak pernah melempar (hook jahat tidak boleh menjatuhkan run).
+  const emit = (event: ProgressEvent): void => {
+    try {
+      params.onProgress?.(event);
+    } catch {
+      /* abaikan error hook */
+    }
+  };
+
   // Guard 1: kill switch & budget. Mode dry melewati kill switch (dijalankan
   // manual oleh dev), tetapi tetap menghormati budget.
   if (!dry && !env.researchEnabled()) {
@@ -164,19 +188,33 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
   const debateProvider = params.provider ?? routerForRole("debate", budget);
   const assessorProvider = params.provider ?? routerForRole("assessor", budget);
 
+  const sourcesStart = Date.now();
+  emit({ type: "stage_start", stage: "sources", label: "Collecting inputs" });
   const ctx = await buildContext({ chainId, assets, dry, collector });
+  emit({ type: "stage_done", stage: "sources", ms: Date.now() - sourcesStart });
 
   // Jalankan analyst dengan FAIL-FAST: coba analyst pertama lebih dulu. Jika gagal
   // dengan status non-retryable (400/401/403 — auth/kredit/request salah), error
   // yang sama pasti terulang di peran lain, jadi hentikan tanpa memanggil sisanya.
+  const analystsStart = Date.now();
+  emit({ type: "stage_start", stage: "analysts", label: "Running analysts" });
   const outcomes: AnalystOutcome[] = [];
+  const firstStart = Date.now();
   const first = await runAnalyst(analystProvider, ANALYSTS[0]!, ctx);
   outcomes.push(first);
+  emit({
+    type: "analyst_done",
+    domain: ANALYSTS[0]!.toLowerCase(),
+    ok: first.report !== null,
+    ms: Date.now() - firstStart,
+    usedModel: first.usedModel,
+  });
   if (first.report === null && isNonRetryableStatus(first.status)) {
     const reason =
       `semua panggilan kemungkinan gagal: analyst ${ANALYSTS[0]!.toLowerCase()} ` +
       `gagal dengan error non-retryable (${first.reason}). Menghentikan run lebih awal ` +
       `tanpa memanggil peran lain.`;
+    emit({ type: "error", stage: "analysts", message: reason });
     return {
       report: null,
       reason,
@@ -186,12 +224,24 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
 
   // Sisanya paralel; satu gagal tidak membatalkan yang lain.
   const restSettled = await Promise.allSettled(
-    ANALYSTS.slice(1).map((domain) => runAnalyst(analystProvider, domain, ctx)),
+    ANALYSTS.slice(1).map(async (domain) => {
+      const s = Date.now();
+      const outcome = await runAnalyst(analystProvider, domain, ctx);
+      emit({
+        type: "analyst_done",
+        domain: domain.toLowerCase(),
+        ok: outcome.report !== null,
+        ms: Date.now() - s,
+        usedModel: outcome.usedModel,
+      });
+      return outcome;
+    }),
   );
   for (const r of restSettled) {
     if (r.status === "fulfilled") outcomes.push(r.value);
     // Promise ditolak (bug tak terduga) diabaikan di penghitungan sukses.
   }
+  emit({ type: "stage_done", stage: "analysts", ms: Date.now() - analystsStart });
 
   const reports = outcomes.flatMap((o) => (o.report ? [o.report] : []));
 
@@ -204,6 +254,7 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
     const reason =
       `hanya ${reports.length}/${ANALYSTS.length} analyst sukses ` +
       `(butuh ${config.minAnalystsRequired}). Kegagalan: ${failures.join("; ")}`;
+    emit({ type: "error", stage: "analysts", message: reason });
     return {
       report: null,
       reason,
@@ -211,9 +262,22 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
     };
   }
 
+  const debateStart = Date.now();
+  emit({ type: "stage_start", stage: "debate", label: "Hawk vs Dove" });
   const debate = await runDebate(debateProvider, reports, { rounds: config.debateRounds });
+  emit({ type: "stage_done", stage: "debate", ms: Date.now() - debateStart });
+
   const lessons = await selectLessons(reports).catch(() => []);
+
+  const assessorStart = Date.now();
+  emit({ type: "stage_start", stage: "assessor", label: "Risk assessor" });
   const assessorOutcome = await runAssessor(assessorProvider, { ctx, reports, debate, lessons });
+  emit({
+    type: "stage_done",
+    stage: "assessor",
+    ms: Date.now() - assessorStart,
+    detail: assessorOutcome.usedModel,
+  });
   const report = assessorOutcome.report;
 
   // Rakit diagnostik run (audit G7): status per peran, model terpakai, usage, durasi.
@@ -226,6 +290,7 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
 
   // Guard 3: assessor gagal (refusal/schema) → tidak ada sinyal.
   if (!report) {
+    emit({ type: "error", stage: "assessor", message: assessorOutcome.reason ?? "unknown" });
     return {
       report: null,
       reason: `risk assessor gagal: ${assessorOutcome.reason ?? "unknown"}`,
@@ -240,6 +305,8 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
   for (const r of diagnostics.roles) if (r.usedModel) models[r.role] = r.usedModel;
 
   // NON-DRY: simpan ke DB (research_reports + signals) dulu, lalu tetap tulis file.
+  const saveStart = Date.now();
+  emit({ type: "stage_start", stage: "save", label: dry ? "Writing report (dry)" : "Saving to DB" });
   let reportId: string | undefined;
   let signalId: string | undefined;
   if (!dry) {
@@ -271,6 +338,7 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
     diagnostics,
   });
 
+  emit({ type: "stage_done", stage: "save", ms: Date.now() - saveStart, detail: reportId });
   return { report, outDir, diagnostics, reportId, signalId };
 }
 

@@ -112,7 +112,7 @@ async function runNow(mode: "d" | "s"): Promise<void> {
   console.log(`Run selesai (regime=${result.report.proposedRegime}). Output: ${result.outDir ?? "(DB)"}`);
 }
 
-async function main(argv: string[]): Promise<void> {
+export async function runPicker(argv: string[] = []): Promise<void> {
   const nonInteractive = argv.includes("--yes") || argv.includes("--ci") || process.env.CI === "true";
 
   // Gateway wajib ada untuk menjalankan run (dan untuk --yes).
@@ -227,7 +227,7 @@ async function main(argv: string[]): Promise<void> {
 
 const invoked = process.argv[1];
 if (invoked && import.meta.url === pathToFileURL(invoked).href) {
-  main(process.argv.slice(2)).catch((err) => {
+  runPicker(process.argv.slice(2)).catch((err) => {
     console.error("[engine] research CLI gagal:", err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
   });
