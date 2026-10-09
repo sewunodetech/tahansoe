@@ -70,18 +70,11 @@ export function leadTimeMinutes(
   return Math.round(ms / 60_000);
 }
 
+import { runSettlementJob } from "./settle-job.ts";
+
 /**
  * Entry point job settlement (tiap jam, spec §3.1).
- *
- * TODO(dev):
- *  - Ambil RiskAssessment & ResearchReport yang horizonnya sudah lewat & belum di-settle.
- *  - Untuk tiap satu: computeOutcome(...) lalu labelOf(...) + leadTimeMinutes(...).
- *  - Simpan ke risk_settlements (label, lead_time_minutes, outcome jsonb, model_version).
- *  - Pastikan semua assessment ≥ STRESSED dan semua MISSED ter-settle ≤ 24 jam
- *    setelah horizon (kriteria penerimaan spec §5).
  */
-export async function runSettlement(_now: Date = new Date()): Promise<void> {
-  throw new Error(
-    "[engine/reflection/settle] runSettlement belum diimplementasikan — lihat TODO (spec §3.5).",
-  );
+export async function runSettlement(now: Date = new Date()): Promise<void> {
+  await runSettlementJob({ now });
 }

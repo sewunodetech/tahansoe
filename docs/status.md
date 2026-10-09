@@ -44,6 +44,12 @@
   - Runner eval dengan kesadaran kuota: jeda antar kasus (`DEFAULT_CASE_DELAY_MS`), deteksi error kuota harian (menghentikan run, menandai kasus tersisa `skipped: quota`, menulis laporan parsial), dan retry otomatis pada rate limit 429 per-menit.
   - Opsi CLI lengkap: `--set injection|scenarios|all`, `--limit N`, dan `--dry-plan` untuk perencanaan offline tanpa menyentuh API.
   - 13 unit test offline lulus 100% menggunakan `FakeProvider`.
+- **Scheduled Settlement & Scorecard Pipeline (ADR 0005, spec §3.5 & §3.6):**
+  - Evaluasi deterministik hasil prediksi research agent (`TRUE_POSITIVE`, `FALSE_POSITIVE`, `MISSED`, `TRUE_NEGATIVE`) menggunakan sampel harga AaveOracle (I5) dan sinyal on-chain.
+  - Guard kelengkapan data (`insufficient_data` jika sampel harga tidak mencukupi horizon) menghindari penyimpanan label spekulatif/palsu di database.
+  - Eksekusi idempotent (`runSettlementJob`) aman terhadap eksekusi berulang tanpa duplikasi baris di `risk_settlements`.
+  - Scorecard generator & CLI tabel ASCII (`apps/engine/src/cli/scorecard.ts`) menghitung Recall, Presisi (≥ STRESSED), Median Lead Time, dan pelacakan laporan yang kekurangan data.
+  - 26 unit test offline lulus 100% dan terverifikasi live pada database Neon.
 
 ---
 
@@ -55,7 +61,7 @@
 
 ### Engine, Fusion & Settlement
 - [ ] Risk Fusion deterministik v1 (menggabungkan sinyal teknikal/on-chain dan sinyal `RESEARCH`) belum diimplementasikan di `apps/engine`.
-- [ ] Proses settlement terjadwal (`reflect:settle`) dan kalkulasi scorecard mingguan otomatis (`scorecard`) belum dijalankan sebagai cron/worker tersendiri di engine.
+- [ ] Integrasi trigger runner terjadwal (cron/loop background) di server engine untuk memanggil `runSettlementJob` secara berkala bersamaan dengan worker utama.
 - [ ] Pengiriman notifikasi alert Telegram langsung dari server engine belum ada (saat ini masih dipicu dari browser di web app).
 - [ ] Host deployment untuk long-running engine worker di lingkungan cloud/VPS belum dipilih.
 

@@ -33,3 +33,5 @@ import "./fusion/decay.test.ts";
 import "./fusion/drawdown.test.ts";
 import "./fusion/scenarios-replay.test.ts";
 import "./cli/tahansoe.test.ts";
+import "./reflection/outcomes.test.ts";
+import "./reflection/settle-job.test.ts";
