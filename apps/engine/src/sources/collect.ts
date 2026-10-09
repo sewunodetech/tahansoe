@@ -26,6 +26,7 @@ import { fetchFredSignals } from "./fred.ts";
 import { fetchMacroCalendarEvents } from "./macro-calendar.ts";
 import { fetchDefiLlamaSignals } from "./defillama.ts";
 import { fetchOnchainSnapshot, ARBITRUM_STATIC_CHAIN_NOTES } from "./onchain.ts";
+import { fetchAaveRates } from "./aave-rates.ts";
 
 export interface CollectOptions {
   /** Chain untuk snapshot on-chain (default: Arbitrum One 42161). */
@@ -54,6 +55,8 @@ export interface ResearchInputs {
   macroEvents: ContextMacroEvent[];
   /** Observasi terukur (on-chain snapshot, makro FRED, DefiLlama) dalam bentuk sinyal ringkas. */
   signals: ContextSignal[];
+  /** Ringkasan bunga & utilitas Aave V3 Arbitrum on-chain. */
+  ratesSummary?: string[];
   /** Catatan chain (mis. USDC capped, tanpa PriceOracleSentinel, status sequencer). */
   chainNotes: string[];
   /** Sumber yang dilewati / gagal, untuk audit. */
@@ -89,6 +92,7 @@ export async function collectResearchInputs(
     ReturnType<typeof fetchOnchainSnapshot>,
     ReturnType<typeof fetchMacroCalendarEvents>,
     ReturnType<typeof fetchDefiLlamaSignals>,
+    ReturnType<typeof fetchAaveRates>,
   ] = [
     fetchRssEvents({ lookbackHours, timeoutMs, now, fetchFn }),
     fetchFredSignals({ timeoutMs, now, fetchFn }),
@@ -101,6 +105,7 @@ export async function collectResearchInputs(
       fetchFn,
     }),
     fetchDefiLlamaSignals({ timeoutMs, now, fetchFn }),
+    fetchAaveRates({ timeoutMs, now }),
   ];
 
   const results = await Promise.allSettled(mainPromises);
@@ -157,7 +162,31 @@ export async function collectResearchInputs(
     warnings.push(`DefiLlama adapter crash: ${String(defillamaRes.reason)}`);
   }
 
-  // 6. GDELT (opsional, hanya dijalankan jika flag aktif)
+  // 6. Aave V3 Rates (bunga & carry on-chain)
+  const ratesSummary: string[] = [];
+  const ratesRes = results[5];
+  if (ratesRes && ratesRes.status === "fulfilled") {
+    warnings.push(...ratesRes.value.warnings);
+    const priorityAssets = ["USDC", "WETH", "wstETH", "USDT", "WBTC", "USDC.e", "DAI", "GHO"];
+    const sorted = [...ratesRes.value.reserves].sort((a, b) => {
+      const ia = priorityAssets.indexOf(a.asset);
+      const ib = priorityAssets.indexOf(b.asset);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a.asset.localeCompare(b.asset);
+    });
+    for (const r of sorted.slice(0, 8)) {
+      const kinkStr = r.curve ? `${(r.curve.optimalUtil * 100).toFixed(0)}%` : "—";
+      ratesSummary.push(
+        `- ${r.asset}: util ${(r.utilization * 100).toFixed(1)}% / kink ${kinkStr} · supply ${(r.supplyApy * 100).toFixed(1)}% APY · borrow ${(r.borrowApr * 100).toFixed(1)}% APR`,
+      );
+    }
+  } else if (ratesRes && ratesRes.status === "rejected") {
+    warnings.push(`Aave rates adapter crash: ${String(ratesRes.reason)}`);
+  }
+
+  // 7. GDELT (opsional, hanya dijalankan jika flag aktif)
   if (isGdeltEnabled) {
     try {
       const gdeltRes = await fetchGdeltEvents({
@@ -179,6 +208,7 @@ export async function collectResearchInputs(
     marketEvents,
     macroEvents,
     signals,
+    ratesSummary,
     chainNotes,
     warnings,
   };

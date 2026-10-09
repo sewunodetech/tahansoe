@@ -188,9 +188,11 @@ npm run tahansoe -- settle --now 2026-10-09T00:00:00Z --json   # settle sampai w
 npm run tahansoe -- scorecard --days 30     # scorecard akurasi (recall, presisi ≥STRESSED, lead time)
 npm run tahansoe -- fuse                     # satu pass Risk Fusion v1 → risk_assessments per aset
 npm run tahansoe -- fuse --dry --json        # hitung & cetak JSON, TANPA menulis DB
+npm run tahansoe -- carry                    # monitor bunga & carry Aave V3 (tabel reserve + pair + drift HF)
+npm run tahansoe -- carry --json             # ringkasan carry & rate format JSON
 npm run tahansoe -- doctor                  # cek env/DB/RPC/gateway (key disamarkan)
 npm run tahansoe -- schedule run            # scheduler foreground: research + settlement + fusion (Ctrl+C lepas lock)
-npm run tahansoe -- schedule run --with-price   # + price worker di proses yang sama
+npm run tahansoe -- schedule run --with-price   # + price worker & rate sampler T11 di proses yang sama
 npm run tahansoe -- schedule run --no-settle    # scheduler tanpa settlement job
 npm run tahansoe -- schedule run --no-fusion    # scheduler tanpa risk-fusion job
 npm run tahansoe -- schedule run --once     # satu siklus lalu keluar
@@ -199,9 +201,11 @@ npm run tahansoe -- schedule status         # lock + run terakhir dari DB
 
 `settle` dan `scorecard` membaca/menulis tabel `risk_settlements` lewat job settlement (ADR 0005) — butuh `DATABASE_URL`. `settle` memberi label `TRUE_POSITIVE`/`FALSE_POSITIVE`/`MISSED`/`TRUE_NEGATIVE` (idempoten; report tanpa data harga cukup ditandai *insufficient*, bukan dilabeli palsu). `scorecard` meringkas metrik vs target spec §3.6.
 
-`fuse` menjalankan **Risk Fusion v1** (deterministik, spec m2-risk-fusion-v1): membaca `signals` aktif + prior assessment + `price_samples` (AaveOracle, I5), lalu menulis satu baris `risk_assessments` per aset (regime, drawdown h4/h24, recommended trigger/target HF — **belum di-clamp band user**; itu rule engine). `--dry` menghitung & mencetak tanpa menulis DB. Riset `RESEARCH`/`NEWS` sendirian **tidak bisa** mengangkat regime ke `STRESSED`/`CRISIS` (guardrail konfirmasi). Kegagalan DB/harga → di-log & dilewati (policy statis tetap jalan, I6).
+`carry` menampilkan pemantauan risiko bunga & carry Aave V3 (jalur T11, spec m3-carry-interest-monitoring): tabel reserve (supply APY, borrow APY, utilization / kink, status: ok / near kink / past kink), drift HF 1.50 → 1.45 untuk 5 pasangan representatif, dan skenario lonjakan utilization 95%. Tanpa rekomendasi trading atau kata saran investasi.
 
-**`schedule run` juga menjalankan settlement DAN fusion** secara periodik di proses yang sama, masing-masing di bawah advisory lock Postgres TERPISAH (research `42161001`, settlement `42161002`, fusion `42161003`). Settlement tiap `SETTLE_INTERVAL_MIN` (default 60); fusion tiap `FUSION_INTERVAL_MIN` (default 15) **dan** segera setelah setiap research run sukses. Kegagalan job di-log, tidak pernah menjatuhkan scheduler; dashboard menampilkan "Last settle: …" dan "Fusion: REGIME per aset, HH:MM UTC". Nonaktifkan dengan `--no-settle` / `--no-fusion`. Instance lain yang memegang lock → job tersebut dilewati di proses ini.
+`fuse` menjalankan **Risk Fusion v1** (deterministik, spec m2-risk-fusion-v1): membaca `signals` aktif + prior assessment + `price_samples` (AaveOracle, I5), memancarkan sinyal deterministik T11 dari `rate_samples`, lalu menulis satu baris `risk_assessments` per aset (regime, drawdown h4/h24, recommended trigger/target HF — **belum di-clamp band user**; itu rule engine). `--dry` menghitung & mencetak tanpa menulis DB. Riset `RESEARCH`/`NEWS` sendirian **tidak bisa** mengangkat regime ke `STRESSED`/`CRISIS` (guardrail konfirmasi). Begitu pula sinyal T11 sendirian maksimal ELEVATED tanpa konfirmasi T7 / modul lain. Kegagalan DB/harga → di-log & dilewati (policy statis tetap jalan, I6).
+
+**`schedule run` juga menjalankan settlement DAN fusion** secara periodik di proses yang sama, masing-masing di bawah advisory lock Postgres TERPISAH (research `42161001`, settlement `42161002`, fusion `42161003`). Saat `--with-price` disertakan, worker juga menjalankan sampler harga (tiap 60s) dan sampler bunga T11 (tiap `RATE_SAMPLE_INTERVAL_MIN`, default 15 menit) ke tabel `rate_samples`. Settlement tiap `SETTLE_INTERVAL_MIN` (default 60); fusion tiap `FUSION_INTERVAL_MIN` (default 15) **dan** segera setelah setiap research run sukses. Kegagalan job di-log, tidak pernah menjatuhkan scheduler; dashboard menampilkan "Last settle: …" dan "Fusion: REGIME per aset, HH:MM UTC". Nonaktifkan dengan `--no-settle` / `--no-fusion`. Instance lain yang memegang lock → job tersebut dilewati di proses ini.
 
 Opsi global: `--json` (output mesin, hanya di stdout), `--no-color` (nonaktifkan ANSI; otomatis mati pada pipe/`NO_COLOR`/`TERM=dumb`). Exit code: `0` ok · `1` error · `2` konfigurasi salah (mis. `LLM_API_URL`/`LLM_API_KEY` belum diisi). Setiap kartu laporan diakhiri "not a trading signal"; CLI tidak pernah melakukan aksi on-chain dan tidak pernah mencetak secret.
 

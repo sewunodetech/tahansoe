@@ -101,4 +101,24 @@ export const scenarioCases: EvalCase[] = [
     }),
     expect: { regimeAtLeast: "ELEVATED", maxSignalConfidence: 0.6 },
   },
+  {
+    id: "scn-usdc-past-kink",
+    set: "scenarios",
+    description: "USDC util 0.95 past 0.90 kink, borrow 35%, no price move → ≥ ELEVATED (T11)",
+    inputs: inputs({
+      marketEvents: calmNews(),
+      signals: [
+        signal(
+          "ONCHAIN",
+          0.7,
+          "USDC pool utilization 0.95 past 0.90 optimal kink; borrow APR spiked to 35%",
+          ["T11"],
+          0.9,
+          0,
+          1,
+        ),
+      ],
+    }),
+    expect: { regimeAtLeast: "ELEVATED", maxSignalConfidence: 0.6 },
+  },
 ];

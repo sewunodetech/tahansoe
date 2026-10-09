@@ -255,3 +255,37 @@ export const riskAssessments = pgTable(
   }),
 );
 
+/**
+ * Sampel bunga & kurva Aave V3 on-chain per reserve (spec m3-carry-interest-monitoring §3.2, jalur T11).
+ */
+export const rateSamples = pgTable(
+  "rate_samples",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    chainId: integer("chain_id").notNull(),
+    asset: text("asset").notNull(),
+    address: text("address").notNull(),
+    supplyApy: numeric("supply_apy", { precision: 12, scale: 6 }).notNull(),
+    borrowApr: numeric("borrow_apr", { precision: 12, scale: 6 }).notNull(),
+    borrowApy: numeric("borrow_apy", { precision: 12, scale: 6 }).notNull(),
+    utilization: numeric("utilization", { precision: 12, scale: 6 }).notNull(),
+    optimalUtilization: numeric("optimal_utilization", { precision: 12, scale: 6 }),
+    slope2: numeric("slope2", { precision: 12, scale: 6 }),
+    baseRate: numeric("base_rate", { precision: 12, scale: 6 }),
+    slope1: numeric("slope1", { precision: 12, scale: 6 }),
+    sampledAt: timestamp("sampled_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    chainAssetSampledIdx: index("rate_samples_chain_asset_sampled_idx").on(
+      t.chainId,
+      t.asset,
+      t.sampledAt,
+    ),
+  }),
+);
+
+export type RateSample = typeof rateSamples.$inferSelect;
+export type NewRateSample = typeof rateSamples.$inferInsert;
+

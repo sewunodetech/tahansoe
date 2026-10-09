@@ -21,6 +21,7 @@ const COMMANDS = [
   ["fuse", "Run one Risk Fusion v1 pass (per-asset regime)"],
   ["settle", "Settle due research reports (ADR 0005)"],
   ["scorecard", "Research-agent accuracy scorecard"],
+  ["carry", "Aave V3 carry & interest-rate risk monitor"],
   ["doctor", "Check env & connectivity"],
 ] as const;
 
@@ -139,6 +140,10 @@ export async function main(argv: string[]): Promise<number> {
     case "doctor": {
       const { doctorCommand } = await import("./commands/doctor.ts");
       return doctorCommand(rest);
+    }
+    case "carry": {
+      const { carryCommand } = await import("./commands/carry.ts");
+      return carryCommand(rest);
     }
     default:
       process.stderr.write(`perintah tidak dikenal: ${cmd}\n\n${TOP_HELP}\n`);

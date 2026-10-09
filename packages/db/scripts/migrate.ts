@@ -324,6 +324,27 @@ async function migrate() {
   await sql`CREATE INDEX IF NOT EXISTS risk_assessments_created_at_idx ON risk_assessments (created_at);`;
   console.log("  risk_assessments");
 
+  // --- Rate Samples (spec m3-carry-interest-monitoring §3.2, jalur T11)
+  await sql`
+    CREATE TABLE IF NOT EXISTS rate_samples (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      chain_id INTEGER NOT NULL,
+      asset TEXT NOT NULL,
+      address TEXT NOT NULL,
+      supply_apy NUMERIC(12,6) NOT NULL,
+      borrow_apr NUMERIC(12,6) NOT NULL,
+      borrow_apy NUMERIC(12,6) NOT NULL,
+      utilization NUMERIC(12,6) NOT NULL,
+      optimal_utilization NUMERIC(12,6),
+      slope2 NUMERIC(12,6),
+      base_rate NUMERIC(12,6),
+      slope1 NUMERIC(12,6),
+      sampled_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS rate_samples_chain_asset_sampled_idx ON rate_samples (chain_id, asset, sampled_at);`;
+  console.log("  rate_samples");
+
   console.log("\nMigration complete.");
 }
 

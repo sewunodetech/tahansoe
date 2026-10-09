@@ -41,3 +41,5 @@ import "./reflection/outcomes.test.ts";
 import "./reflection/settle-job.test.ts";
 import "./llm/redact.test.ts";
 import "./sources/aave-rates.test.ts";
+import "./cli/carry.test.ts";
+import "./signals/carry.test.ts";

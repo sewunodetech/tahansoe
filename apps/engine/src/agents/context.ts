@@ -60,6 +60,8 @@ export interface ResearchContext {
   macroEvents: ContextMacroEvent[];
   /** Catatan chain (mis. Arbitrum: USDC ber-cap, tanpa PriceOracleSentinel). */
   chainNotes: string[];
+  /** Ringkasan bunga Aave V3 on-chain (data terukur). */
+  ratesSummary?: string[];
   /** Sumber yang dilewati / gagal (audit, G7). Disimpan TERPISAH dari chainNotes. */
   warnings: string[];
   builtAt: Date;
@@ -105,6 +107,7 @@ export async function buildContext(params: {
     signals: inputs.signals,
     marketEvents: inputs.marketEvents,
     macroEvents: inputs.macroEvents,
+    ratesSummary: inputs.ratesSummary ?? [],
     // chainNotes bersih; warnings sumber disimpan terpisah untuk audit (G7).
     chainNotes: [...inputs.chainNotes],
     warnings: [...inputs.warnings],
@@ -178,6 +181,14 @@ export function renderContextAsData(ctx: ResearchContext): string {
     for (const m of sortMacroEvents(ctx.macroEvents)) {
       lines.push(`- [${m.importance}] ${m.scheduledAt.toISOString()} :: ${m.name}`);
     }
+
+  if (ctx.ratesSummary && ctx.ratesSummary.length > 0) {
+    lines.push("");
+    lines.push("## Interest rates (Aave V3 Arbitrum, on-chain)");
+    for (const r of ctx.ratesSummary) {
+      lines.push(r);
+    }
+  }
 
   return lines.join("\n");
 }

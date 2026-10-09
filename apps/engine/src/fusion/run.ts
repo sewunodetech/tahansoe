@@ -41,6 +41,8 @@ export interface FusionRunResult {
 
 /** Dependensi I/O injectable (default: DB nyata). */
 export interface FusionDeps {
+  /** Pancarkan sinyal deterministik (mis. carry T11) sebelum fusion tick. */
+  emitSignals: (opts: { chainId: number; now: Date; dry: boolean }) => Promise<Signal[]>;
   /** Sinyal aktif (expires_at > now) untuk chain, sebagai Signal domain. */
   loadActiveSignals: (chainId: number, now: Date) => Promise<Signal[]>;
   /** Prior assessment per aset (hysteresis). */
@@ -79,10 +81,24 @@ export async function runFusion(options: RunFusionOptions = {}): Promise<FusionR
 
   const out: FusionRunResult = { chainId, now, dry, results: [] };
 
+  // Pancarkan sinyal deterministik (mis. carry T11) sebelum membaca sinyal aktif
+  let dryEmittedSignals: Signal[] = [];
+  try {
+    const emitted = await deps.emitSignals({ chainId, now, dry });
+    if (dry && emitted.length > 0) {
+      dryEmittedSignals = emitted;
+    }
+  } catch (err) {
+    warn(`gagal memancarkan sinyal deterministik: ${errMsg(err)} — lanjut dengan sinyal yang ada.`);
+  }
+
   // Muat sinyal aktif sekali untuk semua aset. Gagal → degradasi: tanpa assessment.
   let allSignals: Signal[];
   try {
     allSignals = await deps.loadActiveSignals(chainId, now);
+    if (dry && dryEmittedSignals.length > 0) {
+      allSignals = [...allSignals, ...dryEmittedSignals];
+    }
   } catch (err) {
     warn(`gagal memuat signals: ${errMsg(err)} — fusion dilewati (policy statis berlaku).`);
     return out;
@@ -144,6 +160,9 @@ function errMsg(err: unknown): string {
 async function resolveDeps(partial?: Partial<FusionDeps>): Promise<FusionDeps> {
   const p = partial ?? {};
   return {
+    emitSignals:
+      p.emitSignals ??
+      (async (opts) => (await import("../signals/emit.ts")).emitDeterministicSignals(opts)),
     loadActiveSignals: p.loadActiveSignals ?? defaultLoadActiveSignals,
     loadPrior: p.loadPrior ?? (async (chainId, asset) => (await import("../db/assessments.ts")).latestAssessment(chainId, asset)),
     loadPriceSamples: p.loadPriceSamples ?? defaultLoadPriceSamples,
