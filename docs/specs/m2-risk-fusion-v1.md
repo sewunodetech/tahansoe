@@ -1,7 +1,7 @@
 # Spec: Risk Fusion v1 (deterministik)
 
 - **Milestone:** M2 — Core Risk Engine v1 ([PRD §10](../prd.md#10-roadmap-eksekusi), item "Risk Fusion v1")
-- **Status:** Draft
+- **Status:** Approved (disetujui tim, 2026-10-09) — siap implementasi
 - **Pemilik:** engine / agent core-dev
 - **Terkait:** [PRD §4.2](../prd.md#42-dari-prediksi-ke-buffer-yang-cukup), [PRD §6.3](../prd.md#63-risk-fusion), [PRD §7.3](../prd.md#73-tahansoeguardian) · [Security §1 (I5, I6), §4](../security.md#4-checklist-review-keamanan) · [ADR 0002 (AI advises, rules decide)](../decisions/0002-ai-advises-rules-decide.md), [ADR 0004](../decisions/0004-multi-agent-research-layer.md), [ADR 0005](../decisions/0005-reflection-loop.md), [ADR 0007](../decisions/0007-monorepo-structure-and-runtime.md) · [spec m3-research-agents](m3-research-agents.md) · [knowledge/risk-transmission](../knowledge/risk-transmission.md)
 
@@ -262,3 +262,16 @@ Semua test offline/deterministik (tanpa jaringan/DB nyata); dijalankan via `tsx 
 - **`MACRO_SOON_HOURS`:** PRD menyebut rentang 12–24 jam; nilai default tunggal v1 (18 jam) perlu konfirmasi vs fixture (`scn-token-unlock` 12 jam, `scn-fomc-soon` 18 jam).
 - **Interval fusion terjadwal:** memakai `schedule.ts` (regime-adaptif) atau `FUSION_INTERVAL_MIN` tersendiri? Dampak biaya DB/compute vs kesegaran `validUntil`.
 - **Normalisasi `riskScore`:** pemetaan `aggregateScore`→0..100 agar stabil lintas aset dengan jumlah sinyal berbeda.
+
+### Keputusan atas pertanyaan terbuka (2026-10-09)
+
+| Pertanyaan | Keputusan |
+|------------|-----------|
+| Granularitas | Per aset; rule engine memetakan aset → posisi |
+| `MACRO_SOON_HOURS` | 18 jam |
+| Interval fusion terjadwal | Setelah setiap research run + tiap 15 menit (`FUSION_INTERVAL_MIN`) |
+| Horizon reaksi trigger HF | `h4` di v1; latensi keeper per chain di v2 |
+| Pasangan berkorelasi (wstETH/ETH) | Ditunda sampai posisi LST didukung |
+| Kalibrasi ambang & multiplier | Nilai awal di `fusion/config.ts`; kalibrasi lewat backtest setelah `price_samples` terkumpul beberapa hari |
+| Normalisasi `riskScore` | Ikuti usulan spec; disetel lewat eval skenario |
+
