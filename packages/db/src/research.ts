@@ -20,6 +20,7 @@ import {
   uuid,
   text,
   integer,
+  bigint,
   numeric,
   boolean,
   timestamp,
@@ -168,3 +169,37 @@ export const researchLessons = pgTable(
     activeIdx: index("research_lessons_active_idx").on(t.active),
   }),
 );
+
+export const priceSourceEnum = pgEnum("price_source", [
+  "aave_oracle",
+  "chainlink_proxy",
+]);
+
+export type PriceSource = (typeof priceSourceEnum.enumValues)[number];
+
+/**
+ * Sampel harga on-chain historis untuk perhitungan realized volatility
+ * dan settlement/reflection (PRD §4.2/§6.3, spec m3 §3.5).
+ */
+export const priceSamples = pgTable(
+  "price_samples",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    chainId: integer("chain_id").notNull(),
+    asset: text("asset").notNull(),
+    source: priceSourceEnum("source").notNull(),
+    priceUsd: numeric("price_usd", { precision: 24, scale: 8 }).notNull(),
+    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
+    sampledAt: timestamp("sampled_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    chainAssetSampledIdx: index("price_samples_chain_asset_sampled_idx").on(
+      t.chainId,
+      t.asset,
+      t.sampledAt,
+    ),
+  }),
+);
+

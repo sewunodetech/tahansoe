@@ -23,6 +23,7 @@ export * from "./fred.ts";
 export * from "./macro-calendar.ts";
 export * from "./defillama.ts";
 export * from "./onchain.ts";
+export * from "./price-sampler.ts";
 
 /** Kelas sumber data (spec §3.10). */
 export type SourceKind =

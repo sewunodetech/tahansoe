@@ -209,6 +209,7 @@ async function migrate() {
     "settlement_label",
     "'TRUE_POSITIVE', 'FALSE_POSITIVE', 'MISSED', 'TRUE_NEGATIVE'",
   );
+  await createTypeIfNotExists("price_source", "'aave_oracle', 'chainlink_proxy'");
 
   await sql`
     CREATE TABLE IF NOT EXISTS signals (
@@ -281,6 +282,20 @@ async function migrate() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS research_lessons_active_idx ON research_lessons (active);`;
   console.log("  research_lessons");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS price_samples (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      chain_id INTEGER NOT NULL,
+      asset TEXT NOT NULL,
+      source price_source NOT NULL,
+      price_usd NUMERIC(24,8) NOT NULL,
+      block_number BIGINT NOT NULL,
+      sampled_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS price_samples_chain_asset_sampled_idx ON price_samples (chain_id, asset, sampled_at);`;
+  console.log("  price_samples");
 
   console.log("\nMigration complete.");
 }

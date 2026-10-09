@@ -25,3 +25,4 @@ import "./cli/env-writer.test.ts";
 import "./cli/models.test.ts";
 import "./settings/settings.test.ts";
 import "./cli/settings-cli.test.ts";
+import "./sources/price-sampler.test.ts";
