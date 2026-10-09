@@ -1,13 +1,18 @@
 # Spec: Tahansoe CLI (`tahansoe`) — analisa langsung & scheduler dari terminal
 
 - **Milestone:** M3 (research agents) — tooling operator/developer
-- **Status:** Approved (user, 2026-10-09)
+- **Status:** In progress (implementasi parsial aktif, 2026-10-09)
 - **Pemilik:** Kiro (shell + command), Antigravity (renderer + test), Claude Code (review)
 - **Terkait:** [m3-research-agents](m3-research-agents.md), [m2-risk-fusion-v1](m2-risk-fusion-v1.md), [ADR 0009](../decisions/0009-single-openai-compatible-gateway.md), [ADR 0006](../decisions/0006-business-model-free-info-paid-automation.md)
 
 ## 1. Tujuan
 
 Saat ini engine punya 15 script npm yang terpisah (`research`, `research:once`, `research:worker`, `research:history`, `models`, `settings`, `eval`, …). Spec ini menyatukannya menjadi **satu CLI `tahansoe`** yang menarik dan informatif. Dengan CLI ini operator bisa (a) menjalankan analisa risiko langsung dan melihat proses tiap agent secara live, (b) menjalankan scheduler analisa berkala dengan dashboard terminal, dan (c) membuka riwayat/laporan, model, dan settings dari satu pintu.
+
+### 1.1 Catatan Implementasi (9 Okt 2026)
+
+- **Command terimplementasi:** `analyze` (dengan live progress dan kartu laporan), `schedule` (`run`/`status` dengan `--once` dan `--with-price`), `history`, `report`, `doctor`, `models`, `settings`, `eval`.
+- **Deviasi tata letak renderer:** Seluruh helper rendering terminal (banner, box, bar, sparkline, progress, kartu laporan, penyamaran host, sanitasi teks) ditempatkan terpusat di `apps/engine/src/cli/render.ts` (bukan di subfolder `src/cli/ui/` seperti rencana awal). Deviasi ini menyederhanakan pemeliharaan file tanpa mengurangi cakupan unit test maupun fungsionalitas UI.
 
 ## 2. Scope
 

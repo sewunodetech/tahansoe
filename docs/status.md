@@ -28,13 +28,19 @@
   - Kalender makro resmi: jadwal FOMC dari federalreserve.gov (horizon 30 hari) dan rilis CPI/NFP dari data rilis FRED.
   - DefiLlama API untuk monitoring peg stablecoin (USDC, USDT, DAI, FRAX) dan insiden hack/exploit protokol DeFi dengan scaling ukuran dan relevansi Tahansoe.
   - On-chain Arbitrum One: pembacaan oracle Aave vs Chainlink proxy dan Sequencer Uptime Feed.
-- **Multi-Provider LLM & Provider Generik (ADR 0008):**
-  - Adapter `OpenAICompatibleProvider` (mendukung Gemini, Groq, OpenRouter, DeepSeek, Ollama, dan endpoint generik dari `LLM_BASE_URL` seperti Bynara/vLLM) + `AnthropicProvider`.
-  - Router peran (`LLM_ANALYST`, `LLM_DEBATE`, `LLM_ASSESSOR`, `LLM_REFLECTOR`) dengan fallback berantai (`provider:model,provider:model`).
-  - Integrasi daftar harga dinamis (`LLM_PRICING_URL`) membaca otomatis format Bynara dan OpenRouter, serta dukungan harga manual JSON (`LLM_MODEL_PRICES`).
-  - Estimasi biaya riset berdasarkan profil token historis dari database atau baseline default.
-  - CLI interaktif `npm run research` (pemilihan model per peran, pratinjau biaya, auto-write ke `.env`) dan CLI `npm run models` (`--filter`).
-- **Penyimpanan Database Neon Postgres:** Tabel `research_reports` (dengan diagnostik per-peran audit G7) dan `signals` (`RESEARCH`), serta skrip inspeksi riwayat `npm run research:history`.
+- **Single LLM Gateway OpenAI-Compatible (9 Okt 2026 — ADR 0009):**
+  - Menggantikan konfigurasi multi-provider yang kompleks (men-supersede sebagian ADR 0008).
+  - Environment server hanya membutuhkan dua secret: `LLM_API_URL` dan `LLM_API_KEY`. Berganti provider cukup mengganti dua nilai ini tanpa menyentuh kode.
+  - Konfigurasi model per peran (`analyst`, `debate`, `assessor`, `reflector`) dan harga token disimpan di `settings.json` v2 (non-rahasia, di-gitignore) sebagai daftar nama model murni (*plain model names*) dengan fallback berantai.
+  - JSON Schema di-embed langsung ke dalam system prompt, didukung toleransi ekstraksi teks, 1x repair retry jika schema tidak valid, lalu fallback ke model berikutnya.
+  - Perhitungan budget harian terintegrasi dinamis dengan harga gateway (`settings.modelPrices` > `pricingUrl` > fallback konservatif).
+- **CLI Terpadu `tahansoe` (9 Okt 2026 — spec m3-cli):**
+  - Satu pintu interaksi terminal operator (`apps/engine/src/cli/tahansoe.ts`, helper terpusat di `render.ts`).
+  - Mendukung subcommand: `analyze` (live progress per tahap + kartu laporan), `schedule` (`run` foreground dengan PostgreSQL session advisory lock & live dashboard, `status`), `history`, `report` (`<id|latest>` format `--md` atau `--json`), `doctor`, `models`, `settings`, `eval`.
+- **Live Run Perdana via Gateway Bynara (9 Okt 2026):**
+  - Uji coba live penuh pertama kali berhasil menggunakan gateway Bynara dengan model `agnes-2.5-flash` untuk seluruh peran.
+  - Mengonsumsi ~36.5k token dengan biaya operasional sangat efisien (~Rp6/run) dan menghasilkan proposal regime `CALM`.
+- **Penyimpanan Database Neon Postgres:** Tabel `research_reports` (dengan diagnostik per-peran audit G7) dan `signals` (`RESEARCH`), serta skrip inspeksi riwayat `tahansoe history`.
 - **Scheduled Background Research Worker:**
   - Single-instance enforcement via PostgreSQL session advisory lock (`pg_try_advisory_lock(42161001)` pada koneksi direct non-pooler) mencegah tabrakan proses.
   - Penjadwalan adaptif berdasarkan regime hasil terakhir (`CALM` $\rightarrow$ 2 jam; `ELEVATED`/`STRESSED`/`CRISIS` $\rightarrow$ 1 jam; dapat dioverride lewat env).
@@ -46,22 +52,22 @@
   - 13 unit test offline lulus 100% menggunakan `FakeProvider`.
 - **Scheduled Settlement & Scorecard Pipeline (ADR 0005, spec §3.5 & §3.6):**
   - Evaluasi deterministik hasil prediksi research agent (`TRUE_POSITIVE`, `FALSE_POSITIVE`, `MISSED`, `TRUE_NEGATIVE`) menggunakan sampel harga AaveOracle (I5) dan sinyal on-chain.
-  - Guard kelengkapan data (`insufficient_data` jika sampel harga tidak mencukupi horizon) menghindari penyimpanan label spekulatif/palsu di database.
+  - Guard kelengkapan jendela data (toleransi batas awal/akhir 30 menit, celah internal maks 60 menit) menghindari penyimpanan label spekulatif/palsu di database.
   - Eksekusi idempotent (`runSettlementJob`) aman terhadap eksekusi berulang tanpa duplikasi baris di `risk_settlements`.
   - Scorecard generator & CLI tabel ASCII (`apps/engine/src/cli/scorecard.ts`) menghitung Recall, Presisi (≥ STRESSED), Median Lead Time, dan pelacakan laporan yang kekurangan data.
-  - 26 unit test offline lulus 100% dan terverifikasi live pada database Neon.
+  - 31 unit test offline lulus 100% dan terverifikasi live pada database Neon.
 
 ---
 
 ## Gap yang diketahui
 
 ### Evaluasi & Model LLM
-- [ ] Eval live penuh dengan model kandidat belum dijalankan secara komprehensif karena keterbatasan kuota free tier Gemini; perlu dijalankan menggunakan provider generik/Bynara berbayar untuk memvalidasi model termurah yang lolos eval (spec §3.4).
-- [ ] Kualitas penalaran, ketahanan refusal pada topik sensitif, dan kepatuhan format JSON tiap model murah (DeepSeek, Llama 3.3, dsb.) belum diuji secara empiris di bawah beban live.
+- [ ] `deepseek-v4.1-flash` gagal validasi enum `Evidence.source` saat bertindak sebagai assessor; perlu penyesuaian instruksi prompt atau schema reminder.
+- [ ] Eval set belum di-rerun secara komprehensif terhadap model-model gateway Bynara untuk memvalidasi model termurah yang lolos eval (spec §3.4).
 
 ### Engine, Fusion & Settlement
-- [ ] Risk Fusion deterministik v1 (menggabungkan sinyal teknikal/on-chain dan sinyal `RESEARCH`) belum diimplementasikan di `apps/engine`.
-- [ ] Integrasi trigger runner terjadwal (cron/loop background) di server engine untuk memanggil `runSettlementJob` secara berkala bersamaan dengan worker utama.
+- [ ] Job settlement (`src/reflection/settle-job.ts`) belum dijadwalkan secara berkala di background scheduler (saat ini dijalankan manual via CLI / direct runner).
+- [ ] Risk Fusion deterministik v1 (menggabungkan sinyal teknikal/on-chain dan sinyal `RESEARCH`) belum diintegrasikan penuh ke loop utama `apps/engine`.
 - [ ] Pengiriman notifikasi alert Telegram langsung dari server engine belum ada (saat ini masih dipicu dari browser di web app).
 - [ ] Host deployment untuk long-running engine worker di lingkungan cloud/VPS belum dipilih.
 

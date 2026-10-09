@@ -120,10 +120,10 @@ const ResearchReport = z.object({
 
 Ambang eval awal untuk naik tier: akurasi `path`/`severity` < 80% pada `news-labeled`, ada kegagalan pada `injection`, atau < 70% kesesuaian regime pada `scenarios`.
 
-- **Pemilihan model per peran & fallback berantai (ADR 0008):** Dikonfigurasi lewat variabel `LLM_ANALYST`, `LLM_DEBATE`, `LLM_ASSESSOR`, dan `LLM_REFLECTOR`. Format mendukung daftar fallback dipisah koma: `"provider:model,provider:model"` (misal `gemini:gemini-flash-latest,groq:llama-3.3-70b-versatile`). Model tanpa prefix otomatis mengacu ke provider default yang ditentukan oleh `LLM_BASE_URL` dan `LLM_PROVIDER_NAME`.
-- **Estimasi biaya & integrasi harga dinamis:** Engine menghitung estimasi biaya per run, harian (12 run CALM), dan bulanan berdasarkan profil token historis dari database (atau baseline default ~46k token input, ~2.3k output). Daftar harga dapat dimuat otomatis dari endpoint remote (`LLM_PRICING_URL` — Bynara `/api/pricing` atau OpenRouter `/api/v1/models`) atau dioverride manual lewat `LLM_MODEL_PRICES`. Tooling CLI `npm run research` dan `npm run models` disediakan untuk memilih kombinasi termurah secara interaktif.
+- **Satu pintu gateway LLM & pemilihan model per peran ([ADR 0009](../decisions/0009-single-openai-compatible-gateway.md), men-supersede sebagian [ADR 0008](../decisions/0008-multi-provider-llm.md)):** Engine mengakses LLM hanya lewat satu gateway OpenAI-compatible. Environment hanya memerlukan dua secret: `LLM_API_URL` dan `LLM_API_KEY`. Konfigurasi model per peran (`analyst`, `debate`, `assessor`, `reflector`) disimpan di `settings.json` v2 (non-rahasia, di-gitignore) berupa daftar nama model murni (*plain model names* tanpa awalan provider) yang berurutan sebagai fallback berantai jika model pertama gagal (mis. `["agnes-2.5-flash", "deepseek-v4-flash"]`).
+- **Structured output & schema repair retry:** Schema JSON di-embed langsung ke dalam system prompt (dengan instruksi inline dan deskripsi field). Output model diekstrak secara toleran terhadap blok kode markdown / teks pengantar, lalu divalidasi dengan schema zod. Jika validasi schema gagal, dilakukan tepat satu kali *repair retry* dengan menyertakan pesan error validasi dan pengingat schema; jika tetap gagal, eksekusi fallback ke model berikutnya dalam daftar peran.
+- **Estimasi biaya & integrasi harga dinamis:** Budget harian dan biaya per run dihitung berdasarkan harga gateway dengan prioritas: `settings.modelPrices` (override manual) > `pricingUrl` (Bynara `/api/pricing` atau OpenRouter) > fallback harga konservatif default. Tooling CLI `tahansoe models` dan `tahansoe settings` disediakan untuk inspeksi harga dan konfigurasi peran.
 - **Bahasa prompt: Inggris** (keputusan tim, 8 Okt 2026). Semua system prompt, instruksi inline, dan deskripsi field schema ditulis dalam bahasa Inggris. Field teks hasil LLM (summary, rationale, hawkCase/doveCase, lesson) juga berbahasa Inggris. Lokalisasi ke bahasa user dilakukan di lapisan notifikasi/UI, bukan lewat prompt.
-- Selalu structured output (zod). Output gagal validasi → dibuang dan dicatat, tidak "diperbaiki".
 - Cek `stop_reason` sebelum membaca hasil. Topik perang, serangan, dan exploit bisa memicu `refusal`; jika tetap refusal → analyst dianggap gagal untuk run itu.
 - Konten eksternal dibungkus sebagai data di akhir prompt; system prompt statis di depan (prompt caching).
 - Budget harian: `budget.exceeded()` → lapis riset berhenti sampai besok, tim mendapat alert, modul sinyal & fusion tetap jalan.
@@ -196,17 +196,20 @@ Tabel aktual di `packages/db/src/research.ts` (menggunakan Drizzle ORM):
 
 Semua tabel menyertakan `chain_id` untuk data on-chain (architecture §5).
 
-### 3.9 Env baru
+### 3.9 Environment & konfigurasi (ADR 0009)
 
-Semua variabel hanya di environment server (server-only), tanpa prefix `NEXT_PUBLIC_`:
+Semua variabel environment bersifat server-only (tanpa prefix `NEXT_PUBLIC_`) dan **hanya menyimpan rahasia (secret) serta sakelar operasional**. Konfigurasi model per peran dan harga disimpan di `settings.json` v2 (non-rahasia):
 
 - **Database:** `DATABASE_URL` (koneksi Neon Postgres).
-- **LLM Native/Spesifik:** `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `OLLAMA_BASE_URL`.
-- **LLM Generic OpenAI-Compatible:** `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_PROVIDER_NAME`, `LLM_MODEL`, `LLM_PROVIDER_<NAMA>_BASE_URL`, `LLM_PROVIDER_<NAMA>_API_KEY`.
-- **Pricing & Estimasi:** `LLM_PRICING_URL` (format Bynara / OpenRouter), `LLM_MODEL_PRICES` (override JSON).
-- **Pemilihan Peran:** `LLM_ANALYST`, `LLM_DEBATE`, `LLM_ASSESSOR`, `LLM_REFLECTOR` (format `provider:model` berantai).
-- **Kontrol & Keamanan:** `LLM_DAILY_BUDGET_USD` (batas budget harian), `RESEARCH_ENABLED` (kill switch, default `false`).
+- **LLM Gateway OpenAI-Compatible Tunggal (ADR 0009):** `LLM_API_URL` (URL endpoint gateway, dinormalisasi otomatis sampai `/v1`) dan `LLM_API_KEY` (secret gateway). Kunci lama per-provider (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, dll.) tidak lagi digunakan; alias usang `LLM_BASE_URL` tetap dibaca dengan peringatan selama satu rilis.
+- **Kontrol & Keamanan:** `LLM_DAILY_BUDGET_USD` (batas budget harian; jika terlampaui, riset dihentikan sampai hari berikutnya), `RESEARCH_ENABLED` (kill switch lapis riset, default `false`).
 - **Sumber Data Eksternal:** `FRED_API_KEY` (data makro FRED, key gratis), `RESEARCH_GDELT_ENABLED` (default `false`), `ARBITRUM_RPC_URL` (RPC Arbitrum One).
+
+**Konfigurasi non-rahasia (`settings.json` v2, dikelola via `tahansoe settings`):**
+- `roles`: model per peran (`analyst`, `debate`, `assessor`, `reflector`) berupa nama model polos dengan daftar fallback berantai.
+- `pricingUrl`: URL daftar harga remote (format Bynara `/api/pricing` atau OpenRouter `/api/v1/models`).
+- `modelPrices`: override manual harga token per model (`inputPerM`, `outputPerM`).
+- `estimate`: asumsi estimasi biaya (mis. `runsPerDay: 12`).
 
 ### 3.10 Sumber data
 

@@ -51,7 +51,7 @@ components/             UI (landing/, ui/, providers/)
 hooks/                  React hooks (auth, telegram)
 lib/                    Shared: db, schema, session, wagmi, simulasi
 contracts/              Foundry: src/, test/, script/, broadcast/
-engine/                 (rencana) Core Risk Engine — service Node.js terpisah
+engine/                 (apps/engine) Core Risk Engine — service Node.js
   src/
     chains/             Chain registry: RPC, alamat Aave/Guardian, feeds, sequencer
     adapters/           ProtocolAdapter: aave-v3/, morpho-blue/
@@ -62,10 +62,13 @@ engine/                 (rencana) Core Risk Engine — service Node.js terpisah
       macro/            Kalender ekonomi
       news/             Ingestion + klasifikasi LLM
       social/           Sentimen sosial
-    llm/                Interface provider-agnostic + schema output + budget harian
+    sources/            Adapter data eksternal: RSS berita, FRED API, kalender makro, DefiLlama, on-chain
+    llm/                Gateway tunggal OpenAI-compatible (ADR 0009), pricing, budget, router
     agents/             Research agents: analyst → debat Hawk/Dove → assessor (ADR 0004)
-    reflection/         Settlement, reflection, scorecard (ADR 0005)
+    reflection/         Settlement job (src/reflection/settle-job.ts), outcome evaluation, scorecard, lessons (ADR 0005)
     fusion/             Signals → RiskAssessment (regime, drawdown, trigger)
+    cli/                CLI terpadu (apps/engine/src/cli/tahansoe.ts, commands/, render.ts)
+    worker/             Scheduled Research Worker (advisory lock, background runner)
     policy/             Rule engine deterministik → Intent
     keeper/             Loop needsProtection → protect; (v2) setDynamicTrigger
     notify/             Telegram dari server
@@ -213,7 +216,7 @@ Konvensi angka:
 | CI | GitHub Actions: typecheck + test + build semua workspace, lint web (blocking), `forge test` tanpa fork (`.github/workflows/ci.yml`) |
 | DB | Neon Postgres + Drizzle ORM |
 | Kontrak | Foundry, Solidity 0.8.26, OpenZeppelin v5 |
-| LLM | Provider-agnostic interface (`apps/engine/src/llm/provider.ts`), adapter `OpenAICompatibleProvider` (Gemini, Groq, OpenRouter, DeepSeek, Ollama, generic endpoint `LLM_BASE_URL`) + `AnthropicProvider`, router peran + fallback berantai, zod schema validation ([ADR 0004](decisions/0004-multi-agent-research-layer.md), [ADR 0008](decisions/0008-multi-provider-llm.md)) |
+| LLM | Gateway tunggal OpenAI-compatible (`LLM_API_URL` + `LLM_API_KEY`, [ADR 0009](decisions/0009-single-openai-compatible-gateway.md)), router peran + fallback berantai model di `settings.json` v2, zod schema validation (di-embed dalam system prompt + 1 retry repair), budget harian terhitung dari pricing gateway |
 | Notifikasi | Telegram Bot API |
 | Automation (prod) | Chainlink Automation + cron cadangan |
 
@@ -231,15 +234,13 @@ Semua variabel environment di bawah bersifat server-only kecuali yang diawali `N
 | `NEXT_PUBLIC_WC_PROJECT_ID` | app | WalletConnect project id |
 | `ARB_SEPOLIA_RPC_URL`, `ARBISCAN_API_KEY` | contracts, engine | RPC & verifikasi blok Arbitrum Sepolia |
 | `KEEPER_PRIVATE_KEY` atau signer eksternal | engine/keeper **(rencana)** | Private key eksekusi transaksi proteksi Guardian |
-| `ANTHROPIC_API_KEY` | engine | API key Anthropic Claude |
-| `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY` | engine | API key provider LLM alternatif (ADR 0008) |
-| `OLLAMA_BASE_URL` | engine | Base URL endpoint Ollama lokal OpenAI-compatible |
-| `LLM_BASE_URL`, `LLM_API_KEY` | engine | Endpoint & key provider OpenAI-compatible generik (mis. Bynara, custom proxy) |
-| `LLM_PROVIDER_NAME`, `LLM_MODEL` | engine | Nama label provider generik (default: `custom`) dan model default lintas peran |
-| `LLM_PRICING_URL`, `LLM_MODEL_PRICES` | engine | URL daftar harga remote (Bynara/OpenRouter) atau override harga manual JSON |
-| `LLM_ANALYST`, `LLM_DEBATE`, `LLM_ASSESSOR`, `LLM_REFLECTOR` | engine | Pemilihan model & fallback berantai per peran (`provider:model,...`) |
+| `LLM_API_URL` | engine | Endpoint gateway OpenAI-compatible tunggal (dinormalisasi s.d. `/v1`, ADR 0009) |
+| `LLM_API_KEY` | engine | API key gateway OpenAI-compatible (secret server-only, tidak pernah di-log) |
 | `LLM_DAILY_BUDGET_USD` | engine | Batas biaya LLM harian (USD); jika habis, riset dihentikan sampai hari berikutnya |
 | `RESEARCH_ENABLED` | engine | Kill switch lapis riset (default `false`) |
 | `FRED_API_KEY` | engine | API key data makro FRED Federal Reserve (key gratis) |
 | `RESEARCH_GDELT_ENABLED` | engine | Toggle agregator GDELT DOC 2.0 (default `false`) |
 | `ARBITRUM_RPC_URL` | engine | RPC Arbitrum One untuk polling on-chain |
+
+> **Catatan Konfigurasi Non-Rahasia:** Pengaturan model per peran (`roles`: `analyst`, `debate`, `assessor`, `reflector` beserta fallback berantai), `pricingUrl`, dan override harga token `modelPrices` disimpan di `settings.json` v2 (non-rahasia, per-mesin, di-gitignore) dan dikelola lewat `tahansoe settings`. Kunci lama per-provider (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, dll.) telah digantikan oleh gateway tunggal (ADR 0009).
+

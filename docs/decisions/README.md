@@ -15,4 +15,6 @@ Aturan:
 | 0005 | [Reflection loop: evaluasi ulang tanpa mengubah aturan sendiri](0005-reflection-loop.md) | Accepted |
 | 0006 | [Model bisnis: informasi gratis, otomasi berbayar, tanpa fee on-chain di v1](0006-business-model-free-info-paid-automation.md) | Accepted |
 | 0007 | [Struktur monorepo, Next.js + worker terpisah, tanpa indexer dulu](0007-monorepo-structure-and-runtime.md) | Accepted |
-| 0008 | [Multi-provider LLM: adapter OpenAI-compatible, model per peran, fallback](0008-multi-provider-llm.md) | Accepted |
+| 0008 | [Multi-provider LLM: adapter OpenAI-compatible, model per peran, fallback](0008-multi-provider-llm.md) | Sebagian di-supersede oleh [0009](0009-single-openai-compatible-gateway.md) |
+| 0009 | [Satu pintu LLM: gateway OpenAI-compatible tunggal (`LLM_API_URL` + `LLM_API_KEY`)](0009-single-openai-compatible-gateway.md) | Accepted |
+
