@@ -13,7 +13,12 @@
  *    57P01 admin_shutdown) TIDAK menjadi unhandled exception; ditandai LOCK LOST.
  */
 
-import { Client } from "@neondatabase/serverless";
+import { Client, neonConfig } from "@neondatabase/serverless";
+
+// Nonaktifkan coalesceWrites pada koneksi WebSocket agar write tidak dijadwalkan
+// via setTimeout(..., 0) yang dapat melempar "Sent before connected" sebagai
+// uncaughtException bila socket belum siap/menutup saat timer terpanggil.
+neonConfig.coalesceWrites = false;
 
 /** Key advisory lock unik untuk research worker (Arbitrum One + research prefix). */
 export const RESEARCH_WORKER_ADVISORY_LOCK_KEY = 42161001;
