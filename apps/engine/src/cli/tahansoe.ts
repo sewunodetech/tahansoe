@@ -23,6 +23,7 @@ const COMMANDS = [
   ["scorecard", "Research-agent accuracy scorecard"],
   ["carry", "Aave V3 carry & interest-rate risk monitor"],
   ["ask", "Ask grounded risk research question (non-interactive)"],
+  ["setup", "First-time setup wizard (gateway, models, DB)"],
   ["doctor", "Check env & connectivity"],
 ] as const;
 
@@ -58,6 +59,10 @@ async function quickStatus(): Promise<void> {
     process.stdout.write(dim(theme, ` models   analyst ${show(roles.analyst)} · assessor ${show(roles.assessor)}\n`));
   } catch {
     /* abaikan */
+  }
+
+  if (gatewayHost === "(not configured)") {
+    process.stdout.write(dim(theme, " tip      jalankan 'tahansoe setup' untuk konfigurasi awal\n"));
   }
 
   // Regime terakhir dari DB (bila DATABASE_URL diset).
@@ -154,6 +159,10 @@ export async function main(argv: string[]): Promise<number> {
     case "ask": {
       const { askCommand } = await import("./commands/ask.ts");
       return askCommand(rest);
+    }
+    case "setup": {
+      const { setupCommand } = await import("./commands/setup.ts");
+      return setupCommand(rest);
     }
     default:
       process.stderr.write(`perintah tidak dikenal: ${cmd}\n\n${TOP_HELP}\n`);

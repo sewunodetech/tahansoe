@@ -31,6 +31,7 @@ export const SLASH_COMMANDS: Array<[string, string]> = [
   ["/models", "List gateway models + prices"],
   ["/settings", "Show or manage settings.json"],
   ["/doctor", "Check environment & connectivity"],
+  ["/setup", "Run initial setup wizard (gateway, models, DB)"],
   ["/status", "Show current market regime status line"],
   ["/help", "Show available slash commands and tips"],
   ["/clear", "Clear terminal screen"],
@@ -190,6 +191,12 @@ export async function dispatchSlashCommand(
       return;
     }
 
+    case "setup": {
+      const { setupCommand } = await import("../commands/setup.ts");
+      await setupCommand(args);
+      return;
+    }
+
     default:
       process.stdout.write(
         pc.red(`Perintah slash tidak dikenal: /${cmd}. Ketik /help untuk melihat daftar perintah.\n`),
@@ -231,6 +238,9 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
   process.stdout.write(formatStatusLine(context, theme) + "\n");
 
   // 3. Cetak petunjuk
+  if (!gatewayUrl || !process.env.LLM_API_KEY) {
+    process.stdout.write(pc.yellow("Tip: LLM Gateway belum dikonfigurasi. Ketik /setup untuk konfigurasi awal.\n"));
+  }
   process.stdout.write(pc.dim(REPL_HINT) + "\n");
 
   let history: ChatTurn[] = [];

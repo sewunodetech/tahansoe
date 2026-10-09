@@ -103,17 +103,19 @@ export async function runDoctor(deps: DoctorDeps = {}): Promise<CheckResult[]> {
     results.push({ name: "gateway /models", ok: false, detail: "lewati (LLM_API_URL kosong)" });
   }
 
-  // 4. DATABASE_URL connect.
-  if (env.DATABASE_URL) {
+  // 4. Database (ADR 0010): driver pglite tidak butuh DATABASE_URL.
+  const driver = (env.DB_DRIVER?.trim().toLowerCase() || (env.DATABASE_URL ? "neon" : "pglite")) as string;
+  const dbLabel = driver === "pglite" ? "database (pglite)" : "DATABASE_URL";
+  if (driver === "pglite" || env.DATABASE_URL) {
     const check = deps.checkDb ?? defaultCheckDb;
     try {
       const r = await check();
-      results.push({ name: "DATABASE_URL", ok: r.ok, detail: r.detail });
+      results.push({ name: dbLabel, ok: r.ok, detail: driver === "pglite" ? `${r.detail} (local)` : r.detail });
     } catch (err) {
-      results.push({ name: "DATABASE_URL", ok: false, detail: sanitizeExternal(err instanceof Error ? err.message : String(err), 80) });
+      results.push({ name: dbLabel, ok: false, detail: sanitizeExternal(err instanceof Error ? err.message : String(err), 80) });
     }
   } else {
-    results.push({ name: "DATABASE_URL", ok: false, detail: "belum diisi" });
+    results.push({ name: dbLabel, ok: false, detail: "belum diisi (atau set DB_DRIVER=pglite untuk database lokal)" });
   }
 
   // 5. ARBITRUM_RPC_URL eth_chainId = 42161.
@@ -162,10 +164,10 @@ export async function runDoctor(deps: DoctorDeps = {}): Promise<CheckResult[]> {
 }
 
 async function defaultCheckDb(): Promise<{ ok: boolean; detail: string }> {
-  const { getDb } = await import("@tahansoe/db");
+  const { ensureDb } = await import("@tahansoe/db");
   const { sql } = await import("drizzle-orm");
   const { withTransientRetry } = await import("../../db/store.ts");
-  const db = getDb();
+  const db = await ensureDb();
   await withTransientRetry(() => db.execute(sql`select 1`));
   return { ok: true, detail: "connected" };
 }
@@ -216,7 +218,12 @@ export async function doctorCommand(argv: string[], deps: DoctorDeps = {}): Prom
 
   // Exit code: 2 (config) bila LLM_API_URL/KEY hilang; 1 bila ada check lain gagal; 0 ok.
   const gatewayMissing = results.some((r) => (r.name === "LLM_API_URL" || r.name === "LLM_API_KEY") && !r.ok);
-  if (gatewayMissing) return EXIT_CONFIG;
+  if (gatewayMissing) {
+    if (!parsed.values.json) {
+      writeOut("\nTip: jalankan \"tahansoe setup\" untuk konfigurasi awal.\n");
+    }
+    return EXIT_CONFIG;
+  }
   const anyFail = results.some((r) => !r.ok);
   return anyFail ? EXIT_ERROR : EXIT_OK;
 }

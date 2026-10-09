@@ -44,3 +44,60 @@ test("applyEnvUpdates: tidak mengubah baris komentar yang menyerupai kunci", () 
   assert.match(out, /# LLM_ANALYST=jangan-diubah/);
   assert.match(out, /^LLM_ANALYST=new$/m);
 });
+
+test("writeEnvUpdates: menulis ke file baru dengan fallback template .env.example", async () => {
+  const { writeEnvUpdates } = await import("../../src/cli/env-writer.ts");
+  const { mkdtemp, readFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+
+  const tmp = await mkdtemp(join(tmpdir(), "tahansoe-env-"));
+  const target = join(tmp, ".env");
+  try {
+    await writeEnvUpdates({
+      envPath: target,
+      updates: {
+        LLM_API_URL: "https://router.bynara.id/v1",
+        LLM_API_KEY: "secret-key-123",
+        DB_DRIVER: "pglite",
+      },
+    });
+
+    const written = await readFile(target, "utf-8");
+    assert.match(written, /^LLM_API_URL=https:\/\/router\.bynara\.id\/v1$/m);
+    assert.match(written, /^LLM_API_KEY=secret-key-123$/m);
+    assert.match(written, /^DB_DRIVER=pglite$/m);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test("writeEnvUpdates: memperbarui file yang sudah ada dan mempertahankan baris lain", async () => {
+  const { writeEnvUpdates } = await import("../../src/cli/env-writer.ts");
+  const { mkdtemp, writeFile, readFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+
+  const tmp = await mkdtemp(join(tmpdir(), "tahansoe-env-"));
+  const target = join(tmp, ".env");
+  try {
+    const existing = "# Komentar penting\nCUSTOM_VAR=keep_me\nLLM_API_URL=https://old-url.com\n";
+    await writeFile(target, existing, "utf-8");
+
+    await writeEnvUpdates({
+      envPath: target,
+      updates: {
+        LLM_API_URL: "https://router.bynara.id/v1",
+        LLM_API_KEY: "secret-test-key",
+      },
+    });
+
+    const content = await readFile(target, "utf-8");
+    assert.match(content, /# Komentar penting/);
+    assert.match(content, /^CUSTOM_VAR=keep_me$/m);
+    assert.match(content, /^LLM_API_URL=https:\/\/router\.bynara\.id\/v1$/m);
+    assert.match(content, /^LLM_API_KEY=secret-test-key$/m);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});

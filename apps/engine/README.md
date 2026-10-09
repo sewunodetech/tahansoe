@@ -104,7 +104,26 @@ Biaya operasional sekitar **Rp 5–15 per analisa** (tergantung banyaknya berita
 
 ## 2. Cara Pakai
 
-### Setup Environment
+### Mulai Cepat (Setup Wizard)
+
+Jalankan wizard interaktif untuk mengonfigurasi LLM gateway, memilih model default (`gpt-6-luna`), memilih database (`pglite` lokal atau `neon`), dan memverifikasi koneksi dalam satu langkah:
+
+```bash
+# Dari root monorepo
+npm run tahansoe -- setup
+
+# Atau dari apps/engine
+npm run tahansoe -- setup
+```
+
+Wizard ini secara aman memperbarui `apps/engine/.env` (hanya secret) dan `settings.json` (peran model), lalu menjalankan `doctor` untuk memastikan seluruh komponen siap digunakan.
+
+Atau jalankan non-interaktif di script/CI:
+```bash
+npm run tahansoe -- setup --yes --db pglite --model gpt-6-luna
+```
+
+### Setup Manual Environment
 
 Salin file template `.env.example` ke `apps/engine/.env`:
 
