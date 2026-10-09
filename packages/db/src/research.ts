@@ -54,6 +54,17 @@ export const settlementLabelEnum = pgEnum("settlement_label", [
   "TRUE_NEGATIVE",
 ]);
 
+/**
+ * Regime pasar (PRD §6.3), konsisten dengan @tahansoe/domain REGIMES. Dipakai
+ * tabel `risk_assessments` (Risk Fusion v1, spec m2-risk-fusion-v1 §3.7).
+ */
+export const regimeEnum = pgEnum("regime", [
+  "CALM",
+  "ELEVATED",
+  "STRESSED",
+  "CRISIS",
+]);
+
 /** Output research agents per run (spec §3.8). */
 export const researchReports = pgTable(
   "research_reports",
@@ -200,6 +211,47 @@ export const priceSamples = pgTable(
       t.asset,
       t.sampledAt,
     ),
+  }),
+);
+
+/**
+ * Output Risk Fusion v1 per aset per run (spec m2-risk-fusion-v1 §3.7).
+ *
+ * Append-only: satu baris per aset per run. "Assessment aktif" = baris terbaru
+ * per (chain_id, asset) dengan `valid_until > now`. Settlement (ADR 0005) membaca
+ * baris ini via `risk_settlements.risk_assessment_id` (kolom sudah ada).
+ *
+ * `drivers`/`reasons` disimpan untuk audit; `recommended_trigger_hf` BELUM di-clamp
+ * ke band user (itu rule engine, PRD §7.3).
+ */
+export const riskAssessments = pgTable(
+  "risk_assessments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    chainId: integer("chain_id").notNull(),
+    asset: text("asset").notNull(),
+    regime: regimeEnum("regime").notNull(),
+    riskScore: numeric("risk_score", { precision: 5, scale: 2 }).notNull(),
+    drawdownH4: numeric("drawdown_h4", { precision: 6, scale: 5 }).notNull(),
+    drawdownH24: numeric("drawdown_h24", { precision: 6, scale: 5 }).notNull(),
+    recommendedTriggerHf: numeric("recommended_trigger_hf", { precision: 6, scale: 4 }).notNull(),
+    recommendedTargetHf: numeric("recommended_target_hf", { precision: 6, scale: 4 }).notNull(),
+    /** Sinyal paling berpengaruh (ringkas: id, module, severity, confidence, paths). */
+    drivers: jsonb("drivers").notNull(),
+    /** Nama aturan yang menyala (mis. ["R-MACRO-SOON","HYSTERESIS-HOLD"]). */
+    reasons: jsonb("reasons").notNull(),
+    explanation: text("explanation").notNull(),
+    /** = FUSION_VERSION (versi aturan fusion). */
+    modelVersion: text("model_version").notNull(),
+    validUntil: timestamp("valid_until", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    chainAssetIdx: index("risk_assessments_chain_asset_idx").on(t.chainId, t.asset),
+    validUntilIdx: index("risk_assessments_valid_until_idx").on(t.validUntil),
+    createdAtIdx: index("risk_assessments_created_at_idx").on(t.createdAt),
   }),
 );
 

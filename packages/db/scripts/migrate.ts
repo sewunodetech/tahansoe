@@ -297,6 +297,33 @@ async function migrate() {
   await sql`CREATE INDEX IF NOT EXISTS price_samples_chain_asset_sampled_idx ON price_samples (chain_id, asset, sampled_at);`;
   console.log("  price_samples");
 
+  // --- Risk Fusion v1 (spec m2-risk-fusion-v1 §3.7): risk_assessments.
+  await createTypeIfNotExists("regime", "'CALM', 'ELEVATED', 'STRESSED', 'CRISIS'");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS risk_assessments (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      chain_id INTEGER NOT NULL,
+      asset TEXT NOT NULL,
+      regime regime NOT NULL,
+      risk_score NUMERIC(5,2) NOT NULL,
+      drawdown_h4 NUMERIC(6,5) NOT NULL,
+      drawdown_h24 NUMERIC(6,5) NOT NULL,
+      recommended_trigger_hf NUMERIC(6,4) NOT NULL,
+      recommended_target_hf NUMERIC(6,4) NOT NULL,
+      drivers JSONB NOT NULL,
+      reasons JSONB NOT NULL,
+      explanation TEXT NOT NULL,
+      model_version TEXT NOT NULL,
+      valid_until TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS risk_assessments_chain_asset_idx ON risk_assessments (chain_id, asset);`;
+  await sql`CREATE INDEX IF NOT EXISTS risk_assessments_valid_until_idx ON risk_assessments (valid_until);`;
+  await sql`CREATE INDEX IF NOT EXISTS risk_assessments_created_at_idx ON risk_assessments (created_at);`;
+  console.log("  risk_assessments");
+
   console.log("\nMigration complete.");
 }
 

@@ -18,6 +18,7 @@ const COMMANDS = [
   ["models", "List gateway models + prices + cost estimate"],
   ["settings", "Manage non-secret settings.json"],
   ["eval", "Run the eval set"],
+  ["fuse", "Run one Risk Fusion v1 pass (per-asset regime)"],
   ["settle", "Settle due research reports (ADR 0005)"],
   ["scorecard", "Research-agent accuracy scorecard"],
   ["doctor", "Check env & connectivity"],
@@ -130,6 +131,10 @@ export async function main(argv: string[]): Promise<number> {
     case "scorecard": {
       const { scorecardCommand } = await import("./commands/scorecard-settle.ts");
       return scorecardCommand(rest);
+    }
+    case "fuse": {
+      const { fuseCommand } = await import("./commands/fuse.ts");
+      return fuseCommand(rest);
     }
     case "doctor": {
       const { doctorCommand } = await import("./commands/doctor.ts");
