@@ -84,6 +84,15 @@ export async function fuseCommand(argv: string[], deps: FuseDeps = {}): Promise<
         assessmentId: r.assessmentId ?? null,
         note: r.note ?? null,
       })),
+      signals: (result.activeSignals ?? []).map((s) => ({
+        id: s.id,
+        module: s.module,
+        paths: s.paths,
+        assets: s.assets,
+        severity: s.severity,
+        confidence: s.confidence,
+        summary: s.evidence?.[0]?.title ?? null,
+      })),
       disclaimer: "not a trading signal",
     }) + "\n");
     return EXIT_OK;
@@ -107,6 +116,21 @@ export async function fuseCommand(argv: string[], deps: FuseDeps = {}): Promise<
     const firstExplainLine = a.explanation.split("\n")[0] ?? "";
     lines.push(dim(theme, `       ${sanitizeExternal(firstExplainLine, 60)}`));
   }
+
+  // Tampilkan sinyal deterministik aktif per modul jika ada (spec §3.5)
+  if (result.activeSignals && result.activeSignals.length > 0) {
+    const detSignals = result.activeSignals.filter((s) => s.module !== "RESEARCH");
+    if (detSignals.length > 0) {
+      lines.push("");
+      lines.push("Active signals:");
+      for (const s of detSignals) {
+        const pathStr = s.paths && s.paths.length > 0 ? s.paths.join(",") : "—";
+        const title = s.evidence?.[0]?.title ?? s.direction;
+        lines.push(`  ${s.module.padEnd(8)} ${pathStr.padEnd(6)} ${dim(theme, sanitizeExternal(title, 48))}`);
+      }
+    }
+  }
+
   writeOut(box(theme, "RISK FUSION", lines, Math.min(theme.width, 74)) + "\n");
   writeOut(dim(theme, " not a trading signal\n"));
   return EXIT_OK;

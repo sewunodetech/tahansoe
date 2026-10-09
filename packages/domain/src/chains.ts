@@ -78,6 +78,8 @@ export const ARBITRUM_ONE: ChainConfig = {
     "USDC.e": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
     /** USDT (kini USDT0; simbol on-chain "USD₮0"). */
     USDT: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+    DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
+    GHO: "0x7dfF72693f6A4149b17e7C6314655f6A9F7c8B33",
   },
   explorer: "https://arbiscan.io",
 };

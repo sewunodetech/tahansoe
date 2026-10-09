@@ -43,3 +43,4 @@ import "./llm/redact.test.ts";
 import "./sources/aave-rates.test.ts";
 import "./cli/carry.test.ts";
 import "./signals/carry.test.ts";
+import "./signals/deterministic.test.ts";

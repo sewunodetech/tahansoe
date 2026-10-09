@@ -207,6 +207,7 @@ export interface FusionTickStatus {
   lastAt: Date | null;
   perAsset: string; // "ETH ELEVATED · USDC CALM"
   heldLock: boolean;
+  signalCounts?: Record<string, number>;
 }
 
 /**
@@ -274,6 +275,11 @@ export class FusionTicker {
       this.status.lastAt = new Date();
       this.status.perAsset =
         result.results.map((r) => `${r.asset} ${r.assessment ? r.assessment.regime : "—"}`).join(" · ") || "—";
+      const counts: Record<string, number> = {};
+      for (const s of result.activeSignals ?? []) {
+        counts[s.module] = (counts[s.module] ?? 0) + 1;
+      }
+      this.status.signalCounts = counts;
       this.logger.info(`[fusion] ${this.status.lastAt.toISOString().slice(11, 16)} UTC · ${this.status.perAsset}`);
     } catch (err) {
       this.logger.error(`[fusion] job gagal: ${err instanceof Error ? err.message : String(err)}`);
@@ -282,11 +288,15 @@ export class FusionTicker {
     }
   }
 
-  /** Baris dashboard "Fusion: REGIME per asset, HH:MM UTC". */
+  /** Baris dashboard "Fusion: REGIME per asset, HH:MM UTC (signals: ...)". */
   dashboardLine(): string {
     if (!this.status.heldLock) return "Fusion: (handled by another instance)";
     if (!this.status.lastAt) return "Fusion: (pending)";
-    return `Fusion: ${this.status.perAsset}, ${this.status.lastAt.toISOString().slice(11, 16)} UTC`;
+    const countParts = Object.entries(this.status.signalCounts ?? {})
+      .map(([mod, cnt]) => `${mod} ${cnt}`)
+      .join(", ");
+    const signalSuffix = countParts ? ` (signals: ${countParts})` : "";
+    return `Fusion: ${this.status.perAsset}, ${this.status.lastAt.toISOString().slice(11, 16)} UTC${signalSuffix}`;
   }
 
   async stop(): Promise<void> {

@@ -41,16 +41,24 @@ export interface OnchainRawSnapshot {
   usdcAavePrice: bigint;
   ethChainlinkAnswer: bigint;
   ethChainlinkStartedAt: bigint;
+  ethChainlinkUpdatedAt?: bigint;
   usdcChainlinkAnswer: bigint;
   usdcChainlinkStartedAt: bigint;
+  usdcChainlinkUpdatedAt?: bigint;
+  usdtChainlinkAnswer?: bigint;
+  usdtChainlinkStartedAt?: bigint;
+  usdtChainlinkUpdatedAt?: bigint;
   sequencerAnswer: bigint;
   sequencerStartedAt: bigint;
+  /** Peta harga AaveOracle per aset (simbol -> bigint 8 desimal USD). */
+  aavePrices?: Record<string, bigint>;
 }
 
 export interface OnchainResult {
   signals: ContextSignal[];
   chainNotes: string[];
   warning?: string;
+  rawSnapshot?: OnchainRawSnapshot;
 }
 
 const AAVE_ORACLE_ABI = [
@@ -202,7 +210,7 @@ export async function fetchOnchainSnapshot(
       options.rawSnapshot,
       now,
     );
-    return { signals, chainNotes };
+    return { signals, chainNotes, rawSnapshot: options.rawSnapshot };
   }
 
   const rpcUrl =
@@ -248,7 +256,7 @@ export async function fetchOnchainSnapshot(
         }),
       });
 
-    // Panggil fungsi view kontrak secara paralel
+    // Panggil fungsi view kontrak dasar secara paralel
     const [
       wethAavePrice,
       usdcAavePrice,
@@ -285,19 +293,65 @@ export async function fetchOnchainSnapshot(
       }),
     ]);
 
+    const aavePrices: Record<string, bigint> = {
+      WETH: wethAavePrice,
+      USDC: usdcAavePrice,
+    };
+
+    // Baca harga stablecoin lain (USDC.e, USDT, DAI, GHO) & feed USDT secara resilient (I6)
+    const extraTokens = ["USDC.e", "USDT", "DAI", "GHO"] as const;
+    const extraAaveJobs = extraTokens.map(async (tok) => {
+      const addr = ARBITRUM_ONE.tokens?.[tok] as Address | undefined;
+      if (!addr) return;
+      try {
+        const p = (await client.readContract({
+          address: aaveOracleAddress,
+          abi: AAVE_ORACLE_ABI,
+          functionName: "getAssetPrice",
+          args: [addr],
+        })) as bigint;
+        aavePrices[tok] = p;
+      } catch {
+        // Abaikan kegagalan token individual (mis. mock test parsial)
+      }
+    });
+
+    const chainlinkUsdtAddress = ARBITRUM_ONE.priceFeeds["USDT/USD"] as Address | undefined;
+    let usdtRound: readonly [bigint, bigint, bigint, bigint, bigint] | null = null;
+    const usdtJob = (async () => {
+      if (!chainlinkUsdtAddress) return;
+      try {
+        usdtRound = (await client.readContract({
+          address: chainlinkUsdtAddress,
+          abi: AGGREGATOR_V3_ABI,
+          functionName: "latestRoundData",
+        })) as readonly [bigint, bigint, bigint, bigint, bigint];
+      } catch {
+        // Abaikan jika tidak tersedia
+      }
+    })();
+
+    await Promise.allSettled([...extraAaveJobs, usdtJob]);
+
     const rawSnapshot: OnchainRawSnapshot = {
       wethAavePrice,
       usdcAavePrice,
       ethChainlinkAnswer: ethRound[1],
       ethChainlinkStartedAt: ethRound[2],
+      ethChainlinkUpdatedAt: ethRound[3],
       usdcChainlinkAnswer: usdcRound[1],
       usdcChainlinkStartedAt: usdcRound[2],
+      usdcChainlinkUpdatedAt: usdcRound[3],
+      usdtChainlinkAnswer: usdtRound ? usdtRound[1] : undefined,
+      usdtChainlinkStartedAt: usdtRound ? usdtRound[2] : undefined,
+      usdtChainlinkUpdatedAt: usdtRound ? usdtRound[3] : undefined,
       sequencerAnswer: sequencerRound[1],
       sequencerStartedAt: sequencerRound[2],
+      aavePrices,
     };
 
     const { signals, chainNotes } = normalizeOnchainSnapshot(rawSnapshot, now);
-    return { signals, chainNotes };
+    return { signals, chainNotes, rawSnapshot };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return {

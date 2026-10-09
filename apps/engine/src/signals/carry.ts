@@ -110,6 +110,7 @@ export function computeCarrySignals(params: ComputeCarrySignalsParams): Signal[]
       const denom = Math.max(0.001, 1 - reserve.curve.optimalUtil);
       const excess = (reserve.utilization - reserve.curve.optimalUtil) / denom;
       const severity = Math.min(1.0, Math.max(0.1, excess));
+      const dedupeKey = `ONCHAIN:T11:kink:${reserve.asset}`;
 
       signals.push({
         id: genId(),
@@ -122,10 +123,12 @@ export function computeCarrySignals(params: ComputeCarrySignalsParams): Signal[]
         horizonHours: 24,
         observedAt: now,
         expiresAt,
+        dedupeKey,
         evidence: [
           {
             title: `Reserve ${reserve.asset} utilization at ${(reserve.utilization * 100).toFixed(1)}% past optimal kink of ${(reserve.curve.optimalUtil * 100).toFixed(1)}% (borrow APR ${(reserve.borrowApr * 100).toFixed(1)}%)`,
             source: "aave_rates",
+            dedupeKey,
           },
         ],
       });
@@ -153,6 +156,7 @@ export function computeCarrySignals(params: ComputeCarrySignalsParams): Signal[]
           Math.max(0.6, 0.5 + (reserve.borrowApr / Math.max(0.001, prevRate)) * 0.1),
         );
       }
+      const dedupeKey = `ONCHAIN:T11:spike:${reserve.asset}`;
 
       signals.push({
         id: genId(),
@@ -165,10 +169,12 @@ export function computeCarrySignals(params: ComputeCarrySignalsParams): Signal[]
         horizonHours: 24,
         observedAt: now,
         expiresAt,
+        dedupeKey,
         evidence: [
           {
             title: `Reserve ${reserve.asset} borrow APR spiked to ${(reserve.borrowApr * 100).toFixed(1)}% (spike threshold exceeded)`,
             source: "aave_rates",
+            dedupeKey,
           },
         ],
       });
@@ -196,6 +202,7 @@ export function computeCarrySignals(params: ComputeCarrySignalsParams): Signal[]
       if ((pair.collateral === "WETH" || pair.debt === "WETH") && !assets.includes("ETH")) {
         assets.push("ETH");
       }
+      const dedupeKey = `ONCHAIN:T11:carry:${pair.collateral}-${pair.debt}`;
 
       signals.push({
         id: genId(),
@@ -208,10 +215,12 @@ export function computeCarrySignals(params: ComputeCarrySignalsParams): Signal[]
         horizonHours: 24,
         observedAt: now,
         expiresAt,
+        dedupeKey,
         evidence: [
           {
             title: `Negative carry on ${pair.collateral}->${pair.debt}: net carry ${(carry * 100).toFixed(2)}%/yr (HF 1.50->1.45 in ${days ? Math.round(days) : "N/A"} days)`,
             source: "aave_rates",
+            dedupeKey,
           },
         ],
       });

@@ -71,6 +71,7 @@ export interface SignalEvidence {
   title: string;
   url?: string;
   source: string;
+  dedupeKey?: string;
 }
 
 /**
@@ -88,6 +89,7 @@ export interface Signal {
   observedAt: Date;
   expiresAt: Date;
   evidence: SignalEvidence[];
+  dedupeKey?: string;
 }
 
 /**
