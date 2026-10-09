@@ -90,7 +90,6 @@
 ### Engine, Fusion & Settlement
 - [ ] Scorecard belum direkap otomatis mingguan (settlement sendiri sudah berjalan tiap 60 menit di `tahansoe schedule run`, lock terpisah; data scorecard baru bermakna setelah scheduler jalan beberapa hari).
 - [ ] Modul teknikal lanjutan M2 (volatilitas realized EWMA/GARCH, funding rate ekstrem, open interest perp DEX) belum diimplementasikan.
-- [ ] Wizard interaktif `tahansoe setup` belum diimplementasikan (pending di backlog).
 - [ ] Pengiriman notifikasi alert Telegram langsung dari server engine belum ada (saat ini masih dipicu dari browser di web app).
 - [ ] Host deployment untuk long-running engine worker di lingkungan cloud/VPS belum dipilih.
 
@@ -121,7 +120,9 @@
 
 ## Backlog / ide
 
-- **(Dikerjakan paling akhir, permintaan user 9 Okt 2026) `tahansoe setup` wizard:** input `LLM_API_URL` + `LLM_API_KEY` (tersembunyi) → tes `/models` → pilih model + estimasi biaya → simpan `settings.json`; pilih database & RPC; tutup dengan `doctor`. Secret hanya ke `.env` (gitignored), tidak pernah dicetak ulang.
+- **Test flaky:** satu dari beberapa run `npm test` engine (390 test) sempat gagal 1 test lalu hijau di run berikutnya; kemungkinan terkait waktu/lock-file. Perlu diisolasi.
+
+- **(SELESAI 9 Okt 2026, commit 8bfa840) `tahansoe setup` wizard:** input `LLM_API_URL` + `LLM_API_KEY` (tersembunyi) → tes `/models` → pilih model + estimasi biaya → simpan `settings.json`; pilih database & RPC; tutup dengan `doctor`. Secret hanya ke `.env` (gitignored), tidak pernah dicetak ulang.
 - [x] **Pilihan database lokal (selesai — ADR 0010):** `DB_DRIVER=pglite` (Postgres embedded, data di `apps/engine/.data/`, tanpa server/akun — skema & query Drizzle tetap sama) di samping `DB_DRIVER=neon`. Auto-migrasi dan file advisory lock selesai.
 
 - EIP-7702 untuk smart account tanpa migrasi wallet
