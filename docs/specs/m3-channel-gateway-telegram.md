@@ -22,7 +22,7 @@ Inti logika (perintah, tanya-jawab, aturan alert) ditulis sekali di `src/gateway
 - Adapter **Telegram** via Bot API langsung (`fetch`, long polling `getUpdates`), tanpa framework.
 - Perintah chat: `/start`, `/help`, `/status`, `/fuse`, `/carry`, `/report`, `/history`, `/subscribe`, `/unsubscribe`, `/alerts` (atur jenis alert). Teks biasa → tanya-jawab (jalur `ask` yang sama dengan REPL).
 - **Alert proaktif** dari fusion tick dan emitter sinyal: perubahan regime per aset, sinyal terkonfirmasi T10 (sequencer), T4 (depeg), T7 (likuiditas pool ≥ 98%), T8 berat; ringkasan harian opsional.
-- Tabel `gateway_subscriptions` (kanal, chat_id, jenis alert, dibuat/diubah), jalan di Neon & PGlite.
+- **Konfigurasi gateway TIDAK di database** (keputusan user 2026-10-09, model OpenClaw): token bot di `.env`; chat yang diizinkan, langganan & preferensi alert di `settings.json` bagian `gateway`; state runtime (dedupe alert, hitungan Q&A harian) di file lokal `apps/engine/.data/gateway-state.json` (gitignored). Database hanya untuk data analisa.
 - **`tahansoe start`**: satu perintah untuk menjalankan agent penuh (scheduler + sampler harga & bunga + fusion + settlement + alert + gateway). `tahansoe gateway run` tetap ada untuk menjalankan gateway saja.
 - **`tahansoe setup`** diperluas: langkah Telegram (token bot tersembunyi, cek `getMe`, lalu **pairing**: wizard menampilkan kode sekali pakai, user mengirim `/start <kode>` ke bot, chat ID otomatis masuk allowlist).
 
@@ -99,7 +99,18 @@ Unit: router perintah, formatter/escape, alert-detector (naik/turun/hysteresis/d
 
 ## 7. Kontrak antar-bagian (untuk pembagian kerja)
 
-- `src/gateway/index.ts`: `startGateway(opts?: { logger?; signal?: AbortSignal }): Promise<{ stop(): Promise<void> }>` dan `gatewayStatus(env?): { configured: boolean; channels: string[] }`.
-- Alert dideteksi gateway sendiri dengan **membaca DB** (assessment & sinyal baru) tiap `GATEWAY_ALERT_POLL_SEC` (default 60) — tidak ada pemanggilan langsung dari fusion, sehingga scheduler dan gateway tetap terpisah (I6).
-- Pairing: `src/gateway/pairing.ts` → `createPairingCode(channel): Promise<{ code; expiresAt }>`, `pairingStatus(code): Promise<{ status: "pending" | "paired" | "expired"; chatId? }>`. Kode disimpan sebagai hash di tabel `gateway_pairings`; chat yang sukses pairing tersimpan di `gateway_subscriptions` sebagai *allowed*. `TELEGRAM_ALLOWED_CHAT_IDS` tetap berlaku sebagai tambahan.
-- `src/gateway/telegram/api.ts` → `telegramGetMe(token): Promise<{ ok; username? }>` (dipakai wizard).
+**Penyimpanan (keputusan user 2026-10-09):** database hanya berisi data analisa. Gateway tidak membuat tabel apa pun.
+
+| Data | Lokasi |
+|---|---|
+| `TELEGRAM_BOT_TOKEN` (secret) | `apps/engine/.env` |
+| Chat yang diizinkan, langganan, preferensi alert per chat, batas Q&A, interval poll alert, ringkasan harian | `settings.json` → `gateway: { channels: { telegram: { enabled, allowedChats: [{ id, label?, alerts: {...}, pairedAt }] } }, alertPollSec, qaPerDay, dailySummary }` (zod schema di `src/settings/schema.ts`, versi skema tetap kompatibel/migrasi) |
+| Kode pairing | Memori proses gateway (hash + kedaluwarsa 10 menit); tidak disimpan |
+| State runtime: alert yang sudah terkirim (dedupe 6 jam), hitungan Q&A harian per chat, offset `getUpdates` | `apps/engine/.data/gateway-state.json` (tulis atomik; hilang = aman, hanya bisa mengulang alert sekali) |
+
+Antarmuka:
+- `src/gateway/index.ts`: `startGateway(opts?: { logger?; signal?: AbortSignal }): Promise<{ stop(): Promise<void>; pairing: PairingApi }>` dan `gatewayStatus(env?, settings?): { configured: boolean; channels: string[] }`.
+- `PairingApi` (dari instance gateway yang sedang jalan): `createPairingCode(channel): { code; expiresAt }`, `pairingStatus(code): { status: "pending" | "paired" | "expired"; chatId? }`. Saat pairing sukses, gateway menambahkan chat ke `settings.json` (`allowedChats`) lewat helper settings yang sama dengan CLI. `TELEGRAM_ALLOWED_CHAT_IDS` di `.env` tetap berlaku sebagai tambahan.
+- Alert dideteksi gateway dengan **membaca** DB analisa (assessment & sinyal baru) tiap `alertPollSec` (default 60); tidak ada pemanggilan langsung dari fusion.
+- `src/gateway/telegram/api.ts` → `telegramGetMe(token): Promise<{ ok; username? }>`.
+- `src/gateway/cli.ts` → `gatewayRunCommand(argv)`.
