@@ -48,3 +48,4 @@ import "./signals/deterministic.test.ts";
 import "./cli/repl/slash.test.ts";
 import "./cli/repl/context.test.ts";
 import "./cli/repl/chat.test.ts";
+import "./cli/setup.test.ts";
