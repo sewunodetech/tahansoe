@@ -36,6 +36,8 @@ export interface StartGatewayOptions {
   env?: NodeJS.ProcessEnv;
   settingsPath?: string;
   statePath?: string;
+  lockDir?: string;
+  startupTimeSec?: number;
   fetchFn?: typeof fetch;
   loaders?: ReplContextLoaders & AlertEngineLoaders;
   chatOptions?: ChatOptions;
@@ -141,6 +143,7 @@ export async function startGateway(opts: StartGatewayOptions | unknown = {}): Pr
       try {
         const delRes = await telegramDeleteWebhook(token, {
           fetchFn: options.fetchFn,
+          dropPendingUpdates: true,
         });
         if (delRes.ok) {
           logger("[Gateway] Existing Telegram webhook deleted as requested.");
@@ -157,6 +160,9 @@ export async function startGateway(opts: StartGatewayOptions | unknown = {}): Pr
       fetchFn: options.fetchFn,
       logger,
       state,
+      statePath: stPath,
+      lockDir: options.lockDir,
+      startupTimeSec: options.startupTimeSec,
       onStateUpdate: async (updatedState) => {
         await saveGatewayState(updatedState, stPath);
       },
@@ -185,20 +191,24 @@ export async function startGateway(opts: StartGatewayOptions | unknown = {}): Pr
 
     await adapter.start();
 
-    // 4. Inisialisasi alert poller proaktif
-    const pollSec = options.pollIntervalSec ?? settings.gateway?.alertPollSec;
-    poller = new AlertPoller({
-      adapter,
-      state,
-      statePath: stPath,
-      settingsPath: sPath,
-      env,
-      pollIntervalSec: pollSec,
-      loaders: options.loaders,
-      logger,
-    });
+    // 4. Inisialisasi alert poller proaktif (hanya jika adapter tidak dalam status conflict)
+    if (adapter.status === "conflict") {
+      logger("[Gateway] Another Tahansoe agent holds the bot lock; alert poller not started.");
+    } else {
+      const pollSec = options.pollIntervalSec ?? settings.gateway?.alertPollSec;
+      poller = new AlertPoller({
+        adapter,
+        state,
+        statePath: stPath,
+        settingsPath: sPath,
+        env,
+        pollIntervalSec: pollSec,
+        loaders: options.loaders,
+        logger,
+      });
 
-    poller.start();
+      poller.start();
+    }
   } else {
     logger("[Gateway] TELEGRAM_BOT_TOKEN not provided; Telegram channel inactive.");
   }
@@ -241,6 +251,7 @@ export * from "./core/state.ts";
 export * from "./core/router.ts";
 export * from "./pairing.ts";
 export * from "./alerts.ts";
+export * from "./core/lock.ts";
 export * from "./telegram/api.ts";
 export * from "./telegram/adapter.ts";
 export * from "./telegram/queue.ts";

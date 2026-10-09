@@ -20,6 +20,13 @@
 - Dokumentasi & workflow agent (PRD v0.3, BRD, architecture, security, ADR)
 - Struktur monorepo npm workspaces (ADR 0007): `apps/web`, `apps/engine`, `packages/db`, `packages/domain`
 - **Pilihan Database Lokal: PGlite di Samping Neon (ADR 0010):** Dual-driver di `@tahansoe/db` via env `DB_DRIVER` (`pglite` vs `neon`). PGlite embedded Postgres berbasis WASM (`@electric-sql/pglite`) dengan penyimpanan lokal di `PGLITE_DATA_DIR` (default `apps/engine/.data/pglite`, gitignored) dan auto-migrasi skema idempoten. Single-instance advisory lock untuk worker/scheduler diimplementasikan via file lock lokal (`lock-${key}.json`, PID + heartbeat, stale takeover >2 menit atau dead PID). `apps/web` tetap di Neon; CLI engine dapat berjalan offline tanpa akun cloud DB. Unit & integration test lulus 100% di kedua driver.
+- **Gateway Hardening & Single Poller Per Bot (10 Okt 2026):**
+  - Exclusive bot lock file (`gateway-<sha256(token) first 12 hex>.lock`) dengan PID, heartbeat 15s, stale takeover 60s/dead PID, auto-cleanup saat stop/exit. Mencegah getUpdates simultan ke satu bot.
+  - No Backlog Replies: Skip update `date < startup - 30s` pada poll pertama sambil tetap memajukan offset Telegram; `telegramDeleteWebhook` default `drop_pending_updates: true`.
+  - Outbound Safety: Per-chat reply cap (max 5/10s, excess di-drop dengan notifikasi slow down maks 1x/menit), penanganan 429 patuh `retry_after` tanpa retry-loop tak terbatas, dan balasan private bot dibatasi maks 1x/jam per chat.
+  - Pairing Persistence: Perbaikan skema Zod `telegramChannelSchema` (dukungan `botUsername` & `.passthrough()`), atomic rename fallback untuk Windows pada `writeSettings`, dan resolusi path settings target.
+  - Reset state: `apps/engine/.data/gateway-state.json` `pendingPairings` direset bersih ke `{}`.
+  - Test suite komprehensif (`apps/engine/test/gateway/hardening.test.ts`) 10/10 lulus, suite engine 435/435 hijau.
 
 ### Core Risk Engine & Research Agents (M3)
 - **Pipeline Riset Multi-Agent Penuh:** 4 analis domain paralel (Geopolitics, Macro, Market, Onchain) $\rightarrow$ debat dialektika Hawk vs Dove $\rightarrow$ sintesis Risk Assessor $\rightarrow$ pemetaan ke `Signal` (`RESEARCH`, confidence cap $\le 0.6$).

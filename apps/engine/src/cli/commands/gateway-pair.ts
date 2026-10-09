@@ -121,7 +121,7 @@ export async function defaultTelegramDeleteWebhook(
     // @ts-ignore - concurrently built by Antigravity #1
     const { telegramDeleteWebhook } = await import("../../gateway/telegram/api.ts");
     if (typeof telegramDeleteWebhook === "function") {
-      return await telegramDeleteWebhook(token);
+      return await telegramDeleteWebhook(token, { dropPendingUpdates: true });
     }
   } catch {
     /* fallback */
@@ -375,7 +375,7 @@ export async function gatewayPairCommand(argv: string[], deps: GatewayPairDeps =
       return EXIT_ERROR;
     }
 
-    if (gw?.status === "conflict" || (await isListening(gw))) {
+    if (gw?.status === "conflict" || gwStatusStr === "conflict" || (await isListening(gw))) {
       writeOut("Agent is already running; it will handle the pairing\n");
       alreadyRunning = true;
     } else if (gw?.pairing) {

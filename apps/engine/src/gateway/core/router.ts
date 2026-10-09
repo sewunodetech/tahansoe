@@ -20,6 +20,7 @@ import {
 } from "./state.ts";
 import {
   loadSettings,
+  settingsPath,
   isChatAllowed,
   isChatSubscribed,
   getChatAlertPreferences,
@@ -128,6 +129,7 @@ export class CommandRouter {
   private readonly chatOptions: ChatOptions;
   private readonly loaders?: ReplContextLoaders;
   private readonly logger: (msg: string) => void;
+  private readonly privateNoticeSentTimes: Map<string, number> = new Map();
 
   constructor(options: CommandRouterOptions) {
     this.adapter = options.adapter;
@@ -156,6 +158,7 @@ export class CommandRouter {
 
       if (codeArg) {
         // Upaya pairing
+        const targetSettingsPath = this.settingsPath ?? settingsPath(this.env);
         const result = await this.pairing.handlePairingAttempt(
           codeArg,
           chatId,
@@ -165,8 +168,9 @@ export class CommandRouter {
               id,
               msg.from?.username ? `@${msg.from.username}` : undefined,
               { subscribed: true },
-              this.settingsPath,
+              targetSettingsPath,
             );
+            this.logger(`[Gateway] Pairing successful for chat ${id}. Updated settings written to: ${targetSettingsPath}`);
           },
         );
 
@@ -192,10 +196,17 @@ export class CommandRouter {
       return;
     }
 
-    // 3. Cek allowlist
+    // 3. Cek allowlist (notifikasi "This bot is private." dibatasi maksimal 1 kali per jam per chat)
     const allowed = isChatAllowed(chatId, settings, this.env.TELEGRAM_ALLOWED_CHAT_IDS);
     if (!allowed) {
-      await this.adapter.send(chatId, PRIVATE_BOT_REPLY);
+      const now = Date.now();
+      const lastSent = this.privateNoticeSentTimes.get(chatId) ?? 0;
+      if (now - lastSent >= 3600_000) {
+        this.privateNoticeSentTimes.set(chatId, now);
+        await this.adapter.send(chatId, PRIVATE_BOT_REPLY);
+      } else {
+        this.logger(`[Router] Ignored unauthorized message from chat ${chatId} ("${PRIVATE_BOT_REPLY}" throttled to 1/hour)`);
+      }
       return;
     }
 
@@ -216,7 +227,12 @@ export class CommandRouter {
 
     if (!allowed) {
       await this.adapter.answerCallback?.(queryId, "This bot is private.");
-      await this.adapter.send(chatId, PRIVATE_BOT_REPLY);
+      const now = Date.now();
+      const lastSent = this.privateNoticeSentTimes.get(chatId) ?? 0;
+      if (now - lastSent >= 3600_000) {
+        this.privateNoticeSentTimes.set(chatId, now);
+        await this.adapter.send(chatId, PRIVATE_BOT_REPLY);
+      }
       return;
     }
 

@@ -69,7 +69,7 @@ export const DEFAULT_DEDUPE_HOURS = 6;
 export const PAIRING_WINDOW_MS = 60 * 60 * 1000; // 1 jam
 export const MAX_FAILED_PAIRING_ATTEMPTS = 5;
 
-function defaultDataDir(): string {
+export function defaultDataDir(): string {
   const here = dirname(fileURLToPath(import.meta.url)); // src/gateway/core
   return join(here, "..", "..", "..", ".data"); // apps/engine/.data
 }

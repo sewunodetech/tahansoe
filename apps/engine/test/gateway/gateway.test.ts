@@ -252,7 +252,7 @@ test("gateway: cross-process pairing — kode dibuat proses A diterima oleh gate
                 message: {
                   message_id: 10,
                   chat: { id: 888999, type: "private" },
-                  date: 1700000000,
+                  date: Math.floor(Date.now() / 1000),
                   text: `/start ${code}`,
                   from: { id: 888999, username: "user_paired_ab" },
                 },

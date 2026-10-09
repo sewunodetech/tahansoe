@@ -19,6 +19,7 @@ import {
   DEFAULT_COMMANDS_EN,
 } from "./api.ts";
 import type { GatewayRuntimeState } from "../core/state.ts";
+import { acquireBotLock } from "../core/lock.ts";
 
 export type ChannelStatus = "active" | "inactive" | "conflict" | "webhook_active" | "stopped";
 
@@ -29,10 +30,13 @@ export interface TelegramAdapterOptions {
   logger?: (msg: string) => void;
   pollTimeoutSec?: number; // default 50
   state?: GatewayRuntimeState;
+  statePath?: string;
+  lockDir?: string;
   onStateUpdate?: (state: GatewayRuntimeState) => Promise<void>;
   onPollCycle?: () => void;
   minChatIntervalMs?: number;
   minGlobalIntervalMs?: number;
+  startupTimeSec?: number;
 }
 
 interface TelegramUpdate {
@@ -70,6 +74,7 @@ interface TelegramUpdate {
       chat: {
         id: number | string;
       };
+      date?: number;
     };
     data?: string;
   };
@@ -79,6 +84,7 @@ export class TelegramAdapter implements ChannelAdapter {
   public readonly channelName = "telegram";
   public status: ChannelStatus = "inactive";
   public webhookHost?: string;
+  public holderPid?: number;
 
   private readonly token: string;
   private readonly baseUrl: string;
@@ -87,9 +93,13 @@ export class TelegramAdapter implements ChannelAdapter {
   private readonly pollTimeoutSec: number;
   private readonly queue: TelegramMessageQueue;
   private readonly state?: GatewayRuntimeState;
+  private readonly statePath?: string;
+  private readonly lockDir?: string;
   private readonly onStateUpdate?: (state: GatewayRuntimeState) => Promise<void>;
   private readonly onPollCycle?: () => void;
+  private readonly startupTimeSec: number;
 
+  private lockRelease?: () => void;
   private messageHandler?: (msg: InboundMessage) => Promise<void>;
   private running = false;
   private abortController?: AbortController;
@@ -102,8 +112,11 @@ export class TelegramAdapter implements ChannelAdapter {
     this.logger = options.logger ?? (() => {});
     this.pollTimeoutSec = options.pollTimeoutSec ?? 50;
     this.state = options.state;
+    this.statePath = options.statePath;
+    this.lockDir = options.lockDir;
     this.onStateUpdate = options.onStateUpdate;
     this.onPollCycle = options.onPollCycle;
+    this.startupTimeSec = options.startupTimeSec ?? Math.floor(Date.now() / 1000);
 
     this.queue = new TelegramMessageQueue({
       token: this.token,
@@ -138,6 +151,24 @@ export class TelegramAdapter implements ChannelAdapter {
 
   public async start(): Promise<void> {
     if (this.running) return;
+
+    // 1. Ambil lock eksklusif untuk bot ini (Single Poller per Bot)
+    const lockRes = acquireBotLock({
+      token: this.token,
+      lockDir: this.lockDir,
+      statePath: this.statePath,
+      logger: this.logger,
+    });
+
+    if (!lockRes.acquired) {
+      this.status = "conflict";
+      this.holderPid = lockRes.holderPid;
+      this.running = false;
+      this.logger(`[Telegram] another Tahansoe agent is already serving this bot (pid ${lockRes.holderPid ?? "unknown"})`);
+      return;
+    }
+    this.lockRelease = lockRes.release;
+
     this.running = true;
     this.status = "active";
     this.abortController = new AbortController();
@@ -156,6 +187,15 @@ export class TelegramAdapter implements ChannelAdapter {
     this.running = false;
     if (this.status !== "conflict" && this.status !== "webhook_active") {
       this.status = "stopped";
+    }
+
+    if (this.lockRelease) {
+      try {
+        this.lockRelease();
+      } catch {
+        // Abaikan
+      }
+      this.lockRelease = undefined;
     }
 
     if (this.abortController) {
@@ -205,6 +245,7 @@ export class TelegramAdapter implements ChannelAdapter {
 
   private async pollLoop(): Promise<void> {
     let offset = this.state?.offset ?? 0;
+    let isFirstPoll = true;
 
     while (this.running) {
       if (this.onPollCycle) {
@@ -291,6 +332,15 @@ export class TelegramAdapter implements ChannelAdapter {
             }
           }
 
+          // Abaikan update backlog dari sebelum startup (update.message.date < startup - 30s) pada poll pertama
+          const msgDateSec = update.message?.date ?? update.callback_query?.message?.date;
+          if (isFirstPoll && typeof msgDateSec === "number" && msgDateSec < this.startupTimeSec - 30) {
+            this.logger(
+              `[Telegram] Skipping backlog update ${update.update_id} (msg date ${msgDateSec} < startup ${this.startupTimeSec} - 30s)`,
+            );
+            continue;
+          }
+
           // 1. Pesan chat biasa
           if (update.message && typeof update.message.text === "string" && this.messageHandler) {
             const inbound: InboundMessage = {
@@ -339,6 +389,7 @@ export class TelegramAdapter implements ChannelAdapter {
             });
           }
         }
+        isFirstPoll = false;
       } catch (err) {
         if (!this.running) break;
         const msg = sanitizeError(err, this.token);

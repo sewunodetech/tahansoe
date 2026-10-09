@@ -322,7 +322,7 @@ export async function telegramDeleteWebhook(
 
   const endpoint = `${baseUrl}/bot${cleanToken}/deleteWebhook`;
   const body: Record<string, unknown> = {};
-  if (options.dropPendingUpdates) {
+  if (options.dropPendingUpdates !== false) {
     body.drop_pending_updates = true;
   }
 
