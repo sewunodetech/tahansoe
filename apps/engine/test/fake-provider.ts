@@ -20,6 +20,8 @@ export interface ScriptedResponse {
   error?: string;
   /** Status HTTP simulasi (mis. 400) untuk menguji deteksi non-retryable. */
   status?: number;
+  /** Tandai output gagal validasi zod (untuk menguji fallback schema di RoleRouter). */
+  schemaInvalid?: boolean;
 }
 
 /**
@@ -29,14 +31,18 @@ export interface ScriptedResponse {
 export class FakeProvider implements LlmProvider {
   private queue: ScriptedResponse[];
   private readonly fallback: ScriptedResponse;
+  /** Nama model yang dilaporkan di usage (default: req.model). Dipakai mode --fake. */
+  private readonly modelName?: string;
   public calls: Array<{ outputName: string; model: string }> = [];
 
   constructor(
     responses: ScriptedResponse[] = [],
     fallback: ScriptedResponse = { stopReason: "ok" },
+    modelName?: string,
   ) {
     this.queue = [...responses];
     this.fallback = fallback;
+    this.modelName = modelName;
   }
 
   async structured<T>(req: LlmRequest<T>): Promise<LlmResult<T>> {
@@ -45,13 +51,18 @@ export class FakeProvider implements LlmProvider {
     const stopReason = scripted.stopReason ?? "ok";
 
     const usage = {
-      model: req.model,
+      model: this.modelName ?? req.model,
       inputTokens: 1000,
       outputTokens: 200,
     };
 
     if (stopReason !== "ok") {
       return { stopReason, data: null, usage, error: scripted.error, status: scripted.status };
+    }
+
+    // Simulasi schema invalid eksplisit (untuk uji fallback RoleRouter).
+    if (scripted.schemaInvalid) {
+      return { stopReason: "ok", data: null, usage, error: scripted.error ?? "schema invalid", schemaInvalid: true };
     }
 
     // Validasi data terprogram dengan schema asli (meniru perilaku provider nyata).

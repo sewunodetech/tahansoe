@@ -74,3 +74,28 @@ test("(e) tanpa harga runtime, model tak dikenal tetap fallback opus", () => {
   const c = costOf({ model: "mystery-model", inputTokens: 1_000_000, outputTokens: 0 });
   assert.ok(Math.abs(c - 4) < 1e-9, "fallback opus input $4/1M");
 });
+
+test("(f) model gateway (agnes-2.5-flash) diberi harga dari runtime pricing, bukan fallback", () => {
+  try {
+    // Harga Bynara agnes-2.5-flash (IDR 0.1/1k in, 0.2/1k out) → USD/1M via usd_to_idr.
+    const usdToIdr = 17891.619611;
+    const prices = new Map<string, ModelPrice>([
+      [
+        "agnes-2.5-flash",
+        {
+          inputPerM: (0.1 * 1000) / usdToIdr,
+          outputPerM: (0.2 * 1000) / usdToIdr,
+          native: { currency: "IDR", inputPerM: 100, outputPerM: 200, usdToNative: usdToIdr },
+        },
+      ],
+    ]);
+    setRuntimePricing(prices);
+    const c = costOf({ model: "agnes-2.5-flash", inputTokens: 1_000_000, outputTokens: 1_000_000 });
+    const expected = (100 + 200) / usdToIdr;
+    assert.ok(Math.abs(c - expected) < 1e-9, `expected ${expected}, got ${c}`);
+    // Jauh lebih kecil dari fallback opus ($24 utk 1M/1M) → bukti bukan fallback.
+    assert.ok(c < 0.05, "harga gateway jauh di bawah fallback opus");
+  } finally {
+    clearRuntimePricing();
+  }
+});

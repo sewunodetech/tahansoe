@@ -345,11 +345,11 @@ export function createProgress(theme: Theme, stream: WritableLike = process.stde
     done(id, detail, ms) {
       const mark = theme.color ? pc.green("✔") : "✔";
       const extra = detail ? ` ${sanitizeExternal(detail, 40)}` : "";
-      stream.write(`  ${mark} ${padEndW(id, 10)}${extra}  ${fmtDuration(ms)}\n`);
+      stream.write(`  ${mark} ${padEndW(id, 20)}${extra}  ${fmtDuration(ms)}\n`);
     },
     fail(id, msg) {
       const mark = theme.color ? pc.red("✖") : "✖";
-      stream.write(`  ${mark} ${padEndW(id, 10)} ${sanitizeExternal(msg, 80)}\n`);
+      stream.write(`  ${mark} ${padEndW(id, 20)} ${sanitizeExternal(msg, 80)}\n`);
     },
     stop() {
       /* no timers to clear in plain mode */

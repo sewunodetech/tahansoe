@@ -151,3 +151,29 @@ test("RoleRouter: 503 lalu sukses pada retry (model sama)", async () => {
   assert.equal(p1.calls.length, 2);
   assert.equal(p2.calls.length, 0);
 });
+
+test("RoleRouter: schema invalid pada model pertama → FALLBACK ke model berikutnya (cli-fix §1b)", async () => {
+  // Model pertama selalu schema-invalid (provider sudah repair sendiri);
+  // router harus pindah ke model kedua, TANPA retry same-model.
+  const p1 = new FakeProvider([{ schemaInvalid: true, error: "schema invalid: summary too long" }], {
+    schemaInvalid: true,
+    error: "schema invalid: summary too long",
+  });
+  const p2 = new FakeProvider([{ data: { answer: 2 } }]);
+  const router = new RoleRouter(entries, new Budget(100), undefined, [p1, p2], 0);
+  const r = await router.structured(req());
+  assert.deepEqual(r.data, { answer: 2 }, "fallback ke model kedua");
+  assert.equal(p1.calls.length, 1, "schema-invalid tidak di-retry same-model di router (repair ada di provider)");
+  assert.equal(p2.calls.length, 1);
+  assert.equal(r.providerUsed, "m2");
+});
+
+test("RoleRouter: semua model schema invalid → error gabungan menyebut schema", async () => {
+  const p1 = new FakeProvider([{ schemaInvalid: true, error: "schema invalid: a" }], { schemaInvalid: true, error: "schema invalid: a" });
+  const p2 = new FakeProvider([{ schemaInvalid: true, error: "schema invalid: b" }], { schemaInvalid: true, error: "schema invalid: b" });
+  const router = new RoleRouter(entries, new Budget(100), undefined, [p1, p2], 0);
+  const r = await router.structured(req());
+  assert.equal(r.data, null);
+  assert.match(r.error ?? "", /semua model gagal/);
+  assert.match(r.error ?? "", /schema invalid/);
+});

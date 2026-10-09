@@ -85,7 +85,8 @@ export function costOf(usage: LlmUsage): number {
     if (!warnedUnknownModels.has(usage.model)) {
       warnedUnknownModels.add(usage.model);
       console.warn(
-        `[engine/llm/budget] model tak dikenal "${usage.model}" — memakai harga opus (konservatif). Lengkapi PRICE_PER_MTOK.`,
+        `[engine/llm/budget] harga model "${usage.model}" tidak diketahui — memakai estimasi konservatif (tier termahal). ` +
+          `Tambahkan ke settings.modelPrices atau pastikan settings.pricingUrl memuat model ini.`,
       );
     }
     price = FALLBACK_PRICE;

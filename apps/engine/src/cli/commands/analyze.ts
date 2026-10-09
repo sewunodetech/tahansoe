@@ -44,6 +44,14 @@ export interface AnalyzeDeps {
   stderr?: (s: string) => void;
 }
 
+/** Ringkas alasan kegagalan untuk baris progress (maks ~70 char, tanpa escape). */
+function shortReason(msg?: string): string {
+  if (!msg) return "failed";
+  const m = /schema invalid:[^|]*/i.exec(msg);
+  const base = m ? m[0] : msg;
+  return base.replace(/\s+/g, " ").trim().slice(0, 70);
+}
+
 export async function analyzeCommand(argv: string[], deps: AnalyzeDeps = {}): Promise<number> {
   const writeOut = deps.stdout ?? ((s: string) => void process.stdout.write(s));
   const writeErr = deps.stderr ?? ((s: string) => void process.stderr.write(s));
@@ -111,7 +119,7 @@ export async function analyzeCommand(argv: string[], deps: AnalyzeDeps = {}): Pr
   if (fake) {
     const { FakeProvider } = await import("../../../test/fake-provider.ts");
     const { fakeScript, fixtureCollector } = await import("../../../test/fixtures/research-fixtures.ts");
-    provider = new FakeProvider(fakeScript());
+    provider = new FakeProvider(fakeScript(), undefined, "fake");
     collector = fixtureCollector;
   }
 
@@ -120,8 +128,10 @@ export async function analyzeCommand(argv: string[], deps: AnalyzeDeps = {}): Pr
   const onProgress = (e: ProgressEvent): void => {
     if (e.type === "stage_start") progress.start(e.stage, e.label ?? e.stage);
     else if (e.type === "stage_done") progress.done(e.stage, e.detail ?? "", e.ms);
-    else if (e.type === "analyst_done") progress.done(`analyst:${e.domain}`, e.ok ? (e.usedModel ?? "ok") : "FAILED", e.ms);
-    else if (e.type === "error") progress.fail(e.stage, e.message);
+    else if (e.type === "analyst_done") {
+      if (e.ok) progress.done(`analyst:${e.domain}`, e.usedModel ?? "ok", e.ms);
+      else progress.fail(`analyst:${e.domain}`, shortReason(e.reason));
+    } else if (e.type === "error") progress.fail(e.stage, shortReason(e.message));
   };
 
   const result = await run({

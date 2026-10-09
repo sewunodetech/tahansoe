@@ -80,7 +80,7 @@ export async function runAssessor(
   ].join("\n");
 
   const result = await provider.structured({
-    model: config.models.assessor,
+    model: config.requestModelPlaceholder,
     effort: config.effort.assessor,
     system: loadPrompt("assessor"),
     messages: [{ role: "user", content }],

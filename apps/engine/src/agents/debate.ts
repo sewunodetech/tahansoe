@@ -56,7 +56,7 @@ export async function runDebate(
         ? `\n\n## Debate so far\n${renderDebateTurns(turns)}`
         : "";
       const result = await provider.structured({
-        model: config.models.hawkDove,
+        model: config.requestModelPlaceholder,
         effort: config.effort.hawkDove,
         system: loadPrompt(side),
         messages: [

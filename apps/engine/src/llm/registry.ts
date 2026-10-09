@@ -157,6 +157,15 @@ export class RoleRouter implements LlmProvider {
         if (result.stopReason === "ok" && result.data !== null) {
           return { ...result, providerUsed: label };
         }
+        // Schema invalid (provider sudah 1x repair retry) → FALLBACK ke model
+        // berikutnya (cli-fix §1b), BUKAN return. Catat alasan, hentikan retry
+        // same-model (repair sudah di provider).
+        if (result.schemaInvalid) {
+          failures.push(`${label} → ${result.error ?? "schema invalid"}`);
+          break;
+        }
+        // Refusal / max_tokens / empty content: bukan masalah ketersediaan dan
+        // bukan schema → kembalikan apa adanya (sama antar model).
         if (
           result.stopReason === "refusal" ||
           result.stopReason === "max_tokens" ||
@@ -172,7 +181,7 @@ export class RoleRouter implements LlmProvider {
         }
       }
 
-      if (result) failures.push(`${label} → ${result.error ?? "error"}`);
+      if (result && !result.schemaInvalid) failures.push(`${label} → ${result.error ?? "error"}`);
     }
 
     return {

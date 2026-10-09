@@ -1,10 +1,10 @@
 {
   "version": 2,
   "roles": {
-    "analyst": ["agnes-2.5-flash"],
-    "debate": ["agnes-2.5-flash"],
-    "assessor": ["deepseek-v4.1-flash"],
-    "reflector": ["agnes-2.5-flash"]
+    "analyst": ["agnes-2.5-flash", "deepseek-v4-flash"],
+    "debate": ["agnes-2.5-flash", "deepseek-v4-flash"],
+    "assessor": ["deepseek-v4.1-flash", "deepseek-v4-flash"],
+    "reflector": ["agnes-2.5-flash", "deepseek-v4-flash"]
   },
   "pricingUrl": "https://router.bynara.id/api/pricing",
   "modelPrices": {},

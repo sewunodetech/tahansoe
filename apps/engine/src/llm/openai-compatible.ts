@@ -75,17 +75,61 @@ export class OpenAICompatibleProvider implements LlmProvider {
       };
     }
 
+    // Pesan dasar: system + konten per peran (eksternal di akhir).
+    const baseMessages: Array<{ role: string; content: string }> = [
+      { role: "system", content: req.system },
+      ...req.messages.map((m) => ({ role: m.role, content: m.content })),
+    ];
+
+    // Panggilan pertama.
+    let attempt = await this.callOnce<T>(url, model, jsonSchema, req, baseMessages);
+    if (attempt.kind !== "schema-invalid") return attempt.result;
+
+    // REPAIR RETRY (satu kali, model yang SAMA): kirim ulang dengan pesan yang
+    // berisi daftar isu validasi (path + message saja — TIDAK pernah konten
+    // eksternal) dan minta JSON terkoreksi. Token/biaya retry ikut dicatat.
+    const repairMessages = [
+      ...baseMessages,
+      {
+        role: "assistant",
+        content: attempt.rawContent.slice(0, 4000),
+      },
+      {
+        role: "user",
+        content: buildRepairMessage(attempt.issues),
+      },
+    ];
+    const repaired = await this.callOnce<T>(url, model, jsonSchema, req, repairMessages, attempt.result.usage);
+    if (repaired.kind === "schema-invalid") {
+      // Tetap invalid setelah repair → tandai agar RoleRouter fallback ke model lain.
+      return { ...repaired.result, schemaInvalid: true };
+    }
+    return repaired.result;
+  }
+
+  /**
+   * Satu panggilan HTTP + parse + validasi. Mengembalikan hasil final, atau
+   * penanda `schema-invalid` beserta isu zod + konten mentah (untuk repair).
+   * `priorUsage` (opsional) diakumulasi agar biaya repair dihitung penuh.
+   */
+  private async callOnce<T>(
+    url: string,
+    model: string,
+    jsonSchema: unknown,
+    req: LlmRequest<T>,
+    messages: Array<{ role: string; content: string }>,
+    priorUsage?: LlmUsage,
+  ): Promise<
+    | { kind: "final"; result: LlmResult<T> }
+    | { kind: "schema-invalid"; result: LlmResult<T>; issues: SchemaIssue[]; rawContent: string }
+  > {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (this.cfg.apiKey) headers["authorization"] = `Bearer ${this.cfg.apiKey}`;
 
     const body = JSON.stringify({
       model,
       max_tokens: req.maxOutputTokens ?? MAX_OUTPUT_TOKENS,
-      messages: [
-        // System prompt statis di depan + data (eksternal) di akhir (spec §3.4).
-        { role: "system", content: req.system },
-        ...req.messages.map((m) => ({ role: m.role, content: m.content })),
-      ],
+      messages,
       response_format: {
         type: "json_schema",
         json_schema: { name: req.outputName, strict: true, schema: jsonSchema },
@@ -97,57 +141,123 @@ export class OpenAICompatibleProvider implements LlmProvider {
     try {
       res = await this.fetchImpl(url, { method: "POST", headers, body });
     } catch (err) {
-      // Network/timeout → retryable (tanpa status).
       return {
-        stopReason: "error",
-        data: null,
-        usage: { model, inputTokens: 0, outputTokens: 0 },
-        error: `network error: ${err instanceof Error ? err.message : String(err)}`,
+        kind: "final",
+        result: {
+          stopReason: "error",
+          data: null,
+          usage: mergeUsage(priorUsage, { model, inputTokens: 0, outputTokens: 0 }),
+          error: `network error: ${err instanceof Error ? err.message : String(err)}`,
+        },
       };
     }
 
     if (!res.ok) {
       const detail = await safeText(res);
       return {
-        stopReason: "error",
-        data: null,
-        usage: { model, inputTokens: 0, outputTokens: 0 },
-        error: `HTTP ${res.status} ${this.cfg.name}: ${truncate(detail, 300)}`,
-        status: res.status,
+        kind: "final",
+        result: {
+          stopReason: "error",
+          data: null,
+          usage: mergeUsage(priorUsage, { model, inputTokens: 0, outputTokens: 0 }),
+          error: `HTTP ${res.status} ${this.cfg.name}: ${truncate(detail, 300)}`,
+          status: res.status,
+        },
       };
     }
 
     const payload = (await res.json()) as ChatCompletion;
-    const usage = toUsage(model, payload.usage);
-    this.budget.record(usage);
+    const usage = mergeUsage(priorUsage, toUsage(model, payload.usage));
+    this.budget.record(toUsage(model, payload.usage));
 
     const choice = payload.choices?.[0];
     const finish = choice?.finish_reason;
     if (finish === "length") {
-      return { stopReason: "max_tokens", data: null, usage, error: "finish_reason=length" };
+      return { kind: "final", result: { stopReason: "max_tokens", data: null, usage, error: "finish_reason=length" } };
     }
     if (finish === "content_filter") {
-      return { stopReason: "refusal", data: null, usage, error: "finish_reason=content_filter" };
+      return { kind: "final", result: { stopReason: "refusal", data: null, usage, error: "finish_reason=content_filter" } };
     }
 
     const content = choice?.message?.content;
     if (typeof content !== "string" || content.length === 0) {
-      return { stopReason: "ok", data: null, usage, error: "empty content" };
+      return { kind: "final", result: { stopReason: "ok", data: null, usage, error: "empty content" } };
     }
 
     let parsedJson: unknown;
     try {
       parsedJson = JSON.parse(content);
     } catch {
-      return { stopReason: "ok", data: null, usage, error: "content is not valid JSON" };
+      // JSON rusak → perlakukan sebagai schema-invalid agar bisa di-repair/fallback.
+      return {
+        kind: "schema-invalid",
+        result: { stopReason: "ok", data: null, usage, error: "content is not valid JSON", schemaInvalid: true },
+        issues: [{ path: "(root)", message: "response is not valid JSON" }],
+        rawContent: content,
+      };
     }
 
     const check = req.output.safeParse(parsedJson);
     if (!check.success) {
-      return { stopReason: "ok", data: null, usage, error: `schema invalid: ${check.error.message}` };
+      const issues = toSchemaIssues(check.error);
+      return {
+        kind: "schema-invalid",
+        result: {
+          stopReason: "ok",
+          data: null,
+          usage,
+          error: `schema invalid: ${summarizeIssues(issues)}`,
+          schemaInvalid: true,
+        },
+        issues,
+        rawContent: content,
+      };
     }
-    return { stopReason: "ok", data: check.data, usage };
+    return { kind: "final", result: { stopReason: "ok", data: check.data, usage } };
   }
+}
+
+/** Isu validasi zod yang aman dibagikan ke model (TANPA konten eksternal). */
+interface SchemaIssue {
+  path: string;
+  message: string;
+}
+
+function toSchemaIssues(error: z.ZodError): SchemaIssue[] {
+  return error.issues.slice(0, 12).map((i) => ({
+    path: i.path.join(".") || "(root)",
+    // Pesan zod bersifat generik (mis. "String must contain at most 400 character(s)")
+    // dan TIDAK memuat konten eksternal, aman untuk dikirim kembali ke model.
+    message: i.message,
+  }));
+}
+
+function summarizeIssues(issues: SchemaIssue[]): string {
+  return issues.map((i) => `${i.path}: ${i.message}`).join("; ").slice(0, 300);
+}
+
+/** Pesan repair (English) — hanya memuat path + pesan validasi, tanpa data eksternal. */
+function buildRepairMessage(issues: SchemaIssue[]): string {
+  const lines = issues.map((i) => `- ${i.path}: ${i.message}`).join("\n");
+  return (
+    "Your previous JSON failed schema validation. Fix ONLY these issues and return " +
+    "corrected JSON that fully conforms to the schema. Respect every maximum length " +
+    "limit (shorten text as needed). Return JSON only, no prose.\n\n" +
+    "Validation errors:\n" +
+    lines
+  );
+}
+
+/** Gabungkan token usage (akumulasi retry). Model memakai yang terakhir. */
+function mergeUsage(prior: LlmUsage | undefined, next: LlmUsage): LlmUsage {
+  if (!prior) return next;
+  return {
+    model: next.model,
+    inputTokens: prior.inputTokens + next.inputTokens,
+    outputTokens: prior.outputTokens + next.outputTokens,
+    cacheWriteTokens: (prior.cacheWriteTokens ?? 0) + (next.cacheWriteTokens ?? 0) || undefined,
+    cacheReadTokens: (prior.cacheReadTokens ?? 0) + (next.cacheReadTokens ?? 0) || undefined,
+  };
 }
 
 /** Bentuk minimal respons chat/completions yang kita baca. */

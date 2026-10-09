@@ -21,6 +21,7 @@ import {
   bar,
   sparkline,
   renderReportCard,
+  createProgress,
   type Theme,
 } from "../../src/cli/render.ts";
 import { analyzeCommand } from "../../src/cli/commands/analyze.ts";
@@ -77,6 +78,20 @@ test("bar & sparkline: deterministik", () => {
   assert.equal(bar(1, 4), "████");
   const sp = sparkline(noColor, ["CALM", "ELEVATED", "STRESSED", "CRISIS"]);
   assert.equal(sp, "▁▃▅█");
+});
+
+test("progress: analyst gagal → baris ✖ + alasan, bukan ✔; kolom label sejajar (cli-fix §3)", () => {
+  const out: string[] = [];
+  const progress = createProgress(noColor, { isTTY: false, write: (s) => out.push(s) });
+  progress.done("analyst:macro", "deepseek-v4-flash", 1200);
+  progress.fail("analyst:geopolitics", "schema invalid: summary too long");
+  const text = out.join("");
+  assert.match(text, /✖ analyst:geopolitics/);
+  assert.match(text, /schema invalid: summary too long/);
+  assert.doesNotMatch(text, /✔ analyst:geopolitics/);
+  const okLine = out.find((l) => l.includes("✔"))!;
+  const failLine = out.find((l) => l.includes("✖"))!;
+  assert.equal(okLine.indexOf("analyst:macro"), failLine.indexOf("analyst:geopolitics"), "kolom label sejajar");
 });
 
 test("renderReportCard: footer 'not a trading signal', tanpa buy/sell", () => {
@@ -139,6 +154,30 @@ test("doctor: fetch mock, key TIDAK bocor di output", async () => {
     // gateway /models ok
     const models = results.find((r) => r.name === "gateway /models");
     assert.ok(models?.ok);
+  } finally {
+    if (prevUrl === undefined) delete process.env.LLM_API_URL; else process.env.LLM_API_URL = prevUrl;
+    if (prevKey === undefined) delete process.env.LLM_API_KEY; else process.env.LLM_API_KEY = prevKey;
+  }
+});
+
+test("doctor: /models error → check ✖ pesan tersanitasi (cli-fix §5)", async () => {
+  const prevUrl = process.env.LLM_API_URL;
+  const prevKey = process.env.LLM_API_KEY;
+  process.env.LLM_API_URL = "https://router.bynara.id/v1";
+  process.env.LLM_API_KEY = "k";
+  try {
+    const fetchImpl: DoctorFetch = async () => {
+      throw new Error("timeout after 25s");
+    };
+    const results = await runDoctor({
+      fetchImpl,
+      env: process.env,
+      checkDb: async () => ({ ok: true, detail: "connected" }),
+      loadSettingsImpl: async () => ({ ok: true, detail: "ok" }),
+    });
+    const models = results.find((r) => r.name === "gateway /models")!;
+    assert.equal(models.ok, false);
+    assert.match(models.detail, /timeout after 25s/);
   } finally {
     if (prevUrl === undefined) delete process.env.LLM_API_URL; else process.env.LLM_API_URL = prevUrl;
     if (prevKey === undefined) delete process.env.LLM_API_KEY; else process.env.LLM_API_KEY = prevKey;

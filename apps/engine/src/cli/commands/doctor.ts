@@ -40,12 +40,21 @@ export interface DoctorDeps {
 }
 
 const TIMEOUT_MS = 8000;
+/** Gateway /models bisa lambat (mis. Bynara ~12s) → timeout lebih longgar. */
+const MODELS_TIMEOUT_MS = 25_000;
 
-async function withTimeout<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
+async function withTimeout<T>(fn: (signal: AbortSignal) => Promise<T>, timeoutMs = TIMEOUT_MS): Promise<T> {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  let timedOut = false;
+  const t = setTimeout(() => {
+    timedOut = true;
+    ctrl.abort();
+  }, timeoutMs);
   try {
     return await fn(ctrl.signal);
+  } catch (err) {
+    if (timedOut) throw new Error(`timeout after ${Math.round(timeoutMs / 1000)}s`);
+    throw err;
   } finally {
     clearTimeout(t);
   }
@@ -81,7 +90,7 @@ export async function runDoctor(deps: DoctorDeps = {}): Promise<CheckResult[]> {
         const headers: Record<string, string> = { accept: "application/json" };
         if (apiKey) headers["authorization"] = `Bearer ${apiKey}`;
         return fetchImpl(`${apiUrl}/models`, { method: "GET", headers, signal });
-      });
+      }, MODELS_TIMEOUT_MS);
       results.push({
         name: "gateway /models",
         ok: r.ok,

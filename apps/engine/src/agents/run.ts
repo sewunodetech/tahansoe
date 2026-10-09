@@ -65,7 +65,7 @@ export type ProgressStage = "sources" | "analysts" | "debate" | "lessons" | "ass
 export type ProgressEvent =
   | { type: "stage_start"; stage: ProgressStage; label?: string }
   | { type: "stage_done"; stage: ProgressStage; ms: number; detail?: string }
-  | { type: "analyst_done"; domain: string; ok: boolean; ms: number; usedModel?: string }
+  | { type: "analyst_done"; domain: string; ok: boolean; ms: number; usedModel?: string; reason?: string }
   | { type: "error"; stage: ProgressStage; message: string };
 
 export interface RunResult {
@@ -184,6 +184,13 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
 
   // Provider per peran: jika params.provider diberikan (test/--fake), pakai untuk
   // semua peran; selain itu bangun router dari env/default (ADR 0008).
+  // Untuk run NYATA (tanpa provider inject), muat harga model gateway ke budget
+  // dari sumber yang sama dengan picker (settings.modelPrices → pricingUrl) agar
+  // costOf tidak jatuh ke fallback konservatif (cli-fix §2).
+  if (!params.provider) {
+    const { bootstrapBudgetPricing } = await import("../llm/pricing-bootstrap.ts");
+    await bootstrapBudgetPricing().catch(() => 0);
+  }
   const analystProvider = params.provider ?? routerForRole("analyst", budget);
   const debateProvider = params.provider ?? routerForRole("debate", budget);
   const assessorProvider = params.provider ?? routerForRole("assessor", budget);
@@ -208,6 +215,7 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
     ok: first.report !== null,
     ms: Date.now() - firstStart,
     usedModel: first.usedModel,
+    reason: first.report === null ? first.reason : undefined,
   });
   if (first.report === null && isNonRetryableStatus(first.status)) {
     const reason =
@@ -233,6 +241,7 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
         ok: outcome.report !== null,
         ms: Date.now() - s,
         usedModel: outcome.usedModel,
+        reason: outcome.report === null ? outcome.reason : undefined,
       });
       return outcome;
     }),
@@ -588,7 +597,7 @@ async function main(argv: string[]): Promise<void> {
 async function makeFakeProvider(): Promise<LlmProvider> {
   const { FakeProvider } = await import("../../test/fake-provider.ts");
   const { fakeScript } = await import("../../test/fixtures/research-fixtures.ts");
-  return new FakeProvider(fakeScript());
+  return new FakeProvider(fakeScript(), undefined, "fake");
 }
 
 const invokedPath = process.argv[1];

@@ -74,6 +74,14 @@ export interface LlmResult<T> {
   status?: number;
   /** Label "provider:model" yang akhirnya menghasilkan hasil ini (diisi router). */
   providerUsed?: string;
+  /**
+   * True bila kegagalan adalah output JSON gagal validasi zod (bukan refusal /
+   * max_tokens / HTTP error). Provider sudah melakukan SATU repair retry pada model
+   * yang sama; bila tetap invalid, RoleRouter memperlakukan ini sebagai alasan
+   * untuk FALLBACK ke model berikutnya (spec cli-fix §1b). Tidak pernah memuat
+   * konten eksternal — hanya penanda.
+   */
+  schemaInvalid?: boolean;
 }
 
 /** Kontrak provider. Satu metode: structured output tervalidasi. */

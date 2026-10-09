@@ -118,26 +118,12 @@ export const config = {
   },
 
   /**
-   * Model per peran (spec §3.4). PRINSIP: "termurah yang lolos eval".
-   * Semua peran MULAI dari haiku; naikkan tier per peran HANYA jika set eval
-   * gagal (akurasi path/severity < 80% news-labeled, ada kegagalan injection,
-   * atau < 70% kesesuaian regime scenarios), dan catat kenaikannya di PR + eval.
-   * Jangan default ke opus tanpa bukti eval.
+   * Placeholder nama model pada LlmRequest (ADR 0009). Model NYATA dipilih per
+   * peran oleh RoleRouter dari settings.json (gateway tunggal) dan menimpa field
+   * ini; nilai di sini hanya muncul bila provider dipanggil langsung tanpa router
+   * (mis. mode --fake). JANGAN mengandung nama vendor spesifik.
    */
-  models: {
-    analyst: "claude-haiku-5-5",
-    hawkDove: "claude-haiku-5-5",
-    assessor: "claude-haiku-5-5",
-    reflector: "claude-haiku-5-5",
-  },
-
-  /** Tangga eskalasi tier per peran (dipakai saat eval gagal). */
-  modelTiers: {
-    analyst: ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"],
-    hawkDove: ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"],
-    assessor: ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"],
-    reflector: ["claude-haiku-5-5", "claude-sonnet-5-5"],
-  },
+  requestModelPlaceholder: "(gateway)",
 
   /** Reasoning effort per peran (spec §3.4). */
   effort: {

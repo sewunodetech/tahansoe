@@ -58,7 +58,7 @@ export async function runAnalyst(
   const system = loadPrompt(PROMPT_BY_DOMAIN[domain]);
   const data = renderContextAsData(ctx);
   const result = await provider.structured({
-    model: config.models.analyst,
+    model: config.requestModelPlaceholder,
     effort: config.effort.analyst,
     system,
     messages: [{ role: "user", content: data }],
