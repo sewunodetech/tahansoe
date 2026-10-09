@@ -26,3 +26,8 @@ import "./cli/models.test.ts";
 import "./settings/settings.test.ts";
 import "./cli/settings-cli.test.ts";
 import "./sources/price-sampler.test.ts";
+import "./fusion/regime.test.ts";
+import "./fusion/guardrail.test.ts";
+import "./fusion/decay.test.ts";
+import "./fusion/drawdown.test.ts";
+import "./fusion/scenarios-replay.test.ts";
