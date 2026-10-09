@@ -49,25 +49,43 @@ User yang meminjam di Aave (mis. collateral ETH, pinjam USDC) dilikuidasi saat *
 
 ### Contoh output
 
+Run nyata `tahansoe analyze --dry` dengan `gpt-6-luna`, 9 Okt 2026 13:06 UTC:
+
 ```
  ▲ TAHANSOE  risk research · Arbitrum One · gateway router.bynara.id
-  ✔ sources               16.3s
-  ✔ analyst:geopolitics  agnes-2.5-flash  38.3s
-  ✔ analyst:macro        agnes-2.5-flash  28.4s
-  ✔ analyst:onchain      agnes-2.5-flash  45.1s
-  ✔ analyst:market       agnes-2.5-flash  53.4s
-  ✔ debate                1m 32s
-  ✔ assessor             agnes-2.5-flash  1m 28s
-╭─ RISK REPORT ────────────────────────────────────────────╮
-│ Proposed regime (research) ● CALM   Direction ↕ VOLATILITY│
-│ Confidence █████░░░░░ 0.45 (cap 0.60)   Horizon 72h      │
-│ Top paths  T10 sequencer · T1 price · T2 volatility       │
-│ No change suggested: your static policy applies           │
-╰──────────────────────────────────────────────────────────╯
- 24.5k tok · Rp 3 · not a trading signal
+  ✔ sources               3.2s
+  ✔ analyst:onchain      gpt-6-luna  7.7s
+  ✔ analyst:geopolitics  gpt-6-luna  7.7s
+  ✔ analyst:macro        gpt-6-luna  9.0s
+  ✔ analyst:market       gpt-6-luna  9.8s
+  ✔ debate                12.4s
+  ✔ assessor             gpt-6-luna  21.0s
+╭─ RISK REPORT · 2026-10-09 13:06 UTC ───────────────────────────────╮
+│ Proposed regime (research)  ● ELEVATED       Direction  ▼ DOWN     │
+│ Confidence █████░░░░░ 0.48 (cap 0.60)   Horizon 72h                │
+│ Top paths                                                          │
+│   T1  Collateral price drop    █████░░░░ sev 0.58                  │
+│   T3  Leverage cascade         █████░░░░ sev 0.55                  │
+│   T2  Volatility spike         █████░░░░ sev 0.52                  │
+│   T9  Protocol incident        █░░░░░░░░ sev 0.15                  │
+│ Key evidence                                                       │
+│   • Bitcoin was reported about 4% lower on the we… — NEWS          │
+│   • Major stablecoins are reported within the nor… — ONCHAIN       │
+│   • Arbitrum sequencer status is verified UP. A r… — ONCHAIN       │
+│ Consider a higher buffer within your approved band                 │
+╰────────────────────────────────────────────────────────────────────╯
+ 45.2k tok · Rp 13 · 46.4s · not a trading signal
 ```
 
-Biaya operasional dengan `agnes-2.5-flash` via gateway Bynara: sekitar **Rp 3–6 per analisa**, atau sekitar Rp 2 ribu per bulan pada 12 analisa per hari.
+Model default: **`gpt-6-luna`** (OpenAI) untuk semua peran, cadangan `deepseek-v4-flash`. Dipilih lewat eval 9 Okt 2026 (prompt 2026.10.2): **24/24 lulus**, 0 bocoran injeksi, skenario 8/8, output 100% valid.
+
+| Model | Pembuat | Eval | Biaya per analisa |
+|---|---|---|---|
+| `gpt-6-luna` | OpenAI | **24/24**, injeksi 16/16, skenario 100% | ~Rp 5–15 |
+| `agnes-2.5-flash` | Bynara (asal-usul tidak jelas) | 21/24 (bocoran injeksi, output terlalu panjang) | ~Rp 3 |
+| `deepseek-v4-flash` | DeepSeek | 15/24 sebagai assessor (prompt lama) | ~Rp 6 |
+
+Biaya operasional sekitar **Rp 5–15 per analisa** (tergantung banyaknya berita hari itu), atau sekitar **Rp 2–5 ribu per bulan** pada 12 analisa per hari. Satu analisa penuh selesai dalam ±1 menit. Model bisa diganti kapan saja lewat `tahansoe settings set-role` atau `tahansoe analyze --pick`.
 
 ---
 
@@ -135,10 +153,10 @@ FRED_API_KEY=abcdef1234567890
 {
   "version": 2,
   "roles": {
-    "analyst": ["agnes-2.5-flash"],
-    "debate": ["agnes-2.5-flash"],
-    "assessor": ["deepseek-v4.1-flash"],
-    "reflector": ["agnes-2.5-flash"]
+    "analyst": ["gpt-6-luna", "deepseek-v4-flash"],
+    "debate": ["gpt-6-luna", "deepseek-v4-flash"],
+    "assessor": ["gpt-6-luna", "deepseek-v4-flash"],
+    "reflector": ["gpt-6-luna", "deepseek-v4-flash"]
   },
   "pricingUrl": "https://router.bynara.id/api/pricing",
   "modelPrices": {},

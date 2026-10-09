@@ -1,10 +1,22 @@
 {
   "version": 2,
   "roles": {
-    "analyst": ["agnes-2.5-flash", "deepseek-v4-flash"],
-    "debate": ["agnes-2.5-flash", "deepseek-v4-flash"],
-    "assessor": ["agnes-2.5-flash", "deepseek-v4.1-flash"],
-    "reflector": ["agnes-2.5-flash", "deepseek-v4-flash"]
+    "analyst": [
+      "gpt-6-luna",
+      "deepseek-v4-flash"
+    ],
+    "debate": [
+      "gpt-6-luna",
+      "deepseek-v4-flash"
+    ],
+    "assessor": [
+      "gpt-6-luna",
+      "deepseek-v4-flash"
+    ],
+    "reflector": [
+      "gpt-6-luna",
+      "deepseek-v4-flash"
+    ]
   },
   "pricingUrl": "https://router.bynara.id/api/pricing",
   "modelPrices": {},

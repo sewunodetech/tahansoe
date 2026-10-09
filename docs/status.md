@@ -39,6 +39,7 @@
   - Mendukung subcommand: `analyze` (live progress per tahap + kartu laporan), `schedule` (`run` foreground dengan PostgreSQL session advisory lock & live dashboard, `status`), `history`, `report` (`<id|latest>` format `--md` atau `--json`), `doctor`, `models`, `settings`, `eval`.
 - **Live Run Perdana via Gateway Bynara (9 Okt 2026):**
   - Uji coba live penuh pertama kali berhasil menggunakan gateway Bynara dengan model `agnes-2.5-flash` untuk seluruh peran.
+- **Pemilihan model final (9 Okt 2026, prompt 2026.10.2 + redaksi instruksi):** `gpt-6-luna` (OpenAI) lolos eval **24/24** (injeksi 16/16 tanpa bocoran, skenario 8/8, schema 100%), biaya eval Rp 110 (~Rp 4,6 per kasus). Dipakai sebagai default semua peran, cadangan `deepseek-v4-flash`. `agnes-2.5-flash` ditinggalkan karena asal-usul model tidak jelas dan masih ada bocoran injeksi/overrun schema.
   - Mengonsumsi ~36.5k token dengan biaya operasional sangat efisien (~Rp6/run) dan menghasilkan proposal regime `CALM`.
 - **Penyimpanan Database Neon Postgres:** Tabel `research_reports` (dengan diagnostik per-peran audit G7) dan `signals` (`RESEARCH`), serta skrip inspeksi riwayat `tahansoe history`.
 - **Scheduled Background Research Worker:**
