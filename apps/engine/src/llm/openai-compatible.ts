@@ -62,10 +62,16 @@ export class OpenAICompatibleProvider implements LlmProvider {
     const model = req.model || this.cfg.model;
     const url = joinUrl(this.cfg.baseURL, "chat/completions");
 
-    // Konversi schema zod → JSON Schema (zod v4 bawaan). Jika gagal, kembalikan error.
-    let jsonSchema: unknown;
+    // Konversi schema zod → JSON Schema (zod v4 bawaan). `fullSchema` menyimpan
+    // batasan (maxLength/maxItems/min/max) untuk DITARUH DI PROMPT agar model yang
+    // gateway-nya TIDAK menegakkan response_format tetap melihat daftar field +
+    // batasannya. `sanitizedSchema` (tanpa keyword yang ditolak strict mode) tetap
+    // dikirim di response_format untuk gateway yang menegakkannya.
+    let fullSchema: unknown;
+    let sanitizedSchema: unknown;
     try {
-      jsonSchema = sanitizeJsonSchema(z.toJSONSchema(req.output));
+      fullSchema = z.toJSONSchema(req.output);
+      sanitizedSchema = sanitizeJsonSchema(fullSchema);
     } catch (err) {
       return {
         stopReason: "error",
@@ -75,19 +81,25 @@ export class OpenAICompatibleProvider implements LlmProvider {
       };
     }
 
-    // Pesan dasar: system + konten per peran (eksternal di akhir).
+    const schemaText = JSON.stringify(fullSchema);
+
+    // System prompt + blok instruksi JSON Schema (English). Ditambahkan di AKHIR
+    // system prompt agar model melihat kontrak output walau gateway tidak menegakkan
+    // response_format (cli-fix lanjutan: Bynara/DeepSeek tidak selalu menegakkan).
+    const systemWithSchema = `${req.system}\n\n${buildSchemaInstruction(schemaText)}`;
+
+    // Pesan dasar: system (+schema) + konten per peran (eksternal di akhir).
     const baseMessages: Array<{ role: string; content: string }> = [
-      { role: "system", content: req.system },
+      { role: "system", content: systemWithSchema },
       ...req.messages.map((m) => ({ role: m.role, content: m.content })),
     ];
 
     // Panggilan pertama.
-    let attempt = await this.callOnce<T>(url, model, jsonSchema, req, baseMessages);
+    let attempt = await this.callOnce<T>(url, model, sanitizedSchema, req, baseMessages);
     if (attempt.kind !== "schema-invalid") return attempt.result;
 
-    // REPAIR RETRY (satu kali, model yang SAMA): kirim ulang dengan pesan yang
-    // berisi daftar isu validasi (path + message saja — TIDAK pernah konten
-    // eksternal) dan minta JSON terkoreksi. Token/biaya retry ikut dicatat.
+    // REPAIR RETRY (satu kali, model yang SAMA): kirim ulang dengan pengingat schema
+    // + daftar isu validasi (path + message saja — TIDAK pernah konten eksternal).
     const repairMessages = [
       ...baseMessages,
       {
@@ -96,10 +108,10 @@ export class OpenAICompatibleProvider implements LlmProvider {
       },
       {
         role: "user",
-        content: buildRepairMessage(attempt.issues),
+        content: buildRepairMessage(attempt.issues, schemaText),
       },
     ];
-    const repaired = await this.callOnce<T>(url, model, jsonSchema, req, repairMessages, attempt.result.usage);
+    const repaired = await this.callOnce<T>(url, model, sanitizedSchema, req, repairMessages, attempt.result.usage);
     if (repaired.kind === "schema-invalid") {
       // Tetap invalid setelah repair → tandai agar RoleRouter fallback ke model lain.
       return { ...repaired.result, schemaInvalid: true };
@@ -184,15 +196,19 @@ export class OpenAICompatibleProvider implements LlmProvider {
       return { kind: "final", result: { stopReason: "ok", data: null, usage, error: "empty content" } };
     }
 
+    // Ekstraksi JSON yang tahan terhadap code-fence / prosa pembungkus (gateway
+    // yang tidak menegakkan response_format bisa mengembalikan ```json … ``` atau
+    // teks sebelum/sesudah objek). Ambil objek JSON terluar. Tidak pernah eval.
+    const jsonText = extractJsonObject(content);
     let parsedJson: unknown;
     try {
-      parsedJson = JSON.parse(content);
+      if (jsonText === null) throw new Error("no JSON object found");
+      parsedJson = JSON.parse(jsonText);
     } catch {
-      // JSON rusak → perlakukan sebagai schema-invalid agar bisa di-repair/fallback.
       return {
         kind: "schema-invalid",
         result: { stopReason: "ok", data: null, usage, error: "content is not valid JSON", schemaInvalid: true },
-        issues: [{ path: "(root)", message: "response is not valid JSON" }],
+        issues: [{ path: "(root)", message: "response is not valid JSON (return a single JSON object only)" }],
         rawContent: content,
       };
     }
@@ -217,6 +233,58 @@ export class OpenAICompatibleProvider implements LlmProvider {
   }
 }
 
+/**
+ * Blok instruksi JSON Schema (English) yang ditempel ke system prompt. Membuat
+ * output terstruktur TIDAK bergantung pada penegakan `response_format` oleh gateway
+ * (banyak router tidak menegakkannya untuk semua model). Memuat skema LENGKAP
+ * (termasuk maxLength/maxItems/min/max) agar model melihat daftar field + batasan.
+ */
+export function buildSchemaInstruction(schemaText: string): string {
+  return (
+    "Respond with a single JSON object only (no prose, no markdown, no code fences) " +
+    "that conforms to this JSON Schema. Include every required field. Respect all " +
+    "maximum length and item limits (shorten text to fit). Use only the allowed enum values.\n\n" +
+    "JSON Schema:\n" +
+    schemaText
+  );
+}
+
+/**
+ * Ekstrak satu objek JSON dari teks model yang mungkin dibungkus code fence atau
+ * prosa. Strategi: (1) buang fence ```json … ```; (2) ambil substring dari "{"
+ * pertama sampai "}" terakhir yang seimbang (menghormati string & escape). Tidak
+ * pernah eval. Mengembalikan string JSON kandidat, atau null bila tidak ditemukan.
+ */
+export function extractJsonObject(text: string): string | null {
+  let s = text.trim();
+  // Buang code fence ```json … ``` atau ``` … ```.
+  const fence = /```(?:json)?\s*([\s\S]*?)\s*```/i.exec(s);
+  if (fence && fence[1]) s = fence[1].trim();
+
+  const start = s.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inStr = false;
+  let escaped = false;
+  for (let i = start; i < s.length; i++) {
+    const ch = s[i]!;
+    if (inStr) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') inStr = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return s.slice(start, i + 1);
+    }
+  }
+  return null; // kurung tidak seimbang
+}
+
 /** Isu validasi zod yang aman dibagikan ke model (TANPA konten eksternal). */
 interface SchemaIssue {
   path: string;
@@ -236,14 +304,20 @@ function summarizeIssues(issues: SchemaIssue[]): string {
   return issues.map((i) => `${i.path}: ${i.message}`).join("; ").slice(0, 300);
 }
 
-/** Pesan repair (English) — hanya memuat path + pesan validasi, tanpa data eksternal. */
-function buildRepairMessage(issues: SchemaIssue[]): string {
+/**
+ * Pesan repair (English): pengingat schema + daftar path+pesan validasi. TIDAK
+ * pernah memuat konten eksternal (hanya schema & pesan zod generik).
+ */
+export function buildRepairMessage(issues: SchemaIssue[], schemaText: string): string {
   const lines = issues.map((i) => `- ${i.path}: ${i.message}`).join("\n");
   return (
-    "Your previous JSON failed schema validation. Fix ONLY these issues and return " +
-    "corrected JSON that fully conforms to the schema. Respect every maximum length " +
-    "limit (shorten text as needed). Return JSON only, no prose.\n\n" +
-    "Validation errors:\n" +
+    "Your previous response did not conform to the required JSON Schema. Return a " +
+    "single corrected JSON object only (no prose, no code fences) that fully conforms. " +
+    "Respect every maximum length and item limit (shorten text as needed) and use only " +
+    "allowed enum values.\n\n" +
+    "JSON Schema:\n" +
+    schemaText +
+    "\n\nValidation errors to fix:\n" +
     lines
   );
 }

@@ -9,6 +9,8 @@ import assert from "node:assert/strict";
 import { z } from "zod";
 import {
   OpenAICompatibleProvider,
+  extractJsonObject,
+  buildSchemaInstruction,
   type FetchLike,
 } from "../../src/llm/openai-compatible.ts";
 import { Budget } from "../../src/llm/budget.ts";
@@ -166,12 +168,111 @@ test("repair message hanya memuat path+pesan validasi (tanpa konten eksternal)",
   await p.structured({ ...req(), messages: [{ role: "user", content: SECRET_EXTERNAL }] });
   assert.equal(bodies.length, 2);
   const repairBody = bodies[1]!;
-  assert.match(repairBody, /failed schema validation/i, "ada instruksi repair");
+  assert.match(repairBody, /did not conform to the required JSON Schema/i, "ada instruksi repair");
   // Pesan repair user TIDAK boleh menyalin konten eksternal sebagai instruksi baru;
   // (konten eksternal asli tetap ada sebagai data di messages, itu wajar — yang
   // penting instruksi repair hanya berisi path+message validasi).
   const repair = JSON.parse(repairBody) as { messages: Array<{ role: string; content: string }> };
   const lastUser = repair.messages[repair.messages.length - 1]!;
-  assert.match(lastUser.content, /Validation errors:/);
+  assert.match(lastUser.content, /Validation errors to fix:/);
+  assert.match(lastUser.content, /JSON Schema:/, "repair memuat pengingat schema");
   assert.doesNotMatch(lastUser.content, new RegExp(SECRET_EXTERNAL));
+});
+
+
+// --- Schema-in-prompt & robust JSON extraction (schema-prompt-task) --------
+
+/** Schema kaya untuk menguji schema-in-prompt (required + maxLength + enum). */
+const RichSchema = z.object({
+  assets: z.array(z.string()).min(1).describe("Assets, e.g. [\"ETH\"]."),
+  regime: z.enum(["CALM", "ELEVATED", "STRESSED", "CRISIS"]),
+  summary: z.string().max(400).describe("Summary, at most 400 characters."),
+});
+
+function richReq(): LlmRequest<z.infer<typeof RichSchema>> {
+  return {
+    model: "",
+    effort: "low",
+    system: "You are a risk analyst.",
+    messages: [{ role: "user", content: "data" }],
+    output: RichSchema,
+    outputName: "Rich",
+  };
+}
+
+test("extractJsonObject: JSON polos", () => {
+  assert.equal(extractJsonObject('{"a":1}'), '{"a":1}');
+});
+
+test("extractJsonObject: fenced ```json ... ```", () => {
+  const t = "Here is the result:\n```json\n{\"a\": 1, \"b\": [2,3]}\n```\nThanks.";
+  assert.equal(extractJsonObject(t), '{"a": 1, "b": [2,3]}');
+});
+
+test("extractJsonObject: prosa membungkus objek + kurung di dalam string", () => {
+  const t = 'Sure! {"msg": "has } and { braces", "n": 2} end';
+  assert.equal(extractJsonObject(t), '{"msg": "has } and { braces", "n": 2}');
+});
+
+test("extractJsonObject: tanpa objek → null", () => {
+  assert.equal(extractJsonObject("no json here"), null);
+});
+
+test("buildSchemaInstruction: memuat instruksi JSON-only + schema", () => {
+  const instr = buildSchemaInstruction('{"type":"object"}');
+  assert.match(instr, /single JSON object only/i);
+  assert.match(instr, /no code fences/i);
+  assert.match(instr, /JSON Schema:/);
+  assert.match(instr, /"type":"object"/);
+});
+
+test("system prompt berisi schema: required field (assets) + maxLength 400 + enum regime", async () => {
+  let capturedBody = "";
+  const fetchImpl: FetchLike = async (_url, init) => {
+    capturedBody = init.body;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => completion(JSON.stringify({ assets: ["ETH"], regime: "CALM", summary: "ok" })),
+      text: async () => "",
+    };
+  };
+  const p = new OpenAICompatibleProvider(
+    { name: "bynara", baseURL: "https://x/v1", apiKey: "k", model: "agnes-2.5-flash" },
+    new Budget(100),
+    fetchImpl,
+  );
+  const r = await p.structured(richReq());
+  assert.equal(r.stopReason, "ok");
+  const sent = JSON.parse(capturedBody) as { messages: Array<{ role: string; content: string }> };
+  const system = sent.messages.find((m) => m.role === "system")!.content;
+  assert.match(system, /JSON Schema:/);
+  assert.match(system, /"assets"/, "schema menyebut field assets");
+  assert.match(system, /"required"/, "schema menandai field required");
+  assert.match(system, /400/, "batas maxLength 400 terlihat di schema prompt");
+  assert.match(system, /CALM/, "enum regime terlihat");
+});
+
+test("gateway tak menegakkan schema → model balas fenced JSON → tetap ter-parse & valid", async () => {
+  const fenced = "```json\n" + JSON.stringify({ assets: ["ETH"], regime: "ELEVATED", summary: "s" }) + "\n```";
+  const p = new OpenAICompatibleProvider(
+    { name: "bynara", baseURL: "https://x/v1", apiKey: "k", model: "agnes-2.5-flash" },
+    new Budget(100),
+    async () => ({ ok: true, status: 200, json: async () => completion(fenced), text: async () => "" }),
+  );
+  const r = await p.structured(richReq());
+  assert.equal(r.stopReason, "ok");
+  assert.deepEqual(r.data, { assets: ["ETH"], regime: "ELEVATED", summary: "s" });
+});
+
+test("prose-wrapped JSON → ter-parse & valid", async () => {
+  const prose = 'Here is my analysis: {"assets":["WBTC"],"regime":"STRESSED","summary":"x"} — hope it helps!';
+  const p = new OpenAICompatibleProvider(
+    { name: "bynara", baseURL: "https://x/v1", apiKey: "k", model: "agnes-2.5-flash" },
+    new Budget(100),
+    async () => ({ ok: true, status: 200, json: async () => completion(prose), text: async () => "" }),
+  );
+  const r = await p.structured(richReq());
+  assert.equal(r.stopReason, "ok");
+  assert.equal(r.data?.regime, "STRESSED");
 });
