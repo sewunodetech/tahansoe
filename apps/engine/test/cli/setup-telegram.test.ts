@@ -458,3 +458,36 @@ test("gatewayPairCommand: webhook aktif dicek DI AWAL - tanpa konfirmasi tidak m
   assert.match(out, /webhook to n8n\.example\.com/);
   assert.equal(exitCode, EXIT_OK);
 });
+
+test("gatewayPairCommand: gateway sementara milik proses ini yang listening BUKAN 'already running' - pakai pairing-nya dan stop setelahnya", async () => {
+  const stdoutChunks: string[] = [];
+  let stopCalled = false;
+  let codeFromGw = false;
+  const { gatewayPairCommand } = await import("../../src/cli/commands/gateway-pair.ts");
+  const exitCode = await gatewayPairCommand([], {
+    env: { TELEGRAM_BOT_TOKEN: "fake_pair_token" },
+    stdout: (s: string) => stdoutChunks.push(s),
+    sleepImpl: async () => {},
+    telegramGetMe: async () => ({ ok: true, username: "TahansoeBot" }),
+    telegramGetWebhookInfo: async () => ({ ok: true, host: "" }),
+    gatewayListening: async () => true,
+    startGateway: async () => ({
+      status: "listening",
+      pairing: {
+        createPairingCode: () => {
+          codeFromGw = true;
+          return { code: "OWNGW12345", expiresAt: Date.now() + 600_000 };
+        },
+        pairingStatus: () => ({ status: "paired", chatId: "98765" }),
+      },
+      stop: async () => {
+        stopCalled = true;
+      },
+    }),
+  } as any);
+  const out = stdoutChunks.join("");
+  assert.equal(exitCode, EXIT_OK);
+  assert.doesNotMatch(out, /Agent is already running/);
+  assert.equal(codeFromGw, true, "kode harus dibuat oleh gateway sementara milik proses ini");
+  assert.equal(stopCalled, true, "gateway sementara harus dihentikan (melepas lock) setelah pairing");
+});

@@ -375,7 +375,11 @@ export async function gatewayPairCommand(argv: string[], deps: GatewayPairDeps =
       return EXIT_ERROR;
     }
 
-    if (gw?.status === "conflict" || gwStatusStr === "conflict" || (await isListening(gw))) {
+    // "Sudah jalan" HANYA bila gateway menolak polling karena lock dipegang PROSES LAIN
+    // (status "conflict"). Gateway sementara milik proses ini yang sedang mendengarkan
+    // justru jalur normal: kode pairing harus dibuat & dicek lewat instance ini.
+    void isListening;
+    if (gw?.status === "conflict" || gwStatusStr === "conflict") {
       writeOut("Agent is already running; it will handle the pairing\n");
       alreadyRunning = true;
     } else if (gw?.pairing) {
