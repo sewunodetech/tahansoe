@@ -85,10 +85,14 @@ export interface StartDeps extends ScheduleDeps {
 /** Format baris dashboard status gateway. */
 export function formatGatewayDashboardLine(
   status: GatewayStatusResult | null,
-  opts: { noGateway?: boolean; isRunning?: boolean } = {},
+  opts: { noGateway?: boolean; isRunning?: boolean; webhookHost?: string; isWebhookActive?: boolean } = {},
 ): string {
   if (opts.noGateway) return "Gateway: (disabled)";
   if (!status || !status.configured) return "Gateway: (not configured)";
+  if (opts.isWebhookActive || (status as any)?.status === "webhook_active") {
+    const host = opts.webhookHost ?? (status as any)?.webhookHost ?? "external";
+    return `Gateway: (webhook to ${host})`;
+  }
   if (opts.isRunning === false) return "Gateway: (failed to start)";
 
   const channel = status.channels?.[0] || "telegram";
@@ -376,11 +380,39 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
     try {
       const startGw = deps.startGateway ?? defaultStartGateway;
       gatewayInstance = await startGw({ logger });
-      gatewayRunning = true;
-      logger.info("[gateway] telegram bot gateway berjalan.");
-    } catch (err) {
-      // Isolasi I6: kegagalan gateway TIDAK menghentikan riset / fusi
-      logger.error(`[gateway] gagal start: ${err instanceof Error ? err.message : String(err)} (riset & fusi tetap berjalan)`);
+      const gwStatusStr =
+        typeof (gatewayInstance as any)?.status === "string"
+          ? (gatewayInstance as any).status
+          : (gatewayInstance as any)?.status?.telegram;
+
+      if (gwStatusStr === "webhook_active") {
+        const host =
+          (gatewayInstance as any)?.webhookHost ??
+          (gatewayInstance as any)?.status?.webhookHost ??
+          "external host";
+        logger.warn(
+          `This bot uses a webhook to ${host}. Messages go there, not to Tahansoe. Use a dedicated bot, or run: tahansoe gateway pair --delete-webhook`,
+        );
+      } else {
+        gatewayRunning = true;
+        logger.info("[gateway] telegram bot gateway berjalan.");
+      }
+    } catch (err: any) {
+      const msg = String(err?.message || "");
+      if (
+        err?.status === "webhook_active" ||
+        msg.includes("webhook is active") ||
+        msg.includes("webhook_active") ||
+        msg.includes("webhook")
+      ) {
+        const host = err?.webhookHost ?? err?.host ?? "external host";
+        logger.warn(
+          `This bot uses a webhook to ${host}. Messages go there, not to Tahansoe. Use a dedicated bot, or run: tahansoe gateway pair --delete-webhook`,
+        );
+      } else {
+        // Isolasi I6: kegagalan gateway TIDAK menghentikan riset / fusi
+        logger.error(`[gateway] gagal start: ${err instanceof Error ? err.message : String(err)} (riset & fusi tetap berjalan)`);
+      }
     }
   }
 

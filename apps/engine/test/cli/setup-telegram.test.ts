@@ -19,7 +19,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setupCommand, maskChatId } from "../../src/cli/commands/setup.ts";
-import { EXIT_OK } from "../../src/cli/commands/args.ts";
+import { EXIT_OK, EXIT_ERROR } from "../../src/cli/commands/args.ts";
 
 test("maskChatId: menyensor chat ID dengan format **** atau id****id", () => {
   assert.equal(maskChatId("123"), "****");
@@ -100,20 +100,15 @@ test("setupCommand: langkah Telegram non-interaktif (--yes) dengan fake getMe da
 
     assert.equal(exitCode, EXIT_OK);
 
-    // Verifikasi pemanggilan getMe & pairing
+    // Verifikasi pemanggilan getMe & token tidak bocor
     assert.equal(getMeCalledWith, secretBotToken, "token harus dibaca dari env var");
-    assert.ok(gatewayStarted, "temporary gateway harus dijalankan untuk pairing");
-    assert.ok(pairingCodeCreated, "createPairingCode harus dipanggil");
-    assert.ok(pollAttempts >= 2, "pairingStatus harus dipolling");
-    assert.ok(gatewayStopped, "temporary gateway harus dihentikan setelah pairing");
 
     const fullStdout = stdoutChunks.join("");
     const fullStderr = stderrChunks.join("");
 
-    // Verifikasi pesan output
+    // Verifikasi pesan output: validasi token & hint ke 'tahansoe gateway pair'
     assert.match(fullStdout, /@TahansoeAlertBot/);
-    assert.match(fullStdout, /Send \/start PAIR1234/);
-    assert.match(fullStdout, /Berhasil terhubung dengan chat 98\*\*\*\*21/);
+    assert.match(fullStdout, /Next: run 'tahansoe gateway pair' to connect your chat/);
 
     // INVARIANT I8: Token bot rahasia TIDAK PERNAH boleh muncul di log/output
     assert.ok(!fullStdout.includes(secretBotToken), "Token rahasia tidak boleh bocor ke stdout");
@@ -176,3 +171,262 @@ test("setupCommand: opsi --skip-telegram melewati langkah Telegram secara bersih
     await rm(tmp, { recursive: true, force: true });
   }
 });
+
+test("gatewayPairCommand: membuat kode pairing, menjalankan temporary gateway, dan poll hingga paired", async () => {
+  const stdoutChunks: string[] = [];
+  let gatewayStarted = false;
+  let gatewayStopped = false;
+  let pollAttempts = 0;
+
+  const { gatewayPairCommand } = await import("../../src/cli/commands/gateway-pair.ts");
+
+  const exitCode = await gatewayPairCommand([], {
+    env: { TELEGRAM_BOT_TOKEN: "fake_pair_token" },
+    stdout: (s) => stdoutChunks.push(s),
+    sleepImpl: async () => {},
+    telegramGetMe: async () => ({ ok: true, username: "TahansoeBot" }),
+    startGateway: async () => {
+      gatewayStarted = true;
+      return {
+        stop: async () => {
+          gatewayStopped = true;
+        },
+        pairing: {
+          createPairingCode: () => ({ code: "PAIR9999", expiresAt: new Date(Date.now() + 600_000) }),
+          pairingStatus: () => {
+            pollAttempts++;
+            if (pollAttempts >= 2) return { status: "paired", chatId: "5551234555" };
+            return { status: "pending" };
+          },
+        },
+      };
+    },
+  });
+
+  assert.equal(exitCode, EXIT_OK);
+  assert.ok(gatewayStarted, "temporary gateway harus dimulai");
+  assert.ok(gatewayStopped, "temporary gateway harus dihentikan setelah selesai");
+  const out = stdoutChunks.join("");
+  assert.match(out, /Send.*\/start PAIR9999.*to @TahansoeBot/);
+  assert.match(out, /Berhasil terhubung dengan chat 55\*\*\*\*55/);
+});
+
+test("gatewayPairCommand: mendeteksi conflict (agent sudah running) dan hanya poll tanpa stop", async () => {
+  const stdoutChunks: string[] = [];
+  let pollAttempts = 0;
+  let stopCalled = false;
+
+  const { gatewayPairCommand } = await import("../../src/cli/commands/gateway-pair.ts");
+
+  const exitCode = await gatewayPairCommand([], {
+    env: { TELEGRAM_BOT_TOKEN: "fake_pair_token" },
+    stdout: (s) => stdoutChunks.push(s),
+    sleepImpl: async () => {},
+    telegramGetMe: async () => ({ ok: true, username: "TahansoeBot" }),
+    createPairingCode: () => ({ code: "ALREADY123", expiresAt: new Date(Date.now() + 600_000) }),
+    pairingStatus: () => {
+      pollAttempts++;
+      if (pollAttempts >= 2) return { status: "paired", chatId: 12345 };
+      return { status: "pending" };
+    },
+    startGateway: async () => ({
+      status: "conflict",
+      stop: async () => {
+        stopCalled = true;
+      },
+    }),
+  });
+
+  assert.equal(exitCode, EXIT_OK);
+  assert.equal(stopCalled, false, "Gateway milik agent yang sedang berjalan tidak boleh di-stop");
+  const out = stdoutChunks.join("");
+  assert.match(out, /Agent is already running; it will handle the pairing/);
+  assert.match(out, /Berhasil terhubung dengan chat 12\*\*\*\*45/);
+});
+
+test("gatewayStatusCommand: menampilkan username bot, allowed chats count, dan agent polling status", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "tahansoe-gw-status-"));
+  const tmpSettings = join(tmp, "settings.json");
+  await writeFile(
+    tmpSettings,
+    JSON.stringify({
+      version: 2,
+      gateway: {
+        channels: {
+          telegram: {
+            allowedChats: [
+              { id: "111222333" },
+              { id: "444555666" },
+            ],
+          },
+        },
+      },
+    }),
+    "utf-8",
+  );
+
+  const { gatewayStatusCommand } = await import("../../src/cli/commands/gateway-pair.ts");
+  const stdoutChunks: string[] = [];
+  try {
+    const exitCode = await gatewayStatusCommand([], {
+      env: { TELEGRAM_BOT_TOKEN: "fake_status_token" },
+      settingsPath: tmpSettings,
+      stdout: (s) => stdoutChunks.push(s),
+      telegramGetMe: async () => ({ ok: true, username: "StatusBot" }),
+      gatewayListening: async () => true,
+    });
+
+    assert.equal(exitCode, EXIT_OK);
+    const out = stdoutChunks.join("");
+    assert.match(out, /Bot: @StatusBot/);
+    assert.match(out, /Mode: polling/);
+    assert.match(out, /Allowed chats: 2/);
+    assert.match(out, /11\*\*\*\*33/);
+    assert.match(out, /Agent polling:.*active/);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test("gatewayPairCommand: mendeteksi webhook aktif tanpa --delete-webhook, mencetak pesan instruktif dan keluar dengan error", async () => {
+  const stdoutChunks: string[] = [];
+  let deleteWebhookCalled = false;
+
+  const { gatewayPairCommand } = await import("../../src/cli/commands/gateway-pair.ts");
+
+  const exitCode = await gatewayPairCommand([], {
+    env: { TELEGRAM_BOT_TOKEN: "fake_wh_token" },
+    stdout: (s) => stdoutChunks.push(s),
+    telegramGetMe: async () => ({ ok: true, username: "WebhookBot" }),
+    startGateway: async () => ({
+      stop: async () => {},
+      status: "webhook_active",
+      webhookHost: "n8n.my-domain.com",
+    } as any),
+    telegramDeleteWebhook: async () => {
+      deleteWebhookCalled = true;
+      return { ok: true, result: true };
+    },
+  });
+
+  assert.equal(exitCode, EXIT_ERROR);
+  assert.equal(deleteWebhookCalled, false, "Webhook TIDAK boleh dihapus secara implisit");
+  const out = stdoutChunks.join("");
+  assert.match(
+    out,
+    /This bot uses a webhook to n8n\.my-domain\.com\. Messages go there, not to Tahansoe\. Use a dedicated bot, or run: tahansoe gateway pair --delete-webhook/,
+  );
+});
+
+test("gatewayPairCommand: flag --delete-webhook dengan konfirmasi 'N' membatalkan tanpa menghapus webhook", async () => {
+  const stdoutChunks: string[] = [];
+  let deleteWebhookCalled = false;
+
+  const { gatewayPairCommand } = await import("../../src/cli/commands/gateway-pair.ts");
+
+  const exitCode = await gatewayPairCommand(["--delete-webhook"], {
+    env: { TELEGRAM_BOT_TOKEN: "fake_wh_token" },
+    stdout: (s) => stdoutChunks.push(s),
+    telegramGetMe: async () => ({ ok: true, username: "WebhookBot" }),
+    telegramGetWebhookInfo: async () => ({ ok: true, host: "n8n.my-domain.com" }),
+    confirmDeleteWebhook: async (host) => {
+      assert.equal(host, "n8n.my-domain.com");
+      return false; // User menolak
+    },
+    telegramDeleteWebhook: async () => {
+      deleteWebhookCalled = true;
+      return { ok: true, result: true };
+    },
+  });
+
+  assert.equal(exitCode, EXIT_OK);
+  assert.equal(deleteWebhookCalled, false, "deleteWebhook TIDAK boleh dipanggil saat user menolak");
+  const out = stdoutChunks.join("");
+  assert.match(out, /Dibatalkan: webhook tidak dihapus/);
+});
+
+test("gatewayPairCommand: flag --delete-webhook dengan konfirmasi 'y' menghapus webhook dan memulai pairing", async () => {
+  const stdoutChunks: string[] = [];
+  let deleteWebhookCalled = false;
+  let startGatewayCalledWithDelete = false;
+
+  const { gatewayPairCommand } = await import("../../src/cli/commands/gateway-pair.ts");
+
+  const exitCode = await gatewayPairCommand(["--delete-webhook"], {
+    env: { TELEGRAM_BOT_TOKEN: "fake_wh_token" },
+    stdout: (s) => stdoutChunks.push(s),
+    sleepImpl: async () => {},
+    telegramGetMe: async () => ({ ok: true, username: "WebhookBot" }),
+    telegramGetWebhookInfo: async () => ({ ok: true, host: "n8n.my-domain.com" }),
+    confirmDeleteWebhook: async (host) => {
+      assert.equal(host, "n8n.my-domain.com");
+      return true; // User menyetujui
+    },
+    telegramDeleteWebhook: async () => {
+      deleteWebhookCalled = true;
+      return { ok: true, result: true };
+    },
+    startGateway: async (opts: any) => {
+      startGatewayCalledWithDelete = Boolean(opts?.deleteWebhook);
+      return {
+        stop: async () => {},
+        pairing: {
+          createPairingCode: () => ({ code: "PAIR1234", expiresAt: new Date(Date.now() + 600_000) }),
+          pairingStatus: () => ({ status: "paired", chatId: "999888777" }),
+        },
+      } as any;
+    },
+  });
+
+  assert.equal(exitCode, EXIT_OK);
+  assert.equal(deleteWebhookCalled, true, "telegramDeleteWebhook harus dipanggil saat dikonfirmasi");
+  assert.equal(startGatewayCalledWithDelete, true, "startGateway harus menerima deleteWebhook: true");
+  const out = stdoutChunks.join("");
+  assert.match(out, /✔ Webhook ke n8n\.my-domain\.com berhasil dihapus/);
+  assert.match(out, /Send.*\/start PAIR1234.*to @WebhookBot/);
+  assert.match(out, /Berhasil terhubung dengan chat 99\*\*\*\*77/);
+});
+
+test("gatewayStatusCommand: menampilkan Mode: webhook to <host> dan pesan instruktif jika webhook aktif", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "tahansoe-gw-wh-status-"));
+  const tmpSettings = join(tmp, "settings.json");
+  await writeFile(
+    tmpSettings,
+    JSON.stringify({
+      version: 2,
+      gateway: {
+        channels: {
+          telegram: {
+            allowedChats: [{ id: "12345678" }],
+          },
+        },
+      },
+    }),
+    "utf-8",
+  );
+
+  const { gatewayStatusCommand } = await import("../../src/cli/commands/gateway-pair.ts");
+  const stdoutChunks: string[] = [];
+  try {
+    const exitCode = await gatewayStatusCommand([], {
+      env: { TELEGRAM_BOT_TOKEN: "fake_wh_status_token" },
+      settingsPath: tmpSettings,
+      stdout: (s) => stdoutChunks.push(s),
+      telegramGetMe: async () => ({ ok: true, username: "StatusWhBot" }),
+      telegramGetWebhookInfo: async () => ({ ok: true, host: "n8n.external.co" }),
+    });
+
+    assert.equal(exitCode, EXIT_OK);
+    const out = stdoutChunks.join("");
+    assert.match(out, /Bot: @StatusWhBot/);
+    assert.match(out, /Mode: webhook to n8n\.external\.co/);
+    assert.match(out, /Allowed chats: 1/);
+    assert.match(
+      out,
+      /This bot uses a webhook to n8n\.external\.co\. Messages go there, not to Tahansoe\. Use a dedicated bot, or run: tahansoe gateway pair --delete-webhook/,
+    );
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+

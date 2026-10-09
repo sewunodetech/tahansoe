@@ -56,16 +56,18 @@ class FakeLlmProvider implements LlmProvider {
 test("router: chat tidak diizinkan mendapat respon 'This bot is private.'", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "tahansoe-router-"));
   const settingsFile = join(tmp, "settings.json");
+  const statePath = join(tmp, "gateway-state.json");
   await writeSettings(emptySettings(), settingsFile);
 
   const adapter = new TestAdapter();
-  const pairing = new PairingManager();
   const state = createEmptyGatewayState();
+  const pairing = new PairingManager(statePath, state);
 
   const router = new CommandRouter({
     adapter,
     pairing,
     state,
+    statePath,
     settingsPath: settingsFile,
     env: { TELEGRAM_ALLOWED_CHAT_IDS: "111,222" },
   });
@@ -87,17 +89,19 @@ test("router: chat tidak diizinkan mendapat respon 'This bot is private.'", asyn
 test("router: pairing via /start CODE berhasil dan mendaftarkan chat ke settings", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "tahansoe-router-"));
   const settingsFile = join(tmp, "settings.json");
+  const statePath = join(tmp, "gateway-state.json");
   await writeSettings(emptySettings(), settingsFile);
 
   const adapter = new TestAdapter();
-  const pairing = new PairingManager();
   const state = createEmptyGatewayState();
+  const pairing = new PairingManager(statePath, state);
   const { code } = pairing.createPairingCode("telegram");
 
   const router = new CommandRouter({
     adapter,
     pairing,
     state,
+    statePath,
     settingsPath: settingsFile,
     env: {},
   });
@@ -129,16 +133,18 @@ test("router: pairing via /start CODE berhasil dan mendaftarkan chat ke settings
 test("router: perintah /subscribe, /unsubscribe, dan /alerts memperbarui preferensi", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "tahansoe-router-"));
   const settingsFile = join(tmp, "settings.json");
+  const statePath = join(tmp, "gateway-state.json");
   await writeSettings(emptySettings(), settingsFile);
 
   const adapter = new TestAdapter();
-  const pairing = new PairingManager();
   const state = createEmptyGatewayState();
+  const pairing = new PairingManager(statePath, state);
 
   const router = new CommandRouter({
     adapter,
     pairing,
     state,
+    statePath,
     settingsPath: settingsFile,
     env: { TELEGRAM_ALLOWED_CHAT_IDS: "allowed_user" },
   });
@@ -168,17 +174,19 @@ test("router: perintah /subscribe, /unsubscribe, dan /alerts memperbarui prefere
 test("router: teks biasa memicu Q&A grounded dan menghormati batas harian GATEWAY_QA_PER_DAY", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "tahansoe-router-"));
   const settingsFile = join(tmp, "settings.json");
+  const statePath = join(tmp, "gateway-state.json");
   await writeSettings(emptySettings(), settingsFile);
 
   const adapter = new TestAdapter();
-  const pairing = new PairingManager();
   const state = createEmptyGatewayState();
+  const pairing = new PairingManager(statePath, state);
   const fakeProvider = new FakeLlmProvider();
 
   const router = new CommandRouter({
     adapter,
     pairing,
     state,
+    statePath,
     settingsPath: settingsFile,
     env: { TELEGRAM_ALLOWED_CHAT_IDS: "qa_chat", GATEWAY_QA_PER_DAY: "2" },
     chatOptions: { provider: fakeProvider },
@@ -213,16 +221,18 @@ test("router: teks biasa memicu Q&A grounded dan menghormati batas harian GATEWA
 test("router: /start dan /help menyertakan inline keyboard tombol aksi cepat", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "tahansoe-router-"));
   const settingsFile = join(tmp, "settings.json");
+  const statePath = join(tmp, "gateway-state.json");
   await writeSettings(emptySettings(), settingsFile);
 
   const adapter = new TestAdapter();
-  const pairing = new PairingManager();
   const state = createEmptyGatewayState();
+  const pairing = new PairingManager(statePath, state);
 
   const router = new CommandRouter({
     adapter,
     pairing,
     state,
+    statePath,
     settingsPath: settingsFile,
     env: { TELEGRAM_ALLOWED_CHAT_IDS: "btn_chat" },
   });
@@ -245,16 +255,18 @@ test("router: /start dan /help menyertakan inline keyboard tombol aksi cepat", a
 test("router: callback_query dari chat yang diizinkan diproses dan selalu dijawab", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "tahansoe-router-"));
   const settingsFile = join(tmp, "settings.json");
+  const statePath = join(tmp, "gateway-state.json");
   await writeSettings(emptySettings(), settingsFile);
 
   const adapter = new TestAdapter();
-  const pairing = new PairingManager();
   const state = createEmptyGatewayState();
+  const pairing = new PairingManager(statePath, state);
 
   const router = new CommandRouter({
     adapter,
     pairing,
     state,
+    statePath,
     settingsPath: settingsFile,
     env: { TELEGRAM_ALLOWED_CHAT_IDS: "allowed_cb_user" },
     loaders: {
@@ -302,16 +314,18 @@ test("router: callback_query dari chat yang diizinkan diproses dan selalu dijawa
 test("router: callback_query dari chat tak diizinkan ditolak", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "tahansoe-router-"));
   const settingsFile = join(tmp, "settings.json");
+  const statePath = join(tmp, "gateway-state.json");
   await writeSettings(emptySettings(), settingsFile);
 
   const adapter = new TestAdapter();
-  const pairing = new PairingManager();
   const state = createEmptyGatewayState();
+  const pairing = new PairingManager(statePath, state);
 
   const router = new CommandRouter({
     adapter,
     pairing,
     state,
+    statePath,
     settingsPath: settingsFile,
     env: { TELEGRAM_ALLOWED_CHAT_IDS: "permitted" },
   });

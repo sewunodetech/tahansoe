@@ -32,6 +32,7 @@ export const SLASH_COMMANDS: Array<[string, string]> = [
   ["/settings", "Show or manage settings.json"],
   ["/doctor", "Check environment & connectivity"],
   ["/setup", "Run initial setup wizard (gateway, models, DB)"],
+  ["/gateway", "Channel gateway operations (/gateway pair, /gateway status)"],
   ["/status", "Show current market regime status line"],
   ["/start", "Hint: run 'tahansoe start' in a separate terminal"],
   ["/help", "Show available slash commands and tips"],
@@ -98,6 +99,7 @@ export async function dispatchSlashCommand(
   args: string[],
   context: ReplContext,
   theme: Theme,
+  replRl?: readline.Interface,
 ): Promise<void> {
   switch (cmd) {
     case "exit":
@@ -203,9 +205,28 @@ export async function dispatchSlashCommand(
       return;
     }
 
+    case "gateway": {
+      const sub = args[0];
+      const subArgs = args.slice(1);
+      if (sub === "pair") {
+        const { gatewayPairCommand } = await import("../commands/gateway-pair.ts");
+        await gatewayPairCommand(subArgs, { replRl });
+        return;
+      }
+      if (sub === "status") {
+        const { gatewayStatusCommand } = await import("../commands/gateway-pair.ts");
+        await gatewayStatusCommand(subArgs);
+        return;
+      }
+      process.stdout.write(
+        `Perintah /gateway butuh subcommand: /gateway pair atau /gateway status\n`,
+      );
+      return;
+    }
+
     case "setup": {
       const { setupCommand } = await import("../commands/setup.ts");
-      await setupCommand(args);
+      await setupCommand(args, { replRl });
       return;
     }
 
@@ -283,7 +304,18 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
       }
 
       try {
-        await dispatchSlashCommand(slash.command, slash.args, context, theme);
+        rl.pause();
+        const origOutput = (rl as any).output;
+        const origTerminal = (rl as any).terminal;
+        (rl as any).output = null;
+        (rl as any).terminal = false;
+        try {
+          await dispatchSlashCommand(slash.command, slash.args, context, theme, rl);
+        } finally {
+          (rl as any).output = origOutput;
+          (rl as any).terminal = origTerminal;
+          rl.resume();
+        }
         // Refresh context jika user menjalankan analyze atau fuse
         if (slash.command === "analyze" || slash.command === "fuse") {
           context = await buildReplContext({ now: new Date(), loaders: options.loaders });

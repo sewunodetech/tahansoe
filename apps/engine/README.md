@@ -108,21 +108,30 @@ Tahansoe beroperasi sebagai **agent mandiri (autonomous risk agent)**: dijalanka
 
 ### Alur Utama (Agent Model)
 
-1. **Setup** — Konfigurasi gateway LLM, model, database, dan pairing bot Telegram:
+1. **Setup** — Konfigurasi gateway LLM, model, database, dan bot Telegram:
    ```bash
    npm run tahansoe -- setup
    ```
    *(Atau non-interaktif: `npm run tahansoe -- setup --yes --db pglite --model gpt-6-luna --telegram-token-env BOT_TOKEN`)*
 
-2. **Start (Jalankan Agent)** — Satu proses jangka panjang yang mengorkestrasi seluruh loop proteksi:
+2. **Pairing Telegram** — Hubungkan chat Telegram untuk menerima alert risiko:
+   ```bash
+   npm run tahansoe -- gateway pair
+   ```
+   Kirim `/start <KODE>` ke bot Telegram dalam 10 menit. Periksa status bot dan chat terdaftar dengan:
+   ```bash
+   npm run tahansoe -- gateway status
+   ```
+
+3. **Start (Jalankan Agent)** — Satu proses jangka panjang yang mengorkestrasi seluruh loop proteksi:
    ```bash
    npm run tahansoe -- start
    ```
    Menjalankan: scheduler riset multi-agent, sampler harga (60s) & bunga Aave V3 (15m), Risk Fusion v1, settlement berkala, alert proaktif, serta gateway Telegram dalam satu proses terisolasi (I6).
 
-3. **Pakai lewat Telegram** — User menerima peringatan dini (regime naik, depeg, lonjakan bunga) dan mengirim perintah chat (`/status`, `/fuse`, `/carry`, atau pertanyaan bebas).
+4. **Pakai lewat Telegram** — User menerima peringatan dini (regime naik, depeg, lonjakan bunga) dan mengirim perintah chat (`/status`, `/fuse`, `/carry`, atau pertanyaan bebas).
 
-4. **CLI / REPL untuk Operator** — Operator dapat memantau atau mengaudit secara manual lewat terminal:
+5. **CLI / REPL untuk Operator** — Operator dapat memantau atau mengaudit secara manual lewat terminal:
    ```bash
    npm run tahansoe --            # buka sesi interaktif REPL
    npm run tahansoe -- analyze    # satu run riset manual + kartu laporan

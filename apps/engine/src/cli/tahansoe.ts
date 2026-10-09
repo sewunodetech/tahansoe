@@ -14,7 +14,7 @@ const COMMANDS = [
   ["start", "Run the standalone risk agent in one process"],
   ["analyze", "Run one risk-research pass + report card"],
   ["schedule", "Run the scheduler (foreground) or show status"],
-  ["gateway", "Channel gateway operations (gateway run)"],
+  ["gateway", "Channel gateway operations (run, pair, status)"],
   ["history", "Recent research reports (table + sparkline)"],
   ["report", "Show a full report by <id|latest>"],
   ["models", "List gateway models + prices + cost estimate"],
@@ -128,7 +128,17 @@ export async function main(argv: string[]): Promise<number> {
           return EXIT_ERROR;
         }
       }
-      process.stderr.write(`subcommand gateway tidak dikenal: ${sub ?? "(kosong)"} (pakai: tahansoe gateway run)\n`);
+      if (sub === "pair") {
+        const { gatewayPairCommand } = await import("./commands/gateway-pair.ts");
+        return gatewayPairCommand(subRest);
+      }
+      if (sub === "status") {
+        const { gatewayStatusCommand } = await import("./commands/gateway-pair.ts");
+        return gatewayStatusCommand(subRest);
+      }
+      process.stderr.write(
+        `subcommand gateway tidak dikenal: ${sub ?? "(kosong)"} (pakai: tahansoe gateway [run|pair|status])\n`,
+      );
       return EXIT_ERROR;
     }
     case "analyze": {

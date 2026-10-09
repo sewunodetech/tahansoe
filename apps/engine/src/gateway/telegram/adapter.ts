@@ -14,10 +14,13 @@ import {
   telegramSetMyCommands,
   telegramSetChatMenuButton,
   telegramAnswerCallbackQuery,
+  telegramGetWebhookInfo,
   DEFAULT_COMMANDS_ID,
   DEFAULT_COMMANDS_EN,
 } from "./api.ts";
 import type { GatewayRuntimeState } from "../core/state.ts";
+
+export type ChannelStatus = "active" | "inactive" | "conflict" | "webhook_active" | "stopped";
 
 export interface TelegramAdapterOptions {
   token: string;
@@ -27,6 +30,7 @@ export interface TelegramAdapterOptions {
   pollTimeoutSec?: number; // default 50
   state?: GatewayRuntimeState;
   onStateUpdate?: (state: GatewayRuntimeState) => Promise<void>;
+  onPollCycle?: () => void;
   minChatIntervalMs?: number;
   minGlobalIntervalMs?: number;
 }
@@ -73,6 +77,8 @@ interface TelegramUpdate {
 
 export class TelegramAdapter implements ChannelAdapter {
   public readonly channelName = "telegram";
+  public status: ChannelStatus = "inactive";
+  public webhookHost?: string;
 
   private readonly token: string;
   private readonly baseUrl: string;
@@ -82,6 +88,7 @@ export class TelegramAdapter implements ChannelAdapter {
   private readonly queue: TelegramMessageQueue;
   private readonly state?: GatewayRuntimeState;
   private readonly onStateUpdate?: (state: GatewayRuntimeState) => Promise<void>;
+  private readonly onPollCycle?: () => void;
 
   private messageHandler?: (msg: InboundMessage) => Promise<void>;
   private running = false;
@@ -96,6 +103,7 @@ export class TelegramAdapter implements ChannelAdapter {
     this.pollTimeoutSec = options.pollTimeoutSec ?? 50;
     this.state = options.state;
     this.onStateUpdate = options.onStateUpdate;
+    this.onPollCycle = options.onPollCycle;
 
     this.queue = new TelegramMessageQueue({
       token: this.token,
@@ -131,6 +139,7 @@ export class TelegramAdapter implements ChannelAdapter {
   public async start(): Promise<void> {
     if (this.running) return;
     this.running = true;
+    this.status = "active";
     this.abortController = new AbortController();
 
     // Daftarkan menu perintah Telegram dan tombol menu chat secara idempoten
@@ -143,8 +152,11 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   public async stop(): Promise<void> {
-    if (!this.running) return;
+    if (!this.running && this.status !== "conflict" && this.status !== "webhook_active") return;
     this.running = false;
+    if (this.status !== "conflict" && this.status !== "webhook_active") {
+      this.status = "stopped";
+    }
 
     if (this.abortController) {
       this.abortController.abort();
@@ -195,6 +207,14 @@ export class TelegramAdapter implements ChannelAdapter {
     let offset = this.state?.offset ?? 0;
 
     while (this.running) {
+      if (this.onPollCycle) {
+        try {
+          this.onPollCycle();
+        } catch {
+          // Abaikan
+        }
+      }
+
       try {
         const url = new URL(`${this.baseUrl}/bot${this.token}/getUpdates`);
         if (offset > 0) {
@@ -213,9 +233,40 @@ export class TelegramAdapter implements ChannelAdapter {
 
         const data = (await res.json().catch(() => ({}))) as {
           ok?: boolean;
+          error_code?: number;
           description?: string;
           result?: TelegramUpdate[];
         };
+
+        // Penanganan HTTP 409 Conflict: webhook aktif atau getUpdates ganda
+        if (res.status === 409 || data.error_code === 409) {
+          const desc = String(data.description ?? "").toLowerCase();
+          if (desc.includes("webhook is active") || desc.includes("webhook")) {
+            this.status = "webhook_active";
+            this.running = false;
+            let host = "";
+            try {
+              const info = await telegramGetWebhookInfo(this.token, {
+                baseUrl: this.baseUrl,
+                fetchFn: this.fetchFn,
+              });
+              if (info.ok && info.host) {
+                host = info.host;
+              }
+            } catch {
+              // Abaikan
+            }
+            this.webhookHost = host;
+            const targetHost = host || "external host";
+            this.logger(`[Telegram] This bot uses a webhook to <${targetHost}>. Use a dedicated bot, or run tahansoe gateway pair --delete-webhook`);
+            break;
+          }
+
+          this.status = "conflict";
+          this.running = false;
+          this.logger("[Telegram] another Tahansoe agent is already polling this bot; pairing will be handled by it");
+          break;
+        }
 
         if (!res.ok || !data.ok) {
           const desc = data.description ? maskUrl(data.description, this.token) : `HTTP ${res.status}`;
@@ -292,6 +343,34 @@ export class TelegramAdapter implements ChannelAdapter {
         if (!this.running) break;
         const msg = sanitizeError(err, this.token);
         if (msg.includes("abort") || msg.includes("AbortError")) {
+          break;
+        }
+        if ((err as any)?.status === 409 || (err as any)?.statusCode === 409 || msg.includes("409")) {
+          const desc = msg.toLowerCase();
+          if (desc.includes("webhook is active") || desc.includes("webhook")) {
+            this.status = "webhook_active";
+            this.running = false;
+            let host = "";
+            try {
+              const info = await telegramGetWebhookInfo(this.token, {
+                baseUrl: this.baseUrl,
+                fetchFn: this.fetchFn,
+              });
+              if (info.ok && info.host) {
+                host = info.host;
+              }
+            } catch {
+              // Abaikan
+            }
+            this.webhookHost = host;
+            const targetHost = host || "external host";
+            this.logger(`[Telegram] This bot uses a webhook to <${targetHost}>. Use a dedicated bot, or run tahansoe gateway pair --delete-webhook`);
+            break;
+          }
+
+          this.status = "conflict";
+          this.running = false;
+          this.logger("[Telegram] another Tahansoe agent is already polling this bot; pairing will be handled by it");
           break;
         }
         this.logger(`[Telegram] Polling connection error: ${msg}`);
