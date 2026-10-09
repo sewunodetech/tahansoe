@@ -67,6 +67,23 @@ export const env = {
    */
   ollamaBaseUrl: () => optionalEnv("OLLAMA_BASE_URL", ""),
 
+  // --- Provider OpenAI-compatible GENERIK (endpoint apa pun, mis. router pihak ketiga).
+  // LLM_BASE_URL boleh ditulis sampai ".../v1" atau ".../v1/chat/completions"
+  // (dinormalisasi). Provider tambahan: LLM_PROVIDER_<NAMA>_BASE_URL + _API_KEY.
+  llmBaseUrl: () => optionalEnv("LLM_BASE_URL", ""),
+  llmApiKey: () => optionalEnv("LLM_API_KEY", ""),
+  /** Nama provider untuk LLM_BASE_URL (dipakai di "nama:model"). Default "custom". */
+  llmProviderName: () => optionalEnv("LLM_PROVIDER_NAME", "custom").trim().toLowerCase() || "custom",
+  /** Model default untuk SEMUA peran bila LLM_<PERAN> kosong. */
+  llmModel: () => optionalEnv("LLM_MODEL", ""),
+  /**
+   * URL daftar harga opsional. Format yang dikenali: Bynara (`/api/pricing`,
+   * credit per 1k token + usd_to_idr) dan OpenRouter (`/api/v1/models`, USD per token).
+   */
+  llmPricingUrl: () => optionalEnv("LLM_PRICING_URL", ""),
+  /** Harga manual (JSON): {"model":{"inputPerM":0.3,"outputPerM":1.2}} dalam USD per 1 juta token. */
+  llmModelPricesJson: () => optionalEnv("LLM_MODEL_PRICES", ""),
+
   // --- Pemilihan provider:model per peran (ADR 0008 §2–§3). Format:
   // "provider:model,provider:model" (daftar fallback dipisah koma). Kosong = default.
   llmAnalyst: () => optionalEnv("LLM_ANALYST", ""),

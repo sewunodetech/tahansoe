@@ -10,6 +10,7 @@
  */
 
 import type { LlmUsage } from "./provider.ts";
+import type { ModelPrice } from "./pricing.ts";
 import { env } from "../config.ts";
 
 /**
@@ -47,15 +48,39 @@ const FALLBACK_PRICE = PRICE_PER_MTOK["claude-opus-5-5"]!;
 const warnedUnknownModels = new Set<string>();
 
 /**
+ * Harga runtime (USD per 1M token) dari pricing.ts (LLM_MODEL_PRICES / LLM_PRICING_URL).
+ * Dikonsultasikan SEBELUM tabel bawaan. Kosong secara default; diisi lewat
+ * `setRuntimePricing` oleh pemanggil yang memuat harga (CLI, worker).
+ */
+let runtimePricing: Map<string, { input: number; output: number }> = new Map();
+
+/**
+ * Pasang harga runtime dari pricing.ts. Hanya menyimpan input/outputPerM (USD).
+ * Memanggil ini mengganti harga runtime sebelumnya.
+ */
+export function setRuntimePricing(prices: Map<string, ModelPrice>): void {
+  const next = new Map<string, { input: number; output: number }>();
+  for (const [model, p] of prices) next.set(model, { input: p.inputPerM, output: p.outputPerM });
+  runtimePricing = next;
+}
+
+/** Kosongkan harga runtime (untuk test agar tidak bocor antar-kasus). */
+export function clearRuntimePricing(): void {
+  runtimePricing = new Map();
+}
+
+/**
  * Biaya satu pemakaian dalam USD.
  *
+ * Urutan sumber harga: (1) harga runtime (pricing.ts, bila dimuat), (2) tabel
+ * bawaan PRICE_PER_MTOK, (3) fallback konservatif (harga tier termahal/opus) untuk
+ * model yang tetap tak dikenal — tidak pernah dianggap gratis.
+ *
  * Memperhitungkan token cache secara terpisah: input non-cache pada harga penuh,
- * cache write ~1.25x, cache read ~0.1x, output pada harga output. Model yang tidak
- * ada di tabel harga diperlakukan konservatif memakai harga tier termahal (opus)
- * dan dicatat sebagai warning sekali — tidak pernah dianggap gratis.
+ * cache write ~1.25x, cache read ~0.1x, output pada harga output.
  */
 export function costOf(usage: LlmUsage): number {
-  let price = PRICE_PER_MTOK[usage.model];
+  let price = runtimePricing.get(usage.model) ?? PRICE_PER_MTOK[usage.model];
   if (!price) {
     if (!warnedUnknownModels.has(usage.model)) {
       warnedUnknownModels.add(usage.model);

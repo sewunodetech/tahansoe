@@ -18,7 +18,12 @@ import { AnthropicProvider } from "./anthropic.ts";
 import { budget as defaultBudget, type Budget } from "./budget.ts";
 import { env } from "../config.ts";
 
-export type ProviderName = "anthropic" | "gemini" | "openrouter" | "groq" | "ollama";
+/**
+ * Nama provider. Built-in: anthropic, gemini, openrouter, groq, ollama. Provider
+ * OpenAI-compatible GENERIK dari env: nama dari LLM_PROVIDER_NAME (default "custom")
+ * untuk LLM_BASE_URL, ditambah LLM_PROVIDER_<NAMA>_BASE_URL/_API_KEY.
+ */
+export type ProviderName = string;
 
 export type Role = "analyst" | "debate" | "assessor" | "reflector";
 
@@ -28,16 +33,66 @@ export interface RoleEntry {
   model: string;
 }
 
-/** Base URL OpenAI-compatible per provider (ADR 0008 §2). */
-const BASE_URL: Record<Exclude<ProviderName, "anthropic">, () => string> = {
+const BUILTIN_PROVIDERS = ["anthropic", "gemini", "openrouter", "groq", "ollama"] as const;
+
+/** Base URL OpenAI-compatible untuk provider built-in (ADR 0008 §2). */
+const BUILTIN_BASE_URL: Record<string, () => string> = {
   gemini: () => "https://generativelanguage.googleapis.com/v1beta/openai/",
   openrouter: () => "https://openrouter.ai/api/v1",
   groq: () => "https://api.groq.com/openai/v1",
   ollama: () => env.ollamaBaseUrl(),
 };
 
-/** API key per provider (kosong = tidak tersedia). Ollama tanpa key. */
+/**
+ * Normalisasi base URL OpenAI-compatible: user boleh menulis URL endpoint lengkap
+ * (".../v1/chat/completions") atau base (".../v1"); keduanya → ".../v1".
+ */
+export function normalizeBaseUrl(url: string): string {
+  return url
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/chat\/completions$/i, "")
+    .replace(/\/+$/, "");
+}
+
+/** Provider generik yang dikonfigurasi lewat env: nama → {baseURL, apiKey}. */
+export function customProviders(
+  envVars: Record<string, string | undefined> = process.env,
+): Record<string, { baseURL: string; apiKey: string }> {
+  const out: Record<string, { baseURL: string; apiKey: string }> = {};
+  const base = envVars.LLM_BASE_URL?.trim();
+  if (base) {
+    const name = (envVars.LLM_PROVIDER_NAME ?? "custom").trim().toLowerCase() || "custom";
+    out[name] = { baseURL: normalizeBaseUrl(base), apiKey: envVars.LLM_API_KEY?.trim() ?? "" };
+  }
+  for (const [key, value] of Object.entries(envVars)) {
+    const m = /^LLM_PROVIDER_([A-Z0-9_]+)_BASE_URL$/.exec(key);
+    if (!m || !value?.trim()) continue;
+    const name = m[1]!.toLowerCase();
+    out[name] = {
+      baseURL: normalizeBaseUrl(value),
+      apiKey: envVars[`LLM_PROVIDER_${m[1]}_API_KEY`]?.trim() ?? "",
+    };
+  }
+  return out;
+}
+
+/** Nama provider generik default (untuk LLM_BASE_URL), atau null bila tidak diset. */
+export function defaultCustomProvider(): string | null {
+  return env.llmBaseUrl().trim() ? env.llmProviderName() : null;
+}
+
+/** Base URL untuk provider apa pun (custom lebih dulu, lalu built-in). */
+export function baseUrlFor(provider: ProviderName): string {
+  const custom = customProviders()[provider];
+  if (custom) return custom.baseURL;
+  return BUILTIN_BASE_URL[provider]?.() ?? "";
+}
+
+/** API key per provider (kosong = tidak tersedia, kecuali provider lokal). */
 export function apiKeyFor(provider: ProviderName): string {
+  const custom = customProviders()[provider];
+  if (custom) return custom.apiKey;
   switch (provider) {
     case "anthropic":
       return env.anthropicApiKey();
@@ -47,51 +102,52 @@ export function apiKeyFor(provider: ProviderName): string {
       return env.openrouterApiKey();
     case "groq":
       return env.groqApiKey();
-    case "ollama":
-      return ""; // tanpa auth; dianggap tersedia bila baseURL diset (default lokal)
+    default:
+      return ""; // ollama / tak dikenal: tanpa auth
   }
 }
 
 /** True jika provider punya kredensial / dapat dipakai. */
 export function isProviderAvailable(provider: ProviderName): boolean {
+  const custom = customProviders()[provider];
+  // Provider generik: tersedia bila base URL diset (key boleh kosong untuk server lokal).
+  if (custom) return custom.baseURL.length > 0;
   if (provider === "ollama") return env.ollamaBaseUrl().length > 0;
+  if (!(BUILTIN_PROVIDERS as readonly string[]).includes(provider)) return false;
   return apiKeyFor(provider).length > 0;
 }
 
 /** Peta ketersediaan semua provider (untuk logging/diagnosa, tanpa nilai key). */
-export function providerAvailability(): Record<ProviderName, boolean> {
-  return {
-    anthropic: isProviderAvailable("anthropic"),
-    gemini: isProviderAvailable("gemini"),
-    openrouter: isProviderAvailable("openrouter"),
-    groq: isProviderAvailable("groq"),
-    ollama: isProviderAvailable("ollama"),
-  };
+export function providerAvailability(): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  for (const name of BUILTIN_PROVIDERS) out[name] = isProviderAvailable(name);
+  for (const name of Object.keys(customProviders())) out[name] = isProviderAvailable(name);
+  return out;
 }
 
-const PROVIDER_NAMES: ProviderName[] = [
-  "anthropic",
-  "gemini",
-  "openrouter",
-  "groq",
-  "ollama",
-];
-
 /**
- * Parse "provider:model,provider:model" → daftar RoleEntry. Entri tidak valid
- * (provider tak dikenal / format salah) dilewati. String kosong → [].
+ * Parse "provider:model,provider:model" → daftar RoleEntry. Entri tanpa prefix
+ * provider ("deepseek-v4.1-flash") memakai provider generik default (LLM_BASE_URL)
+ * bila ada. Hanya titik dua PERTAMA yang memisahkan provider, sehingga model
+ * seperti "openrouter:meta-llama/llama-3.3-70b-instruct:free" tetap utuh.
+ * Entri yang tidak bisa diresolusi dilewati. String kosong → [].
  */
-export function parseRoleSpec(spec: string): RoleEntry[] {
+export function parseRoleSpec(
+  spec: string,
+  fallbackProvider: string | null = defaultCustomProvider(),
+): RoleEntry[] {
   const entries: RoleEntry[] = [];
+  const known = new Set<string>([...BUILTIN_PROVIDERS, ...Object.keys(customProviders())]);
   for (const raw of spec.split(",")) {
     const item = raw.trim();
     if (!item) continue;
     const idx = item.indexOf(":");
-    if (idx <= 0 || idx === item.length - 1) continue;
-    const provider = item.slice(0, idx).trim() as ProviderName;
-    const model = item.slice(idx + 1).trim();
-    if (!PROVIDER_NAMES.includes(provider)) continue;
-    entries.push({ provider, model });
+    const maybeProvider = idx > 0 ? item.slice(0, idx).trim().toLowerCase() : "";
+    if (idx > 0 && idx < item.length - 1 && known.has(maybeProvider)) {
+      entries.push({ provider: maybeProvider, model: item.slice(idx + 1).trim() });
+    } else if (fallbackProvider && !(idx > 0 && known.has(maybeProvider))) {
+      entries.push({ provider: fallbackProvider, model: item });
+    }
   }
   return entries;
 }
@@ -102,6 +158,14 @@ export function parseRoleSpec(spec: string): RoleEntry[] {
  * Gemini tak tersedia tetapi Anthropic ada, pakai tier Anthropic yang sekarang.
  */
 export function defaultSpecFor(role: Role): RoleEntry[] {
+  // Model generik dari env (LLM_MODEL di LLM_BASE_URL) didahulukan untuk semua peran.
+  const custom = defaultCustomProvider();
+  const head: RoleEntry[] =
+    custom && env.llmModel().trim() ? [{ provider: custom, model: env.llmModel().trim() }] : [];
+  return [...head, ...builtinDefaultSpecFor(role)];
+}
+
+function builtinDefaultSpecFor(role: Role): RoleEntry[] {
   const geminiAvailable = isProviderAvailable("gemini");
   const anthropicAvailable = isProviderAvailable("anthropic");
 
@@ -160,7 +224,7 @@ export function makeProvider(
   return new OpenAICompatibleProvider(
     {
       name: entry.provider,
-      baseURL: BASE_URL[entry.provider](),
+      baseURL: baseUrlFor(entry.provider),
       apiKey: apiKeyFor(entry.provider),
       model: entry.model,
     },

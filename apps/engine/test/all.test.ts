@@ -19,3 +19,7 @@ import "./reflection/lessons.test.ts";
 import "./reflection/scorecard.test.ts";
 import "./sources/sources.test.ts";
 import "./worker/worker.test.ts";
+import "./llm/pricing.test.ts";
+import "./llm/registry-generic.test.ts";
+import "./cli/env-writer.test.ts";
+import "./cli/models.test.ts";

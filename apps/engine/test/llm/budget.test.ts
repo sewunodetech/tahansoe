@@ -5,7 +5,8 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { costOf } from "../../src/llm/budget.ts";
+import { costOf, setRuntimePricing, clearRuntimePricing } from "../../src/llm/budget.ts";
+import type { ModelPrice } from "../../src/llm/pricing.ts";
 
 test("(a) hanya input/output: haiku 1M in + 1M out", () => {
   // haiku: in $0.10, out $0.50 per 1M
@@ -53,4 +54,23 @@ test("(c) model tak dikenal memakai harga opus (bukan gratis)", () => {
   });
   assert.equal(unknown, opus);
   assert.ok(unknown > 0, "model tak dikenal tidak boleh gratis");
+});
+
+test("(d) harga runtime dipakai sebelum tabel bawaan", () => {
+  try {
+    const prices = new Map<string, ModelPrice>([
+      ["deepseek-v4.1-flash", { inputPerM: 0.3, outputPerM: 1.2 }],
+    ]);
+    setRuntimePricing(prices);
+    const c = costOf({ model: "deepseek-v4.1-flash", inputTokens: 1_000_000, outputTokens: 1_000_000 });
+    assert.ok(Math.abs(c - 1.5) < 1e-9, `expected 1.5, got ${c}`);
+  } finally {
+    clearRuntimePricing();
+  }
+});
+
+test("(e) tanpa harga runtime, model tak dikenal tetap fallback opus", () => {
+  clearRuntimePricing();
+  const c = costOf({ model: "mystery-model", inputTokens: 1_000_000, outputTokens: 0 });
+  assert.ok(Math.abs(c - 4) < 1e-9, "fallback opus input $4/1M");
 });

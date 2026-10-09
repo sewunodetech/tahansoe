@@ -7,6 +7,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test test/all.test.ts",
+    "research": "tsx --env-file-if-exists=.env src/cli/research.ts",
+    "models": "tsx --env-file-if-exists=.env src/cli/models.ts",
     "research:run": "tsx --env-file-if-exists=.env src/index.ts",
     "research:dry": "tsx --env-file-if-exists=.env src/agents/run.ts --dry",
     "research:once": "tsx --env-file-if-exists=.env src/agents/run.ts",
