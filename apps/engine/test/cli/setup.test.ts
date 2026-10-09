@@ -268,3 +268,179 @@ test("setupCommand: --help menampilkan bantuan", async () => {
   assert.equal(exitCode, EXIT_OK);
   assert.ok(out.join("").includes("Usage: tahansoe setup"));
 });
+
+test("askHidden: simulasi kasus REPL-aktif memastikan secret TIDAK PERNAH muncul di captured stdout", async () => {
+  const secret = "8930492810:AAG_very_secret_bot_token_sample";
+  const { PassThrough } = await import("node:stream");
+  const inputStream = new PassThrough();
+  let capturedStdout = "";
+  const outputStream = new Writable({
+    write(chunk, _encoding, callback) {
+      capturedStdout += chunk.toString();
+      callback();
+    },
+  });
+
+  const readline = await import("node:readline");
+  const replRl = readline.createInterface({
+    input: inputStream,
+    output: outputStream,
+    terminal: true,
+    prompt: "› ",
+  });
+
+  const hiddenPromise = askHidden("  TELEGRAM_BOT_TOKEN: ", {
+    input: inputStream,
+    output: outputStream,
+    replRl,
+  });
+
+  // Tulis secret ke input stream
+  inputStream.write(secret + "\n");
+
+  const answer = await hiddenPromise;
+  assert.equal(answer, secret);
+
+  // Periksa captured stdout: prompt harus ada, namun secret SAMA SEKALI tidak boleh muncul
+  assert.ok(capturedStdout.includes("TELEGRAM_BOT_TOKEN: "), "prompt harus muncul");
+  assert.ok(!capturedStdout.includes(secret), "secret TIDAK PERNAH boleh bocor di captured stdout saat REPL aktif");
+  assert.ok(!capturedStdout.includes(`› ${secret}`), "tidak boleh ada echo prompt REPL bersama secret");
+
+  replRl.close();
+});
+
+test("setupCommand: konfigurasi neon eksisting + semua Enter -> .env dan settings.json byte-identical", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "tahansoe-setup-byte-identical-"));
+  const tmpEnv = join(tmp, ".env");
+  const tmpSettings = join(tmp, "settings.json");
+
+  const initialEnvContent = [
+    "LLM_API_URL=https://router.bynara.id/v1",
+    "LLM_API_KEY=existing-secret-llm-key-999",
+    "DB_DRIVER=neon",
+    "DATABASE_URL=postgresql://neon-user:secret-pass@ep-cool.neon.tech/main",
+    "RESEARCH_ENABLED=true",
+    "ARBITRUM_RPC_URL=https://arb-custom.io/rpc",
+    "FRED_API_KEY=fred-secret-888",
+    "TELEGRAM_BOT_TOKEN=555666:Secret_TG_Token_777",
+    "# TELEGRAM_ALLOWED_CHAT_IDS=",
+    "# GATEWAY_ALERT_POLL_SEC=60",
+    "",
+  ].join("\n");
+
+  const initialSettingsContent = JSON.stringify(
+    {
+      version: 2,
+      roles: {
+        analyst: ["gpt-6-luna", "deepseek-v4-flash"],
+        debate: ["gpt-6-luna", "deepseek-v4-flash"],
+        assessor: ["gpt-6-luna", "deepseek-v4-flash"],
+        reflector: ["gpt-6-luna", "deepseek-v4-flash"],
+        chat: ["gpt-6-luna", "deepseek-v4-flash"],
+      },
+    },
+    null,
+    2,
+  ) + "\n";
+
+  await writeFile(tmpEnv, initialEnvContent, "utf-8");
+  await writeFile(tmpSettings, initialSettingsContent, "utf-8");
+
+  const envVars: NodeJS.ProcessEnv = {
+    LLM_API_URL: "https://router.bynara.id/v1",
+    LLM_API_KEY: "existing-secret-llm-key-999",
+    DB_DRIVER: "neon",
+    DATABASE_URL: "postgresql://neon-user:secret-pass@ep-cool.neon.tech/main",
+    RESEARCH_ENABLED: "true",
+    ARBITRUM_RPC_URL: "https://arb-custom.io/rpc",
+    FRED_API_KEY: "fred-secret-888",
+    TELEGRAM_BOT_TOKEN: "555666:Secret_TG_Token_777",
+  };
+
+  // Simulasikan menekan tombol Enter (string kosong) pada seluruh prompt interaktif
+  let lineIdx = 0;
+  const inputStream = new Readable({
+    read() {
+      setTimeout(() => {
+        if (lineIdx < 8) {
+          lineIdx++;
+          this.push("\n");
+        } else {
+          this.push(null);
+        }
+      }, 5);
+    },
+  });
+
+  const stdoutChunks: string[] = [];
+
+  const exitCode = await setupCommand([], {
+    env: envVars,
+    envPath: tmpEnv,
+    settingsPath: tmpSettings,
+    stdin: inputStream,
+    stdout: (s) => stdoutChunks.push(s),
+    stderr: () => {},
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [{ id: "gpt-6-luna" }] }),
+      text: async () => "",
+    }) as any,
+    telegramGetMe: async () => ({ ok: true, username: "ExistingBot" }),
+    runDoctorImpl: async () => [],
+  });
+
+  assert.equal(exitCode, EXIT_OK);
+
+  // Verifikasi output menampilkan (current)
+  const fullOut = stdoutChunks.join("");
+  assert.ok(fullOut.includes("(current)"), "harus menampilkan (current) di sebelah nilai default");
+
+  // VERIFIKASI UTAMA (Bug B): file .env dan settings.json HARUS BYTE-IDENTICAL
+  const finalEnvContent = await readFile(tmpEnv, "utf-8");
+  const finalSettingsContent = await readFile(tmpSettings, "utf-8");
+
+  assert.equal(
+    finalEnvContent,
+    initialEnvContent,
+    ".env harus persis sama (byte-identical) saat semua konfigurasi dipertahankan",
+  );
+  assert.equal(
+    finalSettingsContent,
+    initialSettingsContent,
+    "settings.json harus persis sama (byte-identical) saat model dipertahankan",
+  );
+
+  await rm(tmp, { recursive: true, force: true });
+});
+
+test("setupCommand: opsi --lang pada non-interaktif dan interaktif menyimpan ke settings.json", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "tahansoe-setup-lang-"));
+  const tmpEnv = join(tmp, ".env");
+  const tmpSettings = join(tmp, "settings.json");
+
+  // Non-interaktif dengan --lang en
+  const exitCode = await setupCommand(["--yes", "--lang", "en"], {
+    env: { LLM_API_KEY: "secret" },
+    envPath: tmpEnv,
+    settingsPath: tmpSettings,
+    stdout: () => {},
+    stderr: () => {},
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [{ id: "gpt-6-luna" }] }),
+      text: async () => "",
+    }) as any,
+    runDoctorImpl: async () => [],
+  });
+
+  assert.equal(exitCode, EXIT_OK);
+  const settingsContent = JSON.parse(await readFile(tmpSettings, "utf-8"));
+  assert.equal(settingsContent.ui?.language, "en", "ui.language harus tersimpan 'en'");
+
+  await rm(tmp, { recursive: true, force: true });
+});
+
+

@@ -353,7 +353,7 @@ test("main dispatch: gateway subcommand tidak dikenal → exit 1", async () => {
   }
 });
 
-test("main dispatch: --help mencantumkan start dan gateway", async () => {
+test("main dispatch: gateway pair --help dan gateway status --help mengembalikan exit 0", async () => {
   const { main } = await import("../../src/cli/tahansoe.ts");
   const origWrite = process.stdout.write;
   const chunks: string[] = [];
@@ -363,13 +363,17 @@ test("main dispatch: --help mencantumkan start dan gateway", async () => {
   }) as any;
 
   try {
-    const code = await main(["--help"]);
-    assert.equal(code, 0);
-    const out = chunks.join("");
-    assert.match(out, /start/);
-    assert.match(out, /gateway/);
+    const pairCode = await main(["gateway", "pair", "--help"]);
+    assert.equal(pairCode, 0);
+    assert.match(chunks.join(""), /tahansoe gateway pair/);
+
+    chunks.length = 0;
+    const statusCode = await main(["gateway", "status", "--help"]);
+    assert.equal(statusCode, 0);
+    assert.match(chunks.join(""), /tahansoe gateway status/);
   } finally {
     process.stdout.write = origWrite;
   }
 });
+
 

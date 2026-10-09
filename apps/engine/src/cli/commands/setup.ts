@@ -26,6 +26,7 @@ import { detectTheme, maskHost, type Theme } from "../render.ts";
 import { writeEnvUpdates, defaultEnvPath } from "../env-writer.ts";
 import { loadSettingsSync, writeSettings, settingsPath } from "../../settings/settings.ts";
 import { runDoctor, formatDoctor, type DoctorFetch, type CheckResult } from "./doctor.ts";
+import { t, setLanguage, type SupportedLanguage } from "../i18n/index.ts";
 
 export const SETUP_HELP = `tahansoe setup — wizard konfigurasi awal (gateway, models, database, telegram)
 
@@ -33,6 +34,7 @@ Usage: tahansoe setup [options]
 
 Options:
   --yes                        Mode non-interaktif (otomatis dengan opsi yang diberikan/default)
+  --lang <id|en>               Bahasa antarmuka / UI language (default: id)
   --llm-url <url>              URL endpoint LLM gateway (default: https://router.bynara.id/v1)
   --llm-key-env <NAME>         Nama env var yang memuat LLM_API_KEY (jangan lewat argv)
   --db <pglite|neon>           Pilihan database: pglite (lokal, default) atau neon (cloud)
@@ -64,6 +66,7 @@ export interface SetupDeps {
     };
   }>;
   sleepImpl?: (ms: number) => Promise<void>;
+  replRl?: readline.Interface;
 }
 
 /** Sensor chat ID agar id privat tidak tercetak penuh ke log/layar. */
@@ -94,59 +97,136 @@ export async function defaultTelegramGetMe(
   }
 }
 
-async function defaultStartGateway(opts?: unknown) {
-  // @ts-ignore - concurrently built by Antigravity #1
-  const { startGateway } = await import("../../gateway/index.ts");
-  return startGateway(opts);
+export interface AskHiddenOptions {
+  input?: NodeJS.ReadableStream;
+  output?: NodeJS.WritableStream;
+  existing?: string;
+  replRl?: readline.Interface;
 }
 
 /**
  * Helper input teks tersembunyi (password/API key) yang tidak pernah di-echo
  * ke terminal atau dicetak ke stdout/stderr.
+ *
+ * Mendukung raw mode TTY dan serah-terima stdin jika REPL readline sedang aktif
+ * (menghindari echo '› 8930...:AAG...' di REPL).
  */
 export async function askHidden(
   promptText: string,
-  options: {
-    input?: NodeJS.ReadableStream;
-    output?: NodeJS.WritableStream;
-    existing?: string;
-  } = {},
+  options: AskHiddenOptions = {},
 ): Promise<string> {
   const input = options.input ?? process.stdin;
   const output = options.output ?? process.stdout;
 
-  return new Promise((resolve) => {
-    let muted = false;
-    const mutableStdout = new Writable({
-      write(chunk, encoding, callback) {
-        if (!muted) {
-          output.write(chunk, encoding);
-        }
-        callback();
-      },
-    });
+  // Hentikan/bungkam readline REPL jika sedang aktif
+  let restoreRepl: (() => void) | undefined;
+  if (options.replRl) {
+    const repl = options.replRl;
+    repl.pause();
+    const origOutput = (repl as any).output;
+    const origTerminal = (repl as any).terminal;
+    (repl as any).output = null;
+    (repl as any).terminal = false;
+    restoreRepl = () => {
+      (repl as any).output = origOutput;
+      (repl as any).terminal = origTerminal;
+      repl.resume();
+    };
+  }
 
-    const rl = readline.createInterface({
-      input,
-      output: mutableStdout,
-      terminal: Boolean((input as any).isTTY),
-    });
+  const isRawSupported =
+    Boolean((input as any).isTTY) &&
+    typeof (input as any).setRawMode === "function";
 
-    output.write(promptText);
-    muted = true;
+  try {
+    if (isRawSupported) {
+      output.write(promptText);
+      return await new Promise<string>((resolve) => {
+        const stream = input as NodeJS.ReadStream;
+        const wasRaw = Boolean(stream.isRaw);
+        stream.setRawMode(true);
+        stream.resume();
 
-    rl.question("", (answer) => {
-      muted = false;
-      output.write("\n");
-      rl.close();
-      const trimmed = answer.trim();
-      if (!trimmed && options.existing) {
-        resolve(options.existing);
-      } else {
-        resolve(trimmed);
-      }
+        let buffer = "";
+
+        const onData = (chunk: Buffer | string) => {
+          const s = String(chunk);
+          for (let i = 0; i < s.length; i++) {
+            const ch = s[i]!;
+            if (ch === "\r" || ch === "\n") {
+              cleanup();
+              output.write("\n");
+              const trimmed = buffer.trim();
+              resolve(!trimmed && options.existing ? options.existing : trimmed);
+              return;
+            }
+            if (ch === "\u0003") {
+              // Ctrl+C
+              cleanup();
+              output.write("\n");
+              process.exit(130);
+              return;
+            }
+            if (ch === "\u0004") {
+              // Ctrl+D (EOF)
+              cleanup();
+              output.write("\n");
+              const trimmed = buffer.trim();
+              resolve(!trimmed && options.existing ? options.existing : trimmed);
+              return;
+            }
+            if (ch === "\u0008" || ch === "\x7f") {
+              // Backspace
+              if (buffer.length > 0) {
+                buffer = buffer.slice(0, -1);
+              }
+            } else if (ch >= " " || ch === "\t") {
+              buffer += ch;
+            }
+          }
+        };
+
+        const cleanup = () => {
+          stream.removeListener("data", onData);
+          try {
+            stream.setRawMode(wasRaw);
+          } catch {
+            /* abaikan */
+          }
+        };
+
+        stream.on("data", onData);
+      });
+    }
+
+    // Non-TTY fallback (pengujian, pipa proses, dsb.)
+    return await new Promise<string>((resolve) => {
+      const mutableStdout = new Writable({
+        write(_chunk, _encoding, callback) {
+          callback();
+        },
+      });
+
+      const rl = readline.createInterface({
+        input,
+        output: mutableStdout,
+        terminal: false,
+      });
+
+      output.write(promptText);
+
+      rl.question("", (answer) => {
+        output.write("\n");
+        rl.close();
+        const trimmed = answer.trim();
+        resolve(!trimmed && options.existing ? options.existing : trimmed);
+      });
     });
-  });
+  } finally {
+    if (restoreRepl) {
+      restoreRepl();
+    }
+  }
 }
 
 /**
@@ -226,6 +306,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
       args: argv,
       options: {
         yes: { type: "boolean" },
+        lang: { type: "string" },
         "llm-url": { type: "string" },
         "llm-key-env": { type: "string" },
         db: { type: "string" },
@@ -260,37 +341,77 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   writeOut(pc.bold("\n=== Tahansoe Setup Wizard ===\n"));
   writeOut("Konfigurasi LLM gateway, model riset, dan database untuk Core Risk Engine.\n\n");
 
+  const existingApiUrl = env.LLM_API_URL?.trim() || "";
+  const defaultApiUrl = existingApiUrl || "https://router.bynara.id/v1";
+  const existingApiKey = env.LLM_API_KEY?.trim() || "";
+  const existingDbDriver = env.DB_DRIVER?.trim().toLowerCase() === "neon" ? "neon" : "pglite";
+  const existingDbUrl = env.DATABASE_URL?.trim() || "";
+  const existingRpcUrl = env.ARBITRUM_RPC_URL?.trim() || "";
+  const existingFredKey = env.FRED_API_KEY?.trim() || "";
+  const existingTgToken = env.TELEGRAM_BOT_TOKEN?.trim() || "";
+
+  let existingRolesSummary: string | undefined;
+  let hasExistingRoles = false;
+  try {
+    const { settings } = loadSettingsSync(targetSettingsPath);
+    if (settings.roles && Object.keys(settings.roles).length > 0) {
+      hasExistingRoles = true;
+      existingRolesSummary = settings.roles.analyst?.[0] || "custom";
+    }
+  } catch {
+    /* abaikan */
+  }
+
   let apiUrl = "";
   let apiKey = "";
-  let dbDriver = "pglite";
-  let databaseUrl = "";
+  let dbDriver = existingDbDriver;
+  let databaseUrl = existingDbUrl;
   let selectedModel = "gpt-6-luna";
+  let keepCurrentModel = false;
   let arbitrumRpcUrl = "";
   let fredApiKey = "";
   let telegramToken = "";
+  let chosenLang: SupportedLanguage | undefined;
 
   // -------------------------------------------------------------------------
   // 1. LLM Gateway & API Key
   // -------------------------------------------------------------------------
   if (isNonInteractive) {
-    apiUrl = f["llm-url"] || env.LLM_API_URL || "https://router.bynara.id/v1";
+    if (f.lang) {
+      const l = String(f.lang).trim().toLowerCase();
+      if (l === "id" || l === "en") {
+        chosenLang = l as SupportedLanguage;
+        setLanguage(chosenLang);
+      }
+    }
+    apiUrl = f["llm-url"] || existingApiUrl || "https://router.bynara.id/v1";
     if (f["llm-key-env"]) {
       apiKey = env[f["llm-key-env"]] || "";
     } else {
-      apiKey = env.LLM_API_KEY || "";
+      apiKey = existingApiKey || "";
     }
-    dbDriver = f.db?.toLowerCase() === "neon" ? "neon" : "pglite";
+    if (f.db) {
+      dbDriver = f.db.toLowerCase() === "neon" ? "neon" : "pglite";
+    } else {
+      dbDriver = existingDbDriver;
+    }
     if (dbDriver === "neon") {
-      databaseUrl = env.DATABASE_URL || "";
+      databaseUrl = existingDbUrl || "";
     }
-    selectedModel = f.model || "gpt-6-luna";
+    if (f.model) {
+      selectedModel = f.model;
+    } else if (hasExistingRoles) {
+      keepCurrentModel = true;
+    } else {
+      selectedModel = "gpt-6-luna";
+    }
 
     const skipTelegram = Boolean(f["skip-telegram"]);
     if (!skipTelegram) {
       if (f["telegram-token-env"]) {
         telegramToken = env[String(f["telegram-token-env"])] || "";
       } else {
-        telegramToken = env.TELEGRAM_BOT_TOKEN || "";
+        telegramToken = existingTgToken || "";
       }
 
       if (telegramToken) {
@@ -299,54 +420,41 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
         const meRes = await getMe(telegramToken);
         if (meRes.ok && meRes.username) {
           writeOut(pc.green(`✔ Bot Telegram terverifikasi: @${meRes.username}\n`));
-          try {
-            const startGw = deps.startGateway ?? defaultStartGateway;
-            const gw = await startGw({
-              logger: { info: () => {}, warn: () => {}, error: () => {} },
-            });
-            if (gw?.pairing) {
-              const { code } = gw.pairing.createPairingCode("telegram");
-              writeOut(`Send /start ${code} to @${meRes.username} within 10 minutes\n`);
-              const sleep = deps.sleepImpl ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
-              let paired = false;
-              let expired = false;
-              const maxPolls = 200;
-              for (let i = 0; i < maxPolls; i++) {
-                const pStatus = gw.pairing.pairingStatus(code);
-                if (pStatus.status === "paired") {
-                  paired = true;
-                  writeOut(pc.green(`✔ Berhasil terhubung dengan chat ${maskChatId(pStatus.chatId ?? "")}\n`));
-                  break;
-                } else if (pStatus.status === "expired") {
-                  expired = true;
-                  writeOut(pc.yellow("Kode pairing kedaluwarsa.\n"));
-                  break;
-                }
-                await sleep(3000);
-              }
-            }
-            if (gw) await gw.stop();
-          } catch (gwErr) {
-            writeErr(pc.yellow(`Perhatian: temporary gateway pairing: ${gwErr instanceof Error ? gwErr.message : String(gwErr)}\n`));
-          }
+          writeOut("Next: run 'tahansoe gateway pair' to connect your chat.\n\n");
         } else {
           writeErr(pc.yellow(`Perhatian: Token Telegram tidak valid: ${meRes.error ?? "gagal verifikasi"}\n`));
         }
       }
     }
   } else {
-    // Mode Interaktif
+    // 0. Pemilihan Bahasa Antarmuka (pada setup awal)
+    if (!hasExistingRoles) {
+      writeOut(pc.cyan("0. Bahasa Antarmuka / UI Language\n"));
+      writeOut("  1) Bahasa Indonesia (default)\n");
+      writeOut("  2) English\n");
+      const langAns = await askQuestion("  Pilih bahasa / Choose language [1]: ", {
+        input: deps.stdin,
+        output: deps.outputStream,
+        defaultValue: "1",
+      });
+      chosenLang =
+        langAns.trim() === "2" || langAns.trim().toLowerCase() === "en" ? "en" : "id";
+      setLanguage(chosenLang);
+      writeOut(pc.green(`  ✔ ${t("setup.langSaved", { lang: chosenLang === "id" ? "Bahasa Indonesia" : "English" })}\n\n`));
+    }
+
     writeOut(pc.cyan("1. LLM Gateway (OpenAI-compatible)\n"));
-    const defaultUrl = env.LLM_API_URL || "https://router.bynara.id/v1";
-    apiUrl = await askQuestion(`  LLM_API_URL [${defaultUrl}]: `, {
+    const urlPrompt = existingApiUrl
+      ? `  LLM_API_URL [${existingApiUrl} (current)]: `
+      : `  LLM_API_URL [${defaultApiUrl}]: `;
+    apiUrl = await askQuestion(urlPrompt, {
       input: deps.stdin,
       output: deps.outputStream,
-      defaultValue: defaultUrl,
+      defaultValue: defaultApiUrl,
     });
 
-    const existingKey = env.LLM_API_KEY || "";
-    const keyPrompt = existingKey
-      ? "  LLM_API_KEY [set (hidden)]: "
+    const keyPrompt = existingApiKey
+      ? "  LLM_API_KEY [set (hidden) (current)]: "
       : "  LLM_API_KEY: ";
 
     let gatewayReady = false;
@@ -354,7 +462,8 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
       apiKey = await askHidden(keyPrompt, {
         input: deps.stdin,
         output: deps.outputStream,
-        existing: existingKey,
+        existing: existingApiKey,
+        replRl: deps.replRl,
       });
 
       writeOut(`  Menguji koneksi ke ${maskHost(apiUrl)}/models...\n`);
@@ -380,52 +489,105 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
     // 2. Pemilihan Model
     // -----------------------------------------------------------------------
     writeOut(pc.cyan("2. Model Riset & Chat\n"));
-    writeOut("  [1] Rekomendasi: gpt-6-luna untuk semua peran (eval 24/24, ~Rp 1-2 per tanya) [default]\n");
-    writeOut("  [2] Masukkan nama model custom\n");
-    const modelChoice = await askQuestion("  Pilihan [1]: ", {
-      input: deps.stdin,
-      output: deps.outputStream,
-      defaultValue: "1",
-    });
-
-    if (modelChoice === "2") {
-      selectedModel = await askQuestion("  Nama model: ", {
+    if (hasExistingRoles) {
+      writeOut(`  [1] Keep current: ${existingRolesSummary} (current) [default]\n`);
+      writeOut("  [2] Rekomendasi: gpt-6-luna untuk semua peran (eval 24/24, ~Rp 1-2 per tanya)\n");
+      writeOut("  [3] Masukkan nama model custom\n");
+      const modelChoice = await askQuestion("  Pilihan [1]: ", {
         input: deps.stdin,
         output: deps.outputStream,
-        defaultValue: "gpt-6-luna",
+        defaultValue: "1",
       });
+
+      if (modelChoice === "1" || !modelChoice.trim()) {
+        keepCurrentModel = true;
+        writeOut(pc.green(`  ✔ Mempertahankan konfigurasi model saat ini (${existingRolesSummary})\n\n`));
+      } else if (modelChoice === "3") {
+        selectedModel = await askQuestion("  Nama model: ", {
+          input: deps.stdin,
+          output: deps.outputStream,
+          defaultValue: "gpt-6-luna",
+        });
+        writeOut(pc.green(`  ✔ Model dipilih: ${selectedModel} (fallback: deepseek-v4-flash)\n\n`));
+      } else {
+        selectedModel = "gpt-6-luna";
+        writeOut(pc.green(`  ✔ Model dipilih: ${selectedModel} (fallback: deepseek-v4-flash)\n\n`));
+      }
     } else {
-      selectedModel = "gpt-6-luna";
+      writeOut("  [1] Rekomendasi: gpt-6-luna untuk semua peran (eval 24/24, ~Rp 1-2 per tanya) [default]\n");
+      writeOut("  [2] Masukkan nama model custom\n");
+      const modelChoice = await askQuestion("  Pilihan [1]: ", {
+        input: deps.stdin,
+        output: deps.outputStream,
+        defaultValue: "1",
+      });
+
+      if (modelChoice === "2") {
+        selectedModel = await askQuestion("  Nama model: ", {
+          input: deps.stdin,
+          output: deps.outputStream,
+          defaultValue: "gpt-6-luna",
+        });
+      } else {
+        selectedModel = "gpt-6-luna";
+      }
+      writeOut(pc.green(`  ✔ Model dipilih: ${selectedModel} (fallback: deepseek-v4-flash)\n\n`));
     }
-    writeOut(pc.green(`  ✔ Model dipilih: ${selectedModel} (fallback: deepseek-v4-flash)\n\n`));
 
     // -----------------------------------------------------------------------
     // 3. Database Choice
     // -----------------------------------------------------------------------
     writeOut(pc.cyan("3. Database Engine\n"));
-    writeOut("  [1] PGlite (lokal, embedded Postgres WASM — tanpa server/akun cloud, default)\n");
-    writeOut("  [2] Neon (cloud serverless Postgres — butuh DATABASE_URL)\n");
-    const dbChoice = await askQuestion("  Pilihan [1]: ", {
-      input: deps.stdin,
-      output: deps.outputStream,
-      defaultValue: "1",
-    });
-
-    if (dbChoice === "2") {
-      dbDriver = "neon";
-      const existingDbUrl = env.DATABASE_URL || "";
-      const dbUrlPrompt = existingDbUrl
-        ? "  DATABASE_URL [set (hidden)]: "
-        : "  DATABASE_URL: ";
-      databaseUrl = await askHidden(dbUrlPrompt, {
+    if (existingDbDriver === "neon") {
+      writeOut("  [1] Neon (cloud serverless Postgres — butuh DATABASE_URL) (current) [default]\n");
+      writeOut("  [2] PGlite (lokal, embedded Postgres WASM — tanpa server/akun cloud)\n");
+      const dbChoice = await askQuestion("  Pilihan [1]: ", {
         input: deps.stdin,
         output: deps.outputStream,
-        existing: existingDbUrl,
+        defaultValue: "1",
       });
-      writeOut(pc.green("  ✔ Driver database: neon\n\n"));
+
+      if (dbChoice === "2") {
+        dbDriver = "pglite";
+        writeOut(pc.green("  ✔ Driver database: pglite (lokal: apps/engine/.data/pglite)\n\n"));
+      } else {
+        dbDriver = "neon";
+        const dbUrlPrompt = existingDbUrl
+          ? "  DATABASE_URL [set (hidden) (current)]: "
+          : "  DATABASE_URL: ";
+        databaseUrl = await askHidden(dbUrlPrompt, {
+          input: deps.stdin,
+          output: deps.outputStream,
+          existing: existingDbUrl,
+          replRl: deps.replRl,
+        });
+        writeOut(pc.green("  ✔ Driver database: neon\n\n"));
+      }
     } else {
-      dbDriver = "pglite";
-      writeOut(pc.green("  ✔ Driver database: pglite (lokal: apps/engine/.data/pglite)\n\n"));
+      writeOut("  [1] PGlite (lokal, embedded Postgres WASM — tanpa server/akun cloud) (current) [default]\n");
+      writeOut("  [2] Neon (cloud serverless Postgres — butuh DATABASE_URL)\n");
+      const dbChoice = await askQuestion("  Pilihan [1]: ", {
+        input: deps.stdin,
+        output: deps.outputStream,
+        defaultValue: "1",
+      });
+
+      if (dbChoice === "2") {
+        dbDriver = "neon";
+        const dbUrlPrompt = existingDbUrl
+          ? "  DATABASE_URL [set (hidden) (current)]: "
+          : "  DATABASE_URL: ";
+        databaseUrl = await askHidden(dbUrlPrompt, {
+          input: deps.stdin,
+          output: deps.outputStream,
+          existing: existingDbUrl,
+          replRl: deps.replRl,
+        });
+        writeOut(pc.green("  ✔ Driver database: neon\n\n"));
+      } else {
+        dbDriver = "pglite";
+        writeOut(pc.green("  ✔ Driver database: pglite (lokal: apps/engine/.data/pglite)\n\n"));
+      }
     }
 
     // -----------------------------------------------------------------------
@@ -437,9 +599,8 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
       writeOut("  Hubungkan bot Telegram untuk menerima alert risiko & perintah chat.\n");
       writeOut("  Buat bot baru di @BotFather di Telegram untuk mendapatkan bot token.\n");
 
-      const existingTgToken = env.TELEGRAM_BOT_TOKEN || "";
       const tgPrompt = existingTgToken
-        ? "  TELEGRAM_BOT_TOKEN [set (hidden), Enter = simpan]: "
+        ? "  TELEGRAM_BOT_TOKEN [set (hidden) (current), Enter = simpan]: "
         : "  TELEGRAM_BOT_TOKEN [Enter = lewati]: ";
 
       let tgReady = false;
@@ -448,6 +609,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
           input: deps.stdin,
           output: deps.outputStream,
           existing: existingTgToken,
+          replRl: deps.replRl,
         });
 
         if (!telegramToken) {
@@ -460,69 +622,9 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
         const getMe = deps.telegramGetMe ?? defaultTelegramGetMe;
         const meRes = await getMe(telegramToken);
         if (meRes.ok && meRes.username) {
-          writeOut(pc.green(`  ✔ Bot terhubung: @${meRes.username}\n\n`));
+          writeOut(pc.green(`  ✔ Bot terhubung: @${meRes.username}\n`));
+          writeOut("  Next: run 'tahansoe gateway pair' to connect your chat.\n\n");
           tgReady = true;
-
-          // Temporary in-process gateway pairing
-          writeOut(pc.cyan("  Pairing Chat Telegram:\n"));
-          let gw: any = null;
-          try {
-            const startGw = deps.startGateway ?? defaultStartGateway;
-            gw = await startGw({
-              logger: { info: () => {}, warn: () => {}, error: () => {} },
-            });
-            if (gw?.pairing) {
-              const { code } = gw.pairing.createPairingCode("telegram");
-              writeOut(`  Send ${pc.bold(`/start ${code}`)} to @${meRes.username} within 10 minutes\n`);
-              writeOut("  Menunggu pesan pairing (Ctrl+C untuk melewati)...\n");
-
-              let aborted = false;
-              const onSigInt = () => {
-                aborted = true;
-              };
-              process.once("SIGINT", onSigInt);
-
-              const sleep = deps.sleepImpl ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
-              let pollCount = 0;
-              const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-              while (!aborted) {
-                if (process.stdout.isTTY) {
-                  const spinChar = SPINNER[pollCount % SPINNER.length];
-                  process.stdout.write(`\r  ${spinChar} Menunggu /start ${code}...`);
-                }
-                await sleep(3000);
-                if (aborted) break;
-                pollCount++;
-                const pStatus = gw.pairing.pairingStatus(code);
-                if (pStatus.status === "paired") {
-                  if (process.stdout.isTTY) process.stdout.write("\r\x1b[K");
-                  writeOut(pc.green(`  ✔ Berhasil terhubung dengan chat ${maskChatId(pStatus.chatId ?? "")}\n\n`));
-                  break;
-                } else if (pStatus.status === "expired") {
-                  if (process.stdout.isTTY) process.stdout.write("\r\x1b[K");
-                  writeOut(pc.yellow("  Kode pairing telah kedaluwarsa. Anda dapat melakukan pairing nanti.\n\n"));
-                  break;
-                }
-              }
-              process.removeListener("SIGINT", onSigInt);
-              if (aborted) {
-                if (process.stdout.isTTY) process.stdout.write("\r\x1b[K");
-                writeOut("\n  Pairing dilewati.\n\n");
-              }
-            } else {
-              writeOut("  Pairing API tidak tersedia, pairing dilewati.\n\n");
-            }
-          } catch (err) {
-            writeErr(pc.yellow(`  Gagal menjalankan gateway pairing: ${err instanceof Error ? err.message : String(err)}\n\n`));
-          } finally {
-            if (gw) {
-              try {
-                await gw.stop();
-              } catch {
-                /* abaikan */
-              }
-            }
-          }
         } else {
           writeOut(pc.yellow(`  ✖ Token Telegram tidak valid: ${meRes.error ?? "HTTP error"}\n`));
           const action = await askQuestion("  Pilihan: [r] Coba lagi / [s] Lewati Telegram / [c] Tetap simpan token [c]: ", {
@@ -536,6 +638,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
             tgReady = true;
             writeOut("\n");
           } else if (act !== "r") {
+            writeOut("  Next: run 'tahansoe gateway pair' to connect your chat.\n\n");
             tgReady = true;
             writeOut("\n");
           }
@@ -547,18 +650,23 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
     // 5. Pengaturan Tambahan (Opsional)
     // -----------------------------------------------------------------------
     writeOut(pc.cyan("5. Pengaturan Tambahan (Opsional)\n"));
-    const rpcPrompt = "  ARBITRUM_RPC_URL [Enter = RPC publik https://arb1.arbitrum.io/rpc]: ";
+    const rpcPrompt = existingRpcUrl
+      ? `  ARBITRUM_RPC_URL [${existingRpcUrl} (current)]: `
+      : "  ARBITRUM_RPC_URL [Enter = RPC publik https://arb1.arbitrum.io/rpc]: ";
     arbitrumRpcUrl = await askQuestion(rpcPrompt, {
       input: deps.stdin,
       output: deps.outputStream,
-      defaultValue: "",
+      defaultValue: existingRpcUrl,
     });
 
-    const fredPrompt = "  FRED_API_KEY [opsional untuk kalender/makro, Enter = lewati]: ";
+    const fredPrompt = existingFredKey
+      ? "  FRED_API_KEY [set (hidden) (current), Enter = simpan]: "
+      : "  FRED_API_KEY [opsional untuk kalender/makro, Enter = lewati]: ";
     fredApiKey = await askHidden(fredPrompt, {
       input: deps.stdin,
       output: deps.outputStream,
-      existing: env.FRED_API_KEY || "",
+      existing: existingFredKey,
+      replRl: deps.replRl,
     });
     writeOut("\n");
   }
@@ -611,14 +719,32 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
     envUpdates.TELEGRAM_BOT_TOKEN = telegramToken;
   }
 
-  await writeEnvUpdates({
-    envPath: targetEnvPath,
-    updates: envUpdates,
-    commentedDefaults: [
-      "# TELEGRAM_ALLOWED_CHAT_IDS=",
-      "# GATEWAY_ALERT_POLL_SEC=60",
-    ],
-  });
+  let existingEnvContent = "";
+  try {
+    const { readFile } = await import("node:fs/promises");
+    existingEnvContent = await readFile(targetEnvPath, "utf8");
+  } catch {
+    /* file belum ada */
+  }
+
+  const { applyEnvUpdates } = await import("../env-writer.ts");
+  const updatedContent = applyEnvUpdates(existingEnvContent, envUpdates, [
+    "# TELEGRAM_ALLOWED_CHAT_IDS=",
+    "# GATEWAY_ALERT_POLL_SEC=60",
+  ]);
+
+  if (existingEnvContent && updatedContent === existingEnvContent) {
+    // Tidak ada perubahan di .env, jangan sentuh/tulis ulang file
+  } else {
+    await writeEnvUpdates({
+      envPath: targetEnvPath,
+      updates: envUpdates,
+      commentedDefaults: [
+        "# TELEGRAM_ALLOWED_CHAT_IDS=",
+        "# GATEWAY_ALERT_POLL_SEC=60",
+      ],
+    });
+  }
 
   // Terapkan ke proses saat ini agar doctor langsung mendeteksi perubahan
   env.LLM_API_URL = apiUrl;
@@ -631,20 +757,28 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   if (fredApiKey) env.FRED_API_KEY = fredApiKey;
   if (telegramToken) env.TELEGRAM_BOT_TOKEN = telegramToken;
 
-  // Update settings.json
+  // Update settings.json (roles dan bahasa antarmuka)
   try {
     const { settings } = loadSettingsSync(targetSettingsPath);
-    const updatedSettings = {
-      ...settings,
-      roles: {
+    let needSave = false;
+    const updatedSettings = { ...settings };
+    if (chosenLang && updatedSettings.ui?.language !== chosenLang) {
+      updatedSettings.ui = { ...updatedSettings.ui, language: chosenLang };
+      needSave = true;
+    }
+    if (!keepCurrentModel) {
+      updatedSettings.roles = {
         analyst: [selectedModel, "deepseek-v4-flash"],
         debate: [selectedModel, "deepseek-v4-flash"],
         assessor: [selectedModel, "deepseek-v4-flash"],
         reflector: [selectedModel, "deepseek-v4-flash"],
         chat: [selectedModel, "deepseek-v4-flash"],
-      },
-    };
-    await writeSettings(updatedSettings, targetSettingsPath);
+      };
+      needSave = true;
+    }
+    if (needSave) {
+      await writeSettings(updatedSettings, targetSettingsPath);
+    }
   } catch (err) {
     writeErr(pc.yellow(`Peringatan menyimpan settings: ${err instanceof Error ? err.message : String(err)}\n`));
   }
@@ -667,6 +801,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   }
 
   writeOut(pc.bold("Setup selesai! Langkah selanjutnya:\n"));
+  writeOut("  tahansoe gateway pair          — hubungkan chat Telegram Anda (opsional)\n");
   writeOut("  tahansoe start                 — jalankan agent mandiri penuh (riset + fusi + gateway Telegram)\n");
   writeOut("  tahansoe                       — buka mode interaktif REPL & tanya-jawab\n");
   writeOut("  tahansoe analyze               — jalankan satu putaran riset & kartu laporan\n");

@@ -234,3 +234,117 @@ export async function telegramAnswerCallbackQuery(
     return { ok: false, error: sanitizeError(err, cleanToken) };
   }
 }
+
+export interface TelegramWebhookInfoResult {
+  ok: boolean;
+  url?: string;
+  host?: string;
+  hasCustomCertificate?: boolean;
+  pendingUpdateCount?: number;
+  error?: string;
+}
+
+/**
+ * Dapatkan informasi webhook aktif Telegram Bot API (getWebhookInfo).
+ * Hanya mengembalikan host yang aman (bukan URL ber-token).
+ */
+export async function telegramGetWebhookInfo(
+  token: string,
+  options: TelegramApiOptions = {},
+): Promise<TelegramWebhookInfoResult> {
+  const fetchFn = options.fetchFn ?? fetch;
+  const baseUrl = options.baseUrl ?? DEFAULT_TELEGRAM_BASE_URL;
+  const cleanToken = token.trim();
+  if (!cleanToken) return { ok: false, error: "Empty token" };
+
+  const endpoint = `${baseUrl}/bot${cleanToken}/getWebhookInfo`;
+
+  try {
+    const res = await fetchFn(endpoint, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    const data = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      description?: string;
+      result?: {
+        url?: string;
+        has_custom_certificate?: boolean;
+        pending_update_count?: number;
+      };
+    };
+
+    if (!res.ok || !data.ok) {
+      return { ok: false, error: data.description ? maskUrl(data.description, cleanToken) : `HTTP ${res.status}` };
+    }
+
+    const rawUrl = data.result?.url ?? "";
+    let host: string | undefined;
+    if (rawUrl) {
+      try {
+        host = new URL(rawUrl).host;
+      } catch {
+        host = maskUrl(rawUrl, cleanToken);
+      }
+    }
+
+    return {
+      ok: true,
+      url: rawUrl ? maskUrl(rawUrl, cleanToken) : "",
+      host,
+      hasCustomCertificate: data.result?.has_custom_certificate,
+      pendingUpdateCount: data.result?.pending_update_count,
+    };
+  } catch (err) {
+    return { ok: false, error: sanitizeError(err, cleanToken) };
+  }
+}
+
+export interface TelegramDeleteWebhookResult {
+  ok: boolean;
+  result?: boolean;
+  error?: string;
+}
+
+/**
+ * Hapus konfigurasi webhook Telegram Bot API (deleteWebhook).
+ * Hanya dipanggil bila pengguna secara eksplisit meminta penghapusan webhook.
+ */
+export async function telegramDeleteWebhook(
+  token: string,
+  options: TelegramApiOptions & { dropPendingUpdates?: boolean } = {},
+): Promise<TelegramDeleteWebhookResult> {
+  const fetchFn = options.fetchFn ?? fetch;
+  const baseUrl = options.baseUrl ?? DEFAULT_TELEGRAM_BASE_URL;
+  const cleanToken = token.trim();
+  if (!cleanToken) return { ok: false, error: "Empty token" };
+
+  const endpoint = `${baseUrl}/bot${cleanToken}/deleteWebhook`;
+  const body: Record<string, unknown> = {};
+  if (options.dropPendingUpdates !== false) {
+    body.drop_pending_updates = true;
+  }
+
+  try {
+    const res = await fetchFn(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      description?: string;
+      result?: boolean;
+    };
+
+    if (!res.ok || !data.ok) {
+      return { ok: false, error: data.description ? maskUrl(data.description, cleanToken) : `HTTP ${res.status}` };
+    }
+
+    return { ok: true, result: data.result ?? true };
+  } catch (err) {
+    return { ok: false, error: sanitizeError(err, cleanToken) };
+  }
+}

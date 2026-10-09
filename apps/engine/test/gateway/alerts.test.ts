@@ -55,6 +55,7 @@ function makeAssessment(asset: string, regime: "CALM" | "ELEVATED" | "STRESSED" 
 test("alerts: regime naik mengirim alert dan dideduplikasi selama 6 jam", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "tahansoe-alerts-"));
   const settingsFile = join(tmp, "settings.json");
+  const statePath = join(tmp, "gateway-state.json");
   await writeSettings(emptySettings(), settingsFile);
 
   const adapter = new TestAlertAdapter();
@@ -66,6 +67,7 @@ test("alerts: regime naik mengirim alert dan dideduplikasi selama 6 jam", async 
   const poller = new AlertPoller({
     adapter,
     state,
+    statePath,
     settingsPath: settingsFile,
     env: { TELEGRAM_ALLOWED_CHAT_IDS: "user_alert" },
     loaders: {
@@ -101,6 +103,7 @@ test("alerts: regime naik mengirim alert dan dideduplikasi selama 6 jam", async 
 test("alerts: regime turun HANYA mengirim alert setelah bertahan >= 1 jam (hysteresis)", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "tahansoe-alerts-"));
   const settingsFile = join(tmp, "settings.json");
+  const statePath = join(tmp, "gateway-state.json");
   await writeSettings(emptySettings(), settingsFile);
 
   const adapter = new TestAlertAdapter();
@@ -112,6 +115,7 @@ test("alerts: regime turun HANYA mengirim alert setelah bertahan >= 1 jam (hyste
   const poller = new AlertPoller({
     adapter,
     state,
+    statePath,
     settingsPath: settingsFile,
     env: { TELEGRAM_ALLOWED_CHAT_IDS: "user_hysteresis" },
     loaders: {
@@ -144,6 +148,7 @@ test("alerts: regime turun HANYA mengirim alert setelah bertahan >= 1 jam (hyste
 test("alerts: deteksi sinyal deterministik T10, T4, T7, dan T8 berat", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "tahansoe-alerts-"));
   const settingsFile = join(tmp, "settings.json");
+  const statePath = join(tmp, "gateway-state.json");
   await writeSettings(emptySettings(), settingsFile);
 
   const adapter = new TestAlertAdapter();
@@ -216,6 +221,7 @@ test("alerts: deteksi sinyal deterministik T10, T4, T7, dan T8 berat", async () 
   const poller = new AlertPoller({
     adapter,
     state,
+    statePath,
     settingsPath: settingsFile,
     env: { TELEGRAM_ALLOWED_CHAT_IDS: "user_sig" },
     loaders: {
@@ -240,6 +246,7 @@ test("alerts: deteksi sinyal deterministik T10, T4, T7, dan T8 berat", async () 
 test("alerts: kenaikan severity menembus dedupe 6 jam", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "tahansoe-alerts-"));
   const settingsFile = join(tmp, "settings.json");
+  const statePath = join(tmp, "gateway-state.json");
   await writeSettings(emptySettings(), settingsFile);
 
   const adapter = new TestAlertAdapter();
@@ -264,6 +271,7 @@ test("alerts: kenaikan severity menembus dedupe 6 jam", async () => {
   const poller = new AlertPoller({
     adapter,
     state,
+    statePath,
     settingsPath: settingsFile,
     env: { TELEGRAM_ALLOWED_CHAT_IDS: "user_raise" },
     loaders: {

@@ -108,21 +108,30 @@ Tahansoe beroperasi sebagai **agent mandiri (autonomous risk agent)**: dijalanka
 
 ### Alur Utama (Agent Model)
 
-1. **Setup** — Konfigurasi gateway LLM, model, database, dan pairing bot Telegram:
+1. **Setup** — Konfigurasi gateway LLM, model, database, dan bot Telegram:
    ```bash
    npm run tahansoe -- setup
    ```
    *(Atau non-interaktif: `npm run tahansoe -- setup --yes --db pglite --model gpt-6-luna --telegram-token-env BOT_TOKEN`)*
 
-2. **Start (Jalankan Agent)** — Satu proses jangka panjang yang mengorkestrasi seluruh loop proteksi:
+2. **Pairing Telegram** — Hubungkan chat Telegram untuk menerima alert risiko:
+   ```bash
+   npm run tahansoe -- gateway pair
+   ```
+   Kirim `/start <KODE>` ke bot Telegram dalam 10 menit. Periksa status bot dan chat terdaftar dengan:
+   ```bash
+   npm run tahansoe -- gateway status
+   ```
+
+3. **Start (Jalankan Agent)** — Satu proses jangka panjang yang mengorkestrasi seluruh loop proteksi:
    ```bash
    npm run tahansoe -- start
    ```
    Menjalankan: scheduler riset multi-agent, sampler harga (60s) & bunga Aave V3 (15m), Risk Fusion v1, settlement berkala, alert proaktif, serta gateway Telegram dalam satu proses terisolasi (I6).
 
-3. **Pakai lewat Telegram** — User menerima peringatan dini (regime naik, depeg, lonjakan bunga) dan mengirim perintah chat (`/status`, `/fuse`, `/carry`, atau pertanyaan bebas).
+4. **Pakai lewat Telegram** — User menerima peringatan dini (regime naik, depeg, lonjakan bunga) dan mengirim perintah chat (`/status`, `/fuse`, `/carry`, atau pertanyaan bebas).
 
-4. **CLI / REPL untuk Operator** — Operator dapat memantau atau mengaudit secara manual lewat terminal:
+5. **CLI / REPL untuk Operator** — Operator dapat memantau atau mengaudit secara manual lewat terminal:
    ```bash
    npm run tahansoe --            # buka sesi interaktif REPL
    npm run tahansoe -- analyze    # satu run riset manual + kartu laporan
@@ -244,22 +253,29 @@ npm run tahansoe -- schedule status         # lock + run terakhir dari DB
 
 **`schedule run` juga menjalankan settlement DAN fusion** secara periodik di proses yang sama, masing-masing di bawah advisory lock Postgres TERPISAH (research `42161001`, settlement `42161002`, fusion `42161003`). Saat `--with-price` disertakan, worker juga menjalankan sampler harga (tiap 60s) dan sampler bunga T11 (tiap `RATE_SAMPLE_INTERVAL_MIN`, default 15 menit) ke tabel `rate_samples`. Settlement tiap `SETTLE_INTERVAL_MIN` (default 60); fusion tiap `FUSION_INTERVAL_MIN` (default 15) **dan** segera setelah setiap research run sukses. Kegagalan job di-log, tidak pernah menjatuhkan scheduler; dashboard menampilkan "Last settle: …" dan "Fusion: REGIME per aset, HH:MM UTC". Nonaktifkan dengan `--no-settle` / `--no-fusion`. Instance lain yang memegang lock → job tersebut dilewati di proses ini.
 
-Opsi global: `--json` (output mesin, hanya di stdout), `--no-color` (nonaktifkan ANSI; otomatis mati pada pipe/`NO_COLOR`/`TERM=dumb`). Exit code: `0` ok · `1` error · `2` konfigurasi salah (mis. `LLM_API_URL`/`LLM_API_KEY` belum diisi). Setiap kartu laporan diakhiri "not a trading signal"; CLI tidak pernah melakukan aksi on-chain dan tidak pernah mencetak secret.
+Opsi global: `--lang <id|en>` (pilih bahasa UI), `--json` (output mesin, hanya di stdout), `--no-color` (nonaktifkan ANSI; otomatis mati pada pipe/`NO_COLOR`/`TERM=dumb`). Exit code: `0` ok · `1` error · `2` konfigurasi salah (mis. `LLM_API_URL`/`LLM_API_KEY` belum diisi). Setiap kartu laporan diakhiri "not a trading signal"; CLI tidak pernah melakukan aksi on-chain dan tidak pernah mencetak secret.
 
-### 3.2 Mode Interaktif (REPL) & Tanya-Jawab Grounded (`ask`)
+### 3.2 Mode Interaktif (REPL) & Visual Identity (spec §3.6)
 
-Menjalankan `npm run tahansoe` (tanpa argumen) di terminal interaktif (TTY) membuka sesi REPL berbasis `node:readline` dan `picocolors`:
+Menjalankan `npm run tahansoe` (tanpa argumen) di terminal interaktif (TTY) membuka sesi REPL dengan visual identity Tahansoe:
 
 ```bash
 npm run tahansoe
+npm run tahansoe -- --lang en   # Buka REPL langsung dalam Bahasa Inggris
 ```
 
 Fitur sesi interaktif:
-- **Banner + Status baris:** menampilkan regime per aset terakhir, waktu UTC, dan jumlah sinyal aktif yang sedang termonitor.
-- **Slash Commands:** memanggil fungsi command yang ada in-process:
-  `/analyze [--dry]`, `/fuse`, `/carry`, `/history`, `/report [id|latest]`, `/settle`, `/scorecard`, `/models`, `/settings`, `/doctor`, `/status`, `/help`, `/clear`, `/exit`.
+- **Visual Identity & Tema Dark-Tech:** Palet warna brand `#4ab5e0` (cyan), safe `#34d399` (emerald), warning `#fbbf24` (amber), danger `#f87171` (red), dan border `#26332f`. Mendukung 24-bit Truecolor (`COLORTERM=truecolor`, Windows Terminal, VS Code) dengan fallback otomatis 256-color dan plain text.
+- **Banner ASCII & Panel Status:** Banner TAHANSOE block art dengan gradien horizontal brand → safe (lebar ≥ 80 kolom) atau varian ringkas satu baris (< 80 kolom). Dilengkapi panel status bulat berisikan mode, jaringan, protokol, akun aktif, buffer, dan status HF.
+- **Dukungan Multibahasa (i18n: ID / EN):** Resolusi bahasa deterministik: `--lang` flag → `settings.json ui.language` → `TAHANSOE_LANG` → locale sistem → `en`. Perintah `/lang <id|en>` mengganti bahasa antarmuka secara instan dan menyimpannya ke `settings.json`.
+- **Slash Commands (Terkelompok 5 Bagian):**
+  1. *Analisis:* `/analyze [--dry]`, `/fuse`, `/history`, `/report`, `/settle`, `/scorecard`
+  2. *Risiko & Bunga:* `/carry`, `/health`, `/simulate`
+  3. *Gateway:* `/gateway`, `/pair`, `/status`
+  4. *Konfigurasi:* `/settings`, `/lang`, `/mode`, `/setup`
+  5. *Sistem:* `/doctor`, `/models`, `/clear`, `/exit`, `/help`, `/start`
   Lengkap dengan autocomplete Tab dan riwayat input in-memory (↑/↓).
-- **Penanganan Proses Latar:** `schedule run` tidak dijalankan di dalam REPL (proses jangka panjang; jalankan terpisah via `tahansoe schedule run`). REPL menampilkan petunjuk bila user mengetik `/schedule`.
+- **Penanganan Proses Latar:** `schedule run` dan `start` tidak dijalankan di dalam REPL (proses jangka panjang; jalankan terpisah di terminal lain). REPL menampilkan petunjuk bila user mengetik `/schedule` atau `/start`.
 - **Grounded Q&A (Non-slash input):** dijawab model gateway (peran `chat` di `settings.json`, default sama dengan analyst) secara terstruktur dan grounded hanya dari data tersimpan (laporan riset 24h, assessment per aset, sinyal aktif terdeduplikasi, monitor carry Aave, harga & volatilitas, serta kalender makro).
 - **Aturan Non-Goals:** dilarang memberi prediksi harga, rekomendasi beli/jual, ranking yield, saran pindah aset, atau jaminan anti-likuidasi. Pertanyaan tersebut ditolak singkat disertai penjelasan risiko posisi yang relevan.
 - **Helper Scripting (`ask`):** untuk menjalankan tanya-jawab satu kali tanpa REPL (berguna untuk scripting dan CI):

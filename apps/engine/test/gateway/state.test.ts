@@ -4,13 +4,17 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
   loadGatewayState,
   saveGatewayState,
+  saveGatewayStateSync,
+  defaultStatePath,
+  defaultRealStatePath,
+  isTestEnvironment,
   isAlertDeduped,
   recordSentAlert,
   getDailyQaCount,
@@ -78,4 +82,31 @@ test("state: hitungan percobaan pairing gagal per jam", () => {
   // Percobaan 2 jam kemudian tidak dihitung lagi
   const twoHoursLater = now + 2 * 3600000;
   assert.equal(getFailedPairingAttemptsCount(state, "chat_x", twoHoursLater), 0);
+});
+
+test("state: proteksi isolasi test — defaultStatePath dan penulisan ke path produksi dicegah dalam test", async () => {
+  assert.equal(isTestEnvironment(), true, "Lingkungan test harus terdeteksi");
+
+  // 1. defaultStatePath() harus melempar error di lingkungan test
+  assert.throws(
+    () => defaultStatePath(),
+    /Test pollution guard: defaultStatePath\(\) called in test environment/,
+  );
+
+  // 2. saveGatewayState ke path produksi asli harus melempar error di lingkungan test
+  const realProdPath = defaultRealStatePath();
+  const state = createEmptyGatewayState();
+  await assert.rejects(
+    async () => saveGatewayState(state, realProdPath),
+    /Test pollution guard: Attempted to access\/write production state path/,
+  );
+
+  assert.throws(
+    () => saveGatewayStateSync(state, realProdPath),
+    /Test pollution guard: Attempted to access\/write production state path/,
+  );
+
+  // (Isi file produksi sengaja TIDAK diperiksa: file itu berisi state runtime nyata
+  //  milik user, mis. kode pairing yang sedang menunggu. Guard di atas sudah menjamin
+  //  test tidak bisa menulis ke sana.)
 });

@@ -84,9 +84,10 @@ export type GatewayAllowedChat = z.infer<typeof gatewayAllowedChatSchema>;
 export const telegramChannelSchema = z
   .object({
     enabled: z.boolean().default(true),
+    botUsername: z.string().optional(),
     allowedChats: z.array(gatewayAllowedChatSchema).default([]),
   })
-  .strict();
+  .passthrough();
 
 export type TelegramChannelSettings = z.infer<typeof telegramChannelSchema>;
 
@@ -109,6 +110,15 @@ export const gatewaySchema = z
 
 export type GatewaySettings = z.infer<typeof gatewaySchema>;
 
+/** Pengaturan antarmuka pengguna CLI / REPL (bahasa). */
+export const uiSchema = z
+  .object({
+    language: z.enum(["id", "en"]).optional(),
+  })
+  .strict();
+
+export type UiSettings = z.infer<typeof uiSchema>;
+
 /** Skema utama settings.json (version 2). */
 export const settingsSchema = z
   .object({
@@ -121,6 +131,8 @@ export const settingsSchema = z
     estimate: estimateSchema.default({}),
     /** Konfigurasi gateway kanal (Telegram, alert, pairing, Q&A limit). */
     gateway: gatewaySchema.optional(),
+    /** Pengaturan antarmuka pengguna (bahasa). */
+    ui: uiSchema.optional(),
   })
   .strict();
 

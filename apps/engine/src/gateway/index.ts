@@ -5,10 +5,11 @@
  * mesin alert proaktif, dan manajer pairing ke dalam satu lifecycle gateway mandiri.
  */
 
-import { TelegramAdapter } from "./telegram/adapter.ts";
+import { TelegramAdapter, type ChannelStatus } from "./telegram/adapter.ts";
 import { PairingManager, type PairingApi } from "./pairing.ts";
 import { CommandRouter } from "./core/router.ts";
 import { AlertPoller, type AlertEngineLoaders } from "./alerts.ts";
+import { telegramDeleteWebhook } from "./telegram/api.ts";
 import {
   loadGatewayState,
   saveGatewayState,
@@ -28,11 +29,15 @@ export type GatewayLogger =
     };
 
 export interface StartGatewayOptions {
+  telegramToken?: string;
+  deleteWebhook?: boolean;
   logger?: GatewayLogger;
   signal?: AbortSignal;
   env?: NodeJS.ProcessEnv;
   settingsPath?: string;
   statePath?: string;
+  lockDir?: string;
+  startupTimeSec?: number;
   fetchFn?: typeof fetch;
   loaders?: ReplContextLoaders & AlertEngineLoaders;
   chatOptions?: ChatOptions;
@@ -44,6 +49,12 @@ export interface StartGatewayOptions {
 export interface GatewayInstance {
   stop(): Promise<void>;
   pairing: PairingApi;
+  status: {
+    telegram: ChannelStatus;
+    [channel: string]: ChannelStatus;
+  };
+  listening?: boolean;
+  webhookHost?: string;
 }
 
 export interface GatewayStatusResult {
@@ -53,6 +64,21 @@ export interface GatewayStatusResult {
   botName?: string;
   allowedChatsCount?: number;
   lastAlertAt?: Date | null;
+}
+
+/**
+ * Cek apakah instance gateway sedang aktif mendengarkan pesan masuk.
+ */
+export function gatewayListening(gw: GatewayInstance | unknown): boolean {
+  if (!gw || typeof gw !== "object") return false;
+  const g = gw as any;
+  if (typeof g.listening === "boolean") {
+    return g.listening;
+  }
+  if (g.status && typeof g.status === "object") {
+    return g.status.telegram === "active";
+  }
+  return false;
 }
 
 /**
@@ -105,21 +131,43 @@ export async function startGateway(opts: StartGatewayOptions | unknown = {}): Pr
   const state: GatewayRuntimeState = await loadGatewayState(stPath);
 
   // 2. Inisialisasi pairing manager
-  const pairing = new PairingManager();
+  const pairing = new PairingManager(stPath, state);
 
-  // 3. Inisialisasi adapter Telegram jika token tersedia
-  const token = env.TELEGRAM_BOT_TOKEN?.trim();
+  // 3. Resolusi token Telegram: options.telegramToken > options.env > process.env
+  const token = (options.telegramToken?.trim() || env.TELEGRAM_BOT_TOKEN?.trim() || "");
   let adapter: TelegramAdapter | undefined;
   let poller: AlertPoller | undefined;
 
   if (token) {
+    if (options.deleteWebhook) {
+      try {
+        const delRes = await telegramDeleteWebhook(token, {
+          fetchFn: options.fetchFn,
+          dropPendingUpdates: true,
+        });
+        if (delRes.ok) {
+          logger("[Gateway] Existing Telegram webhook deleted as requested.");
+        } else {
+          logger(`[Gateway] Failed to delete existing webhook: ${delRes.error}`);
+        }
+      } catch (err) {
+        logger(`[Gateway] Failed to delete existing webhook: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
     adapter = new TelegramAdapter({
       token,
       fetchFn: options.fetchFn,
       logger,
       state,
+      statePath: stPath,
+      lockDir: options.lockDir,
+      startupTimeSec: options.startupTimeSec,
       onStateUpdate: async (updatedState) => {
         await saveGatewayState(updatedState, stPath);
+      },
+      onPollCycle: () => {
+        pairing.reloadPendingCodes();
       },
       minChatIntervalMs: options.minChatIntervalMs,
       minGlobalIntervalMs: options.minGlobalIntervalMs,
@@ -143,22 +191,26 @@ export async function startGateway(opts: StartGatewayOptions | unknown = {}): Pr
 
     await adapter.start();
 
-    // 4. Inisialisasi alert poller proaktif
-    const pollSec = options.pollIntervalSec ?? settings.gateway?.alertPollSec;
-    poller = new AlertPoller({
-      adapter,
-      state,
-      statePath: stPath,
-      settingsPath: sPath,
-      env,
-      pollIntervalSec: pollSec,
-      loaders: options.loaders,
-      logger,
-    });
+    // 4. Inisialisasi alert poller proaktif (hanya jika adapter tidak dalam status conflict)
+    if (adapter.status === "conflict") {
+      logger("[Gateway] Another Tahansoe agent holds the bot lock; alert poller not started.");
+    } else {
+      const pollSec = options.pollIntervalSec ?? settings.gateway?.alertPollSec;
+      poller = new AlertPoller({
+        adapter,
+        state,
+        statePath: stPath,
+        settingsPath: sPath,
+        env,
+        pollIntervalSec: pollSec,
+        loaders: options.loaders,
+        logger,
+      });
 
-    poller.start();
+      poller.start();
+    }
   } else {
-    logger("[Gateway] TELEGRAM_BOT_TOKEN not found in env; Telegram channel inactive.");
+    logger("[Gateway] TELEGRAM_BOT_TOKEN not provided; Telegram channel inactive.");
   }
 
   // 5. Tangani abort signal eksternal jika diberikan
@@ -179,6 +231,17 @@ export async function startGateway(opts: StartGatewayOptions | unknown = {}): Pr
   return {
     stop: stopFn,
     pairing,
+    get status() {
+      return {
+        telegram: adapter ? adapter.status : "inactive",
+      };
+    },
+    get listening() {
+      return adapter ? adapter.status === "active" : false;
+    },
+    get webhookHost() {
+      return adapter?.webhookHost;
+    },
   };
 }
 
@@ -188,6 +251,7 @@ export * from "./core/state.ts";
 export * from "./core/router.ts";
 export * from "./pairing.ts";
 export * from "./alerts.ts";
+export * from "./core/lock.ts";
 export * from "./telegram/api.ts";
 export * from "./telegram/adapter.ts";
 export * from "./telegram/queue.ts";

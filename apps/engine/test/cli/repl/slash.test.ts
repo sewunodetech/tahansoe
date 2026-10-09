@@ -205,3 +205,32 @@ test("dispatchSlashCommand: perintah tidak dikenal tidak melempar error", async 
     process.stdout.write = originalWrite;
   }
 });
+
+test("dispatchSlashCommand: /gateway pair dan status terhubung di REPL", async () => {
+  const [completions] = slashCompleter("/gate");
+  assert.ok(completions.includes("/gateway"), "slashCompleter harus menyertakan /gateway");
+
+  const originalWrite = process.stdout.write;
+  const chunks: string[] = [];
+  process.stdout.write = ((chunk: string) => {
+    chunks.push(chunk);
+    return true;
+  }) as unknown as typeof process.stdout.write;
+
+  try {
+    await dispatchSlashCommand("gateway", ["pair", "--help"], dummyContext, dummyTheme);
+    assert.match(chunks.join(""), /tahansoe gateway pair/);
+    assert.match(chunks.join(""), /--delete-webhook/);
+
+    chunks.length = 0;
+    await dispatchSlashCommand("gateway", ["status", "--help"], dummyContext, dummyTheme);
+    assert.match(chunks.join(""), /tahansoe gateway status/);
+
+    chunks.length = 0;
+    await dispatchSlashCommand("gateway", [], dummyContext, dummyTheme);
+    assert.match(chunks.join(""), /Perintah \/gateway butuh subcommand/);
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+});
+

@@ -39,7 +39,7 @@ test("adapter: long polling getUpdates mengalirkan pesan ke handler dan memperba
                   message_id: 50,
                   from: { id: 777, username: "alice_user", first_name: "Alice" },
                   chat: { id: 777, type: "private", first_name: "Alice" },
-                  date: 1700000000,
+                  date: Math.floor(Date.now() / 1000),
                   text: "/status",
                 },
               },

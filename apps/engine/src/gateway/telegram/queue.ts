@@ -11,6 +11,11 @@
 import { maskUrl, sanitizeError, DEFAULT_TELEGRAM_BASE_URL } from "./api.ts";
 import { chunkMessage, formatSafePlainText } from "../core/formatter.ts";
 
+export const SLOW_DOWN_NOTICE = "Slow down: rate limit reached. Please wait a moment.";
+export const MAX_REPLIES_PER_10S = 5;
+export const REPLY_CAP_WINDOW_MS = 10_000;
+export const SLOW_DOWN_NOTICE_COOLDOWN_MS = 60_000;
+
 export interface SendMessageOptions {
   parseMode?: "MarkdownV2" | "HTML";
   disableNotification?: boolean;
@@ -33,7 +38,7 @@ export interface TelegramMessageQueueOptions {
   logger?: (msg: string) => void;
   minChatIntervalMs?: number; // default 1000ms (1 msg/sec per chat)
   minGlobalIntervalMs?: number; // default 40ms (25 msgs/sec global)
-  maxRetries?: number; // default 5
+  maxRetries?: number; // default 1 (never retry loop)
 }
 
 export class TelegramMessageQueue {
@@ -51,6 +56,10 @@ export class TelegramMessageQueue {
   private processing = false;
   private stopped = false;
 
+  private chatRecentSends: Map<string, number[]> = new Map();
+  private lastSlowDownNotice: Map<string, number> = new Map();
+  private chatPausedUntil: Map<string, number> = new Map();
+
   constructor(options: TelegramMessageQueueOptions) {
     this.token = options.token.trim();
     this.baseUrl = options.baseUrl ?? DEFAULT_TELEGRAM_BASE_URL;
@@ -58,7 +67,7 @@ export class TelegramMessageQueue {
     this.logger = options.logger ?? (() => {});
     this.minChatIntervalMs = options.minChatIntervalMs ?? 1000;
     this.minGlobalIntervalMs = options.minGlobalIntervalMs ?? 40;
-    this.maxRetries = options.maxRetries ?? 5;
+    this.maxRetries = options.maxRetries ?? 1;
   }
 
   public stop(): void {
@@ -72,7 +81,12 @@ export class TelegramMessageQueue {
   /**
    * Kirim pesan teks ke sebuah chat (antre & kirim secara aman sesuai batas rate limit).
    */
-  public async enqueue(chatId: string, text: string, options?: SendMessageOptions): Promise<void> {
+  public async enqueue(
+    chatId: string,
+    text: string,
+    options?: SendMessageOptions,
+    isInternalNotice = false,
+  ): Promise<void> {
     if (this.stopped) {
       throw new Error("Telegram queue is stopped");
     }
@@ -80,12 +94,34 @@ export class TelegramMessageQueue {
     const safeText = formatSafePlainText(text);
     if (!safeText) return;
 
+    const idStr = String(chatId).trim();
+    const now = Date.now();
+
+    // Per-chat reply cap: max 5 replies per chat per 10s (kecuali pesan notice internal)
+    if (!isInternalNotice) {
+      const sends = (this.chatRecentSends.get(idStr) ?? []).filter((t) => now - t < REPLY_CAP_WINDOW_MS);
+      this.chatRecentSends.set(idStr, sends);
+
+      if (sends.length >= MAX_REPLIES_PER_10S) {
+        this.logger?.(
+          `[Telegram] Rate cap reached for chat ${idStr} (${MAX_REPLIES_PER_10S} replies in 10s). Dropping message.`,
+        );
+        const lastNotice = this.lastSlowDownNotice.get(idStr) ?? 0;
+        if (now - lastNotice >= SLOW_DOWN_NOTICE_COOLDOWN_MS) {
+          this.lastSlowDownNotice.set(idStr, now);
+          void this.enqueue(idStr, SLOW_DOWN_NOTICE, undefined, true);
+        }
+        return;
+      }
+      sends.push(now);
+    }
+
     const chunks = chunkMessage(safeText, 4000);
 
     for (const chunk of chunks) {
       await new Promise<void>((resolve, reject) => {
         this.queue.push({
-          chatId: String(chatId).trim(),
+          chatId: idStr,
           text: chunk,
           options,
           resolve,
@@ -105,25 +141,31 @@ export class TelegramMessageQueue {
 
     try {
       while (this.queue.length > 0 && !this.stopped) {
-        // Cari item pertama yang siap dikirim menurut batas chat rate limit
+        // Cari item pertama yang siap dikirim menurut batas chat rate limit dan status pause 429
         const now = Date.now();
         let targetIdx = -1;
+        let earliestWait = this.minChatIntervalMs;
 
         for (let i = 0; i < this.queue.length; i++) {
           const item = this.queue[i]!;
+          const pausedUntil = this.chatPausedUntil.get(item.chatId) ?? 0;
+          if (now < pausedUntil) {
+            earliestWait = Math.min(earliestWait, pausedUntil - now);
+            continue;
+          }
+
           const lastChat = this.lastChatSendTime.get(item.chatId) ?? 0;
           if (now - lastChat >= this.minChatIntervalMs) {
             targetIdx = i;
             break;
+          } else {
+            earliestWait = Math.min(earliestWait, this.minChatIntervalMs - (now - lastChat));
           }
         }
 
         if (targetIdx === -1) {
-          // Semua item yang ada masih tertahan per-chat rate limit, tunggu item paling awal siap
-          const earliestItem = this.queue[0]!;
-          const lastTime = this.lastChatSendTime.get(earliestItem.chatId) ?? 0;
-          const waitChat = Math.max(10, this.minChatIntervalMs - (Date.now() - lastTime));
-          await this.delay(waitChat);
+          // Semua item yang ada masih tertahan per-chat rate limit / pause 429
+          await this.delay(Math.max(10, earliestWait));
           continue;
         }
 
@@ -174,11 +216,12 @@ export class TelegramMessageQueue {
 
       if (res.status === 429 || data.error_code === 429) {
         const retryAfterSec = data.parameters?.retry_after ?? 1;
-        this.logger(`[Telegram] Rate limited (429), retry after ${retryAfterSec}s for chat ${item.chatId}`);
+        const pauseUntil = Date.now() + retryAfterSec * 1000;
+        this.chatPausedUntil.set(item.chatId, pauseUntil);
+        this.logger(`[Telegram] Rate limited (429), pausing chat ${item.chatId} for ${retryAfterSec}s`);
 
         if (item.retries < this.maxRetries) {
           item.retries += 1;
-          await this.delay(retryAfterSec * 1000);
           this.queue.unshift(item);
           return;
         } else {

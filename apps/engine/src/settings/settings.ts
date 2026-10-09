@@ -26,6 +26,7 @@ import {
   type GatewayAlertPreferences,
   type GatewayAllowedChat,
   type GatewaySettings,
+  type UiSettings,
 } from "./schema.ts";
 
 export type {
@@ -33,6 +34,7 @@ export type {
   GatewayAlertPreferences,
   GatewayAllowedChat,
   GatewaySettings,
+  UiSettings,
 };
 
 export { emptySettings };
@@ -178,7 +180,17 @@ export async function writeSettings(settings: Settings, path: string = settingsP
   const tmp = `${path}.tmp-${process.pid}-${Date.now()}`;
   const body = JSON.stringify(checked, null, 2) + "\n";
   await writeFile(tmp, body, "utf8");
-  await rename(tmp, path);
+  try {
+    await rename(tmp, path);
+  } catch {
+    await writeFile(path, body, "utf8");
+    try {
+      const { unlink } = await import("node:fs/promises");
+      await unlink(tmp);
+    } catch {
+      /* abaikan */
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

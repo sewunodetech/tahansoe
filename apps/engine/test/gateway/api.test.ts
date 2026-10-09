@@ -17,6 +17,8 @@ import {
   telegramSetMyCommands,
   telegramSetChatMenuButton,
   telegramAnswerCallbackQuery,
+  telegramGetWebhookInfo,
+  telegramDeleteWebhook,
 } from "../../src/gateway/telegram/api.ts";
 
 const FAKE_SECRET_TOKEN = "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ_987654";
@@ -171,4 +173,52 @@ test("api: telegramAnswerCallbackQuery mengirim callback_query_id dan text", asy
   assert.equal(res.ok, true);
   assert.equal(capturedBody.callback_query_id, "cq_999");
   assert.equal(capturedBody.text, "Alert muted");
+});
+
+test("api: telegramGetWebhookInfo mengembalikan host webhook dan tidak membocorkan token", async () => {
+  const fakeFetch: typeof fetch = async (input) => {
+    assert.ok(String(input).includes("getWebhookInfo"));
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        result: {
+          url: "https://n8n.workflow.mycompany.com/webhook/secret-token-path",
+          has_custom_certificate: false,
+          pending_update_count: 3,
+        },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+
+  const res = await telegramGetWebhookInfo(FAKE_SECRET_TOKEN, { fetchFn: fakeFetch });
+  assert.equal(res.ok, true);
+  assert.equal(res.host, "n8n.workflow.mycompany.com");
+  assert.equal(res.pendingUpdateCount, 3);
+  assert.ok(!res.url?.includes(FAKE_SECRET_TOKEN));
+});
+
+test("api: telegramDeleteWebhook memanggil endpoint deleteWebhook dan mendukung dropPendingUpdates", async () => {
+  let capturedUrl = "";
+  let capturedBody: any;
+
+  const fakeFetch: typeof fetch = async (input, init) => {
+    capturedUrl = String(input);
+    capturedBody = JSON.parse(String(init?.body ?? "{}"));
+    return new Response(JSON.stringify({ ok: true, result: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  const res = await telegramDeleteWebhook(FAKE_SECRET_TOKEN, {
+    fetchFn: fakeFetch,
+    dropPendingUpdates: true,
+  });
+
+  assert.equal(res.ok, true);
+  assert.equal(res.result, true);
+  assert.ok(capturedUrl.includes("deleteWebhook"));
+  assert.equal(capturedBody.drop_pending_updates, true);
+  assert.ok(!JSON.stringify(capturedBody).includes(FAKE_SECRET_TOKEN));
 });

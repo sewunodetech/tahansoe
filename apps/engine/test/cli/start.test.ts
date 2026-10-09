@@ -362,3 +362,41 @@ test("startCommand: flag --once menjalankan satu siklus penuh lalu keluar dengan
   assert.match(out, /running single cycle/);
   assert.match(out, /single cycle completed/);
 });
+
+test("startCommand: gateway mendeteksi webhook_active mencetak pesan instruktif tanpa mematikan riset", async () => {
+  const stdoutLines: string[] = [];
+  const stderrLines: string[] = [];
+  const shutdownController = new AbortController();
+
+  const fakeDeps: StartDeps = {
+    stdout: (m) => stdoutLines.push(m),
+    stderr: (m) => stderrLines.push(m),
+    env: { TELEGRAM_BOT_TOKEN: "fake_token_wh" },
+    gatewayStatus: async () => ({
+      configured: true,
+      channels: ["telegram"],
+      botUsername: "WebhookBot",
+    }),
+    startGateway: async () => {
+      // Simulasikan status webhook_active
+      return {
+        stop: async () => {},
+        status: "webhook_active",
+        webhookHost: "n8n.workflow.io",
+      } as any;
+    },
+    startPriceWorker: async () => async () => {},
+    shutdownSignal: shutdownController.signal,
+  };
+
+  setTimeout(() => shutdownController.abort(), 20);
+
+  const exitCode = await startCommand(["--no-research", "--no-fusion", "--no-settle", "--no-color"], fakeDeps);
+  assert.equal(exitCode, EXIT_OK);
+
+  const combined = stdoutLines.concat(stderrLines).join("");
+  assert.match(
+    combined,
+    /This bot uses a webhook to n8n\.workflow\.io\. Messages go there, not to Tahansoe\. Use a dedicated bot, or run: tahansoe gateway pair --delete-webhook/,
+  );
+});

@@ -14,7 +14,7 @@ const COMMANDS = [
   ["start", "Run the standalone risk agent in one process"],
   ["analyze", "Run one risk-research pass + report card"],
   ["schedule", "Run the scheduler (foreground) or show status"],
-  ["gateway", "Channel gateway operations (gateway run)"],
+  ["gateway", "Channel gateway operations (run, pair, status)"],
   ["history", "Recent research reports (table + sparkline)"],
   ["report", "Show a full report by <id|latest>"],
   ["models", "List gateway models + prices + cost estimate"],
@@ -35,7 +35,7 @@ Commands:
 ${COMMANDS.map(([c, d]) => `  ${c.padEnd(10)} ${d}`).join("\n")}
 
 Run "tahansoe <command> --help" for command options.
-Flags: --json (machine output), --no-color (disable ANSI).`;
+Flags: --lang <id|en>, --json (machine output), --no-color (disable ANSI).`;
 
 /** Banner + status singkat (regime terakhir dari DB bila ada, model aktif, lock?). */
 async function quickStatus(): Promise<void> {
@@ -92,8 +92,34 @@ async function quickStatus(): Promise<void> {
 }
 
 export async function main(argv: string[]): Promise<number> {
-  const cmd = argv[0];
-  const rest = argv.slice(1);
+  // Ekstrak opsi --lang bila diberikan di level root
+  let langFlag: string | undefined;
+  const filteredArgv: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
+    if (arg === "--lang" && i + 1 < argv.length) {
+      langFlag = argv[++i];
+    } else if (arg.startsWith("--lang=")) {
+      langFlag = arg.slice(7);
+    } else {
+      filteredArgv.push(arg);
+    }
+  }
+
+  // Inisialisasi resolusi bahasa
+  const { initLanguage } = await import("./i18n/index.ts");
+  let settingsLang: string | undefined;
+  try {
+    const { loadSettingsSync } = await import("../settings/settings.ts");
+    const { settings } = loadSettingsSync();
+    settingsLang = settings.ui?.language;
+  } catch {
+    /* abaikan */
+  }
+  initLanguage({ cliFlag: langFlag, settingsLang });
+
+  const cmd = filteredArgv[0];
+  const rest = filteredArgv.slice(1);
 
   if (!cmd) {
     if (Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY)) {
@@ -128,7 +154,17 @@ export async function main(argv: string[]): Promise<number> {
           return EXIT_ERROR;
         }
       }
-      process.stderr.write(`subcommand gateway tidak dikenal: ${sub ?? "(kosong)"} (pakai: tahansoe gateway run)\n`);
+      if (sub === "pair") {
+        const { gatewayPairCommand } = await import("./commands/gateway-pair.ts");
+        return gatewayPairCommand(subRest);
+      }
+      if (sub === "status") {
+        const { gatewayStatusCommand } = await import("./commands/gateway-pair.ts");
+        return gatewayStatusCommand(subRest);
+      }
+      process.stderr.write(
+        `subcommand gateway tidak dikenal: ${sub ?? "(kosong)"} (pakai: tahansoe gateway [run|pair|status])\n`,
+      );
       return EXIT_ERROR;
     }
     case "analyze": {
