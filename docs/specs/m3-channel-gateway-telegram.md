@@ -73,6 +73,12 @@ Telegram ──► adapter (long polling) ──► router: /perintah → fungsi
 - Allowlist chat ID (tahap 1); tidak ada perintah yang mengubah konfigurasi engine dari chat kecuali `/subscribe`, `/unsubscribe`, `/alerts`.
 - Tidak ada aksi on-chain dari gateway (I1/I2).
 
+
+### 3.6 Menu perintah & tombol (permintaan user 2026-10-09)
+
+- Saat gateway start, adapter Telegram memanggil `setMyCommands` (bahasa default Indonesia + `language_code: "en"`) dengan daftar: `/status`, `/fuse`, `/carry`, `/report`, `/history`, `/alerts`, `/subscribe`, `/unsubscribe`, `/help` beserta deskripsi singkat; dan `setChatMenuButton` tipe `commands`. Idempoten; kegagalan hanya dicatat (tidak menghentikan gateway).
+- Inline keyboard: `/start` dan `/help` menampilkan tombol Status · Fuse · Carry · Alerts; setiap alert punya tombol "Detail" (kirim penjelasan lengkap) dan "Bisukan 6 jam" (preferensi per chat di `settings.json`). `callback_query` hanya diproses dari chat yang diizinkan; `callback_data` pendek dan divalidasi (whitelist aksi), selalu dijawab `answerCallbackQuery`.
+
 ## 4. Kriteria penerimaan
 
 - [ ] `tahansoe gateway run` menerima perintah & pertanyaan dari chat yang diizinkan dan menolak chat lain.
@@ -81,6 +87,7 @@ Telegram ──► adapter (long polling) ──► router: /perintah → fungsi
 - [ ] `tahansoe setup` bisa memasang bot dan memasangkan chat ID lewat kode pairing tanpa user mencari chat ID manual.
 - [ ] Token tidak muncul di log/output (test).
 - [ ] Jalan di Neon dan PGlite.
+- [ ] Menu perintah muncul di Telegram (`setMyCommands`) dan tombol inline bekerja; callback dari chat tak diizinkan ditolak.
 
 ## 5. Rencana test
 
