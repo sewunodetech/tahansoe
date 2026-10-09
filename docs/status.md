@@ -39,6 +39,12 @@
   - Mendukung subcommand: `analyze` (live progress per tahap + kartu laporan), `schedule` (`run` foreground dengan PostgreSQL session advisory lock & live dashboard, `status`), `history`, `report` (`<id|latest>` format `--md` atau `--json`), `doctor`, `models`, `settings`, `eval`.
 - **Live Run Perdana via Gateway Bynara (9 Okt 2026):**
   - Uji coba live penuh pertama kali berhasil menggunakan gateway Bynara dengan model `agnes-2.5-flash` untuk seluruh peran.
+- **Carry & Interest-Rate Monitoring — jalur T11 (9 Okt 2026, [spec](specs/m3-carry-interest-monitoring.md)):**
+  - Tabel `rate_samples` + sampler bunga Aave V3 Arbitrum tiap 15 menit (`RATE_SAMPLE_INTERVAL_MIN`), on-chain via Pool/strategy (I5).
+  - **Pemancar sinyal deterministik pertama** (`src/signals/`): kink proximity, lonjakan bunga (≥ 2× atau > 20% APR stablecoin), carry negatif 5 pasangan representatif; T7 bila utilization ≥ 98%. Guardrail: T11 tanpa konfirmasi lain maksimal ELEVATED (dihitung dari modul terkonfirmasi saja; property test).
+  - `tahansoe carry`: tabel reserve + "HF 1.50 → 1.45 dalam N hari" + skenario lewat kink; tanpa kata ranking/saran investasi (test).
+  - Verifikasi live: USDC.e util 92,1% (borrow 18–20%), GHO 93%, USDC native 91,7% lewat kink; WETH→USDC carry −4,7%/thn (≈ 265 hari ke HF 1.45). Fusion ETH/USDC naik CALM → ELEVATED dari sinyal on-chain.
+- [ ] Modul deterministik lain belum memancarkan sinyal ke `signals` (oracle monitor/deviasi & sequencer, kalender makro); pola `src/signals/emit.ts` siap dipakai.
 - **Pemilihan model final (9 Okt 2026, prompt 2026.10.2 + redaksi instruksi):** `gpt-6-luna` (OpenAI) lolos eval **24/24** (injeksi 16/16 tanpa bocoran, skenario 8/8, schema 100%), biaya eval Rp 110 (~Rp 4,6 per kasus). Dipakai sebagai default semua peran, cadangan `deepseek-v4-flash`. `agnes-2.5-flash` ditinggalkan karena asal-usul model tidak jelas dan masih ada bocoran injeksi/overrun schema.
   - Mengonsumsi ~36.5k token dengan biaya operasional sangat efisien (~Rp6/run) dan menghasilkan proposal regime `CALM`.
 - **Penyimpanan Database Neon Postgres:** Tabel `research_reports` (dengan diagnostik per-peran audit G7) dan `signals` (`RESEARCH`), serta skrip inspeksi riwayat `tahansoe history`.
