@@ -146,3 +146,14 @@ test("settingsPath: TAHANSOE_SETTINGS override dihormati", () => {
   const p = settingsPath({ TAHANSOE_SETTINGS: join(tmpdir(), "custom-settings.json") });
   assert.match(p, /custom-settings\.json$/);
 });
+
+test("gatewayPricingUrl: settings.pricingUrl menang; kosong → diturunkan dari LLM_API_URL gateway yang dikenal", async () => {
+  const { gatewayPricingUrl, defaultPricingUrlFor } = await import("../../src/settings/settings.ts");
+  const s = emptySettings();
+  assert.equal(gatewayPricingUrl({ ...s, pricingUrl: "https://x/p" }, "https://router.bynara.id/v1"), "https://x/p");
+  assert.equal(gatewayPricingUrl(s, "https://router.bynara.id/v1"), "https://router.bynara.id/api/pricing");
+  assert.equal(gatewayPricingUrl(s, "https://openrouter.ai/api/v1"), "https://openrouter.ai/api/v1/models");
+  assert.equal(gatewayPricingUrl(s, "https://my-proxy.example/v1"), undefined);
+  assert.equal(defaultPricingUrlFor(""), undefined);
+  assert.equal(defaultPricingUrlFor("not a url"), undefined);
+});

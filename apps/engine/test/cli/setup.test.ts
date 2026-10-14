@@ -207,6 +207,8 @@ test("setupCommand non-interaktif (--yes): menulis .env & settings.json, rahasia
     assert.deepEqual(settings.roles.assessor, ["gpt-6-luna", "deepseek-v4-flash"]);
     assert.deepEqual(settings.roles.reflector, ["gpt-6-luna", "deepseek-v4-flash"]);
     assert.deepEqual(settings.roles.chat, ["gpt-6-luna", "deepseek-v4-flash"]);
+    // pricingUrl awal dipertahankan (settings awal sudah memuatnya).
+    assert.equal(settings.pricingUrl, "https://router.bynara.id/api/pricing");
 
     // Invariant I8: Key rahasia TIDAK BOLEH ada di stdout maupun stderr
     const fullStdout = stdoutChunks.join("");
@@ -258,6 +260,9 @@ test("setupCommand non-interaktif (--yes): DATABASE_URL eksisting dipertahankan 
 
     const envContent = await readFile(tmpEnv, "utf-8");
     assert.match(envContent, /^DATABASE_URL=postgresql:\/\/neon-user:pass@ep-cool\.neon\.tech\/main$/m);
+    // settings tanpa pricingUrl → dilengkapi otomatis dari gateway Bynara.
+    const saved = JSON.parse(await readFile(tmpSettings, "utf-8"));
+    assert.equal(saved.pricingUrl, "https://router.bynara.id/api/pricing");
   } finally {
     await rm(tmp, { recursive: true, force: true });
   }
@@ -329,6 +334,7 @@ test("setupCommand: konfigurasi neon eksisting + semua Enter -> .env dan setting
         reflector: ["gpt-6-luna", "deepseek-v4-flash"],
         chat: ["gpt-6-luna", "deepseek-v4-flash"],
       },
+      pricingUrl: "https://router.bynara.id/api/pricing",
     },
     null,
     2,

@@ -694,6 +694,17 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
       };
       needSave = true;
     }
+    // Sumber harga gateway (budget & estimasi biaya) untuk gateway yang dikenal.
+    // Selalu dilengkapi bila belum ada agar terlihat jelas di settings.json.
+    if (!updatedSettings.pricingUrl) {
+      const { defaultPricingUrlFor } = await import("../../settings/settings.ts");
+      const derived = defaultPricingUrlFor(apiUrl);
+      if (derived) {
+        updatedSettings.pricingUrl = derived;
+        needSave = true;
+        writeOut(pc.green(`✔ pricingUrl diisi otomatis: ${derived}\n`));
+      }
+    }
     if (needSave) {
       await writeSettings(updatedSettings, targetSettingsPath);
     }

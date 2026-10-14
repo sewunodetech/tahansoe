@@ -211,8 +211,29 @@ export function resolveRoleSpecList(role: RoleName, settings: Settings): string[
 }
 
 /** URL harga gateway dari settings (atau undefined). */
-export function gatewayPricingUrl(settings: Settings): string | undefined {
-  return settings.pricingUrl;
+export function gatewayPricingUrl(
+  settings: Settings,
+  apiUrl: string | undefined = process.env.LLM_API_URL ?? process.env.LLM_BASE_URL,
+): string | undefined {
+  return settings.pricingUrl ?? defaultPricingUrlFor(apiUrl);
+}
+
+/**
+ * URL daftar harga untuk gateway yang dikenal, diturunkan dari LLM_API_URL.
+ * Tanpa ini, settings.json yang dibuat `setup` (tanpa pricingUrl) membuat budget
+ * memakai harga fallback termahal untuk semua model (overestimasi ratusan kali).
+ */
+export function defaultPricingUrlFor(apiUrl: string | undefined): string | undefined {
+  if (!apiUrl?.trim()) return undefined;
+  let host: string;
+  try {
+    host = new URL(apiUrl.trim()).host.toLowerCase();
+  } catch {
+    return undefined;
+  }
+  if (host === "router.bynara.id") return "https://router.bynara.id/api/pricing";
+  if (host === "openrouter.ai") return "https://openrouter.ai/api/v1/models";
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
