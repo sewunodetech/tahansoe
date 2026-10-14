@@ -4,7 +4,7 @@
  * Menerjemahkan pesan masuk:
  *  - Cek allowlist chat (hanya chat terdaftar atau TELEGRAM_ALLOWED_CHAT_IDS)
  *  - Slash commands (/start, /help, /status, /fuse, /carry, /report, /history, /subscribe, /unsubscribe, /alerts)
- *    -> dieksekusi dengan menangkap teks output
+ *    -> data diambil langsung lalu dirender oleh gateway/views.ts (HTML ramah HP + penjelasan)
  *  - Teks biasa -> jalur tanya jawab (Q&A) yang grounded via executeChatQuestion
  *  - Batasan Q&A per chat harian (GATEWAY_QA_PER_DAY, default 20)
  *  - Riwayat percakapan per chat tersimpan di memori (maks 10 giliran)
@@ -35,7 +35,6 @@ import { quickActionKeyboard } from "../telegram/adapter.ts";
 import type { PairingManager } from "../pairing.ts";
 import {
   buildReplContext,
-  formatStatusLine,
   type ReplContextLoaders,
   type ReplContext,
 } from "../../chat/context.ts";
@@ -44,9 +43,21 @@ import {
   capHistory,
   type ChatTurn,
   type ChatOptions,
-  CHAT_FOOTER,
 } from "../../chat/chat.ts";
-import { formatSafePlainText } from "./formatter.ts";
+import {
+  chatLang,
+  escapeHtml,
+  welcomeView,
+  helpView,
+  statusView,
+  fuseView,
+  carryView,
+  carryFromContextView,
+  reportView,
+  historyView,
+  chatAnswerView,
+  type Lang,
+} from "../views.ts";
 
 export interface CommandRouterOptions {
   adapter: ChannelAdapter;
@@ -66,58 +77,8 @@ export const DEFAULT_QA_PER_DAY = 20;
 // Riwayat per-chat di memori: chatId -> ChatTurn[] (maks 10)
 const chatHistories = new Map<string, ChatTurn[]>();
 
-// Mutex sederhana agar penangkapan process.stdout antar perintah tidak tumpang tindih
-let commandExecutionLock = Promise.resolve();
-
-async function runWithLock<T>(fn: () => Promise<T>): Promise<T> {
-  const currentLock = commandExecutionLock;
-  let release: () => void;
-  commandExecutionLock = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  await currentLock;
-  try {
-    return await fn();
-  } finally {
-    release!();
-  }
-}
-
-/**
- * Tangkap output command CLI menjadi string teks tanpa escape warna ANSI.
- */
-export async function captureCommandOutput(fn: (deps: { stdout: (s: string) => void; stderr: (s: string) => void }) => Promise<number | void>): Promise<string> {
-  return await runWithLock(async () => {
-    let captured = "";
-    const origStdout = process.stdout.write;
-    const origStderr = process.stderr.write;
-
-    const append = (s: string) => {
-      captured += s;
-    };
-
-    process.stdout.write = ((chunk: unknown) => {
-      captured += String(chunk);
-      return true;
-    }) as typeof process.stdout.write;
-
-    process.stderr.write = ((chunk: unknown) => {
-      captured += String(chunk);
-      return true;
-    }) as typeof process.stderr.write;
-
-    try {
-      await fn({ stdout: append, stderr: append });
-    } catch (err) {
-      captured += `\nError: ${err instanceof Error ? err.message : String(err)}`;
-    } finally {
-      process.stdout.write = origStdout;
-      process.stderr.write = origStderr;
-    }
-
-    return formatSafePlainText(captured);
-  });
-}
+/** Pilih teks sesuai bahasa chat. */
+const T = (lang: Lang, id: string, en: string): string => (lang === "id" ? id : en);
 
 export class CommandRouter {
   private readonly adapter: ChannelAdapter;
@@ -143,6 +104,11 @@ export class CommandRouter {
     this.logger = options.logger ?? (() => {});
   }
 
+  /** Kirim pesan HTML (semua teks dinamis sudah di-escape oleh views/escapeHtml). */
+  private async reply(chatId: string, html: string, replyMarkup?: unknown): Promise<void> {
+    await this.adapter.send(chatId, html, { parseMode: "HTML", replyMarkup });
+  }
+
   public async handleMessage(msg: InboundMessage): Promise<void> {
     const chatId = String(msg.chatId).trim();
     const rawText = msg.text.trim();
@@ -150,6 +116,7 @@ export class CommandRouter {
 
     // Muat settings saat ini
     const { settings } = await loadSettings(this.settingsPath);
+    const lang = chatLang(settings);
 
     // 1. Tangani pairing (/start <code>) terlebih dahulu agar chat baru bisa masuk allowlist
     if (rawText.toLowerCase().startsWith("/start")) {
@@ -179,12 +146,26 @@ export class CommandRouter {
         }
 
         if (result.ok) {
-          await this.adapter.send(
+          await this.reply(
             chatId,
-            "Pairing successful! This chat is now connected to Tahansoe risk engine alerts.",
+            T(
+              lang,
+              "✅ <b>Pairing berhasil!</b> Chat ini sekarang terhubung ke Tahansoe dan akan menerima peringatan risiko.\n\nKetik /help untuk panduan.",
+              "✅ <b>Pairing successful!</b> This chat is now connected to Tahansoe risk engine alerts.\n\nType /help for the guide.",
+            ),
           );
         } else {
-          await this.adapter.send(chatId, result.error ?? "Pairing failed.");
+          const tooMany = /too many/i.test(result.error ?? "");
+          await this.reply(
+            chatId,
+            tooMany
+              ? T(lang, "⛔ Terlalu banyak percobaan gagal. Coba lagi nanti.", "⛔ Too many failed pairing attempts. Please try again later.")
+              : T(
+                  lang,
+                  "❌ Kode pairing tidak valid atau sudah kedaluwarsa (berlaku 10 menit). Jalankan <code>tahansoe gateway pair</code> lagi untuk kode baru.",
+                  "❌ Pairing code is invalid or has expired (valid for 10 minutes). Run <code>tahansoe gateway pair</code> again for a new code.",
+                ),
+          );
         }
         return;
       }
@@ -192,7 +173,7 @@ export class CommandRouter {
 
     // 2. Jika pesan adalah callback query dari tombol inline
     if (msg.callbackQueryId) {
-      await this.handleCallbackQuery(msg, settings);
+      await this.handleCallbackQuery(msg, settings, lang);
       return;
     }
 
@@ -212,15 +193,15 @@ export class CommandRouter {
 
     // 4. Jika pesan adalah slash command
     if (rawText.startsWith("/")) {
-      await this.handleSlashCommand(chatId, rawText, settings);
+      await this.handleSlashCommand(chatId, rawText, settings, lang);
       return;
     }
 
     // 5. Jika pesan adalah teks biasa (Q&A grounded)
-    await this.handlePlainQuestion(chatId, rawText, settings);
+    await this.handlePlainQuestion(chatId, rawText, settings, lang);
   }
 
-  private async handleCallbackQuery(msg: InboundMessage, settings: Settings): Promise<void> {
+  private async handleCallbackQuery(msg: InboundMessage, settings: Settings, lang: Lang): Promise<void> {
     const chatId = String(msg.chatId).trim();
     const queryId = msg.callbackQueryId!;
     const allowed = isChatAllowed(chatId, settings, this.env.TELEGRAM_ALLOWED_CHAT_IDS);
@@ -243,22 +224,13 @@ export class CommandRouter {
       const validCmds = ["status", "fuse", "carry", "alerts", "help"];
       if (validCmds.includes(cmd)) {
         await this.adapter.answerCallback?.(queryId);
-        await this.handleSlashCommand(chatId, `/${cmd}`, settings);
+        await this.handleSlashCommand(chatId, `/${cmd}`, settings, lang);
         return;
       }
     } else if (data.startsWith("detail:")) {
-      const alertType = data.slice(7).trim();
-      await this.adapter.answerCallback?.(queryId, "Memuat detail...");
+      await this.adapter.answerCallback?.(queryId, T(lang, "Memuat detail...", "Loading details..."));
       const ctx = await buildReplContext({ loaders: this.loaders });
-      const line = formatStatusLine(ctx, { color: false, width: 80 });
-      const detailMsg =
-        `Detail Alert [${alertType.toUpperCase()}]:\n` +
-        `${line.trim()}\n\n` +
-        (ctx.latestReport
-          ? `Laporan terbaru: proposed regime ${ctx.latestReport.report.proposedRegime}, arah ${ctx.latestReport.report.direction}, confidence ${ctx.latestReport.report.confidence.toFixed(2)}.\n\n`
-          : "") +
-        CHAT_FOOTER;
-      await this.adapter.send(chatId, detailMsg);
+      await this.reply(chatId, statusView(ctx, lang));
       return;
     } else if (data.startsWith("mute:")) {
       const alertType = data.slice(5).trim() as AlertType;
@@ -266,7 +238,14 @@ export class CommandRouter {
       if (validTypes.includes(alertType)) {
         await muteChatAlert(chatId, alertType, 6, this.settingsPath);
         await this.adapter.answerCallback?.(queryId, `Alert '${alertType}' dibisukan 6 jam.`);
-        await this.adapter.send(chatId, `Notifikasi alert '${alertType}' dibisukan untuk chat ini selama 6 jam.`);
+        await this.reply(
+          chatId,
+          T(
+            lang,
+            `🔕 Notifikasi alert '${escapeHtml(alertType)}' dibisukan untuk chat ini selama 6 jam.`,
+            `🔕 Alert '${escapeHtml(alertType)}' notifications muted for this chat for 6 hours (dibisukan untuk chat ini selama 6 jam).`,
+          ),
+        );
         return;
       }
     }
@@ -275,103 +254,103 @@ export class CommandRouter {
     await this.adapter.answerCallback?.(queryId);
   }
 
-  private async handleSlashCommand(chatId: string, text: string, settings: Settings): Promise<void> {
+  private async handleSlashCommand(chatId: string, text: string, settings: Settings, lang: Lang): Promise<void> {
     const parts = text.split(/\s+/);
-    const cmd = parts[0]!.slice(1).toLowerCase();
+    const cmd = parts[0]!.slice(1).toLowerCase().replace(/@.*$/, ""); // /status@botname
     const args = parts.slice(1);
 
     switch (cmd) {
-      case "start": {
-        const welcome =
-          "Welcome to Tahansoe Risk Agent!\n\n" +
-          "Tahansoe is a non-custodial AI risk engine protecting on-chain borrow positions on Aave V3.\n\n" +
-          "Commands available:\n" +
-          "/status - Current market regime & active signals\n" +
-          "/fuse - Run Risk Fusion pass\n" +
-          "/carry - Check Aave V3 carry rates\n" +
-          "/report - Show latest research report\n" +
-          "/history - View recent report cards\n" +
-          "/subscribe - Enable risk alerts\n" +
-          "/unsubscribe - Disable risk alerts\n" +
-          "/alerts - Manage alert preferences\n" +
-          "/help - Show command manual\n\n" +
-          "You can also ask any questions about on-chain risk directly.";
-        await this.adapter.send(chatId, welcome, { replyMarkup: quickActionKeyboard() });
+      case "start":
+        await this.reply(chatId, welcomeView(lang), quickActionKeyboard());
         break;
-      }
 
-      case "help": {
-        const helpText =
-          "Tahansoe Risk Agent Commands:\n\n" +
-          "/status — Market regimes per asset & active risk signals\n" +
-          "/fuse — Run one deterministic Risk Fusion pass\n" +
-          "/carry — Aave V3 interest rate & carry risk monitor\n" +
-          "/report [latest|id] — View full research report\n" +
-          "/history — Table of recent research reports\n" +
-          "/subscribe — Subscribe to proactive risk notifications\n" +
-          "/unsubscribe — Mute proactive notifications\n" +
-          "/alerts — View or configure alert types (regime, sequencer, depeg, pool, oracle, daily)\n" +
-          "  Example: /alerts sequencer off\n\n" +
-          "Plain text: ask any question about lending risk, borrow rates, or recent developments.\n\n" +
-          CHAT_FOOTER;
-        await this.adapter.send(chatId, helpText, { replyMarkup: quickActionKeyboard() });
+      case "help":
+        await this.reply(chatId, helpView(lang), quickActionKeyboard());
         break;
-      }
 
       case "status": {
         const ctx = await buildReplContext({ loaders: this.loaders });
-        const line = formatStatusLine(ctx, { color: false, width: 80 });
-        const out = `Tahansoe Status:\n${line.trim()}\n\n${CHAT_FOOTER}`;
-        await this.adapter.send(chatId, out);
+        await this.reply(chatId, statusView(ctx, lang));
         break;
       }
 
       case "fuse": {
-        const { fuseCommand } = await import("../../cli/commands/fuse.ts");
-        const out = await captureCommandOutput(async (deps) => {
-          await fuseCommand(["--dry", "--no-color"], deps);
-        });
-        await this.adapter.send(chatId, out || "Fusion pass completed.");
+        if (!this.env.DATABASE_URL) {
+          await this.reply(chatId, T(lang, "Database belum dikonfigurasi di agent (DATABASE_URL).", "The agent has no database configured (DATABASE_URL)."));
+          break;
+        }
+        try {
+          const { runFusion } = await import("../../fusion/run.ts");
+          const result = await runFusion({ dry: true });
+          await this.reply(chatId, fuseView(result, lang));
+        } catch (err) {
+          this.logger(`[Router] /fuse gagal: ${err instanceof Error ? err.message : String(err)}`);
+          await this.reply(chatId, T(lang, "⚠️ Penilaian risiko gagal dihitung saat ini. Coba lagi sebentar lagi.", "⚠️ Could not compute the risk assessment right now. Please try again shortly."));
+        }
         break;
       }
 
       case "carry": {
-        const { carryCommand } = await import("../../cli/commands/carry.ts");
-        const out = await captureCommandOutput(async (deps) => {
-          await carryCommand(["--no-color"], deps);
-        });
-        await this.adapter.send(chatId, out || "No carry data available.");
+        try {
+          const { fetchAaveRates } = await import("../../sources/aave-rates.ts");
+          const { computeCarryData } = await import("../../cli/commands/carry.ts");
+          const rates = await fetchAaveRates();
+          await this.reply(chatId, carryView(computeCarryData(rates), lang));
+        } catch (err) {
+          this.logger(`[Router] /carry RPC gagal: ${err instanceof Error ? err.message : String(err)}`);
+          const ctx = await buildReplContext({ loaders: this.loaders });
+          if (ctx.carryPairs.length > 0) {
+            await this.reply(chatId, carryFromContextView(ctx.carryPairs, lang));
+          } else {
+            await this.reply(chatId, T(lang, "⚠️ Data bunga Aave belum tersedia. Coba lagi sebentar lagi.", "⚠️ Aave rate data is not available yet. Please try again shortly."));
+          }
+        }
         break;
       }
 
       case "report": {
         const target = args[0] || "latest";
-        const { reportCommand } = await import("../../cli/commands/report.ts");
-        const out = await captureCommandOutput(async () => {
-          await reportCommand([target, "--no-color"]);
-        });
-        await this.adapter.send(chatId, out || `Report ${target} not found.`);
+        if (!this.env.DATABASE_URL) {
+          await this.reply(chatId, T(lang, "Database belum dikonfigurasi di agent.", "The agent has no database configured."));
+          break;
+        }
+        const { fetchReport } = await import("../../cli/commands/report.ts");
+        const found = await fetchReport(target).catch(() => null);
+        await this.reply(
+          chatId,
+          found
+            ? reportView(found, lang)
+            : T(lang, `Belum ada laporan riset${target === "latest" ? "" : ` dengan id ${escapeHtml(target)}`}.`, `No research report${target === "latest" ? "" : ` with id ${escapeHtml(target)}`} yet.`),
+        );
         break;
       }
 
       case "history": {
-        const { historyCommand } = await import("../../cli/commands/history.ts");
-        const out = await captureCommandOutput(async (deps) => {
-          await historyCommand(["--no-color"], deps);
-        });
-        await this.adapter.send(chatId, out || "No history available.");
+        if (!this.env.DATABASE_URL) {
+          await this.reply(chatId, T(lang, "Database belum dikonfigurasi di agent.", "The agent has no database configured."));
+          break;
+        }
+        const { recentReports } = await import("../../db/history.ts");
+        const rows = await recentReports(8).catch(() => []);
+        await this.reply(chatId, historyView(rows, lang));
         break;
       }
 
       case "subscribe": {
         await updateChatSubscription(chatId, true, this.settingsPath);
-        await this.adapter.send(chatId, "Subscribed to risk alerts.");
+        await this.reply(
+          chatId,
+          T(lang, "🔔 Notifikasi risiko aktif. Atur jenisnya dengan /alerts.", "🔔 Subscribed to risk alerts. Choose types with /alerts."),
+        );
         break;
       }
 
       case "unsubscribe": {
         await updateChatSubscription(chatId, false, this.settingsPath);
-        await this.adapter.send(chatId, "Unsubscribed from risk alerts.");
+        await this.reply(
+          chatId,
+          T(lang, "🔕 Notifikasi risiko dimatikan. Aktifkan lagi dengan /subscribe.", "🔕 Unsubscribed from risk alerts. Re-enable with /subscribe."),
+        );
         break;
       }
 
@@ -380,41 +359,53 @@ export class CommandRouter {
         const toggle = args[1]?.toLowerCase();
 
         const validTypes: AlertType[] = ["regime", "sequencer", "depeg", "pool", "oracle", "daily"];
+        const describe: Record<AlertType, [string, string]> = {
+          regime: ["tingkat risiko aset naik/turun", "asset risk level changes"],
+          sequencer: ["jaringan Arbitrum berhenti", "Arbitrum sequencer down"],
+          depeg: ["stablecoin lepas dari $1", "stablecoin depeg"],
+          pool: ["pool hampir habis dipinjam", "pool almost fully borrowed"],
+          oracle: ["harga oracle tertinggal/menyimpang", "oracle lag/deviation"],
+          daily: ["ringkasan harian", "daily summary"],
+        };
 
         if (!alertType) {
           const prefs = getChatAlertPreferences(chatId, settings);
-          const lines = validTypes.map((t) => `  • ${t}: ${prefs[t] ? "ON" : "OFF"}`);
+          const lines = validTypes.map(
+            (t) => `${prefs[t] ? "✅" : "⬜"} <b>${t}</b> — ${lang === "id" ? describe[t][0] : describe[t][1]}`,
+          );
           const msg =
-            `Alert preferences for this chat:\n${lines.join("\n")}\n\n` +
-            `Change a setting with: /alerts <type> <on|off>\n` +
-            `Example: /alerts daily on`;
-          await this.adapter.send(chatId, msg);
+            `<b>${T(lang, "Pengaturan notifikasi chat ini", "Alert preferences for this chat")}</b>\n${lines.join("\n")}\n\n` +
+            T(lang, "Ubah dengan: <code>/alerts &lt;jenis&gt; on|off</code>\nContoh: <code>/alerts daily on</code>", "Change with: <code>/alerts &lt;type&gt; on|off</code>\nExample: <code>/alerts daily on</code>");
+          await this.reply(chatId, msg);
           return;
         }
 
         if (!validTypes.includes(alertType)) {
-          await this.adapter.send(
+          await this.reply(
             chatId,
-            `Unknown alert type '${alertType}'. Available: ${validTypes.join(", ")}`,
+            T(lang, `Jenis alert '${escapeHtml(alertType)}' tidak dikenal. Pilihan: ${validTypes.join(", ")}`, `Unknown alert type '${escapeHtml(alertType)}'. Available: ${validTypes.join(", ")}`),
           );
           return;
         }
 
         if (toggle !== "on" && toggle !== "off") {
-          await this.adapter.send(chatId, `Usage: /alerts ${alertType} on|off`);
+          await this.reply(chatId, `${T(lang, "Cara pakai", "Usage")}: <code>/alerts ${escapeHtml(alertType)} on|off</code>`);
           return;
         }
 
         const enabled = toggle === "on";
         await updateChatAlertPreference(chatId, alertType, enabled, this.settingsPath);
-        await this.adapter.send(chatId, `Alert '${alertType}' set to ${toggle.toUpperCase()}.`);
+        await this.reply(
+          chatId,
+          T(lang, `Alert '${alertType}' sekarang ${toggle.toUpperCase()}.`, `Alert '${alertType}' set to ${toggle.toUpperCase()}.`),
+        );
         break;
       }
 
       default: {
-        await this.adapter.send(
+        await this.reply(
           chatId,
-          `Unknown command '/${cmd}'. Type /help for available commands.`,
+          T(lang, `Perintah '/${escapeHtml(cmd)}' tidak dikenal. Ketik /help untuk daftar perintah.`, `Unknown command '/${escapeHtml(cmd)}'. Type /help for available commands.`),
         );
         break;
       }
@@ -425,6 +416,7 @@ export class CommandRouter {
     chatId: string,
     question: string,
     settings: Settings,
+    lang: Lang,
   ): Promise<void> {
     // 1. Cek batas Q&A harian
     const qaLimit = Number(
@@ -433,9 +425,13 @@ export class CommandRouter {
     const currentQa = getDailyQaCount(this.state, chatId);
 
     if (currentQa >= qaLimit) {
-      await this.adapter.send(
+      await this.reply(
         chatId,
-        `Daily Q&A limit reached (${qaLimit}/${qaLimit}). Slash commands remain available.`,
+        T(
+          lang,
+          `Batas tanya-jawab harian tercapai (${qaLimit}/${qaLimit}) — Daily Q&A limit reached (${qaLimit}/${qaLimit}). Perintah seperti /status tetap bisa dipakai.`,
+          `Daily Q&A limit reached (${qaLimit}/${qaLimit}). Slash commands like /status remain available.`,
+        ),
       );
       return;
     }
@@ -460,13 +456,12 @@ export class CommandRouter {
         await saveGatewayState(this.state, this.statePath).catch(() => {});
       }
 
-      const reply = `${res.answer}\n\n${res.costLine}\n${res.footer}`;
-      await this.adapter.send(chatId, reply);
+      await this.reply(chatId, chatAnswerView(res.answer, res.costLine, lang));
     } catch (err) {
       this.logger(`[Router] Error executing chat question: ${err instanceof Error ? err.message : String(err)}`);
-      await this.adapter.send(
+      await this.reply(
         chatId,
-        `Sorry, failed to process question: ${err instanceof Error ? err.message : String(err)}`,
+        T(lang, "⚠️ Maaf, pertanyaan belum bisa dijawab sekarang. Coba lagi sebentar lagi.", "⚠️ Sorry, I couldn't answer that right now. Please try again shortly."),
       );
     }
   }

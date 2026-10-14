@@ -63,6 +63,7 @@ import "./gateway/pairing.test.ts";
 import "./gateway/router.test.ts";
 import "./gateway/alerts.test.ts";
 import "./gateway/state.test.ts";
+import "./gateway/views.test.ts";
 import "./gateway/gateway.test.ts";
 
 

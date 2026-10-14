@@ -36,7 +36,10 @@
 - **REPL & `tahansoe ask` dihapus:** chat hanya lewat channel gateway. Modul Q&A pindah ke `apps/engine/src/chat/`. Raw-mode input `setup` kini melepas stdin setelah selesai.
 - **Mode background:** `tahansoe start --detach` + `stop` / `status` / `logs [-f]` (`src/cli/commands/daemon.ts`). Stop bersih lewat file permintaan (aman di Windows), force kill setelah 30 s. Smoke test nyata di Windows: start → status → logs → stop bersih.
 - **Test RSS "flaky" ternyata time bomb** (fixture 8 Okt vs filter 48 jam memakai jam sistem) — diperbaiki dengan `now` tetap (Antigravity).
-- Test engine 505/505 hijau, typecheck semua workspace bersih, lint 0 error.
+- **Bug pairing "kode kedaluwarsa" saat agent sudah jalan:** daemon menyimpan seluruh state memorinya tiap offset Telegram berubah, padahal kode dari `gateway pair` baru dimuat ulang di awal siklus long-poll (50 detik) → kode CLI tertimpa, `/start <kode>` ditolak. Kini `saveGatewayState` menggabungkan pairing & percobaan gagal dari disk sebelum menulis (`mergePairingsFromDisk`), dengan test regresi.
+- **Pesan Telegram ramah HP + penjelasan** (`apps/engine/src/gateway/views.ts`): `/status`, `/fuse`, `/carry`, `/report`, `/history`, `/help`, jawaban chat, dan semua alert kini HTML ringkas (emoji regime, arti tiap regime, arti trigger/target HF, carry & kink dijelaskan, "yang bisa dicek" pada alert) mengikuti `ui.language` (id/en). Sebelumnya mengirim tabel terminal mentah. `captureCommandOutput` (membajak stdout global proses daemon) dihapus; data diambil langsung (`runFusion`, `fetchAaveRates` + `computeCarryData`, `fetchReport`, `recentReports`). Output CLI `carry` juga diberi penjelasan per bagian.
+- **`tahansoe eval --help`** kini menampilkan bantuan (sebelumnya langsung menjalankan eval berbayar); flag tak dikenal ditolak.
+- Test engine 515/515 hijau, typecheck semua workspace bersih, lint 0 error.
 
 ### Core Risk Engine & Research Agents (M3)
 - **Pipeline Riset Multi-Agent Penuh:** 4 analis domain paralel (Geopolitics, Macro, Market, Onchain) $\rightarrow$ debat dialektika Hawk vs Dove $\rightarrow$ sintesis Risk Assessor $\rightarrow$ pemetaan ke `Signal` (`RESEARCH`, confidence cap $\le 0.6$).

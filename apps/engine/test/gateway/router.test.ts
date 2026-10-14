@@ -125,7 +125,7 @@ test("router: pairing via /start CODE berhasil dan mendaftarkan chat ke settings
   });
 
   assert.equal(adapter.sentMessages.length, 1);
-  assert.match(adapter.sentMessages[0]!.message, /Tahansoe Risk Agent Commands/i);
+  assert.match(adapter.sentMessages[0]!.message, /Tahansoe guide/i);
 
   await rm(tmp, { recursive: true, force: true });
 });
@@ -290,7 +290,7 @@ test("router: callback_query dari chat yang diizinkan diproses dan selalu dijawa
 
   assert.equal(adapter.answeredCallbacks.length, 1);
   assert.equal(adapter.answeredCallbacks[0]?.id, "cb_status_123");
-  assert.match(adapter.sentMessages[0]!.message, /Tahansoe Status:/);
+  assert.match(adapter.sentMessages[0]!.message, /Risk status/);
 
   // 2. Callback tombol mute 6h (Bisukan 6 jam)
   adapter.sentMessages = [];

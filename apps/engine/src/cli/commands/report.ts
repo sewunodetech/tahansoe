@@ -22,7 +22,7 @@ interface Fetched {
 }
 
 /** Ambil satu baris research_reports (by id atau terbaru). Read-only. */
-async function fetchReport(idOrLatest: string): Promise<Fetched | null> {
+export async function fetchReport(idOrLatest: string): Promise<Fetched | null> {
   const { getDb, researchReports } = await import("@tahansoe/db");
   const { desc, eq } = await import("drizzle-orm");
   const db = getDb();

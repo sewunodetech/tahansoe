@@ -39,7 +39,60 @@ export async function settingsCommand(argv: string[]): Promise<number> {
 }
 
 /** `tahansoe eval [...]` — delegasi ke src/eval/runner.ts (spawn via tsx). */
+export const EVAL_HELP = `tahansoe eval — run the LLM eval set (prompt injection + market scenarios)
+
+Usage: tahansoe eval [options]
+  --set <all|injection|scenarios>  Which cases to run (default: all = 16 injection + 8 scenarios)
+  --limit <N>                      Run only the first N cases
+  --runs <N>                       Repeat each case N times (default: 1)
+  --concurrency <N>                Parallel cases (default: 1)
+  --delay-ms <ms>                  Pause between cases
+  --max-cost-idr <Rp>              Hard spend cap for this eval (default: 3000)
+  --initial-spent-idr <Rp>         Count already-spent amount toward the cap
+  --label <name>                   Label for the report folder
+  --dry-plan                       Show the plan and cost estimate only (no LLM calls)
+  --help                           Show this help
+
+Note: without --dry-plan this CALLS THE LLM GATEWAY and spends budget.`;
+
+/** Flag yang dikenal runner; flag lain ditolak agar salah ketik tidak menjalankan eval berbayar. */
+const EVAL_VALUE_FLAGS = new Set([
+  "--set",
+  "--limit",
+  "--runs",
+  "--concurrency",
+  "--delay-ms",
+  "--max-cost-idr",
+  "--initial-spent-idr",
+  "--label",
+]);
+const EVAL_BOOL_FLAGS = new Set(["--dry-plan"]);
+
+/** Validasi argumen eval. Mengembalikan pesan error, atau null bila valid. */
+export function validateEvalArgs(argv: string[]): string | null {
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i]!;
+    if (EVAL_BOOL_FLAGS.has(a)) continue;
+    if (EVAL_VALUE_FLAGS.has(a)) {
+      if (i + 1 >= argv.length || argv[i + 1]!.startsWith("--")) return `flag ${a} butuh nilai`;
+      i++;
+      continue;
+    }
+    return `argumen tidak dikenal: ${a}`;
+  }
+  return null;
+}
+
 export async function evalCommand(argv: string[]): Promise<number> {
+  if (argv.includes("--help") || argv.includes("-h")) {
+    process.stdout.write(EVAL_HELP + "\n");
+    return EXIT_OK;
+  }
+  const invalid = validateEvalArgs(argv);
+  if (invalid) {
+    process.stderr.write(`${invalid}\n\n${EVAL_HELP}\n`);
+    return EXIT_ERROR;
+  }
   const { spawn } = await import("node:child_process");
   const { fileURLToPath } = await import("node:url");
   const { dirname, join } = await import("node:path");
