@@ -42,6 +42,7 @@ Options:
   --no-gateway   Do not start the channel gateway (Telegram)
   --no-research  Do not start the LLM research worker
   --once         Run a single cycle across components then exit
+  --detach       Run in the background (see: tahansoe status | logs | stop)
   --no-settle    Disable the periodic settlement job
   --no-fusion    Disable the periodic risk-fusion job
   --no-color     Disable ANSI colors
@@ -80,6 +81,10 @@ export interface StartDeps extends ScheduleDeps {
   env?: NodeJS.ProcessEnv;
   isTTY?: boolean;
   shutdownSignal?: AbortSignal;
+  /** Lokasi pid/stop file daemon (test). Default: apps/engine/.data. */
+  daemonPaths?: import("./daemon.ts").DaemonPaths;
+  /** Keluar paksa setelah shutdown daemon (test meng-inject no-op). Default: process.exit. */
+  exitFn?: (code: number) => void;
 }
 
 /** Format baris dashboard status gateway. */
@@ -176,6 +181,7 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
         "no-gateway": { type: "boolean" },
         "no-research": { type: "boolean" },
         once: { type: "boolean" },
+        detach: { type: "boolean" },
         "no-settle": { type: "boolean" },
         "no-fusion": { type: "boolean" },
         "no-color": { type: "boolean" },
@@ -193,6 +199,15 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
     return EXIT_OK;
   }
 
+  if (parsed.values.detach) {
+    if (parsed.values.once) {
+      writeErr("--detach tidak bisa digabung dengan --once.\n");
+      return EXIT_ERROR;
+    }
+    const { startDetached } = await import("./daemon.ts");
+    return startDetached(argv.filter((a) => a !== "--detach"), { env, stdout: writeOut, stderr: writeErr });
+  }
+
   const noGateway = Boolean(flagOrNpm(parsed.values["no-gateway"], "no_gateway", ["no-gateway"]));
   const noResearch = Boolean(flagOrNpm(parsed.values["no-research"], "no_research", ["no-research"]));
   const once = Boolean(flagOrNpm(parsed.values.once, "once"));
@@ -207,6 +222,19 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
     warn: (m: string) => writeErr(m + "\n"),
     error: (m: string) => writeErr(m + "\n"),
   };
+
+  // Mode daemon (start --detach, ADR 0011): pid file + pemantau file stop dipasang
+  // SEBELUM komponen apa pun start. Research worker menunggu run pertama (bisa
+  // bermenit-menit); bila dipasang sesudahnya, parent mengira daemon gagal dan
+  // `stop`/`status` tidak melihatnya selama itu.
+  let daemon: { signal: AbortSignal; cleanup: () => void } | null = null;
+  let worker: { start: () => Promise<boolean>; stop: () => Promise<void> } | null = null;
+  if (env.TAHANSOE_DAEMON === "1" && !once) {
+    const { attachDaemonRuntime } = await import("./daemon.ts");
+    daemon = attachDaemonRuntime(argv, deps.daemonPaths);
+    // Stop saat startup: batalkan run riset pertama yang sedang berjalan.
+    daemon.signal.addEventListener("abort", () => void worker?.stop(), { once: true });
+  }
 
   // Status gateway awal
   const statusCheck = deps.gatewayStatus ?? defaultGatewayStatus;
@@ -234,6 +262,12 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
     writeOut(`  ${dim(theme, "○ channel gateway  [OFF: not configured]")}\n`);
   }
   writeOut("\n");
+  if (!env.DATABASE_URL?.trim()) {
+    writeErr(
+      "⚠ DATABASE_URL belum diset (ADR 0011: Postgres server wajib) — hasil tidak tersimpan; " +
+        "research, fusion, dan settle membutuhkan DB. Jalankan 'tahansoe setup'.\n\n",
+    );
+  }
 
   // Jaring pengaman Neon serverless transient error
   if (!deps.makeWorker) {
@@ -302,9 +336,6 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
       await runSettleOnce(deps, logger);
     }
 
-    const { getDbDriver, resetDbClient } = await import("@tahansoe/db");
-    if (getDbDriver() === "pglite") await resetDbClient();
-
     logger.info("[start] single cycle completed.");
     return EXIT_OK;
   }
@@ -357,8 +388,7 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
   }
 
   // 4. Research Worker
-  let worker: { start: () => Promise<boolean>; stop: () => Promise<void> } | null = null;
-  if (!noResearch) {
+  if (!noResearch && !daemon?.signal.aborted) {
     if (!deps.makeWorker && !isGatewayConfigured()) {
       logger.warn(`[research] LLM gateway belum dikonfigurasi — research worker dilewati. Jalankan 'tahansoe setup'.`);
     } else {
@@ -423,7 +453,7 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
     logger.info(formatGatewayDashboardLine(gwStatus, { noGateway, isRunning: gatewayRunning }));
   }
 
-  // 7. Tunggu shutdown bersih (SIGINT / SIGTERM / deps.shutdownSignal)
+  // 7. Tunggu shutdown bersih (SIGINT / SIGTERM / deps.shutdownSignal / file stop daemon)
   await new Promise<void>((resolve) => {
     let resolved = false;
     const shutdown = async () => {
@@ -466,8 +496,6 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
             writeErr(`[start] error stop price worker: ${String(e)}\n`);
           }
         }
-        const { getDbDriver, resetDbClient } = await import("@tahansoe/db");
-        if (getDbDriver() === "pglite") await resetDbClient();
       } finally {
         resolve();
       }
@@ -476,9 +504,20 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
     if (deps.shutdownSignal) {
       deps.shutdownSignal.addEventListener("abort", () => void shutdown());
     }
+    if (daemon) {
+      // Stop bisa sudah diminta selama startup (listener abort tidak terpicu ulang).
+      if (daemon.signal.aborted) void shutdown();
+      else daemon.signal.addEventListener("abort", () => void shutdown(), { once: true });
+    }
     process.once("SIGINT", shutdown);
     process.once("SIGTERM", shutdown);
   });
 
+  if (daemon) {
+    daemon.cleanup();
+    // Handle sisa (socket/timer pihak ketiga) tidak boleh menahan daemon setelah shutdown.
+    const exit = deps.exitFn ?? ((code: number) => process.exit(code));
+    setTimeout(() => exit(0), 3000).unref();
+  }
   return EXIT_OK;
 }

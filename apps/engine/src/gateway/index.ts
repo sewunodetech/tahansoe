@@ -17,8 +17,8 @@ import {
   type GatewayRuntimeState,
 } from "./core/state.ts";
 import { loadSettings, settingsPath as defaultSettingsPath, type Settings } from "../settings/settings.ts";
-import type { ReplContextLoaders } from "../cli/repl/context.ts";
-import type { ChatOptions } from "../cli/repl/chat.ts";
+import type { ReplContextLoaders } from "../chat/context.ts";
+import type { ChatOptions } from "../chat/chat.ts";
 
 export type GatewayLogger =
   | ((msg: string) => void)

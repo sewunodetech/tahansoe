@@ -121,6 +121,7 @@ export class RoleRouter implements LlmProvider {
   private readonly entries: RoleEntry[];
   private readonly providers: LlmProvider[];
   private readonly retryBackoffMs: number;
+  private readonly budget: Budget;
 
   constructor(
     entries: RoleEntry[],
@@ -132,6 +133,7 @@ export class RoleRouter implements LlmProvider {
     this.entries = entries;
     this.providers = providers ?? entries.map((e) => makeProvider(e, budget, fetchImpl));
     this.retryBackoffMs = retryBackoffMs;
+    this.budget = budget;
   }
 
   get chain(): RoleEntry[] {
@@ -150,6 +152,13 @@ export class RoleRouter implements LlmProvider {
 
     const failures: string[] = [];
     let last: LlmResult<T> | null = null;
+    const stopped = (error: string, extra: Partial<LlmResult<T>> = {}): LlmResult<T> => ({
+      stopReason: "error",
+      data: null,
+      usage: last?.usage ?? { model: req.model, inputTokens: 0, outputTokens: 0 },
+      error,
+      ...extra,
+    });
 
     for (let i = 0; i < this.providers.length; i++) {
       const entry = this.entries[i]!;
@@ -157,8 +166,15 @@ export class RoleRouter implements LlmProvider {
 
       let result: LlmResult<T> | null = null;
       for (let attempt = 0; attempt < 2; attempt++) {
+        // Dibatalkan pemanggil (deadline/shutdown) → berhenti, tanpa retry/fallback.
+        if (req.signal?.aborted) return stopped("aborted: run dibatalkan", { aborted: true });
+        // Budget dicek per panggilan (bukan hanya di awal run): retry & fallback ikut dihitung.
+        if (this.budget.exceeded()) {
+          return stopped(`budget harian habis (terpakai $${this.budget.spentToday().toFixed(4)})`);
+        }
         result = await this.providers[i]!.structured({ ...req, model: entry.model });
         last = result;
+        if (result.aborted) return { ...result, providerUsed: label };
 
         if (result.stopReason === "ok" && result.data !== null) {
           return { ...result, providerUsed: label };
@@ -182,7 +198,11 @@ export class RoleRouter implements LlmProvider {
         if (isNonRetryableStatus(result.status)) break;
         if (attempt === 0) {
           failures.push(`${label} → ${result.error ?? "error"} (retry)`);
-          if (this.retryBackoffMs > 0) await delay(this.retryBackoffMs);
+          if (this.retryBackoffMs > 0) {
+            // Hormati retry-after (429) bila ada, dibatasi agar run tidak tertahan lama.
+            const wait = Math.min(result.retryAfterMs ?? this.retryBackoffMs, MAX_RETRY_WAIT_MS);
+            await delay(wait, req.signal);
+          }
           continue;
         }
       }
@@ -200,8 +220,21 @@ export class RoleRouter implements LlmProvider {
   }
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** Batas atas jeda retry (ms), termasuk saran `retry-after` dari gateway. */
+const MAX_RETRY_WAIT_MS = 30_000;
+
+/** Jeda yang selesai lebih awal bila signal di-abort. */
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const t = setTimeout(done, ms);
+    function done() {
+      clearTimeout(t);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    }
+    signal?.addEventListener("abort", done, { once: true });
+  });
 }
 
 /**

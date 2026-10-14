@@ -23,7 +23,7 @@ import {
   type FetchedReport,
   type FetchedAssessment,
   type FetchedRateSample,
-} from "../../../src/cli/repl/context.ts";
+} from "../../src/chat/context.ts";
 
 test("dedupeSignalsByEvidence: mendeduplikasi sinyal dengan judul bukti sama", () => {
   const t0 = new Date("2026-10-09T10:00:00Z");

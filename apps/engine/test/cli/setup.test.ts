@@ -9,8 +9,8 @@
  *    - Membaca key dari nama env var (--llm-key-env), bukan dari argv.
  *    - Secret ditulis ke target .env file tanpa bocor ke stdout atau stderr.
  *    - settings.json diperbarui dengan gpt-6-luna untuk seluruh peran.
- *    - Inisialisasi PGlite terpanggil.
- *    - Opsi DB neon didukung.
+ *    - Migrasi dijalankan ke DATABASE_URL (ADR 0011).
+ *    - DATABASE_URL eksisting dipertahankan.
  *    - Exit code 0 (EXIT_OK).
  */
 
@@ -143,14 +143,16 @@ test("setupCommand non-interaktif (--yes): menulis .env & settings.json, rahasia
   );
 
   const secretKey = "super-secret-production-token-xyz-987";
+  const dbUrl = "postgresql://u:db-secret-pass@ep-test.neon.tech/main";
   const customEnv: NodeJS.ProcessEnv = {
     MY_TEST_KEY_VAR: secretKey,
+    MY_TEST_DB_VAR: dbUrl,
   };
 
   const stdoutChunks: string[] = [];
   const stderrChunks: string[] = [];
 
-  let ensureDbCalled = false;
+  let migratedUrl: string | undefined;
   let doctorCalled = false;
 
   try {
@@ -161,8 +163,8 @@ test("setupCommand non-interaktif (--yes): menulis .env & settings.json, rahasia
         "https://router.bynara.id/v1",
         "--llm-key-env",
         "MY_TEST_KEY_VAR",
-        "--db",
-        "pglite",
+        "--db-url-env",
+        "MY_TEST_DB_VAR",
         "--model",
         "gpt-6-luna",
       ],
@@ -172,8 +174,8 @@ test("setupCommand non-interaktif (--yes): menulis .env & settings.json, rahasia
         settingsPath: tmpSettings,
         stdout: (s) => stdoutChunks.push(s),
         stderr: (s) => stderrChunks.push(s),
-        ensureDbImpl: async () => {
-          ensureDbCalled = true;
+        migrateImpl: async (url) => {
+          migratedUrl = url;
         },
         runDoctorImpl: async () => {
           doctorCalled = true;
@@ -186,15 +188,15 @@ test("setupCommand non-interaktif (--yes): menulis .env & settings.json, rahasia
     );
 
     assert.equal(exitCode, EXIT_OK, "harus mengembalikan exit code 0");
-    assert.equal(ensureDbCalled, true, "ensureDb harus dipanggil untuk driver pglite");
+    assert.equal(migratedUrl, dbUrl, "migrasi harus dijalankan ke DATABASE_URL (ADR 0011)");
     assert.equal(doctorCalled, true, "doctor harus dipanggil di akhir setup");
 
     // Periksa file .env
     const envContent = await readFile(tmpEnv, "utf-8");
     assert.match(envContent, /^LLM_API_URL=https:\/\/router\.bynara\.id\/v1$/m);
     assert.match(envContent, /^LLM_API_KEY=super-secret-production-token-xyz-987$/m);
-    assert.match(envContent, /^DB_DRIVER=pglite$/m);
-    assert.match(envContent, /^PGLITE_DATA_DIR=apps\/engine\/\.data\/pglite$/m);
+    assert.match(envContent, /^DATABASE_URL=postgresql:\/\/u:db-secret-pass@ep-test\.neon\.tech\/main$/m);
+    assert.doesNotMatch(envContent, /DB_DRIVER|PGLITE_DATA_DIR/);
     assert.match(envContent, /^RESEARCH_ENABLED=true$/m);
 
     // Periksa settings.json
@@ -217,12 +219,13 @@ test("setupCommand non-interaktif (--yes): menulis .env & settings.json, rahasia
       !fullStderr.includes(secretKey),
       "Secret API key tidak boleh muncul di log stderr",
     );
+    assert.ok(!fullStdout.includes("db-secret-pass"), "DATABASE_URL tidak boleh muncul di stdout");
   } finally {
     await rm(tmp, { recursive: true, force: true });
   }
 });
 
-test("setupCommand non-interaktif (--yes): opsi --db neon", async () => {
+test("setupCommand non-interaktif (--yes): DATABASE_URL eksisting dipertahankan + migrasi", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "tahansoe-setup-neon-"));
   const tmpEnv = join(tmp, ".env");
   const tmpSettings = join(tmp, "settings.json");
@@ -239,7 +242,7 @@ test("setupCommand non-interaktif (--yes): opsi --db neon", async () => {
 
   try {
     const exitCode = await setupCommand(
-      ["--yes", "--db", "neon", "--model", "gpt-6-luna"],
+      ["--yes", "--model", "gpt-6-luna"],
       {
         env: customEnv,
         envPath: tmpEnv,
@@ -247,13 +250,13 @@ test("setupCommand non-interaktif (--yes): opsi --db neon", async () => {
         stdout: () => {},
         stderr: () => {},
         runDoctorImpl: async () => [],
+        migrateImpl: async () => {},
       },
     );
 
     assert.equal(exitCode, EXIT_OK);
 
     const envContent = await readFile(tmpEnv, "utf-8");
-    assert.match(envContent, /^DB_DRIVER=neon$/m);
     assert.match(envContent, /^DATABASE_URL=postgresql:\/\/neon-user:pass@ep-cool\.neon\.tech\/main$/m);
   } finally {
     await rm(tmp, { recursive: true, force: true });
@@ -269,7 +272,7 @@ test("setupCommand: --help menampilkan bantuan", async () => {
   assert.ok(out.join("").includes("Usage: tahansoe setup"));
 });
 
-test("askHidden: simulasi kasus REPL-aktif memastikan secret TIDAK PERNAH muncul di captured stdout", async () => {
+test("askHidden: secret TIDAK PERNAH muncul di captured stdout", async () => {
   const secret = "8930492810:AAG_very_secret_bot_token_sample";
   const { PassThrough } = await import("node:stream");
   const inputStream = new PassThrough();
@@ -281,18 +284,9 @@ test("askHidden: simulasi kasus REPL-aktif memastikan secret TIDAK PERNAH muncul
     },
   });
 
-  const readline = await import("node:readline");
-  const replRl = readline.createInterface({
-    input: inputStream,
-    output: outputStream,
-    terminal: true,
-    prompt: "› ",
-  });
-
   const hiddenPromise = askHidden("  TELEGRAM_BOT_TOKEN: ", {
     input: inputStream,
     output: outputStream,
-    replRl,
   });
 
   // Tulis secret ke input stream
@@ -303,10 +297,7 @@ test("askHidden: simulasi kasus REPL-aktif memastikan secret TIDAK PERNAH muncul
 
   // Periksa captured stdout: prompt harus ada, namun secret SAMA SEKALI tidak boleh muncul
   assert.ok(capturedStdout.includes("TELEGRAM_BOT_TOKEN: "), "prompt harus muncul");
-  assert.ok(!capturedStdout.includes(secret), "secret TIDAK PERNAH boleh bocor di captured stdout saat REPL aktif");
-  assert.ok(!capturedStdout.includes(`› ${secret}`), "tidak boleh ada echo prompt REPL bersama secret");
-
-  replRl.close();
+  assert.ok(!capturedStdout.includes(secret), "secret TIDAK PERNAH boleh bocor di captured stdout");
 });
 
 test("setupCommand: konfigurasi neon eksisting + semua Enter -> .env dan settings.json byte-identical", async () => {
@@ -389,6 +380,7 @@ test("setupCommand: konfigurasi neon eksisting + semua Enter -> .env dan setting
     }) as any,
     telegramGetMe: async () => ({ ok: true, username: "ExistingBot" }),
     runDoctorImpl: async () => [],
+    migrateImpl: async () => {},
   });
 
   assert.equal(exitCode, EXIT_OK);

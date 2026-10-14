@@ -28,8 +28,6 @@ export interface TranslationCatalog {
   "repl.noData": string;
   "repl.gatewayTelegramActive": string;
   "repl.gatewayTelegramOff": string;
-  "repl.dbPglite": string;
-  "repl.dbNeon": string;
 
   "repl.suggested": string;
   "repl.suggestedAnalyze": string;

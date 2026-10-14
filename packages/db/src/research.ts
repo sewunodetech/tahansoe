@@ -22,6 +22,7 @@ import {
   integer,
   bigint,
   numeric,
+  doublePrecision,
   boolean,
   timestamp,
   jsonb,
@@ -289,3 +290,16 @@ export const rateSamples = pgTable(
 export type RateSample = typeof rateSamples.$inferSelect;
 export type NewRateSample = typeof rateSamples.$inferInsert;
 
+
+/**
+ * Akumulasi biaya LLM per hari UTC (spec m3-research-agents §3.4, ADR 0011).
+ * Dibagi lintas proses (daemon `start`, `analyze`, chat gateway) sehingga
+ * LLM_DAILY_BUDGET_USD berlaku global dan tidak reset saat proses restart.
+ */
+export const llmUsageDaily = pgTable("llm_usage_daily", {
+  day: text("day").primaryKey(), // YYYY-MM-DD (UTC)
+  spentUsd: doublePrecision("spent_usd").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type LlmUsageDaily = typeof llmUsageDaily.$inferSelect;

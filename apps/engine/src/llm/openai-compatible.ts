@@ -14,6 +14,7 @@ import { z } from "zod";
 import type { LlmProvider, LlmRequest, LlmResult, LlmUsage } from "./provider.ts";
 import { budget as defaultBudget, type Budget } from "./budget.ts";
 import { redactDeep } from "./redact.ts";
+import { env } from "../config.ts";
 
 /** Token output maksimum per panggilan (spec §3.4). */
 const MAX_OUTPUT_TOKENS = 16000;
@@ -27,6 +28,8 @@ export interface OpenAICompatibleConfig {
   apiKey: string;
   /** Nama model default; dapat ditimpa per request oleh req.model. */
   model: string;
+  /** Batas waktu satu request HTTP (ms). Default: env LLM_REQUEST_TIMEOUT_MS (90s). */
+  timeoutMs?: number;
 }
 
 /** Injectable fetch (test memakai mock agar offline). */
@@ -36,12 +39,15 @@ export type FetchLike = (
     method: string;
     headers: Record<string, string>;
     body: string;
+    signal?: AbortSignal;
   },
 ) => Promise<{
   ok: boolean;
   status: number;
   json: () => Promise<unknown>;
   text: () => Promise<string>;
+  /** Opsional (fetch asli punya); dipakai membaca `retry-after` pada 429. */
+  headers?: { get(name: string): string | null };
 }>;
 
 export class OpenAICompatibleProvider implements LlmProvider {
@@ -150,36 +156,58 @@ export class OpenAICompatibleProvider implements LlmProvider {
       // Tanpa tools (invariant). Jangan kirim temperature/top_p agar default model.
     });
 
-    let res: Awaited<ReturnType<FetchLike>>;
+    // Timeout per request + pembatalan dari pemanggil (deadline run / shutdown).
+    const timeoutMs = this.cfg.timeoutMs ?? env.llmRequestTimeoutMs();
+    // Timer biasa (ref'd), bukan AbortSignal.timeout: timer unref bisa membuat proses
+    // keluar diam-diam bila hanya request ini yang sedang ditunggu.
+    const timeoutCtl = new AbortController();
+    const timer = setTimeout(() => timeoutCtl.abort(), timeoutMs);
+    const timeout = timeoutCtl.signal;
+    const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
+    const failed = (error: string, extra: Partial<LlmResult<T>> = {}) => ({
+      kind: "final" as const,
+      result: {
+        stopReason: "error" as const,
+        data: null,
+        usage: mergeUsage(priorUsage, { model, inputTokens: 0, outputTokens: 0 }),
+        error,
+        ...extra,
+      },
+    });
+
+    let payload: ChatCompletion;
     try {
-      res = await this.fetchImpl(url, { method: "POST", headers, body });
-    } catch (err) {
-      return {
-        kind: "final",
-        result: {
-          stopReason: "error",
-          data: null,
-          usage: mergeUsage(priorUsage, { model, inputTokens: 0, outputTokens: 0 }),
-          error: `network error: ${err instanceof Error ? err.message : String(err)}`,
-        },
-      };
-    }
+      let res: Awaited<ReturnType<FetchLike>>;
+      try {
+        res = await this.fetchImpl(url, { method: "POST", headers, body, signal });
+      } catch (err) {
+        if (req.signal?.aborted) return failed("aborted: run dibatalkan", { aborted: true });
+        if (timeout.aborted) return failed(`timeout: tidak ada respons dalam ${Math.round(timeoutMs / 1000)}s`);
+        return failed(`network error: ${err instanceof Error ? err.message : String(err)}`);
+      }
 
-    if (!res.ok) {
-      const detail = await safeText(res);
-      return {
-        kind: "final",
-        result: {
-          stopReason: "error",
-          data: null,
-          usage: mergeUsage(priorUsage, { model, inputTokens: 0, outputTokens: 0 }),
-          error: `HTTP ${res.status} ${this.cfg.name}: ${truncate(detail, 300)}`,
+      if (!res.ok) {
+        const detail = await safeText(res);
+        return failed(`HTTP ${res.status} ${this.cfg.name}: ${truncate(detail, 300)}`, {
           status: res.status,
-        },
-      };
-    }
+          retryAfterMs: parseRetryAfter(res.headers?.get("retry-after") ?? null),
+        });
+      }
 
-    const payload = (await res.json()) as ChatCompletion;
+      // Body bisa gagal dibaca (timeout di tengah stream) atau bukan JSON (halaman
+      // HTML proxy dengan status 200). Jangan biarkan melempar ke pipeline.
+      try {
+        payload = (await res.json()) as ChatCompletion;
+      } catch (err) {
+        if (req.signal?.aborted) return failed("aborted: run dibatalkan", { aborted: true });
+        if (timeout.aborted) return failed(`timeout: respons tidak selesai dalam ${Math.round(timeoutMs / 1000)}s`);
+        return failed(`invalid response body (bukan JSON): ${err instanceof Error ? err.message : String(err)}`, {
+          status: res.status,
+        });
+      }
+    } finally {
+      clearTimeout(timer);
+    }
     const usage = mergeUsage(priorUsage, toUsage(model, payload.usage));
     this.budget.record(toUsage(model, payload.usage));
 
@@ -454,4 +482,17 @@ async function safeText(res: { text: () => Promise<string> }): Promise<string> {
 
 function truncate(s: string, n: number): string {
   return s.length > n ? `${s.slice(0, n)}…` : s;
+}
+
+/**
+ * Header `retry-after` (detik atau HTTP-date) → ms, atau undefined bila tidak ada /
+ * tidak valid. Pemanggil yang membatasi nilai maksimum.
+ */
+export function parseRetryAfter(value: string | null, now: number = Date.now()): number | undefined {
+  if (!value) return undefined;
+  const secs = Number(value.trim());
+  if (Number.isFinite(secs) && secs >= 0) return Math.round(secs * 1000);
+  const at = Date.parse(value);
+  if (Number.isFinite(at)) return Math.max(0, at - now);
+  return undefined;
 }

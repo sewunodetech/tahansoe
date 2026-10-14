@@ -1,12 +1,12 @@
 /**
- * `tahansoe setup` — Wizard konfigurasi awal terpadu (spec ADR 0009 & ADR 0010).
+ * `tahansoe setup` — Wizard konfigurasi awal terpadu (spec ADR 0009 & ADR 0011).
  *
  * Mengonfigurasi:
  *  1. LLM gateway: LLM_API_URL dan LLM_API_KEY (input tersembunyi, tes GET /models 25s).
  *  2. Pilihan model: Rekomendasi gpt-6-luna untuk seluruh peran (eval 24/24) dengan
  *     fallback deepseek-v4-flash, atau pilihan dari daftar gateway / custom.
- *  3. Database: PGlite (default lokal tanpa akun) atau Neon (cloud via DATABASE_URL).
- *     Menjalankan migrasi langsung untuk PGlite (ensureDb).
+ *  3. Database: Postgres server (Neon) via DATABASE_URL (wajib, ADR 0011), lalu
+ *     menjalankan migrasi skema idempoten.
  *  4. Opsional: ARBITRUM_RPC_URL (Enter = public RPC), FRED_API_KEY (tersembunyi),
  *     dan RESEARCH_ENABLED (default true).
  *  5. Menyimpan secret hanya ke apps/engine/.env via env-writer (mempertahankan baris lain).
@@ -37,7 +37,7 @@ Options:
   --lang <id|en>               Bahasa antarmuka / UI language (default: id)
   --llm-url <url>              URL endpoint LLM gateway (default: https://router.bynara.id/v1)
   --llm-key-env <NAME>         Nama env var yang memuat LLM_API_KEY (jangan lewat argv)
-  --db <pglite|neon>           Pilihan database: pglite (lokal, default) atau neon (cloud)
+  --db-url-env <NAME>          Nama env var yang memuat DATABASE_URL (jangan lewat argv)
   --model <name>               Model acuan untuk seluruh peran (default: gpt-6-luna)
   --telegram-token-env <NAME>  Nama env var yang memuat TELEGRAM_BOT_TOKEN (jangan lewat argv)
   --skip-telegram              Lewati langkah konfigurasi Telegram
@@ -54,7 +54,8 @@ export interface SetupDeps {
   fetchImpl?: DoctorFetch;
   envPath?: string;
   settingsPath?: string;
-  ensureDbImpl?: () => Promise<unknown>;
+  /** Hook migrasi (test). Default: runMigrationsOnNeon dari @tahansoe/db. */
+  migrateImpl?: (databaseUrl: string) => Promise<unknown>;
   runDoctorImpl?: (deps?: Record<string, unknown>) => Promise<CheckResult[]>;
   env?: NodeJS.ProcessEnv;
   telegramGetMe?: (token: string) => Promise<{ ok: boolean; username?: string; error?: string }>;
@@ -66,7 +67,6 @@ export interface SetupDeps {
     };
   }>;
   sleepImpl?: (ms: number) => Promise<void>;
-  replRl?: readline.Interface;
 }
 
 /** Sensor chat ID agar id privat tidak tercetak penuh ke log/layar. */
@@ -101,15 +101,13 @@ export interface AskHiddenOptions {
   input?: NodeJS.ReadableStream;
   output?: NodeJS.WritableStream;
   existing?: string;
-  replRl?: readline.Interface;
 }
 
 /**
  * Helper input teks tersembunyi (password/API key) yang tidak pernah di-echo
  * ke terminal atau dicetak ke stdout/stderr.
  *
- * Mendukung raw mode TTY dan serah-terima stdin jika REPL readline sedang aktif
- * (menghindari echo '› 8930...:AAG...' di REPL).
+ * Mendukung raw mode TTY; fallback readline bila input bukan TTY.
  */
 export async function askHidden(
   promptText: string,
@@ -118,115 +116,95 @@ export async function askHidden(
   const input = options.input ?? process.stdin;
   const output = options.output ?? process.stdout;
 
-  // Hentikan/bungkam readline REPL jika sedang aktif
-  let restoreRepl: (() => void) | undefined;
-  if (options.replRl) {
-    const repl = options.replRl;
-    repl.pause();
-    const origOutput = (repl as any).output;
-    const origTerminal = (repl as any).terminal;
-    (repl as any).output = null;
-    (repl as any).terminal = false;
-    restoreRepl = () => {
-      (repl as any).output = origOutput;
-      (repl as any).terminal = origTerminal;
-      repl.resume();
-    };
-  }
-
   const isRawSupported =
     Boolean((input as any).isTTY) &&
     typeof (input as any).setRawMode === "function";
 
-  try {
-    if (isRawSupported) {
-      output.write(promptText);
-      return await new Promise<string>((resolve) => {
-        const stream = input as NodeJS.ReadStream;
-        const wasRaw = Boolean(stream.isRaw);
-        stream.setRawMode(true);
-        stream.resume();
-
-        let buffer = "";
-
-        const onData = (chunk: Buffer | string) => {
-          const s = String(chunk);
-          for (let i = 0; i < s.length; i++) {
-            const ch = s[i]!;
-            if (ch === "\r" || ch === "\n") {
-              cleanup();
-              output.write("\n");
-              const trimmed = buffer.trim();
-              resolve(!trimmed && options.existing ? options.existing : trimmed);
-              return;
-            }
-            if (ch === "\u0003") {
-              // Ctrl+C
-              cleanup();
-              output.write("\n");
-              process.exit(130);
-              return;
-            }
-            if (ch === "\u0004") {
-              // Ctrl+D (EOF)
-              cleanup();
-              output.write("\n");
-              const trimmed = buffer.trim();
-              resolve(!trimmed && options.existing ? options.existing : trimmed);
-              return;
-            }
-            if (ch === "\u0008" || ch === "\x7f") {
-              // Backspace
-              if (buffer.length > 0) {
-                buffer = buffer.slice(0, -1);
-              }
-            } else if (ch >= " " || ch === "\t") {
-              buffer += ch;
-            }
-          }
-        };
-
-        const cleanup = () => {
-          stream.removeListener("data", onData);
-          try {
-            stream.setRawMode(wasRaw);
-          } catch {
-            /* abaikan */
-          }
-        };
-
-        stream.on("data", onData);
-      });
-    }
-
-    // Non-TTY fallback (pengujian, pipa proses, dsb.)
+  if (isRawSupported) {
+    output.write(promptText);
     return await new Promise<string>((resolve) => {
-      const mutableStdout = new Writable({
-        write(_chunk, _encoding, callback) {
-          callback();
-        },
-      });
+      const stream = input as NodeJS.ReadStream;
+      const wasRaw = Boolean(stream.isRaw);
+      stream.setRawMode(true);
+      stream.resume();
 
-      const rl = readline.createInterface({
-        input,
-        output: mutableStdout,
-        terminal: false,
-      });
+      let buffer = "";
 
-      output.write(promptText);
+      const onData = (chunk: Buffer | string) => {
+        const s = String(chunk);
+        for (let i = 0; i < s.length; i++) {
+          const ch = s[i]!;
+          if (ch === "\r" || ch === "\n") {
+            cleanup();
+            output.write("\n");
+            const trimmed = buffer.trim();
+            resolve(!trimmed && options.existing ? options.existing : trimmed);
+            return;
+          }
+          if (ch === "\u0003") {
+            // Ctrl+C
+            cleanup();
+            output.write("\n");
+            process.exit(130);
+            return;
+          }
+          if (ch === "\u0004") {
+            // Ctrl+D (EOF)
+            cleanup();
+            output.write("\n");
+            const trimmed = buffer.trim();
+            resolve(!trimmed && options.existing ? options.existing : trimmed);
+            return;
+          }
+          if (ch === "\u0008" || ch === "\x7f") {
+            // Backspace
+            if (buffer.length > 0) {
+              buffer = buffer.slice(0, -1);
+            }
+          } else if (ch >= " " || ch === "\t") {
+            buffer += ch;
+          }
+        }
+      };
 
-      rl.question("", (answer) => {
-        output.write("\n");
-        rl.close();
-        const trimmed = answer.trim();
-        resolve(!trimmed && options.existing ? options.existing : trimmed);
-      });
+      const cleanup = () => {
+        stream.removeListener("data", onData);
+        try {
+          stream.setRawMode(wasRaw);
+        } catch {
+          /* abaikan */
+        }
+        // Lepas stdin agar proses bisa selesai setelah wizard (stdin flowing menahan event loop).
+        stream.pause();
+      };
+
+      stream.on("data", onData);
     });
-  } finally {
-    if (restoreRepl) {
-      restoreRepl();
-    }
   }
+
+  // Non-TTY fallback (pengujian, pipa proses, dsb.)
+  return await new Promise<string>((resolve) => {
+    const mutableStdout = new Writable({
+      write(_chunk, _encoding, callback) {
+        callback();
+      },
+    });
+
+    const rl = readline.createInterface({
+      input,
+      output: mutableStdout,
+      terminal: false,
+    });
+
+    output.write(promptText);
+
+    rl.question("", (answer) => {
+      output.write("\n");
+      rl.close();
+      const trimmed = answer.trim();
+      resolve(!trimmed && options.existing ? options.existing : trimmed);
+    });
+  });
 }
 
 /**
@@ -309,7 +287,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
         lang: { type: "string" },
         "llm-url": { type: "string" },
         "llm-key-env": { type: "string" },
-        db: { type: "string" },
+        "db-url-env": { type: "string" },
         model: { type: "string" },
         "telegram-token-env": { type: "string" },
         "skip-telegram": { type: "boolean" },
@@ -344,7 +322,6 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   const existingApiUrl = env.LLM_API_URL?.trim() || "";
   const defaultApiUrl = existingApiUrl || "https://router.bynara.id/v1";
   const existingApiKey = env.LLM_API_KEY?.trim() || "";
-  const existingDbDriver = env.DB_DRIVER?.trim().toLowerCase() === "neon" ? "neon" : "pglite";
   const existingDbUrl = env.DATABASE_URL?.trim() || "";
   const existingRpcUrl = env.ARBITRUM_RPC_URL?.trim() || "";
   const existingFredKey = env.FRED_API_KEY?.trim() || "";
@@ -364,7 +341,6 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
 
   let apiUrl = "";
   let apiKey = "";
-  let dbDriver = existingDbDriver;
   let databaseUrl = existingDbUrl;
   let selectedModel = "gpt-6-luna";
   let keepCurrentModel = false;
@@ -390,14 +366,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
     } else {
       apiKey = existingApiKey || "";
     }
-    if (f.db) {
-      dbDriver = f.db.toLowerCase() === "neon" ? "neon" : "pglite";
-    } else {
-      dbDriver = existingDbDriver;
-    }
-    if (dbDriver === "neon") {
-      databaseUrl = existingDbUrl || "";
-    }
+    databaseUrl = (f["db-url-env"] ? env[String(f["db-url-env"])] : undefined)?.trim() || existingDbUrl;
     if (f.model) {
       selectedModel = f.model;
     } else if (hasExistingRoles) {
@@ -463,7 +432,6 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
         input: deps.stdin,
         output: deps.outputStream,
         existing: existingApiKey,
-        replRl: deps.replRl,
       });
 
       writeOut(`  Menguji koneksi ke ${maskHost(apiUrl)}/models...\n`);
@@ -535,60 +503,19 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
     }
 
     // -----------------------------------------------------------------------
-    // 3. Database Choice
+    // 3. Database (Postgres server, ADR 0011)
     // -----------------------------------------------------------------------
-    writeOut(pc.cyan("3. Database Engine\n"));
-    if (existingDbDriver === "neon") {
-      writeOut("  [1] Neon (cloud serverless Postgres — butuh DATABASE_URL) (current) [default]\n");
-      writeOut("  [2] PGlite (lokal, embedded Postgres WASM — tanpa server/akun cloud)\n");
-      const dbChoice = await askQuestion("  Pilihan [1]: ", {
-        input: deps.stdin,
-        output: deps.outputStream,
-        defaultValue: "1",
-      });
-
-      if (dbChoice === "2") {
-        dbDriver = "pglite";
-        writeOut(pc.green("  ✔ Driver database: pglite (lokal: apps/engine/.data/pglite)\n\n"));
-      } else {
-        dbDriver = "neon";
-        const dbUrlPrompt = existingDbUrl
-          ? "  DATABASE_URL [set (hidden) (current)]: "
-          : "  DATABASE_URL: ";
-        databaseUrl = await askHidden(dbUrlPrompt, {
-          input: deps.stdin,
-          output: deps.outputStream,
-          existing: existingDbUrl,
-          replRl: deps.replRl,
-        });
-        writeOut(pc.green("  ✔ Driver database: neon\n\n"));
-      }
-    } else {
-      writeOut("  [1] PGlite (lokal, embedded Postgres WASM — tanpa server/akun cloud) (current) [default]\n");
-      writeOut("  [2] Neon (cloud serverless Postgres — butuh DATABASE_URL)\n");
-      const dbChoice = await askQuestion("  Pilihan [1]: ", {
-        input: deps.stdin,
-        output: deps.outputStream,
-        defaultValue: "1",
-      });
-
-      if (dbChoice === "2") {
-        dbDriver = "neon";
-        const dbUrlPrompt = existingDbUrl
-          ? "  DATABASE_URL [set (hidden) (current)]: "
-          : "  DATABASE_URL: ";
-        databaseUrl = await askHidden(dbUrlPrompt, {
-          input: deps.stdin,
-          output: deps.outputStream,
-          existing: existingDbUrl,
-          replRl: deps.replRl,
-        });
-        writeOut(pc.green("  ✔ Driver database: neon\n\n"));
-      } else {
-        dbDriver = "pglite";
-        writeOut(pc.green("  ✔ Driver database: pglite (lokal: apps/engine/.data/pglite)\n\n"));
-      }
-    }
+    writeOut(pc.cyan("3. Database (Postgres server / Neon, wajib)\n"));
+    const dbUrlPrompt = existingDbUrl
+      ? "  DATABASE_URL [set (hidden) (current), Enter = simpan]: "
+      : "  DATABASE_URL: ";
+    databaseUrl = await askHidden(dbUrlPrompt, {
+      input: deps.stdin,
+      output: deps.outputStream,
+      existing: existingDbUrl,
+    });
+    if (databaseUrl) writeOut(pc.green("  ✔ DATABASE_URL diisi\n\n"));
+    else writeOut(pc.yellow("  ✖ DATABASE_URL kosong — engine butuh database server (ADR 0011).\n\n"));
 
     // -----------------------------------------------------------------------
     // 4. Kanal & Notifikasi Telegram (Opsional)
@@ -609,7 +536,6 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
           input: deps.stdin,
           output: deps.outputStream,
           existing: existingTgToken,
-          replRl: deps.replRl,
         });
 
         if (!telegramToken) {
@@ -666,28 +592,25 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
       input: deps.stdin,
       output: deps.outputStream,
       existing: existingFredKey,
-      replRl: deps.replRl,
     });
     writeOut("\n");
   }
 
   // -------------------------------------------------------------------------
-  // 6. Eksekusi Migrasi DB (PGlite)
+  // 6. Migrasi skema DB (idempoten) bila DATABASE_URL tersedia
   // -------------------------------------------------------------------------
-  if (dbDriver === "pglite") {
-    process.env.DB_DRIVER = "pglite";
-    env.DB_DRIVER = "pglite";
-    writeOut("Menyiapkan database PGlite lokal...\n");
+  if (databaseUrl) {
+    writeOut("Menjalankan migrasi skema database...\n");
     try {
-      if (deps.ensureDbImpl) {
-        await deps.ensureDbImpl();
+      if (deps.migrateImpl) {
+        await deps.migrateImpl(databaseUrl);
       } else {
-        const { ensureDb } = await import("@tahansoe/db");
-        await ensureDb();
+        const { runMigrationsOnNeon } = await import("@tahansoe/db");
+        await runMigrationsOnNeon(databaseUrl, { quiet: true });
       }
-      writeOut(pc.green("✔ Database PGlite siap & migrasi skema selesai.\n"));
+      writeOut(pc.green("✔ Migrasi skema selesai.\n"));
     } catch (err) {
-      writeErr(pc.yellow(`Perhatian: Migrasi PGlite: ${err instanceof Error ? err.message : String(err)}\n`));
+      writeErr(pc.yellow(`Perhatian: migrasi gagal: ${err instanceof Error ? err.message : String(err)}\n`));
     }
   }
 
@@ -699,13 +622,10 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   const envUpdates: Record<string, string> = {
     LLM_API_URL: apiUrl,
     LLM_API_KEY: apiKey,
-    DB_DRIVER: dbDriver,
     RESEARCH_ENABLED: "true",
   };
 
-  if (dbDriver === "pglite") {
-    envUpdates.PGLITE_DATA_DIR = "apps/engine/.data/pglite";
-  } else if (databaseUrl) {
+  if (databaseUrl) {
     envUpdates.DATABASE_URL = databaseUrl;
   }
 
@@ -749,10 +669,8 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   // Terapkan ke proses saat ini agar doctor langsung mendeteksi perubahan
   env.LLM_API_URL = apiUrl;
   env.LLM_API_KEY = apiKey;
-  env.DB_DRIVER = dbDriver;
   env.RESEARCH_ENABLED = "true";
-  if (dbDriver === "pglite") env.PGLITE_DATA_DIR = "apps/engine/.data/pglite";
-  else if (databaseUrl) env.DATABASE_URL = databaseUrl;
+  if (databaseUrl) env.DATABASE_URL = databaseUrl;
   if (arbitrumRpcUrl) env.ARBITRUM_RPC_URL = arbitrumRpcUrl;
   if (fredApiKey) env.FRED_API_KEY = fredApiKey;
   if (telegramToken) env.TELEGRAM_BOT_TOKEN = telegramToken;
@@ -803,9 +721,9 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   writeOut(pc.bold("Setup selesai! Langkah selanjutnya:\n"));
   writeOut("  tahansoe gateway pair          — hubungkan chat Telegram Anda (opsional)\n");
   writeOut("  tahansoe start                 — jalankan agent mandiri penuh (riset + fusi + gateway Telegram)\n");
-  writeOut("  tahansoe                       — buka mode interaktif REPL & tanya-jawab\n");
+  writeOut("  tahansoe start --detach        — jalankan agent di background (stop/status/logs)\n");
   writeOut("  tahansoe analyze               — jalankan satu putaran riset & kartu laporan\n");
-  writeOut("  tahansoe schedule run --with-price — jalankan worker riset berkala di background\n\n");
+  writeOut("  Tanya-jawab risiko: kirim pesan ke bot Telegram setelah 'gateway pair'.\n\n");
 
   return EXIT_OK;
 }

@@ -137,7 +137,7 @@ Script database ada di `packages/db/scripts/` dan dijalankan dari root:
 | `npm run db:reset` | **Hapus** semua tabel lalu buat ulang |
 | `npm run db:fix-telegram` | Perbaiki data linking Telegram |
 
-> **Catatan CLI/Engine (ADR 0010):** Web dashboard memakai Neon (`apps/web/.env`). Untuk pemakaian CLI engine secara mandiri tanpa akun cloud, engine mendukung embedded Postgres lokal via `DB_DRIVER=pglite`.
+> **Catatan CLI/Engine (ADR 0011):** Web dan engine sama-sama memakai Postgres server (Neon). Engine butuh `DATABASE_URL` di `apps/engine/.env`; jalankan agent di background dengan `tahansoe start --detach` (lihat `apps/engine/README.md`).
 
 ### 5. Jalankan
 

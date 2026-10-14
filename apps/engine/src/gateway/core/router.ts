@@ -38,14 +38,14 @@ import {
   formatStatusLine,
   type ReplContextLoaders,
   type ReplContext,
-} from "../../cli/repl/context.ts";
+} from "../../chat/context.ts";
 import {
   executeChatQuestion,
   capHistory,
   type ChatTurn,
   type ChatOptions,
   CHAT_FOOTER,
-} from "../../cli/repl/chat.ts";
+} from "../../chat/chat.ts";
 import { formatSafePlainText } from "./formatter.ts";
 
 export interface CommandRouterOptions {

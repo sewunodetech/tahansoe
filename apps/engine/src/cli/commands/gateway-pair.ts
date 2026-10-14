@@ -48,7 +48,6 @@ export interface GatewayPairDeps {
   stderr?: (s: string) => void;
   outputStream?: NodeJS.WritableStream;
   inputStream?: NodeJS.ReadableStream;
-  replRl?: readline.Interface;
   createPairingCode?: (channel: string, statePath?: string) => { code: string; expiresAt: Date | number };
   pairingStatus?: (code: string, statePath?: string) => { status: "pending" | "paired" | "expired"; chatId?: string | number };
   startGateway?: (opts?: unknown) => Promise<{
@@ -147,48 +146,23 @@ async function askConfirmation(
   deps: {
     input?: NodeJS.ReadableStream;
     output?: NodeJS.WritableStream;
-    replRl?: readline.Interface;
   },
 ): Promise<boolean> {
   const input = deps.input ?? process.stdin;
   const output = deps.output ?? process.stdout;
-  const replRl = deps.replRl;
-
-  let restoreRepl: (() => void) | undefined;
-  if (replRl && typeof replRl.pause === "function") {
-    try {
-      replRl.pause();
-      restoreRepl = () => {
-        try {
-          replRl.resume();
-        } catch {
-          /* abaikan */
-        }
-      };
-    } catch {
-      /* abaikan */
-    }
-  }
-
-  try {
-    return await new Promise<boolean>((resolve) => {
-      const rl = readline.createInterface({
-        input,
-        output,
-        terminal: Boolean((input as any).isTTY),
-      });
-
-      rl.question(promptText, (ans) => {
-        rl.close();
-        const trimmed = ans.trim().toLowerCase();
-        resolve(trimmed === "y" || trimmed === "yes");
-      });
+  return new Promise<boolean>((resolve) => {
+    const rl = readline.createInterface({
+      input,
+      output,
+      terminal: Boolean((input as any).isTTY),
     });
-  } finally {
-    if (restoreRepl) {
-      restoreRepl();
-    }
-  }
+
+    rl.question(promptText, (ans) => {
+      rl.close();
+      const trimmed = ans.trim().toLowerCase();
+      resolve(trimmed === "y" || trimmed === "yes");
+    });
+  });
 }
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -301,7 +275,6 @@ export async function gatewayPairCommand(argv: string[], deps: GatewayPairDeps =
       confirmed = await askConfirmation(prompt, {
         input: deps.inputStream,
         output: deps.outputStream,
-        replRl: deps.replRl,
       });
     }
 

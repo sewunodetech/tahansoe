@@ -59,14 +59,14 @@ test("writeEnvUpdates: menulis ke file baru dengan fallback template .env.exampl
       updates: {
         LLM_API_URL: "https://router.bynara.id/v1",
         LLM_API_KEY: "secret-key-123",
-        DB_DRIVER: "pglite",
+        RESEARCH_ENABLED: "true",
       },
     });
 
     const written = await readFile(target, "utf-8");
     assert.match(written, /^LLM_API_URL=https:\/\/router\.bynara\.id\/v1$/m);
     assert.match(written, /^LLM_API_KEY=secret-key-123$/m);
-    assert.match(written, /^DB_DRIVER=pglite$/m);
+    assert.match(written, /^RESEARCH_ENABLED=true$/m);
   } finally {
     await rm(tmp, { recursive: true, force: true });
   }

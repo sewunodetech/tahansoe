@@ -132,7 +132,7 @@ test("components: sectionHeader, statusLine, badge, table, footerTip", () => {
   const stLine = statusLine(theme, {
     model: "gpt-6-luna",
     gateway: "router.bynara.id",
-    dbDriver: "pglite",
+    dbDriver: "neon",
     lastRegime: "CALM",
   });
   assert.ok(stLine.includes("gpt-6-luna"));

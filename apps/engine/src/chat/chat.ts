@@ -15,13 +15,13 @@
  */
 
 import { z } from "zod";
-import type { LlmProvider, LlmUsage } from "../../llm/provider.ts";
-import { routerForRole } from "../../llm/registry.ts";
-import { budget as defaultBudget, costOfDetailed, type Budget } from "../../llm/budget.ts";
-import { bootstrapBudgetPricing } from "../../llm/pricing-bootstrap.ts";
-import { redactInstructions } from "../../llm/redact.ts";
-import { loadPrompt } from "../../llm/prompts/index.ts";
-import { fmtTokens, fmtIdr, fmtUsd } from "../render.ts";
+import type { LlmProvider, LlmUsage } from "../llm/provider.ts";
+import { routerForRole } from "../llm/registry.ts";
+import { budget as defaultBudget, costOfDetailed, type Budget } from "../llm/budget.ts";
+import { bootstrapBudgetPricing } from "../llm/pricing-bootstrap.ts";
+import { redactInstructions } from "../llm/redact.ts";
+import { loadPrompt } from "../llm/prompts/index.ts";
+import { fmtTokens, fmtIdr, fmtUsd } from "../cli/render.ts";
 import type { ReplContext } from "./context.ts";
 import { formatContextForPrompt, formatStaleClosingLine } from "./context.ts";
 
@@ -125,6 +125,21 @@ export async function executeChatQuestion(
 
   const now = options.now ?? context.now ?? new Date();
   const bg = options.budget ?? defaultBudget;
+  // Chat nyata (gateway): budget harian bersama di DB juga berlaku untuk chat.
+  if (!options.provider) {
+    const { syncSharedBudget } = await import("../db/budget-store.ts");
+    await syncSharedBudget(bg);
+  }
+  if (bg.exceeded()) {
+    return {
+      answer: "Budget LLM harian sudah habis; tanya-jawab aktif lagi besok (UTC). Proteksi deterministik tetap berjalan.",
+      costLine: "0 tok",
+      footer: CHAT_FOOTER,
+      tokens: 0,
+      costUsd: 0,
+      refused: false,
+    };
+  }
   const provider = options.provider ?? routerForRole("chat", bg);
   const systemPrompt = options.systemPrompt ?? loadPrompt("chat");
 

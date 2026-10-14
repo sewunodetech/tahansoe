@@ -15,7 +15,7 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { FakeProvider } from "../../../test/fake-provider.ts";
+import { FakeProvider } from "../fake-provider.ts";
 import {
   executeChatQuestion,
   formatCostLine,
@@ -25,8 +25,8 @@ import {
   MAX_HISTORY_TURNS,
   STANDARD_REFUSAL,
   type ChatTurn,
-} from "../../../src/cli/repl/chat.ts";
-import { type ReplContext, createDefaultSourceFreshness } from "../../../src/cli/repl/context.ts";
+} from "../../src/chat/chat.ts";
+import { type ReplContext, createDefaultSourceFreshness } from "../../src/chat/context.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const dummyNow = new Date("2026-10-09T14:00:00Z");
@@ -61,7 +61,7 @@ const dummyContext: ReplContext = {
 };
 
 test("chat prompt (chat.md): memuat batasan Non-Goals & aturan penolakan", () => {
-  const promptPath = join(HERE, "../../../src/llm/prompts/chat.md");
+  const promptPath = join(HERE, "../../src/llm/prompts/chat.md");
   const content = readFileSync(promptPath, "utf8");
 
   // Non-Goals (PRD §11)
@@ -157,7 +157,7 @@ test("capHistory: membatasi riwayat percakapan maks 10 giliran", () => {
 });
 
 test("formatCostLine: uses runtime pricing in IDR (Rp 1) without conservative fallback warning", async () => {
-  const { setRuntimePricing, clearRuntimePricing } = await import("../../../src/llm/budget.ts");
+  const { setRuntimePricing, clearRuntimePricing } = await import("../../src/llm/budget.ts");
   setRuntimePricing(
     new Map([
       [

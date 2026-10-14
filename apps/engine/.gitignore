@@ -5,5 +5,5 @@ out/
 .cache/
 settings.json
 
-# Local PGlite database (ADR 0010)
+# Data lokal engine: pid file & log daemon (ADR 0011)
 .data/

@@ -34,7 +34,7 @@ import {
   type Settings,
 } from "../settings/settings.ts";
 import { fmtTime } from "../cli/render.ts";
-import { CHAT_FOOTER } from "../cli/repl/chat.ts";
+import { CHAT_FOOTER } from "../chat/chat.ts";
 import { alertActionKeyboard } from "./telegram/adapter.ts";
 
 export const DEFAULT_ALERT_POLL_SEC = 60;

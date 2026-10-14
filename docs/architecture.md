@@ -19,7 +19,7 @@ Dokumen ini menjelaskan *bagaimana* sistem dibangun. Bagian bertanda **(rencana)
                             │ protect()    │ setDynamicTrigger() (v2)     │
                             ▼              ▼                              ▼
                     ┌──────────────────────────────┐        ┌──────────────────────────────┐
-                    │ TahansoeGuardian (per chain) │        │ Postgres (Neon / PGlite)     │
+                    │ TahansoeGuardian (per chain) │        │ Postgres (Neon)              │
                     │ contracts/                   │        │ ADR 0010                     │
                     └───────┬──────────────────────┘        └─────────┬────────────────────┘
                             ▼                                         │
@@ -33,7 +33,7 @@ Dokumen ini menjelaskan *bagaimana* sistem dibangun. Bagian bertanda **(rencana)
 | Web app (landing, dashboard, API) | `app/`, `components/`, `hooks/`, `lib/` | Ada; dashboard masih memakai simulasi |
 | Auth (SIWE + iron-session) | `app/api/auth/`, `lib/session.ts` | Ada |
 | Telegram (link, webhook, alert) | `app/api/telegram/`, `app/api/alerts/` | Ada; alert dipicu dari browser |
-| Database | `packages/db/src/schema.ts`, `packages/db/scripts/migrate.ts` | Ada; dual driver (Neon cloud & PGlite lokal, [ADR 0010](decisions/0010-local-pglite-database-option.md)) |
+| Database | `packages/db/src/schema.ts`, `packages/db/scripts/migrate.ts` | Ada; Postgres server (Neon) saja ([ADR 0011](decisions/0011-postgres-only-gateway-only-chat.md), men-supersede ADR 0010) |
 | Guardian v1 | `contracts/src/TahansoeGuardian.sol` | Live di Arbitrum Sepolia |
 | Core Risk Engine | `apps/engine/` (workspace `@tahansoe/engine`, ADR 0007) | Ada; riset multi-agent, emitter sinyal deterministik, Risk Fusion v1, settlement & scorecard, CLI `tahansoe` |
 | Keeper | `engine/src/keeper/` | **(rencana)** |
@@ -61,8 +61,9 @@ engine/                 (apps/engine) Core Risk Engine — service Node.js
     agents/             Research agents: analyst → debat Hawk/Dove → assessor (ADR 0004)
     reflection/         Settlement job (src/reflection/settle-job.ts), outcome evaluation, scorecard, lessons (ADR 0005)
     fusion/             Risk Fusion v1 (signals → RiskAssessment; aturan deterministik + guardrail unconfirmed signals)
-    cli/                CLI terpadu (apps/engine/src/cli/tahansoe.ts, commands/, repl/, render.ts)
-    worker/             Scheduled Research Worker (advisory lock Neon / file lock PGlite, background runner)
+    cli/                CLI terpadu (apps/engine/src/cli/tahansoe.ts, commands/ termasuk daemon.ts, render.ts)
+    chat/               Grounded Q&A (chat.ts, context.ts) — dipakai channel gateway saja (ADR 0011)
+    worker/             Scheduled Research Worker (advisory lock Postgres, background runner)
     policy/             Rule engine deterministik → Intent
     keeper/             Loop needsProtection → protect; (v2) setDynamicTrigger
     notify/             Telegram dari server
@@ -194,21 +195,12 @@ Skema saat ini di `packages/db/src/schema.ts` (satu-satunya sumber, ADR 0007).
 
 Kolom `chainId` wajib ada di setiap tabel yang menyimpan data on-chain (positions, policies, intents, rate_samples, price_samples).
 
-### 5.1 Lapisan data engine: Neon vs PGlite ([ADR 0010](decisions/0010-local-pglite-database-option.md))
+### 5.1 Lapisan data engine: Postgres server saja ([ADR 0011](decisions/0011-postgres-only-gateway-only-chat.md))
 
-`packages/db` mendukung dua opsi driver database yang dapat dipilih melalui variabel environment **`DB_DRIVER`**:
-
-1. **`neon`** (default bila `DATABASE_URL` diset):
-   - Menggunakan `@neondatabase/serverless` (HTTP client untuk serverless web dan WebSocket direct session untuk engine worker).
-   - Digunakan oleh `apps/web`, dashboard multi-user, dan deployment cloud/server.
-   - Single-instance worker dijamin oleh PostgreSQL session-level advisory lock (`pg_try_advisory_lock(42161001)`).
-2. **`pglite`** (default bila tanpa `DATABASE_URL` pada engine/CLI):
-   - Postgres embedded berbasis WebAssembly (`@electric-sql/pglite`) tanpa dependensi server eksternal atau akun cloud.
-   - Menyimpan database lokal di direktori **`PGLITE_DATA_DIR`** (default `apps/engine/.data/pglite`, di-gitignore).
-   - Single-instance worker dijamin oleh lock file lokal (`lock-${key}.json`) yang mencatat PID dan timestamp heartbeat (stale takeover bila > 2 menit atau PID mati).
-3. **Satu skema & auto-migrasi:**
-   - Kedua driver menggunakan skema Drizzle dialek Postgres yang sama di `packages/db`.
-   - Skema dimigrasi secara otomatis dan idempoten pada pemanggilan pertama, memastikan kesiapan engine tanpa langkah manual tambahan.
+- `packages/db` hanya memakai `@neondatabase/serverless` (HTTP untuk query, WebSocket direct session untuk advisory lock worker). `DATABASE_URL` wajib; `getDb()` melempar error jelas bila kosong.
+- Engine berjalan multi-proses (`tahansoe start` sebagai daemon + perintah CLI lain), jadi DB harus server. PGlite (ADR 0010) dihapus karena hanya aman untuk satu proses.
+- Single-instance job dijamin session-level advisory lock Postgres: research `42161001`, settlement `42161002`, fusion `42161003`.
+- `llm_usage_daily` menyimpan total biaya LLM per hari UTC agar `LLM_DAILY_BUDGET_USD` berlaku lintas proses dan tidak reset saat restart.
 
 ---
 
@@ -233,10 +225,10 @@ Konvensi angka:
 | Data on-chain & riset | RPC + multicall untuk state; AaveOracle + Chainlink proxy + Sequencer Uptime Feed di Arbitrum One; data makro FRED API, kalender resmi FOMC/BLS, DefiLlama (depeg & hacks), dan RSS outlet berita terkurasi |
 | Monorepo | npm workspaces (ADR 0007) — `apps/web`, `apps/engine`, `packages/db`, `packages/domain` |
 | CI | GitHub Actions: typecheck + test + build semua workspace, lint web (blocking), `forge test` tanpa fork (`.github/workflows/ci.yml`) |
-| DB | Dual-driver: Neon Postgres (server, web, multi-user) & PGlite lokal (embedded WASM di `PGLITE_DATA_DIR`, single-instance file lock) via Drizzle ORM ([ADR 0010](decisions/0010-local-pglite-database-option.md)). Auto-migrasi skema idempoten |
+| DB | Postgres server (Neon) via Drizzle ORM ([ADR 0011](decisions/0011-postgres-only-gateway-only-chat.md)). Migrasi skema idempoten (`npm run db:migrate` / `tahansoe setup`) |
 | Kontrak | Foundry, Solidity 0.8.26, OpenZeppelin v5 |
 | LLM | Gateway tunggal OpenAI-compatible (`LLM_API_URL` + `LLM_API_KEY`, [ADR 0009](decisions/0009-single-openai-compatible-gateway.md)), default model **`gpt-6-luna`** untuk semua peran (lolos eval benchmark 24/24), cadangan `deepseek-v4-flash`, router peran + fallback berantai di `settings.json` v2, Zod schema validation (di-embed dalam prompt + 1 retry repair), budget harian dinamis |
-| CLI & REPL | CLI terpadu `tahansoe` (`apps/engine/src/cli/tahansoe.ts`, `render.ts`), mode interaktif REPL dengan slash commands (`/carry`, `/fuse`, `/analyze`, dll.), grounded Q&A (`tahansoe ask` / REPL chat) dengan penolakan non-goals, serta perintah operasional (`carry`, `fuse`, `settle`, `scorecard`, `schedule`, `doctor`, `models`, `settings`, `eval`) |
+| CLI | CLI operator `tahansoe` (`apps/engine/src/cli/tahansoe.ts`, `render.ts`): `start [--detach]`, `stop`, `status`, `logs`, `analyze`, `carry`, `fuse`, `settle`, `scorecard`, `schedule`, `doctor`, `models`, `settings`, `eval`, `setup`, `gateway`. Tanpa REPL/`ask`; grounded Q&A hanya lewat channel gateway (ADR 0011) |
 | Notifikasi | Telegram Bot API |
 | Automation (prod) | Chainlink Automation + cron cadangan |
 
@@ -249,8 +241,9 @@ Semua variabel environment di bawah bersifat server-only kecuali yang diawali `N
 | Variabel | Dipakai oleh | Deskripsi |
 |----------|--------------|-----------|
 | `DATABASE_URL` | app, engine, scripts | Koneksi PostgreSQL (Neon serverless / direct session) |
-| `DB_DRIVER` | engine, scripts | Driver database: `neon` (default bila ada `DATABASE_URL`) atau `pglite` (lokal tanpa server, [ADR 0010](decisions/0010-local-pglite-database-option.md)) |
-| `PGLITE_DATA_DIR` | engine, scripts | Lokasi folder database PGlite lokal (default: `apps/engine/.data/pglite`, di-gitignore) |
+| `LLM_REQUEST_TIMEOUT_MS` | engine | Batas waktu satu request ke gateway LLM (default 90000) |
+| `RESEARCH_RUN_TIMEOUT_MS` | engine | Batas waktu total satu research run (default 900000); lewat batas → run batal tanpa report |
+| `OUT_KEEP_RUNS` | engine | Jumlah folder `apps/engine/out/<stamp>` yang dipertahankan (default 50) |
 | `SESSION_SECRET`, `NEXT_PUBLIC_APP_DOMAIN` | app | Autentikasi sesi wallet & domain web |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` | app, engine | Bot notifikasi dan webhook Telegram |
 | `NEXT_PUBLIC_WC_PROJECT_ID` | app | WalletConnect project id |

@@ -217,6 +217,7 @@ describe("Data Sources: RSS Feed Adapter", () => {
       feeds: mockFeeds,
       fetchFn: mockFetch,
       lookbackHours: 48,
+      now: new Date("2026-10-08T13:00:00Z"),
     });
 
     assert.ok(res.events.length > 0, "harus menghasilkan events");
@@ -560,6 +561,7 @@ describe("Data Sources: collectResearchInputs Orchestrator", () => {
         assets: ["ETH", "USDC"],
         timeoutMs: 500,
         fetchFn: mockFetch,
+        now: new Date("2026-10-08T18:00:00Z"),
       });
 
       assert.equal(gdeltCalled, true, "GDELT harus dipanggil saat RESEARCH_GDELT_ENABLED=true");

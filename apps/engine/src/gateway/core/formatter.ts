@@ -6,7 +6,7 @@
  */
 
 import { redactInstructions } from "../../llm/redact.ts";
-import { sanitizeChatOutput } from "../../cli/repl/chat.ts";
+import { sanitizeChatOutput } from "../../chat/chat.ts";
 
 /**
  * Karakter khusus Telegram MarkdownV2 yang wajib di-escape jika bukan bagian dari format sah:

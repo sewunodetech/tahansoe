@@ -103,19 +103,18 @@ export async function runDoctor(deps: DoctorDeps = {}): Promise<CheckResult[]> {
     results.push({ name: "gateway /models", ok: false, detail: "lewati (LLM_API_URL kosong)" });
   }
 
-  // 4. Database (ADR 0010): driver pglite tidak butuh DATABASE_URL.
-  const driver = (env.DB_DRIVER?.trim().toLowerCase() || (env.DATABASE_URL ? "neon" : "pglite")) as string;
-  const dbLabel = driver === "pglite" ? "database (pglite)" : "DATABASE_URL";
-  if (driver === "pglite" || env.DATABASE_URL) {
+  // 4. Database (ADR 0011): Postgres server saja, DATABASE_URL wajib.
+  const dbLabel = "DATABASE_URL";
+  if (env.DATABASE_URL?.trim()) {
     const check = deps.checkDb ?? defaultCheckDb;
     try {
       const r = await check();
-      results.push({ name: dbLabel, ok: r.ok, detail: driver === "pglite" ? `${r.detail} (local)` : r.detail });
+      results.push({ name: dbLabel, ok: r.ok, detail: r.detail });
     } catch (err) {
       results.push({ name: dbLabel, ok: false, detail: sanitizeExternal(err instanceof Error ? err.message : String(err), 80) });
     }
   } else {
-    results.push({ name: dbLabel, ok: false, detail: "belum diisi (atau set DB_DRIVER=pglite untuk database lokal)" });
+    results.push({ name: dbLabel, ok: false, detail: "belum diisi (wajib, ADR 0011)" });
   }
 
   // 5. ARBITRUM_RPC_URL eth_chainId = 42161.

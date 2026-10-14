@@ -65,7 +65,7 @@ test("setupCommand: langkah Telegram non-interaktif (--yes) dengan fake getMe da
         stdout: (s) => stdoutChunks.push(s),
         stderr: (s) => stderrChunks.push(s),
         runDoctorImpl: async () => [],
-        ensureDbImpl: async () => {},
+        migrateImpl: async () => {},
         sleepImpl: async () => {}, // Instant sleep untuk pengujian cepat
         telegramGetMe: async (token) => {
           getMeCalledWith = token;
@@ -149,7 +149,7 @@ test("setupCommand: opsi --skip-telegram melewati langkah Telegram secara bersih
         stdout: () => {},
         stderr: () => {},
         runDoctorImpl: async () => [],
-        ensureDbImpl: async () => {},
+        migrateImpl: async () => {},
         telegramGetMe: async () => {
           getMeCalled = true;
           return { ok: true, username: "bot" };
