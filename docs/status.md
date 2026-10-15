@@ -46,6 +46,7 @@
 - **Pipeline Riset Multi-Agent Penuh:** 4 analis domain paralel (Geopolitics, Macro, Market, Onchain) $\rightarrow$ debat dialektika Hawk vs Dove $\rightarrow$ sintesis Risk Assessor $\rightarrow$ pemetaan ke `Signal` (`RESEARCH`, confidence cap $\le 0.6$).
 - **Adapter Sumber Data Gratis & Kredibel:**
   - RSS feed outlet berita terkurasi (BBC World, Al Jazeera, The Guardian, CNBC Economy, Federal Reserve, CoinDesk, The Block).
+  - FinancialJuice RSS added (macro headlines, prefix strip, tick filter, speaker cap 2, per-feed cap 12).
   - FRED API untuk data makro ekonomi resmi (suku bunga Fed Funds, CPI, kurva yield 10Y-2Y).
   - Kalender makro resmi: jadwal FOMC dari federalreserve.gov (horizon 30 hari) dan rilis CPI/NFP dari data rilis FRED.
   - DefiLlama API untuk monitoring peg stablecoin (USDC, USDT, DAI, FRAX) dan insiden hack/exploit protokol DeFi dengan scaling ukuran dan relevansi Tahansoe.
@@ -109,6 +110,8 @@
 - [ ] Batasan skema 800 karakter untuk `hawkCase`/`doveCase` terkadang ketat pada model selain `gpt-6-luna`; pertimbangkan relaksasi ke 1200 karakter bila diperlukan saat evaluasi model alternatif.
 
 ### Engine, Fusion & Settlement
+- [ ] Verifikasi syarat penggunaan (ToS) FinancialJuice untuk pemakaian komersial sebelum produksi.
+- [ ] FinancialJuice membalas HTTP 429 bila diambil beberapa kali dalam hitungan menit (terlihat saat uji 15 Okt 2026). Sudah terdegradasi aman (warning, feed lain tetap jalan); pertimbangkan cache respons RSS per URL ±10 menit bila `analyze` manual + scheduler sering berbarengan.
 - [ ] `runResearch` dan `fetchGdeltEvents` belum menerima `now` yang bisa di-inject (temuan sweep test; mempersulit test deterministik).
 - [ ] Belum ada test integrasi DB setelah PGlite dihapus (dulu memakai PGlite in-memory); butuh branch Neon/Postgres khusus test.
 - [ ] Price worker tetap men-sampling tanpa `DATABASE_URL` (hasil tidak tersimpan); pertimbangkan berhenti/peringatan per tick.

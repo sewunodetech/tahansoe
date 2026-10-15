@@ -26,6 +26,10 @@ export interface RssFeedConfig {
   url: string;
   topic: "geopolitics" | "macro" | "crypto";
   filterRelevance?: boolean;
+  titlePrefix?: string;
+  maxItemsPerFeed?: number;
+  dropMarketTicks?: boolean;
+  maxPerSpeaker?: number;
 }
 
 /**
@@ -61,6 +65,16 @@ export const RSS_FEEDS: readonly RssFeedConfig[] = [
     url: "https://www.federalreserve.gov/feeds/press_all.xml",
     topic: "macro",
     filterRelevance: false,
+  },
+  {
+    name: "FinancialJuice",
+    url: "https://www.financialjuice.com/feed.ashx?xy=rss",
+    topic: "macro",
+    filterRelevance: false,
+    titlePrefix: "FinancialJuice: ",
+    maxItemsPerFeed: 12,
+    dropMarketTicks: true,
+    maxPerSpeaker: 2,
   },
   {
     name: "CoinDesk",
@@ -354,6 +368,82 @@ export function isGeopoliticsRiskRelevant(
 }
 
 /**
+ * Pola kata atau frasa yang menandakan berita fundamental, kebijakan moneter,
+ * indikator makro, geopolitik, kredit, perbankan, narasi kausalitas, atau rilis ekonomi.
+ */
+const NON_TICK_PATTERNS: readonly RegExp[] = [
+  // Kutipan pembicara / pejabat (speaker prefix)
+  /: /,
+  // Kebijakan, bank sentral & pejabat
+  /\b(?:fed|fomc|ecb|boj|boe|rba|snb|pboc|central bank|rate hike|rate cut|interest rates?|benchmark rate|policymakers?)\b/i,
+  // Rilis data & indikator makroekonomi
+  /\b(?:cpi|ppi|pce|gdp|pmi|nfp|payrolls?|inflation|unemployment|retail sales|jobless|sentiment|confidence|trade balance|expectations?|forecasts?|consensus|estimates?|m\/m|y\/y|yoy|mom|qoq)\b/i,
+  // Geopolitik, perang & konflik
+  /\b(?:war|military|missile|strike|attack|sanctions?|tariff|tariffs?|election|nuclear|ceasefire|troops?|drone|blockade|geopolit\w*|israel|iran|gaza|russia|ukraine|taiwan|houthi|hezbollah|red sea)\b/i,
+  // Kredit, perbankan, regulasi & krisis pasar
+  /\b(?:stablecoin|depeg|bank concerns?|concerns?|crisis|default|insolvency|liquidity|bailout|bankrupt\w*|hack|exploit|scam|fraud|lawsuit|investigat\w*|sec\b|probe|regulation)\b/i,
+  // Narasi kausalitas, output energi / kuota komoditas, dan laporan korporasi
+  /\b(?:amid|because|due to|as\b|warns?|warning|says?|said|claims?|urges?|sees?|signals?|calls? for|agrees?|plans?|output|bpd|barrels?|opec|revenue|earnings?|profit)\b/i,
+] as const;
+
+/**
+ * Kata kerja dan arah pergerakan harga/pasar keuangan.
+ */
+const TICK_MOVEMENT_REGEX =
+  /\b(?:last up|last down|last at|trades? at|trading at|settles? at|closes? at|up|down|rises?|rose|rising|falls?|fell|falling|climbs?|climbed|climbing|gains?|gained|gaining|drops?|dropped|dropping|slips?|slipped|slipping|advances?|advanced|advancing|declines?|declined|declining|surges?|surged|surging|jumps?|jumped|jumping|dips?|dipped|dipping|increases?|increased|increasing|higher|lower|flat|unchanged)\b/i;
+
+/**
+ * Instrumen dan kelas aset keuangan yang umum pada headline tick pasar murni.
+ */
+const TICK_INSTRUMENT_REGEX =
+  /\b(?:[A-Z]{2,4}\/[A-Z]{2,4}|euro|yen|sterling|pounds?|dollars?|greenback|yuan|won|francs?|bunds?|oats?|gilts?|btps?|jgbs?|treasur(?:y|ies)|bonds?|notes?|yields?|futures|s&p|nasdaq|dow|ftse|dax|cac|nikkei|hang seng|stoxx|kospi|stocks?|equities|shares|gold|silver|crude|brent|wti)\b/i;
+
+/**
+ * Heuristik konservatif untuk mendeteksi headline tick pasar murni (instrumen + pergerakan harga/persen).
+ *
+ * Mengembalikan true HANYA jika judul adalah pergerakan harga instrumen murni (noise tick).
+ * Mengembalikan false untuk semua berita yang memuat konten kebijakan, geopolitik, indikator
+ * ekonomi makro, atau risiko kredit bahkan bila judul memuat angka persentase.
+ */
+export function isMarketTickHeadline(title: string): boolean {
+  if (!title || typeof title !== "string") return false;
+
+  // 1. Tolak jika memuat tanda kutipan speaker (: ) atau kata kunci kebijakan/makro/geopolitik/kredit/narasi
+  if (NON_TICK_PATTERNS.some((pattern) => pattern.test(title))) {
+    return false;
+  }
+
+  // 2. Wajib memuat angka persen atau harga/basis poin
+  if (!/(?:\d+(?:\.\d+)?%|\$\d+(?:\.\d+)?|\b\d+\s*(?:bps|points?|pts)\b)/i.test(title)) {
+    return false;
+  }
+
+  // 3. Wajib memuat pergerakan arah pasar
+  if (!TICK_MOVEMENT_REGEX.test(title)) {
+    return false;
+  }
+
+  // 4. Wajib menyebutkan instrumen keuangan
+  if (!TICK_INSTRUMENT_REGEX.test(title)) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Mengekstrak identitas pembicara dari judul berita bila diawali awalan "<speaker>:".
+ * Menormalisasi huruf kecil serta memperlakukan karakter U+FFFD dan tanda petik lengkung (’) sama seperti '.
+ */
+export function extractSpeaker(title: string): string | null {
+  const colonIdx = title.indexOf(": ");
+  if (colonIdx <= 0) return null;
+  const rawSpeaker = title.slice(0, colonIdx).trim();
+  if (!rawSpeaker) return null;
+  return rawSpeaker.toLowerCase().replace(/[\uFFFD\u2019']/g, "'");
+}
+
+/**
  * Parser ringan untuk dokumen XML RSS 2.0 dan Atom feed.
  */
 export function parseFeedXml(xml: string): RawFeedItem[] {
@@ -502,41 +592,86 @@ export async function fetchRssEvents(
     }
 
     const { feed, rawItems } = r.value;
+    const speakerCounts = new Map<string, number>();
+    let feedKeptCount = 0;
 
-    for (const item of rawItems) {
-      // 1. Filter relevansi untuk feed geopolitik umum
+    // Urutkan item dari feed berdasarkan tanggal terbaru (newest first)
+    const sortedRawItems = [...rawItems].sort((a, b) => {
+      const dateA = parseFeedDate(a.pubDate, now).getTime();
+      const dateB = parseFeedDate(b.pubDate, now).getTime();
+      return dateB - dateA;
+    });
+
+    for (const item of sortedRawItems) {
+      // 1. Strip awalan judul bila dikonfigurasi dan normalisasi karakter U+FFFD
+      let title = item.title;
+      if (feed.titlePrefix && title.startsWith(feed.titlePrefix)) {
+        title = title.slice(feed.titlePrefix.length).trim();
+      }
+      title = title.replaceAll("\uFFFD", "'");
+
+      // 2. Filter pergerakan harga/tick murni
+      if (feed.dropMarketTicks && isMarketTickHeadline(title)) {
+        continue;
+      }
+
+      // 3. Filter relevansi untuk feed geopolitik umum
       if (feed.filterRelevance) {
-        const textToEvaluate = `${item.title} ${item.description}`;
+        const textToEvaluate = `${title} ${item.description}`;
         if (!isGeopoliticsRiskRelevant(textToEvaluate)) {
           continue;
         }
       }
 
-      // 2. Filter lookbackHours
+      // 4. Filter lookbackHours
       const publishedAt = parseFeedDate(item.pubDate, now);
       // Jika pubDate valid dan lebih lama dari batas waktu cutoff, lewati
       if (item.pubDate && publishedAt.getTime() < cutoffTime.getTime()) {
         continue;
       }
 
-      // 3. Deduplikasi URL
+      // 5. Deduplikasi URL
       const cleanUrl = item.link.trim();
       if (cleanUrl && seenUrls.has(cleanUrl)) {
         continue;
       }
-      if (cleanUrl) {
-        seenUrls.add(cleanUrl);
-      }
 
-      // 4. Deduplikasi judul yang serupa lintas outlet
-      const normTitle = normalizeTitleForDedup(item.title);
+      // 6. Deduplikasi judul yang serupa lintas outlet
+      const normTitle = normalizeTitleForDedup(title);
       if (normTitle.length < 5 || seenTitles.has(normTitle)) {
         continue;
       }
+
+      // 7. Batas maksimal kutipan per pembicara (speaker cap)
+      const speaker = extractSpeaker(title);
+      if (feed.maxPerSpeaker !== undefined && speaker) {
+        const currentSpeakerCount = speakerCounts.get(speaker) ?? 0;
+        if (currentSpeakerCount >= feed.maxPerSpeaker) {
+          continue;
+        }
+      }
+
+      // 8. Batas maksimal item yang disimpan dari feed ini (per-feed cap)
+      if (
+        feed.maxItemsPerFeed !== undefined &&
+        feedKeptCount >= feed.maxItemsPerFeed
+      ) {
+        break;
+      }
+
+      // Simpan URL & judul yang diterima ke daftar deduplikasi
+      if (cleanUrl) {
+        seenUrls.add(cleanUrl);
+      }
       seenTitles.add(normTitle);
+      if (speaker) {
+        const currentSpeakerCount = speakerCounts.get(speaker) ?? 0;
+        speakerCounts.set(speaker, currentSpeakerCount + 1);
+      }
+      feedKeptCount++;
 
       const id = `rss-${createHash("sha256")
-        .update(cleanUrl || item.title)
+        .update(cleanUrl || title)
         .digest("hex")
         .slice(0, 12)}`;
       const category = `${feed.topic}:${feed.name}`;
@@ -544,7 +679,7 @@ export async function fetchRssEvents(
 
       candidateEvents.push({
         id,
-        headline: item.title,
+        headline: title,
         category,
         publishedAt,
         excerpt,
