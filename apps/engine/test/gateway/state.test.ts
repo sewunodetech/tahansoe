@@ -110,3 +110,60 @@ test("state: proteksi isolasi test — defaultStatePath dan penulisan ke path pr
   //  milik user, mis. kode pairing yang sedang menunggu. Guard di atas sudah menjamin
   //  test tidak bisa menulis ke sana.)
 });
+
+test("state: simpanan daemon (memori basi) TIDAK menghapus kode pairing yang dibuat CLI", async () => {
+  const { createPairingCode, pairingStatus, PairingManager } = await import("../../src/gateway/pairing.ts");
+  const dir = await mkdtemp(join(tmpdir(), "tahansoe-pair-race-"));
+  const path = join(dir, "gateway-state.json");
+  try {
+    // Daemon start: memuat state (belum ada kode).
+    const daemonState = await loadGatewayState(path);
+    await saveGatewayState(daemonState, path);
+
+    // CLI `gateway pair` (proses lain) menulis kode langsung ke disk.
+    const { code } = createPairingCode("telegram", path);
+    assert.equal(pairingStatus(code, path).status, "pending");
+
+    // Update Telegram masuk → daemon menyimpan state memorinya (offset baru)
+    // sebelum sempat memuat ulang kode (long-poll 50 detik).
+    daemonState.offset = 123;
+    await saveGatewayState(daemonState, path);
+
+    assert.equal(pairingStatus(code, path).status, "pending", "kode CLI harus tetap ada di disk");
+    assert.ok(Object.keys(daemonState.pendingPairings ?? {}).length === 1, "memori daemon ikut memuat kode");
+
+    // `/start <kode>` dari user berhasil.
+    const pm = new PairingManager(path, daemonState);
+    const res = await pm.handlePairingAttempt(code, "42", daemonState);
+    assert.equal(res.ok, true);
+    assert.equal(pairingStatus(code, path).status, "paired");
+    assert.equal((await loadGatewayState(path)).offset, 123);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("state: simpanan memori basi tidak menurunkan status paired / menghapus percobaan gagal di disk", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "tahansoe-pair-merge-"));
+  const path = join(dir, "gateway-state.json");
+  try {
+    const stale = createEmptyGatewayState();
+    stale.pendingPairings = {
+      h1: { codeHash: "h1", channel: "telegram", expiresAt: Date.now() + 60_000, attempts: 0, paired: false },
+    };
+    const disk = createEmptyGatewayState();
+    disk.pendingPairings = {
+      h1: { codeHash: "h1", channel: "telegram", expiresAt: Date.now() + 60_000, attempts: 0, paired: true, chatId: "7" },
+    };
+    disk.failedPairingAttempts = { "9": [1000] };
+    saveGatewayStateSync(disk, path);
+
+    stale.failedPairingAttempts = { "9": [2000] };
+    saveGatewayStateSync(stale, path);
+    const after = await loadGatewayState(path);
+    assert.equal(after.pendingPairings?.h1?.paired, true);
+    assert.deepEqual(after.failedPairingAttempts["9"], [1000, 2000]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

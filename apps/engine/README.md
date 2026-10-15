@@ -104,15 +104,15 @@ Biaya operasional sekitar **Rp 5–15 per analisa** (tergantung banyaknya berita
 
 ## 2. Cara Pakai
 
-Tahansoe beroperasi sebagai **agent mandiri (autonomous risk agent)**: dijalankan sekali oleh operator di server/komputer lokal, lalu dipakai oleh user **lewat Telegram**. Terminal CLI/REPL disediakan untuk operator & debugging.
+Tahansoe beroperasi sebagai **agent mandiri (autonomous risk agent)**: dijalankan sekali oleh operator di server/komputer lokal, lalu dipakai oleh user **lewat Telegram**. Terminal CLI disediakan untuk operator & debugging; tanya-jawab hanya lewat Telegram ([ADR 0011](../../docs/decisions/0011-postgres-only-gateway-only-chat.md)).
 
 ### Alur Utama (Agent Model)
 
-1. **Setup** — Konfigurasi gateway LLM, model, database, dan bot Telegram:
+1. **Setup** — Konfigurasi gateway LLM, model, database (`DATABASE_URL` Postgres server, wajib), dan bot Telegram:
    ```bash
    npm run tahansoe -- setup
    ```
-   *(Atau non-interaktif: `npm run tahansoe -- setup --yes --db pglite --model gpt-6-luna --telegram-token-env BOT_TOKEN`)*
+   *(Atau non-interaktif: `npm run tahansoe -- setup --yes --db-url-env MY_DB_URL --model gpt-6-luna --telegram-token-env BOT_TOKEN`)*
 
 2. **Pairing Telegram** — Hubungkan chat Telegram untuk menerima alert risiko:
    ```bash
@@ -125,15 +125,19 @@ Tahansoe beroperasi sebagai **agent mandiri (autonomous risk agent)**: dijalanka
 
 3. **Start (Jalankan Agent)** — Satu proses jangka panjang yang mengorkestrasi seluruh loop proteksi:
    ```bash
-   npm run tahansoe -- start
+   npm run tahansoe -- start            # foreground
+   npm run tahansoe -- start --detach   # background (log ke apps/engine/.data/logs/tahansoe.log)
+   npm run tahansoe -- status           # jalan/tidak + run riset terakhir
+   npm run tahansoe -- logs -f          # ikuti log
+   npm run tahansoe -- stop             # shutdown bersih (force kill setelah 30 detik)
    ```
-   Menjalankan: scheduler riset multi-agent, sampler harga (60s) & bunga Aave V3 (15m), Risk Fusion v1, settlement berkala, alert proaktif, serta gateway Telegram dalam satu proses terisolasi (I6).
+   Menjalankan: scheduler riset multi-agent, sampler harga (60s) & bunga Aave V3 (15m), Risk Fusion v1, settlement berkala, alert proaktif, serta gateway Telegram dalam satu proses terisolasi (I6). Untuk server/VPS, jalankan `tahansoe start` (foreground) di bawah systemd/pm2/Docker.
 
 4. **Pakai lewat Telegram** — User menerima peringatan dini (regime naik, depeg, lonjakan bunga) dan mengirim perintah chat (`/status`, `/fuse`, `/carry`, atau pertanyaan bebas).
 
-5. **CLI / REPL untuk Operator** — Operator dapat memantau atau mengaudit secara manual lewat terminal:
+5. **CLI untuk Operator** — Operator dapat memantau atau mengaudit secara manual lewat terminal:
    ```bash
-   npm run tahansoe --            # buka sesi interaktif REPL
+   npm run tahansoe --            # banner + status singkat + daftar command
    npm run tahansoe -- analyze    # satu run riset manual + kartu laporan
    npm run tahansoe -- doctor     # verifikasi kesehatan env & koneksi
    ```
@@ -150,17 +154,14 @@ Semua script npm engine memuat file `.env` ini secara otomatis via flag Node/tsx
 
 > **PENTING:** Jangan pernah melakukan commit file `.env` atau mencetak secret / API key ke log console (invariant I8).
 
-### Pilihan Database (Neon vs PGlite — ADR 0010)
+### Database (Postgres server — ADR 0011)
 
-Engine mendukung dua opsi driver database Postgres:
-1. **PGlite (embedded Postgres)**: Default untuk pemakaian CLI pribadi/offline tanpa akun database cloud. Data disimpan lokal di `PGLITE_DATA_DIR` (default `apps/engine/.data/pglite`). Migrasi skema berjalan otomatis pada pemakaian pertama. Single-instance worker dijaga via file lock lokal di direktori data.
-   ```env
-   DB_DRIVER=pglite
-   ```
-2. **Neon (Postgres serverless)**: Default jika `DATABASE_URL` diset. Dipakai untuk server, web dashboard multi-user, dan lingkungan produksi.
-   ```env
-   DATABASE_URL=postgresql://user:password@host/dbname
-   ```
+Engine hanya memakai Postgres server (Neon). `DATABASE_URL` wajib untuk semua perintah yang menyentuh DB; migrasi skema idempoten dijalankan oleh `tahansoe setup` atau `npm run db:migrate`. PGlite (ADR 0010) sudah dihapus karena tidak aman dibuka beberapa proses sekaligus (`start` + CLI lain).
+```env
+DATABASE_URL=postgresql://user:password@host/dbname
+```
+
+Batas waktu (opsional, `.env`): `LLM_REQUEST_TIMEOUT_MS` (default 90000, per request ke gateway), `RESEARCH_RUN_TIMEOUT_MS` (default 900000, total satu research run), `OUT_KEEP_RUNS` (default 50 folder `out/` terbaru). Budget harian `LLM_DAILY_BUDGET_USD` kini dihitung bersama lintas proses lewat tabel `llm_usage_daily`.
 
 ### Konfigurasi LLM (satu gateway — ADR 0009)
 
@@ -255,35 +256,11 @@ npm run tahansoe -- schedule status         # lock + run terakhir dari DB
 
 Opsi global: `--lang <id|en>` (pilih bahasa UI), `--json` (output mesin, hanya di stdout), `--no-color` (nonaktifkan ANSI; otomatis mati pada pipe/`NO_COLOR`/`TERM=dumb`). Exit code: `0` ok · `1` error · `2` konfigurasi salah (mis. `LLM_API_URL`/`LLM_API_KEY` belum diisi). Setiap kartu laporan diakhiri "not a trading signal"; CLI tidak pernah melakukan aksi on-chain dan tidak pernah mencetak secret.
 
-### 3.2 Mode Interaktif (REPL) & Visual Identity (spec §3.6)
+### 3.2 Tanya-jawab & tampilan CLI
 
-Menjalankan `npm run tahansoe` (tanpa argumen) di terminal interaktif (TTY) membuka sesi REPL dengan visual identity Tahansoe:
+REPL interaktif dan `tahansoe ask` **dihapus** ([ADR 0011](../../docs/decisions/0011-postgres-only-gateway-only-chat.md)). Tanya-jawab grounded (hanya dari data tersimpan, dengan penolakan prediksi harga / saran beli-jual / ranking yield / janji anti-likuidasi) tersedia **lewat bot Telegram** setelah `tahansoe gateway pair`. Budget harian dicek sebelum setiap jawaban.
 
-```bash
-npm run tahansoe
-npm run tahansoe -- --lang en   # Buka REPL langsung dalam Bahasa Inggris
-```
-
-Fitur sesi interaktif:
-- **Visual Identity & Tema Dark-Tech:** Palet warna brand `#4ab5e0` (cyan), safe `#34d399` (emerald), warning `#fbbf24` (amber), danger `#f87171` (red), dan border `#26332f`. Mendukung 24-bit Truecolor (`COLORTERM=truecolor`, Windows Terminal, VS Code) dengan fallback otomatis 256-color dan plain text.
-- **Banner ASCII & Panel Status:** Banner TAHANSOE block art dengan gradien horizontal brand → safe (lebar ≥ 80 kolom) atau varian ringkas satu baris (< 80 kolom). Dilengkapi panel status bulat berisikan mode, jaringan, protokol, akun aktif, buffer, dan status HF.
-- **Dukungan Multibahasa (i18n: ID / EN):** Resolusi bahasa deterministik: `--lang` flag → `settings.json ui.language` → `TAHANSOE_LANG` → locale sistem → `en`. Perintah `/lang <id|en>` mengganti bahasa antarmuka secara instan dan menyimpannya ke `settings.json`.
-- **Slash Commands (Terkelompok 5 Bagian):**
-  1. *Analisis:* `/analyze [--dry]`, `/fuse`, `/history`, `/report`, `/settle`, `/scorecard`
-  2. *Risiko & Bunga:* `/carry`, `/health`, `/simulate`
-  3. *Gateway:* `/gateway`, `/pair`, `/status`
-  4. *Konfigurasi:* `/settings`, `/lang`, `/mode`, `/setup`
-  5. *Sistem:* `/doctor`, `/models`, `/clear`, `/exit`, `/help`, `/start`
-  Lengkap dengan autocomplete Tab dan riwayat input in-memory (↑/↓).
-- **Penanganan Proses Latar:** `schedule run` dan `start` tidak dijalankan di dalam REPL (proses jangka panjang; jalankan terpisah di terminal lain). REPL menampilkan petunjuk bila user mengetik `/schedule` atau `/start`.
-- **Grounded Q&A (Non-slash input):** dijawab model gateway (peran `chat` di `settings.json`, default sama dengan analyst) secara terstruktur dan grounded hanya dari data tersimpan (laporan riset 24h, assessment per aset, sinyal aktif terdeduplikasi, monitor carry Aave, harga & volatilitas, serta kalender makro).
-- **Aturan Non-Goals:** dilarang memberi prediksi harga, rekomendasi beli/jual, ranking yield, saran pindah aset, atau jaminan anti-likuidasi. Pertanyaan tersebut ditolak singkat disertai penjelasan risiko posisi yang relevan.
-- **Helper Scripting (`ask`):** untuk menjalankan tanya-jawab satu kali tanpa REPL (berguna untuk scripting dan CI):
-
-```bash
-npm run tahansoe -- ask "kenapa USDC ELEVATED?"
-npm run tahansoe -- ask "harus beli token apa biar untung?" --json
-```
+Tampilan CLI tetap memakai tema Tahansoe (brand `#4ab5e0`, safe `#34d399`, warning `#fbbf24`, danger `#f87171`; truecolor dengan fallback 256-color/plain) dan i18n ID/EN (`--lang` → `settings.json ui.language` → `TAHANSOE_LANG` → locale sistem → `en`).
 
 ### 3.3 Menjaga scheduler tetap hidup (foreground)
 

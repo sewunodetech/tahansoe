@@ -15,6 +15,7 @@ import {
   parseFeedXml,
   parseFeedDate,
   isGeopoliticsRiskRelevant,
+  isMarketTickHeadline,
   fetchRssEvents,
   RSS_FEEDS,
   GEOPOLITICS_RISK_KEYWORDS,
@@ -217,6 +218,7 @@ describe("Data Sources: RSS Feed Adapter", () => {
       feeds: mockFeeds,
       fetchFn: mockFetch,
       lookbackHours: 48,
+      now: new Date("2026-10-08T13:00:00Z"),
     });
 
     assert.ok(res.events.length > 0, "harus menghasilkan events");
@@ -282,6 +284,242 @@ describe("Data Sources: RSS Feed Adapter", () => {
     assert.ok(res.events.length > 0, "feed BBC harus tetap berhasil diambil");
     assert.equal(res.warnings.length, 1, "harus mencatat 1 warning untuk failing feed");
     assert.ok(res.warnings[0]?.includes("FailingFeed"));
+  });
+
+  it("menguji isMarketTickHeadline: true untuk tick harga murni dan false untuk berita fundamental/kebijakan/geopolitik", () => {
+    // True examples (step 3)
+    assert.equal(
+      isMarketTickHeadline("Euro last up 0.63% at $1.1228"),
+      true,
+      "Euro tick harus bernilai true",
+    );
+    assert.equal(
+      isMarketTickHeadline(
+        "German Bund futures rise 0.65%; French OAT futures increase 0.76%",
+      ),
+      true,
+      "Bund & OAT futures tick harus bernilai true",
+    );
+    assert.equal(
+      isMarketTickHeadline("USD/KRW climbs 0.7%, not 1%"),
+      true,
+      "USD/KRW tick harus bernilai true",
+    );
+
+    // False examples (step 3)
+    assert.equal(
+      isMarketTickHeadline("ECB's Lane: inflation 2.1% is close to target"),
+      false,
+      "pernyataan pejabat ECB tentang target inflasi harus bernilai false",
+    );
+    assert.equal(
+      isMarketTickHeadline("US CPI rises 0.4% m/m, above expectations"),
+      false,
+      "rilis data CPI makro harus bernilai false",
+    );
+    assert.equal(
+      isMarketTickHeadline("Stablecoin USDC slips to $0.97 amid bank concerns"),
+      false,
+      "depeg/risiko stablecoin dan perbankan harus bernilai false",
+    );
+    assert.equal(
+      isMarketTickHeadline("Saudi Arabia cuts oil output by 1 million bpd"),
+      false,
+      "pemangkasan kuota output minyak harus bernilai false",
+    );
+  });
+
+  it("FinancialJuice fixture: awalan distrip, kategori macro:FinancialJuice, tick harga dibuang, batas speaker maks 2, total <= 12, dan karakter U+FFFD aman", async () => {
+    const fjXml = loadTextFixture("rss-financialjuice.xml");
+
+    const mockFetch: typeof fetch = async () => {
+      return new Response(fjXml, { status: 200 });
+    };
+
+    const fjConfig = {
+      name: "FinancialJuice",
+      url: "https://www.financialjuice.com/feed.ashx?xy=rss",
+      topic: "macro" as const,
+      filterRelevance: false,
+      titlePrefix: "FinancialJuice: ",
+      maxItemsPerFeed: 12,
+      dropMarketTicks: true,
+      maxPerSpeaker: 2,
+    };
+
+    const res = await fetchRssEvents({
+      feeds: [fjConfig],
+      fetchFn: mockFetch,
+      lookbackHours: 24,
+      now: new Date("2026-10-15T10:00:00Z"),
+    });
+
+    assert.ok(res.events.length > 0, "harus menghasilkan event");
+    assert.ok(
+      res.events.length <= 12,
+      `total event FinancialJuice (${res.events.length}) harus <= 12`,
+    );
+
+    // 1. Awalan prefix "FinancialJuice: " harus distrip dari semua headline
+    for (const evt of res.events) {
+      assert.ok(
+        !evt.headline.startsWith("FinancialJuice: "),
+        `awalan prefix tidak boleh ada pada headline: ${evt.headline}`,
+      );
+    }
+
+    // 2. Kategori berformat macro:FinancialJuice
+    for (const evt of res.events) {
+      assert.equal(
+        evt.category,
+        "macro:FinancialJuice",
+        "category harus macro:FinancialJuice",
+      );
+    }
+
+    // 3. Price-tick items harus dibuang
+    const tickHeadlines = [
+      "Euro last up 0.63% at $1.1228",
+      "German Bund futures rise 0.65%; French OAT futures increase 0.76%",
+      "USD/KRW climbs 0.7%, not 1%",
+    ];
+    for (const tick of tickHeadlines) {
+      const found = res.events.find((e) => e.headline.includes(tick));
+      assert.equal(found, undefined, `headline tick "${tick}" harus dibuang`);
+    }
+
+    // 4. Maksimal 2 item per speaker
+    const speakerCounts: Record<string, number> = {};
+    for (const evt of res.events) {
+      const colonIdx = evt.headline.indexOf(": ");
+      if (colonIdx > 0) {
+        const speaker = evt.headline
+          .slice(0, colonIdx)
+          .trim()
+          .toLowerCase()
+          .replace(/[\uFFFD\u2019']/g, "'");
+        speakerCounts[speaker] = (speakerCounts[speaker] ?? 0) + 1;
+      }
+    }
+    for (const [speaker, count] of Object.entries(speakerCounts)) {
+      assert.ok(
+        count <= 2,
+        `speaker "${speaker}" memiliki ${count} event, harus <= 2`,
+      );
+    }
+
+    // Pastikan speaker dengan burst di fixture (Santos Pereira & Koeda) tepat 2
+    assert.equal(
+      speakerCounts["ecb's santos pereira"],
+      2,
+      "Santos Pereira harus dibatasi tepat 2 event",
+    );
+    assert.equal(
+      speakerCounts["boj's koeda"],
+      2,
+      "BOJ's Koeda harus dibatasi tepat 2 event meski variasi U+FFFD dan tanda petik",
+    );
+
+    // 5. U+FFFD title tidak menyebabkan crash dan dinormalisasi
+    const koedaEvt = res.events.find((e) => e.headline.includes("Koeda"));
+    assert.ok(koedaEvt, "event Koeda harus ada tanpa crash");
+    assert.ok(
+      !koedaEvt.headline.includes("\uFFFD"),
+      "karakter U+FFFD dinormalisasi ke apostrof",
+    );
+
+    // 6. Excerpt berupa link karena description kosong
+    for (const evt of res.events) {
+      assert.ok(
+        evt.excerpt.startsWith("[Link: https://"),
+        "excerpt harus memuat link ketika description kosong",
+      );
+    }
+  });
+
+  it("Crowd-out regression: CNBC dan Federal Reserve tidak terdesak keluar saat FinancialJuice aktif", async () => {
+    const fjXml = loadTextFixture("rss-financialjuice.xml");
+
+    const cnbcXml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>CNBC Economy</title>
+    <item>
+      <title>US consumer spending rises 0.5% in solid boost to economic growth</title>
+      <link>https://www.cnbc.com/2026/10/15/us-consumer-spending.html</link>
+      <pubDate>Thu, 15 Oct 2026 09:30:00 GMT</pubDate>
+      <description>Consumer activity remains healthy across major retail sectors.</description>
+    </item>
+  </channel>
+</rss>`;
+
+    const fedXml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Federal Reserve Press Releases</title>
+    <item>
+      <title>Federal Reserve issues FOMC policy statement on benchmark rates</title>
+      <link>https://www.federalreserve.gov/newsevents/pressreleases/monetary20261015a.htm</link>
+      <pubDate>Thu, 15 Oct 2026 09:20:00 GMT</pubDate>
+      <description>The Federal Open Market Committee decided to maintain the target range.</description>
+    </item>
+  </channel>
+</rss>`;
+
+    const mockFetch: typeof fetch = async (url) => {
+      const urlStr = String(url);
+      if (urlStr.includes("cnbc")) {
+        return new Response(cnbcXml, { status: 200 });
+      }
+      if (urlStr.includes("federalreserve")) {
+        return new Response(fedXml, { status: 200 });
+      }
+      if (urlStr.includes("financialjuice")) {
+        return new Response(fjXml, { status: 200 });
+      }
+      return new Response("<rss><channel></channel></rss>", { status: 200 });
+    };
+
+    const mockFeeds = [
+      {
+        name: "CNBC",
+        url: "https://www.cnbc.com/id/20910258/device/rss/rss.html",
+        topic: "macro" as const,
+        filterRelevance: false,
+      },
+      {
+        name: "Federal Reserve",
+        url: "https://www.federalreserve.gov/feeds/press_all.xml",
+        topic: "macro" as const,
+        filterRelevance: false,
+      },
+      {
+        name: "FinancialJuice",
+        url: "https://www.financialjuice.com/feed.ashx?xy=rss",
+        topic: "macro" as const,
+        filterRelevance: false,
+        titlePrefix: "FinancialJuice: ",
+        maxItemsPerFeed: 12,
+        dropMarketTicks: true,
+        maxPerSpeaker: 2,
+      },
+    ];
+
+    const res = await fetchRssEvents({
+      feeds: mockFeeds,
+      fetchFn: mockFetch,
+      lookbackHours: 24,
+      maxEventsPerTopic: 25,
+      now: new Date("2026-10-15T10:00:00Z"),
+    });
+
+    const cnbcEvt = res.events.find((e) => e.category === "macro:CNBC");
+    const fedEvt = res.events.find((e) => e.category === "macro:Federal Reserve");
+    const fjEvt = res.events.find((e) => e.category === "macro:FinancialJuice");
+
+    assert.ok(cnbcEvt, "event CNBC harus tetap muncul (tidak ter-crowd out)");
+    assert.ok(fedEvt, "event Federal Reserve harus tetap muncul (tidak ter-crowd out)");
+    assert.ok(fjEvt, "event FinancialJuice harus muncul");
   });
 });
 
@@ -560,6 +798,7 @@ describe("Data Sources: collectResearchInputs Orchestrator", () => {
         assets: ["ETH", "USDC"],
         timeoutMs: 500,
         fetchFn: mockFetch,
+        now: new Date("2026-10-08T18:00:00Z"),
       });
 
       assert.equal(gdeltCalled, true, "GDELT harus dipanggil saat RESEARCH_GDELT_ENABLED=true");

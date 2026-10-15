@@ -31,6 +31,8 @@ export interface InboundMessage {
 
 export interface SendOptions {
   replyMarkup?: unknown;
+  /** Format teks Telegram; default teks polos. */
+  parseMode?: "HTML" | "MarkdownV2";
 }
 
 export interface ChannelAdapter {

@@ -9,7 +9,7 @@
 
 Engine (research agent + fusion + sinyal) diposisikan sebagai **agent mandiri** yang dijalankan sekali oleh operator, lalu dipakai user **lewat kanal chat**, bukan lewat terminal.
 
-- **CLI = host/runner.** `tahansoe start` menjalankan semuanya dalam satu proses: scheduler riset, sampler harga & bunga, fusion, settlement, alert, dan gateway kanal. CLI/REPL tetap ada untuk operator & debugging.
+- **CLI = host/runner.** `tahansoe start` menjalankan semuanya dalam satu proses: scheduler riset, sampler harga & bunga, fusion, settlement, alert, dan gateway kanal. CLI tetap ada untuk operator & debugging; REPL dihapus dan tanya-jawab hanya lewat gateway ([ADR 0011](../decisions/0011-postgres-only-gateway-only-chat.md)).
 - **Kanal = antarmuka user.** User mengirim perintah & pertanyaan, dan menerima alert, di Telegram. Kanal berikutnya (WhatsApp, Discord) memakai antarmuka adapter yang sama.
 - **dApp Tahansoe = kanal berikutnya.** Integrasi ke dApp lewat adapter yang sama (HTTP/API atau DB bersama) — keputusan detail di spec terpisah; desain gateway di sini harus tidak terikat Telegram.
 
@@ -86,7 +86,7 @@ Telegram ──► adapter (long polling) ──► router: /perintah → fungsi
 - [ ] `tahansoe start` menjalankan semuanya dalam satu proses; gateway mati tidak menghentikan riset/fusion (I6), dan sebaliknya bot tetap menjawab dari data terakhir bila riset gagal.
 - [ ] `tahansoe setup` bisa memasang bot dan memasangkan chat ID lewat kode pairing tanpa user mencari chat ID manual.
 - [ ] Token tidak muncul di log/output (test).
-- [ ] Jalan di Neon dan PGlite.
+- [ ] Jalan di Postgres server (Neon). (PGlite dihapus, ADR 0011.)
 - [ ] Menu perintah muncul di Telegram (`setMyCommands`) dan tombol inline bekerja; callback dari chat tak diizinkan ditolak.
 
 ## 5. Rencana test

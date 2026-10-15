@@ -21,6 +21,7 @@ import {
 import { REPRESENTATIVE_PAIRS } from "../../signals/carry.ts";
 import { detectTheme, banner, dim, bold, table, type TableColumn } from "../render.ts";
 import { EXIT_OK, EXIT_ERROR, flagOrNpm } from "./args.ts";
+import { getLanguage } from "../i18n/index.ts";
 
 export const CARRY_HELP = `tahansoe carry — Aave V3 Arbitrum One carry & interest-rate monitor
 
@@ -45,6 +46,110 @@ export function getReserveStatus(utilization: number, optimalUtil: number | null
   if (utilization >= optimalUtil) return "past kink";
   if (utilization >= optimalUtil - 0.03) return "near kink";
   return "ok";
+}
+
+export interface CarryReserveRow {
+  asset: string;
+  address: string;
+  supplyApr: number;
+  supplyApy: number;
+  borrowApr: number;
+  borrowApy: number;
+  utilization: number;
+  optimalUtil: number | null;
+  status: ReserveStatus;
+}
+
+export interface CarryPairRow {
+  collateral: string;
+  debt: string;
+  available: boolean;
+  /** Net carry per tahun (desimal, mis. -0.047 = -4.7%/thn). */
+  netCarry: number | null;
+  /** Hari sampai HF 1.50 -> 1.45 karena bunga saja; null = HF tidak turun. */
+  daysHf150To145: number | null;
+  scenario95: {
+    targetUtil: number;
+    projectedBorrowApr: number;
+    projectedNetCarry: number;
+    projectedDays: number | null;
+  } | null;
+}
+
+export interface CarryData {
+  reserves: CarryReserveRow[];
+  pairs: CarryPairRow[];
+}
+
+/** Hitung tabel reserve + pasangan representatif (dipakai CLI dan gateway Telegram). */
+export function computeCarryData(ratesResult: AaveRatesResult): CarryData {
+  const reserves = ratesResult.reserves;
+  const reserveMap = new Map<string, ReserveRate>();
+  for (const r of reserves) {
+    reserveMap.set(r.asset.toUpperCase(), r);
+  }
+
+  // Format data reserves untuk output
+  const reserveRowsData: CarryReserveRow[] = reserves.map((r) => {
+    const optimal = r.curve?.optimalUtil ?? null;
+    const status = getReserveStatus(r.utilization, optimal);
+    return {
+      asset: r.asset,
+      address: r.address,
+      supplyApr: r.supplyApr,
+      supplyApy: r.supplyApy,
+      borrowApr: r.borrowApr,
+      borrowApy: r.borrowApy,
+      utilization: r.utilization,
+      optimalUtil: optimal,
+      status,
+    };
+  });
+
+  // Format data pairs untuk output
+  const pairsData: CarryPairRow[] = REPRESENTATIVE_PAIRS.map((pair) => {
+    const coll = reserveMap.get(pair.collateral.toUpperCase());
+    const debt = reserveMap.get(pair.debt.toUpperCase());
+
+    if (!coll || !debt) {
+      return {
+        collateral: pair.collateral,
+        debt: pair.debt,
+        available: false,
+        netCarry: null,
+        daysHf150To145: null,
+        scenario95: null,
+      };
+    }
+
+    const carry = netCarry(coll.supplyApr, debt.borrowApr);
+    const days = daysUntilHf(1.50, 1.45, carry);
+
+    let scenario95: CarryPairRow["scenario95"] = null;
+
+    if (debt.curve) {
+      const projBorrow = borrowAprAt(0.95, debt.curve);
+      const projCarry = netCarry(coll.supplyApr, projBorrow);
+      const projDays = daysUntilHf(1.50, 1.45, projCarry);
+      scenario95 = {
+        targetUtil: 0.95,
+        projectedBorrowApr: projBorrow,
+        projectedNetCarry: projCarry,
+        projectedDays: projDays,
+      };
+    }
+
+    return {
+      collateral: pair.collateral,
+      debt: pair.debt,
+      available: true,
+      netCarry: carry,
+      daysHf150To145: days,
+      scenario95,
+    };
+  });
+
+  return { reserves: reserveRowsData, pairs: pairsData };
 }
 
 export async function carryCommand(argv: string[], deps: CarryDeps = {}): Promise<number> {
@@ -85,76 +190,7 @@ export async function carryCommand(argv: string[], deps: CarryDeps = {}): Promis
     return EXIT_ERROR;
   }
 
-  const reserves = ratesResult.reserves;
-  const reserveMap = new Map<string, ReserveRate>();
-  for (const r of reserves) {
-    reserveMap.set(r.asset.toUpperCase(), r);
-  }
-
-  // Format data reserves untuk output
-  const reserveRowsData = reserves.map((r) => {
-    const optimal = r.curve?.optimalUtil ?? null;
-    const status = getReserveStatus(r.utilization, optimal);
-    return {
-      asset: r.asset,
-      address: r.address,
-      supplyApr: r.supplyApr,
-      supplyApy: r.supplyApy,
-      borrowApr: r.borrowApr,
-      borrowApy: r.borrowApy,
-      utilization: r.utilization,
-      optimalUtil: optimal,
-      status,
-    };
-  });
-
-  // Format data pairs untuk output
-  const pairsData = REPRESENTATIVE_PAIRS.map((pair) => {
-    const coll = reserveMap.get(pair.collateral.toUpperCase());
-    const debt = reserveMap.get(pair.debt.toUpperCase());
-
-    if (!coll || !debt) {
-      return {
-        collateral: pair.collateral,
-        debt: pair.debt,
-        available: false,
-        netCarry: null,
-        daysHf150To145: null,
-        scenario95: null,
-      };
-    }
-
-    const carry = netCarry(coll.supplyApr, debt.borrowApr);
-    const days = daysUntilHf(1.50, 1.45, carry);
-
-    let scenario95: {
-      targetUtil: number;
-      projectedBorrowApr: number;
-      projectedNetCarry: number;
-      projectedDays: number | null;
-    } | null = null;
-
-    if (debt.curve) {
-      const projBorrow = borrowAprAt(0.95, debt.curve);
-      const projCarry = netCarry(coll.supplyApr, projBorrow);
-      const projDays = daysUntilHf(1.50, 1.45, projCarry);
-      scenario95 = {
-        targetUtil: 0.95,
-        projectedBorrowApr: projBorrow,
-        projectedNetCarry: projCarry,
-        projectedDays: projDays,
-      };
-    }
-
-    return {
-      collateral: pair.collateral,
-      debt: pair.debt,
-      available: true,
-      netCarry: carry,
-      daysHf150To145: days,
-      scenario95,
-    };
-  });
+  const { reserves: reserveRowsData, pairs: pairsData } = computeCarryData(ratesResult);
 
   if (json) {
     writeOut(
@@ -182,6 +218,14 @@ export async function carryCommand(argv: string[], deps: CarryDeps = {}): Promis
 
   outLines.push(banner(theme, "carry & interest · Aave V3 Arbitrum One"));
   outLines.push("");
+  const id = getLanguage() === "id";
+  const explain = (idText: string, enText: string) => outLines.push(dim(theme, ` ${id ? idText : enText}`));
+  explain(
+    "Carry = bunga yang didapat jaminan dikurangi bunga utang (per tahun). Negatif → utang tumbuh lebih cepat, HF turun pelan walau harga diam.",
+    "Carry = interest earned on collateral minus interest paid on debt (per year). Negative → debt grows faster, HF drifts down even if prices are flat.",
+  );
+  outLines.push("");
+  outLines.push(bold(theme, id ? " 1. Pool Aave (bunga & pemakaian)" : " 1. Aave pools (rates & usage)"));
 
   // 1. Reserve Table
   const reserveCols: TableColumn[] = [
@@ -220,7 +264,12 @@ export async function carryCommand(argv: string[], deps: CarryDeps = {}): Promis
   });
 
   outLines.push(table(theme, reserveCols, reserveTableRows));
+  explain(
+    "Util = porsi dana pool yang sedang dipinjam. Kink = titik pemakaian tempat bunga pinjam naik tajam; 'past kink' = bunga di zona mahal, 'near kink' = tinggal <3 poin lagi.",
+    "Util = share of the pool currently borrowed. Kink = the usage level where borrow rates rise steeply; 'past kink' = expensive zone, 'near kink' = within 3 points.",
+  );
   outLines.push("");
+  outLines.push(bold(theme, id ? " 2. Efek bunga ke posisi (jaminan → utang)" : " 2. Effect on positions (collateral → debt)"));
 
   // 2. Pair Table
   const pairCols: TableColumn[] = [
@@ -250,6 +299,10 @@ export async function carryCommand(argv: string[], deps: CarryDeps = {}): Promis
     });
 
   outLines.push(table(theme, pairCols, pairTableRows));
+  explain(
+    "Net carry = bunga jaminan − bunga utang. 'HF 1.50 → 1.45' = berapa lama HF posisi turun 0,05 HANYA karena bunga (tanpa harga bergerak). Makin sedikit hari, makin cepat tergerus.",
+    "Net carry = collateral rate − debt rate. 'HF 1.50 → 1.45' = how long until HF falls by 0.05 from interest ALONE (prices unchanged). Fewer days = faster erosion.",
+  );
 
   // Skenario jika debt reserve mencapai 95% util
   const scenarioLines: string[] = [];
@@ -265,6 +318,7 @@ export async function carryCommand(argv: string[], deps: CarryDeps = {}): Promis
 
   if (scenarioLines.length > 0) {
     outLines.push("");
+    outLines.push(bold(theme, id ? " 3. Skenario: pool utang terpakai 95%" : " 3. Scenario: debt pool at 95% usage"));
     for (const scn of scenarioLines.slice(0, 3)) {
       outLines.push(dim(theme, scn));
     }

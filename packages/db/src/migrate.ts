@@ -1,7 +1,7 @@
 /**
- * Logika migrasi skema database Tahansoe (ADR 0004, 0005, 0010).
+ * Logika migrasi skema database Tahansoe (ADR 0004, 0005, 0011).
  *
- * Mendukung driver Neon (Postgres cloud) dan PGlite (embedded WASM).
+ * Postgres server (Neon) saja.
  * Seluruh pernyataan SQL bersifat IDEMPOTEN (IF NOT EXISTS).
  */
 
@@ -379,27 +379,16 @@ export async function runMigrations(
   await runSql(`CREATE INDEX IF NOT EXISTS rate_samples_chain_asset_sampled_idx ON rate_samples (chain_id, asset, sampled_at);`);
   log("  rate_samples");
 
-  log("\nMigration complete.");
-}
+  await runSql(`
+    CREATE TABLE IF NOT EXISTS llm_usage_daily (
+      day TEXT PRIMARY KEY,
+      spent_usd DOUBLE PRECISION NOT NULL DEFAULT 0,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+  log("  llm_usage_daily");
 
-export async function runMigrationsOnPglite(
-  client: { query: (sql: string, params?: any[]) => Promise<any>; exec?: (sql: string) => Promise<any> },
-  options: MigrateOptions = {},
-): Promise<void> {
-  const runner: SqlExecutor = {
-    async query(statement: string, params: unknown[] = []) {
-      const res = await client.query(statement, params as any[]);
-      return { rows: res.rows };
-    },
-    async exec(statement: string) {
-      if (client.exec) {
-        await client.exec(statement);
-      } else {
-        await client.query(statement);
-      }
-    },
-  };
-  await runMigrations(runner, options);
+  log("\nMigration complete.");
 }
 
 export async function runMigrationsOnNeon(

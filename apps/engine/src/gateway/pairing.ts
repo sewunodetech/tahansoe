@@ -177,7 +177,7 @@ export class PairingManager implements PairingApi {
     // 2. Periksa limit percobaan gagal per chat (maks 5 per jam)
     const failed = getFailedPairingAttemptsCount(activeState, chatId, nowMs);
     if (failed >= MAX_FAILED_PAIRING_ATTEMPTS) {
-      saveGatewayStateSync(activeState, this.statePath);
+      saveGatewayStateSync(activeState, this.statePath, nowMs);
       if (state) Object.assign(state, activeState);
       if (this.state) Object.assign(this.state, activeState);
       return {
@@ -195,7 +195,7 @@ export class PairingManager implements PairingApi {
       item.chatId = chatId;
       item.pairedAt = nowMs;
 
-      saveGatewayStateSync(activeState, this.statePath);
+      saveGatewayStateSync(activeState, this.statePath, nowMs);
       if (state) Object.assign(state, activeState);
       if (this.state) Object.assign(this.state, activeState);
 
@@ -210,7 +210,7 @@ export class PairingManager implements PairingApi {
       item.attempts = (item.attempts ?? 0) + 1;
     }
     recordFailedPairingAttempt(activeState, chatId, nowMs);
-    saveGatewayStateSync(activeState, this.statePath);
+    saveGatewayStateSync(activeState, this.statePath, nowMs);
     if (state) Object.assign(state, activeState);
     if (this.state) Object.assign(this.state, activeState);
 

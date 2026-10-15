@@ -33,9 +33,15 @@ import {
   type AlertType,
   type Settings,
 } from "../settings/settings.ts";
-import { fmtTime } from "../cli/render.ts";
-import { CHAT_FOOTER } from "../cli/repl/chat.ts";
 import { alertActionKeyboard } from "./telegram/adapter.ts";
+import {
+  chatLang,
+  regimeUpAlert,
+  regimeDownAlert,
+  signalAlert,
+  dailySummaryView,
+  type SignalAlertKind,
+} from "./views.ts";
 
 export const DEFAULT_ALERT_POLL_SEC = 60;
 export const HYSTERESIS_DOWN_HOLD_MS = 60 * 60 * 1000; // 1 jam
@@ -184,15 +190,14 @@ export class AlertPoller {
         const severity = currentLevel / 3;
 
         if (!isAlertDeduped(this.state, dedupeKey, severity, nowMs, DEFAULT_DEDUPE_HOURS)) {
-          const headline = `⚠ ${asset}: ${prevRegime} → ${currentRegime}`;
-          const explanation = a.explanation || "Risk factors elevated on-chain.";
-          const timeStr = `${fmtTime(a.createdAt ?? new Date(nowMs))} UTC`;
-
-          const message =
-            `${headline}\n\n` +
-            `Cause: ${explanation}\n` +
-            `Time: ${timeStr}\n\n` +
-            `${CHAT_FOOTER}`;
+          const message = regimeUpAlert(
+            asset,
+            prevRegime,
+            currentRegime,
+            a.explanation || "Risk factors elevated on-chain.",
+            a.createdAt ?? new Date(nowMs),
+            chatLang(settings),
+          );
 
           const delivered = await this.broadcastAlert("regime", message, settings);
           if (delivered > 0) {
@@ -218,15 +223,13 @@ export class AlertPoller {
           const dedupeKey = `alert:regime:${asset}:${currentRegime}`;
 
           if (!isAlertDeduped(this.state, dedupeKey, 0, nowMs, DEFAULT_DEDUPE_HOURS)) {
-            const headline = `✓ ${asset} returned to ${currentRegime}`;
-            const explanation = a.explanation || "Risk conditions normalized and held steady.";
-            const timeStr = `${fmtTime(a.createdAt ?? new Date(nowMs))} UTC`;
-
-            const message =
-              `${headline}\n\n` +
-              `Status: ${explanation}\n` +
-              `Time: ${timeStr}\n\n` +
-              `${CHAT_FOOTER}`;
+            const message = regimeDownAlert(
+              asset,
+              currentRegime,
+              a.explanation || "Risk conditions normalized and held steady.",
+              a.createdAt ?? new Date(nowMs),
+              chatLang(settings),
+            );
 
             const delivered = await this.broadcastAlert("regime", message, settings);
             if (delivered > 0) {
@@ -260,19 +263,15 @@ export class AlertPoller {
     let sent = 0;
 
     for (const s of signals) {
-      let alertType: AlertType | undefined;
-      let headline = "";
+      let alertType: SignalAlertKind | undefined;
 
       // 1. Sequencer down (ORACLE T10)
       if (s.module === "ORACLE" && s.paths?.includes("T10")) {
         alertType = "sequencer";
-        headline = "🚨 Sequencer Arbitrum DOWN — repay cannot be performed until recovered";
       }
       // 2. Stablecoin depeg (ONCHAIN T4)
       else if (s.module === "ONCHAIN" && s.paths?.includes("T4")) {
         alertType = "depeg";
-        const assetName = s.assets[0] ?? "Stablecoin";
-        headline = `🚨 Stablecoin ${assetName} depeg detected`;
       }
       // 3. Pool kering (T7 / util >= 98%)
       else if (
@@ -280,14 +279,10 @@ export class AlertPoller {
         (s.module === "ONCHAIN" && s.evidence?.some((e) => e.title?.toLowerCase().includes("utilization") && (e.title.includes("98") || e.title.includes("99"))))
       ) {
         alertType = "pool";
-        const poolAsset = s.assets[0] ?? "Reserve";
-        headline = `⚠ Pool ${poolAsset} liquidity constrained (utilization >= 98%)`;
       }
       // 4. ORACLE T8 berat (severity >= 0.6)
       else if (s.module === "ORACLE" && s.paths?.includes("T8") && s.severity >= 0.6) {
         alertType = "oracle";
-        const asset = s.assets[0] ?? "Oracle";
-        headline = `🚨 Severe oracle lag/deviation on ${asset}`;
       }
 
       if (!alertType) continue;
@@ -298,16 +293,7 @@ export class AlertPoller {
         continue;
       }
 
-      const evidenceSummary =
-        s.evidence?.map((e) => e.title).filter(Boolean).join("\n• ") ||
-        "Deterministic signal threshold breached.";
-      const timeStr = `${fmtTime(s.observedAt ?? new Date(nowMs))} UTC`;
-
-      const message =
-        `${headline}\n\n` +
-        `Evidence:\n• ${evidenceSummary}\n\n` +
-        `Observed: ${timeStr}\n\n` +
-        `${CHAT_FOOTER}`;
+      const message = signalAlert(alertType, s, s.observedAt ?? new Date(nowMs), chatLang(settings));
 
       const delivered = await this.broadcastAlert(alertType, message, settings);
       if (delivered > 0) {
@@ -335,18 +321,12 @@ export class AlertPoller {
       return 0;
     }
 
-    const regimeLines = assessments.map((a) => `• ${a.asset}: ${a.regime} (score ${a.riskScore.toFixed(2)})`);
-    const summaryBody =
-      `📊 Tahansoe Daily Risk Summary (${today})\n\n` +
-      `Current Regimes:\n${regimeLines.join("\n") || "• No active asset assessments"}\n\n` +
-      `Active Signals: ${signals.length}\n` +
-      `Carry & Liquidity Status: Monitored\n\n` +
-      `${CHAT_FOOTER}`;
+    const summaryBody = dailySummaryView(today, assessments, signals, chatLang(settings));
 
     let sent = 0;
     for (const chatId of eligibleChats) {
       try {
-        await this.adapter.send(chatId, summaryBody);
+        await this.adapter.send(chatId, summaryBody, { parseMode: "HTML" });
         sent++;
       } catch (err) {
         this.logger(`[Alerts] Error sending daily summary to ${chatId}: ${err instanceof Error ? err.message : String(err)}`);
@@ -403,7 +383,7 @@ export class AlertPoller {
 
     for (const chatId of recipients) {
       try {
-        await this.adapter.send(chatId, message, { replyMarkup });
+        await this.adapter.send(chatId, message, { replyMarkup, parseMode: "HTML" });
         count++;
       } catch (err) {
         this.logger(`[Alerts] Failed to send alert to ${chatId}: ${err instanceof Error ? err.message : String(err)}`);

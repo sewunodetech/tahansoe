@@ -19,7 +19,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname } from "node:path";
 
 import type { LlmProvider } from "../llm/provider.ts";
-import { isNonRetryableStatus } from "../llm/provider.ts";
+import { isNonRetryableStatus, withSignal } from "../llm/provider.ts";
 import { routerForRole } from "../llm/registry.ts";
 import { budget as defaultBudget, type Budget } from "../llm/budget.ts";
 import { env, config, type ResearchTrigger } from "../config.ts";
@@ -30,6 +30,7 @@ import { toSignal } from "./to-signal.ts";
 import { buildContext } from "./context.ts";
 import type { ResearchInputCollector, ResearchContext } from "./context.ts";
 import { selectLessons } from "../reflection/lessons.ts";
+import { pruneOutDirs } from "./out-retention.ts";
 import type { AnalystReport, ResearchReport, ResearchSignal } from "./schemas.ts";
 
 export interface RunParams {
@@ -56,6 +57,13 @@ export interface RunParams {
    * TIDAK mengubah perilaku pipeline; default no-op. JANGAN memuat secret.
    */
   onProgress?: (event: ProgressEvent) => void;
+  /**
+   * Pembatalan dari luar (mis. shutdown `tahansoe start`). Digabung dengan deadline
+   * run (`RESEARCH_RUN_TIMEOUT_MS`); bila abort, run berhenti tanpa report/sinyal.
+   */
+  signal?: AbortSignal;
+  /** Override deadline total run (ms). Default env RESEARCH_RUN_TIMEOUT_MS (15 menit). */
+  timeoutMs?: number;
 }
 
 /** Tahap pipeline untuk event progres. */
@@ -175,6 +183,11 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
   if (!dry && !env.researchEnabled()) {
     return { report: null, reason: "RESEARCH_ENABLED=false (kill switch aktif)" };
   }
+  // Run nyata: samakan budget dengan total harian bersama di DB (lintas proses).
+  if (!params.provider) {
+    const { syncSharedBudget } = await import("../db/budget-store.ts");
+    await syncSharedBudget(budget);
+  }
   if (budget.exceeded()) {
     return {
       report: null,
@@ -191,9 +204,25 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
     const { bootstrapBudgetPricing } = await import("../llm/pricing-bootstrap.ts");
     await bootstrapBudgetPricing().catch(() => 0);
   }
-  const analystProvider = params.provider ?? routerForRole("analyst", budget);
-  const debateProvider = params.provider ?? routerForRole("debate", budget);
-  const assessorProvider = params.provider ?? routerForRole("assessor", budget);
+
+  // Deadline total run + pembatalan dari luar. Setiap panggilan LLM membawa signal
+  // ini, jadi gateway yang hang tidak bisa menahan run (atau scheduler) selamanya.
+  const timeoutMs = params.timeoutMs ?? env.researchRunTimeoutMs();
+  const deadline = AbortSignal.timeout(timeoutMs);
+  const runSignal = params.signal ? AbortSignal.any([params.signal, deadline]) : deadline;
+  const abortReason = (): string | null => {
+    if (!runSignal.aborted) return null;
+    if (params.signal?.aborted) return "run dibatalkan (shutdown)";
+    return `run melewati batas waktu ${Math.round(timeoutMs / 60_000)} menit (RESEARCH_RUN_TIMEOUT_MS)`;
+  };
+  /** Alasan berhenti sebelum tahap berikutnya: dibatalkan atau budget habis. */
+  const stopReason = (): string | null =>
+    abortReason() ??
+    (budget.exceeded() ? `budget harian habis di tengah run (terpakai $${budget.spentToday().toFixed(4)})` : null);
+
+  const analystProvider = withSignal(params.provider ?? routerForRole("analyst", budget), runSignal);
+  const debateProvider = withSignal(params.provider ?? routerForRole("debate", budget), runSignal);
+  const assessorProvider = withSignal(params.provider ?? routerForRole("assessor", budget), runSignal);
 
   const sourcesStart = Date.now();
   emit({ type: "stage_start", stage: "sources", label: "Collecting inputs" });
@@ -210,7 +239,15 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
   const settled = await Promise.allSettled(
     ANALYSTS.map(async (domain) => {
       const s = Date.now();
-      const outcome = await runAnalyst(analystProvider, domain, ctx);
+      // Exception tak terduga tetap menjadi outcome gagal (dengan alasan) agar
+      // terlihat di progres & daftar kegagalan, bukan hilang diam-diam.
+      const outcome: AnalystOutcome = await runAnalyst(analystProvider, domain, ctx).catch(
+        (err: unknown) => ({
+          domain,
+          report: null,
+          reason: `exception: ${err instanceof Error ? err.message : String(err)}`,
+        }),
+      );
       emit({
         type: "analyst_done",
         domain: domain.toLowerCase(),
@@ -222,12 +259,22 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
       return outcome;
     }),
   );
-  const outcomes: AnalystOutcome[] = [];
-  for (const r of settled) {
-    if (r.status === "fulfilled") outcomes.push(r.value);
-    // Promise ditolak (bug tak terduga) diabaikan di penghitungan sukses.
-  }
+  const outcomes: AnalystOutcome[] = settled.map((r, i) =>
+    r.status === "fulfilled"
+      ? r.value
+      : { domain: ANALYSTS[i]!, report: null, reason: `exception: ${String(r.reason)}` },
+  );
   emit({ type: "stage_done", stage: "analysts", ms: Date.now() - analystsStart });
+
+  const afterAnalysts = abortReason();
+  if (afterAnalysts) {
+    emit({ type: "error", stage: "analysts", message: afterAnalysts });
+    return {
+      report: null,
+      reason: afterAnalysts,
+      diagnostics: buildDiagnostics({ startedAtMs, analystOutcomes: outcomes }),
+    };
+  }
 
   // GUARD fail-fast: analyst pertama (ANALYSTS[0]) gagal non-retryable → hentikan.
   const first = outcomes.find((o) => o.domain === ANALYSTS[0]);
@@ -262,16 +309,50 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
     };
   }
 
+  const beforeDebate = stopReason();
+  if (beforeDebate) {
+    emit({ type: "error", stage: "debate", message: beforeDebate });
+    return {
+      report: null,
+      reason: beforeDebate,
+      diagnostics: buildDiagnostics({ startedAtMs, analystOutcomes: outcomes }),
+    };
+  }
+
   const debateStart = Date.now();
   emit({ type: "stage_start", stage: "debate", label: "Hawk vs Dove" });
-  const debate = await runDebate(debateProvider, reports, { rounds: config.debateRounds });
+  // Debat gagal total (exception) → assessor tetap jalan dengan debat kosong (I6).
+  const debate: DebateResult = await runDebate(debateProvider, reports, { rounds: config.debateRounds }).catch(
+    (err: unknown) => {
+      emit({ type: "error", stage: "debate", message: err instanceof Error ? err.message : String(err) });
+      return { turns: [], degraded: true, diagnostics: [] };
+    },
+  );
   emit({ type: "stage_done", stage: "debate", ms: Date.now() - debateStart });
 
   const lessons = await selectLessons(reports).catch(() => []);
 
+  const beforeAssessor = stopReason();
+  if (beforeAssessor) {
+    emit({ type: "error", stage: "assessor", message: beforeAssessor });
+    return {
+      report: null,
+      reason: beforeAssessor,
+      diagnostics: buildDiagnostics({ startedAtMs, analystOutcomes: outcomes, debate }),
+    };
+  }
+
   const assessorStart = Date.now();
   emit({ type: "stage_start", stage: "assessor", label: "Risk assessor" });
-  const assessorOutcome = await runAssessor(assessorProvider, { ctx, reports, debate, lessons });
+  const assessorOutcome: AssessorOutcome = await runAssessor(assessorProvider, {
+    ctx,
+    reports,
+    debate,
+    lessons,
+  }).catch((err: unknown) => ({
+    report: null,
+    reason: `exception: ${err instanceof Error ? err.message : String(err)}`,
+  }));
   emit({
     type: "stage_done",
     stage: "assessor",
@@ -293,7 +374,7 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
     emit({ type: "error", stage: "assessor", message: assessorOutcome.reason ?? "unknown" });
     return {
       report: null,
-      reason: `risk assessor gagal: ${assessorOutcome.reason ?? "unknown"}`,
+      reason: abortReason() ?? `risk assessor gagal: ${assessorOutcome.reason ?? "unknown"}`,
       diagnostics,
     };
   }
@@ -326,17 +407,28 @@ export async function runResearch(params: RunParams): Promise<RunResult> {
   }
 
   // Tulis salinan file ke out/ untuk dibaca manusia (dry MAUPUN non-dry).
+  // Pada mode non-dry report SUDAH tersimpan di DB: kegagalan menulis file tidak
+  // boleh membuat run dianggap gagal (hanya peringatan).
   const outDir = params.outDir ?? defaultOutDir();
-  await saveReportToFiles(outDir, {
-    trigger,
-    chainId,
-    report,
-    reports,
-    debate,
-    signal,
-    ctx,
-    diagnostics,
-  });
+  try {
+    await saveReportToFiles(outDir, {
+      trigger,
+      chainId,
+      report,
+      reports,
+      debate,
+      signal,
+      ctx,
+      diagnostics,
+    });
+  } catch (err) {
+    if (dry) throw err;
+    console.warn(`[engine] gagal menulis salinan report ke ${outDir}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  // Retensi folder out/ (scheduler jalan tiap 1-2 jam → tanpa ini tumbuh terus).
+  if (!params.outDir) {
+    await pruneOutDirs(dirname(outDir), { keep: env.outKeepRuns() }).catch(() => undefined);
+  }
 
   emit({ type: "stage_done", stage: "save", ms: Date.now() - saveStart, detail: reportId });
   return { report, outDir, diagnostics, reportId, signalId };

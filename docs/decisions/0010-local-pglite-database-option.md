@@ -1,6 +1,6 @@
 # 0010 — Pilihan database lokal: PGlite (embedded Postgres) di samping Neon
 
-- **Status:** Accepted (arahan user, 2026-10-09)
+- **Status:** Superseded by [0011](0011-postgres-only-gateway-only-chat.md) (2026-10-14). Sebelumnya: Accepted (arahan user, 2026-10-09)
 - **Tanggal:** 2026-10-09
 - **Pengusul:** Engineering (Claude Code, atas arahan user)
 - **Terkait:** [ADR 0007](0007-monorepo-structure-and-runtime.md) (monorepo, `packages/db` sebagai satu-satunya akses DB)

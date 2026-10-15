@@ -8,10 +8,13 @@
 
 import "./agents/to-signal.test.ts";
 import "./agents/run-dry.test.ts";
+import "./agents/run-robustness.test.ts";
+import "./agents/out-retention.test.ts";
 import "./config.test.ts";
 import "./llm/anthropic.test.ts";
 import "./llm/budget.test.ts";
 import "./llm/openai-compatible.test.ts";
+import "./llm/timeout-abort.test.ts";
 import "./llm/registry.test.ts";
 import "./db/history.test.ts";
 import "./db/store-retry.test.ts";
@@ -22,7 +25,6 @@ import "./reflection/scorecard.test.ts";
 import "./sources/sources.test.ts";
 import "./worker/worker.test.ts";
 import "./worker/lock.test.ts";
-import "./worker/lock-pglite.test.ts";
 import "./llm/pricing.test.ts";
 import "./llm/registry-generic.test.ts";
 import "./cli/env-writer.test.ts";
@@ -45,15 +47,14 @@ import "./sources/aave-rates.test.ts";
 import "./cli/carry.test.ts";
 import "./signals/carry.test.ts";
 import "./signals/deterministic.test.ts";
-import "./cli/repl/slash.test.ts";
-import "./cli/repl/context.test.ts";
-import "./cli/repl/chat.test.ts";
+import "./chat/context.test.ts";
+import "./chat/chat.test.ts";
 import "./cli/ui.test.ts";
 import "./cli/i18n.test.ts";
-import "./cli/repl/lang.test.ts";
 import "./cli/setup.test.ts";
 import "./cli/setup-telegram.test.ts";
 import "./cli/start.test.ts";
+import "./cli/daemon.test.ts";
 import "./gateway/formatter.test.ts";
 import "./gateway/api.test.ts";
 import "./gateway/queue.test.ts";
@@ -62,6 +63,7 @@ import "./gateway/pairing.test.ts";
 import "./gateway/router.test.ts";
 import "./gateway/alerts.test.ts";
 import "./gateway/state.test.ts";
+import "./gateway/views.test.ts";
 import "./gateway/gateway.test.ts";
 
 

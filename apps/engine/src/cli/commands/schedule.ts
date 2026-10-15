@@ -192,15 +192,12 @@ export class SettleTicker {
   }
 }
 
-/** Lock settlement default (Neon advisory lock atau PGlite file lock). */
+/** Lock settlement default (Postgres advisory lock, ADR 0011). */
 export async function defaultSettleLock(): Promise<{ acquired: boolean; release: () => Promise<void>; isLost: () => boolean }> {
-  const { getDbDriver } = await import("@tahansoe/db");
-  const driver = getDbDriver();
   const dbUrl = process.env.DATABASE_URL;
-  if (driver !== "pglite" && !dbUrl) return { acquired: false, release: async () => {}, isLost: () => false };
+  if (!dbUrl) return { acquired: false, release: async () => {}, isLost: () => false };
   const { openAdvisoryLock } = await import("../../worker/lock.ts");
   return openAdvisoryLock(dbUrl, SETTLE_ADVISORY_LOCK_KEY, {
-    driver,
     logger: { warn: (m) => process.stderr.write(`[settle] ${m}\n`) },
   });
 }
@@ -318,15 +315,12 @@ export class FusionTicker {
   }
 }
 
-/** Lock fusion default (Neon advisory lock atau PGlite file lock). */
+/** Lock fusion default (Postgres advisory lock, ADR 0011). */
 export async function defaultFusionLock(): Promise<{ acquired: boolean; release: () => Promise<void>; isLost: () => boolean }> {
-  const { getDbDriver } = await import("@tahansoe/db");
-  const driver = getDbDriver();
   const dbUrl = process.env.DATABASE_URL;
-  if (driver !== "pglite" && !dbUrl) return { acquired: false, release: async () => {}, isLost: () => false };
+  if (!dbUrl) return { acquired: false, release: async () => {}, isLost: () => false };
   const { openAdvisoryLock } = await import("../../worker/lock.ts");
   return openAdvisoryLock(dbUrl, FUSION_ADVISORY_LOCK_KEY, {
-    driver,
     logger: { warn: (m) => process.stderr.write(`[fusion] ${m}\n`) },
   });
 }
@@ -457,8 +451,6 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
     }
 
     if (stopPrice) await stopPrice();
-    const { getDbDriver, resetDbClient } = await import("@tahansoe/db");
-    if (getDbDriver() === "pglite") await resetDbClient();
     return started || reportProduced ? EXIT_OK : EXIT_ERROR;
   }
 
@@ -518,8 +510,6 @@ export async function scheduleCommand(argv: string[], deps: ScheduleDeps = {}): 
         if (ticker) await ticker.stop();
         await worker.stop();
         if (stopPrice) await stopPrice();
-        const { getDbDriver, resetDbClient } = await import("@tahansoe/db");
-        if (getDbDriver() === "pglite") await resetDbClient();
       } finally {
         resolve();
       }
@@ -626,9 +616,7 @@ export async function runSettleOnce(
 
 /** Status default: lock held? + run terakhir dari DB. */
 async function defaultStatus(): Promise<string> {
-  const { getDbDriver } = await import("@tahansoe/db");
-  const driver = getDbDriver();
-  if (driver !== "pglite" && !process.env.DATABASE_URL) return "scheduler status: DATABASE_URL belum diset.";
+  if (!process.env.DATABASE_URL) return "scheduler status: DATABASE_URL belum diset.";
   try {
     const { recentReports } = await import("../../db/history.ts");
     const rows = await recentReports(1);

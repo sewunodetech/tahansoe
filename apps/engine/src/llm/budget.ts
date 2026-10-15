@@ -4,9 +4,9 @@
  * Saat `exceeded()` true, lapis riset berhenti sampai besok (reset per hari UTC),
  * tim diberi alert, tetapi modul sinyal & fusion TETAP jalan (invariant I6).
  *
- * Boilerplate: perhitungan dari `usage` + tabel harga. Persistensi lintas proses
- * (mis. ke tabel DB usage harian) ditandai TODO — penting agar budget tidak
- * ter-reset saat worker restart.
+ * Persistensi lintas proses lewat `BudgetStore` (tabel `llm_usage_daily`, lihat
+ * src/db/budget-store.ts): daemon `start`, `analyze`, dan chat gateway berbagi
+ * total harian yang sama, dan total tidak reset saat proses restart.
  */
 
 import type { LlmUsage } from "./provider.ts";
@@ -116,25 +116,64 @@ export function costOfDetailed(usage: LlmUsage): { usd: number; idr?: number } {
   return { usd };
 }
 
+/** Penyimpanan total biaya harian bersama (DB). Hari = kunci UTC YYYY-MM-DD. */
+export interface BudgetStore {
+  /** Tambah biaya ke hari `day`; kembalikan total hari itu setelah ditambah. */
+  add(day: string, usd: number): Promise<number>;
+  /** Total biaya hari `day` (0 bila belum ada). */
+  get(day: string): Promise<number>;
+}
+
 /** Kunci hari UTC untuk reset harian. */
 function todayKey(now: Date = new Date()): string {
   return now.toISOString().slice(0, 10);
 }
 
 /**
- * Akumulator biaya harian.
- *
- * TODO(dev): ganti penyimpanan in-memory ini dengan baca/tulis ke DB (mis. tabel
- * `llm_usage_daily` per modelVersion/role) agar persist lintas restart dan bisa
- * dilaporkan di scorecard (spec §3.6: "Biaya harian tercatat per peran").
+ * Akumulator biaya harian. Nilai lokal selalu dipakai untuk `exceeded()` (sinkron);
+ * bila `BudgetStore` terpasang, nilai lokal disamakan ke total bersama di DB
+ * (`sync()` sebelum run/chat, dan setiap `record()`).
  */
 export class Budget {
   private day = todayKey();
   private spentUsd = 0;
   private readonly limitUsd: number;
+  private store: BudgetStore | null;
+  private warnedStore = false;
 
-  constructor(limitUsd: number = env.llmDailyBudgetUsd()) {
+  constructor(limitUsd: number = env.llmDailyBudgetUsd(), store: BudgetStore | null = null) {
     this.limitUsd = limitUsd;
+    this.store = store;
+  }
+
+  /** Pasang penyimpanan bersama (sekali; panggilan berikutnya diabaikan). */
+  attachStore(store: BudgetStore): void {
+    if (!this.store) this.store = store;
+  }
+
+  hasStore(): boolean {
+    return this.store !== null;
+  }
+
+  /** Samakan nilai lokal dengan total bersama di store (bila ada). Tidak melempar. */
+  async sync(now?: Date): Promise<void> {
+    this.rolloverIfNeeded(now);
+    if (!this.store) return;
+    const day = this.day;
+    try {
+      const total = await this.store.get(day);
+      if (this.day === day) this.spentUsd = Math.max(this.spentUsd, total);
+    } catch (err) {
+      this.warnStore(err);
+    }
+  }
+
+  private warnStore(err: unknown): void {
+    if (this.warnedStore) return;
+    this.warnedStore = true;
+    console.warn(
+      `[engine/llm/budget] gagal sinkron budget ke DB (${err instanceof Error ? err.message : String(err)}) — memakai hitungan lokal proses ini.`,
+    );
   }
 
   private rolloverIfNeeded(now?: Date): void {
@@ -148,8 +187,17 @@ export class Budget {
   /** Catat biaya satu pemakaian. Dipanggil provider setelah tiap call. */
   record(usage: LlmUsage, now?: Date): void {
     this.rolloverIfNeeded(now);
-    this.spentUsd += costOf(usage);
-    // TODO(dev): persist ke DB + emit metrik per peran.
+    const cost = costOf(usage);
+    this.spentUsd += cost;
+    if (this.store && cost > 0) {
+      const day = this.day;
+      this.store
+        .add(day, cost)
+        .then((total) => {
+          if (this.day === day) this.spentUsd = Math.max(this.spentUsd, total);
+        })
+        .catch((err) => this.warnStore(err));
+    }
   }
 
   /** True jika budget hari ini sudah terlampaui → lapis riset berhenti. */

@@ -1,6 +1,6 @@
 # Status Proyek
 
-**Last updated:** 9 Oktober 2026
+**Last updated:** 14 Oktober 2026
 **Milestone aktif:** M2 (Core Risk Engine v1 / Research Layer) dan M1 (Integrasi on-chain web) — lihat [PRD §10](prd.md#10-roadmap-eksekusi)
 
 > Perbarui file ini di akhir setiap pekerjaan: pindahkan item yang selesai, tambahkan gap baru, dan tulis next step.
@@ -19,7 +19,7 @@
 - Guardian v1 ter-deploy di Arbitrum Sepolia: `0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E`
 - Dokumentasi & workflow agent (PRD v0.3, BRD, architecture, security, ADR)
 - Struktur monorepo npm workspaces (ADR 0007): `apps/web`, `apps/engine`, `packages/db`, `packages/domain`
-- **Pilihan Database Lokal: PGlite di Samping Neon (ADR 0010):** Dual-driver di `@tahansoe/db` via env `DB_DRIVER` (`pglite` vs `neon`). PGlite embedded Postgres berbasis WASM (`@electric-sql/pglite`) dengan penyimpanan lokal di `PGLITE_DATA_DIR` (default `apps/engine/.data/pglite`, gitignored) dan auto-migrasi skema idempoten. Single-instance advisory lock untuk worker/scheduler diimplementasikan via file lock lokal (`lock-${key}.json`, PID + heartbeat, stale takeover >2 menit atau dead PID). `apps/web` tetap di Neon; CLI engine dapat berjalan offline tanpa akun cloud DB. Unit & integration test lulus 100% di kedua driver.
+- ~~**Pilihan Database Lokal: PGlite (ADR 0010)**~~ — **dihapus 14 Okt 2026** ([ADR 0011](decisions/0011-postgres-only-gateway-only-chat.md)): engine kini Postgres server (Neon) saja; PGlite tidak aman dibuka beberapa proses sekaligus.
 - **Gateway Hardening & Single Poller Per Bot (10 Okt 2026):**
   - Exclusive bot lock file (`gateway-<sha256(token) first 12 hex>.lock`) dengan PID, heartbeat 15s, stale takeover 60s/dead PID, auto-cleanup saat stop/exit. Mencegah getUpdates simultan ke satu bot.
   - No Backlog Replies: Skip update `date < startup - 30s` pada poll pertama sambil tetap memajukan offset Telegram; `telegramDeleteWebhook` default `drop_pending_updates: true`.
@@ -28,10 +28,25 @@
   - Reset state: `apps/engine/.data/gateway-state.json` `pendingPairings` direset bersih ke `{}`.
   - Test suite komprehensif (`apps/engine/test/gateway/hardening.test.ts`) 10/10 lulus, suite engine 435/435 hijau.
 
+### Engine fix — audit 14 Okt 2026 ([ADR 0011](decisions/0011-postgres-only-gateway-only-chat.md))
+- **Postgres server saja:** driver PGlite, `DB_DRIVER`, `PGLITE_DATA_DIR`, dan file lock PGlite dihapus dari `packages/db` & engine. `DATABASE_URL` wajib; `setup` meminta `DATABASE_URL` lalu menjalankan migrasi (`--db-url-env` untuk mode non-interaktif). `start` memperingatkan bila DB kosong.
+- **Timeout & pembatalan LLM:** timeout per request (`LLM_REQUEST_TIMEOUT_MS`, default 90 s) + deadline per research run (`RESEARCH_RUN_TIMEOUT_MS`, default 15 menit) + signal shutdown dari worker. Router berhenti tanpa retry/fallback saat dibatalkan, menghormati `retry-after` (maks 30 s), dan mengecek budget sebelum setiap panggilan. Body respons bukan JSON tidak lagi melempar.
+- **Pipeline agent lebih tahan:** exception analyst tercatat sebagai kegagalan dengan alasan (sebelumnya hilang diam-diam), debat gagal total → assessor tetap jalan dengan debat kosong (I6), exception assessor → run null dengan alasan, cek budget/deadline sebelum debat & assessor, gagal menulis salinan `out/` setelah simpan DB tidak menggagalkan run, retensi `out/` (`OUT_KEEP_RUNS`, default 50).
+- **Budget harian bersama:** tabel `llm_usage_daily`; `LLM_DAILY_BUDGET_USD` berlaku lintas proses (daemon, `analyze`, chat gateway) dan tidak reset saat restart. Chat gateway menolak menjawab bila budget habis.
+- **REPL & `tahansoe ask` dihapus:** chat hanya lewat channel gateway. Modul Q&A pindah ke `apps/engine/src/chat/`. Raw-mode input `setup` kini melepas stdin setelah selesai.
+- **Mode background:** `tahansoe start --detach` + `stop` / `status` / `logs [-f]` (`src/cli/commands/daemon.ts`). Stop bersih lewat file permintaan (aman di Windows), force kill setelah 30 s. Smoke test nyata di Windows: start → status → logs → stop bersih.
+- **Test RSS "flaky" ternyata time bomb** (fixture 8 Okt vs filter 48 jam memakai jam sistem) — diperbaiki dengan `now` tetap (Antigravity).
+- **Bug pairing "kode kedaluwarsa" saat agent sudah jalan:** daemon menyimpan seluruh state memorinya tiap offset Telegram berubah, padahal kode dari `gateway pair` baru dimuat ulang di awal siklus long-poll (50 detik) → kode CLI tertimpa, `/start <kode>` ditolak. Kini `saveGatewayState` menggabungkan pairing & percobaan gagal dari disk sebelum menulis (`mergePairingsFromDisk`), dengan test regresi.
+- **Pesan Telegram ramah HP + penjelasan** (`apps/engine/src/gateway/views.ts`): `/status`, `/fuse`, `/carry`, `/report`, `/history`, `/help`, jawaban chat, dan semua alert kini HTML ringkas (emoji regime, arti tiap regime, arti trigger/target HF, carry & kink dijelaskan, "yang bisa dicek" pada alert) mengikuti `ui.language` (id/en). Sebelumnya mengirim tabel terminal mentah. `captureCommandOutput` (membajak stdout global proses daemon) dihapus; data diambil langsung (`runFusion`, `fetchAaveRates` + `computeCarryData`, `fetchReport`, `recentReports`). Output CLI `carry` juga diberi penjelasan per bagian.
+- **`tahansoe eval --help`** kini menampilkan bantuan (sebelumnya langsung menjalankan eval berbayar); flag tak dikenal ditolak.
+- **Harga model "tidak diketahui"**: `settings.json` dari `setup` tidak memuat `pricingUrl` → budget memakai harga fallback termahal (±300× harga asli gpt-6-luna; ±Rp 13 vs ±Rp 4.500 per run). Kini `gatewayPricingUrl` menurunkan URL harga dari `LLM_API_URL` untuk gateway yang dikenal (Bynara, OpenRouter) dan `setup` selalu mengisinya ke `settings.json` bila masih kosong.
+- Test engine 516/516 hijau, typecheck semua workspace bersih, lint 0 error.
+
 ### Core Risk Engine & Research Agents (M3)
 - **Pipeline Riset Multi-Agent Penuh:** 4 analis domain paralel (Geopolitics, Macro, Market, Onchain) $\rightarrow$ debat dialektika Hawk vs Dove $\rightarrow$ sintesis Risk Assessor $\rightarrow$ pemetaan ke `Signal` (`RESEARCH`, confidence cap $\le 0.6$).
 - **Adapter Sumber Data Gratis & Kredibel:**
   - RSS feed outlet berita terkurasi (BBC World, Al Jazeera, The Guardian, CNBC Economy, Federal Reserve, CoinDesk, The Block).
+  - FinancialJuice RSS added (macro headlines, prefix strip, tick filter, speaker cap 2, per-feed cap 12).
   - FRED API untuk data makro ekonomi resmi (suku bunga Fed Funds, CPI, kurva yield 10Y-2Y).
   - Kalender makro resmi: jadwal FOMC dari federalreserve.gov (horizon 30 hari) dan rilis CPI/NFP dari data rilis FRED.
   - DefiLlama API untuk monitoring peg stablecoin (USDC, USDT, DAI, FRAX) dan insiden hack/exploit protokol DeFi dengan scaling ukuran dan relevansi Tahansoe.
@@ -44,8 +59,8 @@
   - Perhitungan budget harian terintegrasi dinamis dengan harga gateway (`settings.modelPrices` > `pricingUrl` > fallback konservatif).
 - **CLI Terpadu `tahansoe` (9 Okt 2026 — [spec m3-cli](specs/m3-cli.md)):**
   - Satu pintu interaksi terminal operator (`apps/engine/src/cli/tahansoe.ts`, helper terpusat di `render.ts`).
-  - Mendukung subcommand lengkap: `analyze` (live progress per tahap + kartu laporan), `schedule` (`run` foreground dengan advisory lock & live dashboard, `status`), `history`, `report` (`<id|latest>` format `--md` atau `--json`), `doctor`, `models`, `settings`, `eval`, `carry`, `fuse`, `settle`, `scorecard`, `ask`.
-  - Mode interaktif (REPL) dengan slash commands dan grounded Q&A (`tahansoe ask` / REPL chat) dengan guardrail penolakan trading/prediksi harga.
+  - Mendukung subcommand lengkap: `analyze` (live progress per tahap + kartu laporan), `schedule` (`run` foreground dengan advisory lock & live dashboard, `status`), `history`, `report` (`<id|latest>` format `--md` atau `--json`), `doctor`, `models`, `settings`, `eval`, `carry`, `fuse`, `settle`, `scorecard`, `setup`, `gateway`, serta `start [--detach]` / `stop` / `status` / `logs` (14 Okt 2026). `ask` dihapus (ADR 0011).
+  - ~~Mode interaktif (REPL) dengan slash commands dan `tahansoe ask`~~ — dihapus 14 Okt 2026 (ADR 0011); grounded Q&A dengan guardrail yang sama kini hanya lewat gateway Telegram.
 - **Carry & Interest-Rate Monitoring — jalur T11 (9 Okt 2026, [spec](specs/m3-carry-interest-monitoring.md)):**
   - Tabel `rate_samples` + sampler bunga Aave V3 Arbitrum tiap 15 menit (`RATE_SAMPLE_INTERVAL_MIN`), on-chain via Pool/strategy (I5).
   - Pemancar sinyal deterministik T11 (`src/signals/emit.ts`): kink proximity, lonjakan bunga (≥ 2× atau > 20% APR stablecoin), carry negatif 5 pasangan representatif; T7 bila utilization ≥ 98%. Guardrail: T11 tanpa konfirmasi lain maksimal ELEVATED (dihitung dari modul terkonfirmasi saja; property test).
@@ -79,7 +94,7 @@
   - Eksekusi idempotent (`runSettlementJob`) aman terhadap eksekusi berulang tanpa duplikasi baris di `risk_settlements`.
   - Scorecard generator & CLI tabel ASCII (`apps/engine/src/cli/scorecard.ts`) menghitung Recall, Presisi (≥ STRESSED), Median Lead Time, dan pelacakan laporan yang kekurangan data.
   - 31 unit test offline lulus 100% dan terverifikasi live pada database Neon.
-- **CLI Mode Interaktif (REPL) & Tanya-Jawab Grounded (`tahansoe ask` & REPL) (9 Okt 2026 — spec m3-cli §3.5):**
+- **~~CLI Mode Interaktif (REPL) & `tahansoe ask`~~ (9 Okt 2026, dihapus 14 Okt 2026 — ADR 0011; Q&A grounded di bawah tetap berlaku lewat gateway Telegram):**
   - Prompt interaktif terminal `tahansoe` tanpa argumen: REPL readline dengan banner, status line terkini, autocomplete Tab untuk slash commands (`/analyze`, `/fuse`, `/carry`, `/history`, `/report`, `/settle`, `/scorecard`, `/models`, `/settings`, `/doctor`, `/status`, `/help`, `/clear`, `/exit`).
   - Command non-interaktif `tahansoe ask "<question>"` (`--json`, `--no-color`) untuk scripting & verifikasi CI/CD.
   - Runtime pricing otomatis dibootstrap dari gateway pricing/settings (`bootstrapBudgetPricing`), menampilkan estimasi biaya aktual dalam IDR ("Rp 1" – "Rp 2") tanpa fallback warning palsu.
@@ -95,6 +110,11 @@
 - [ ] Batasan skema 800 karakter untuk `hawkCase`/`doveCase` terkadang ketat pada model selain `gpt-6-luna`; pertimbangkan relaksasi ke 1200 karakter bila diperlukan saat evaluasi model alternatif.
 
 ### Engine, Fusion & Settlement
+- [ ] Verifikasi syarat penggunaan (ToS) FinancialJuice untuk pemakaian komersial sebelum produksi.
+- [ ] FinancialJuice membalas HTTP 429 bila diambil beberapa kali dalam hitungan menit (terlihat saat uji 15 Okt 2026). Sudah terdegradasi aman (warning, feed lain tetap jalan); pertimbangkan cache respons RSS per URL ±10 menit bila `analyze` manual + scheduler sering berbarengan.
+- [ ] `runResearch` dan `fetchGdeltEvents` belum menerima `now` yang bisa di-inject (temuan sweep test; mempersulit test deterministik).
+- [ ] Belum ada test integrasi DB setelah PGlite dihapus (dulu memakai PGlite in-memory); butuh branch Neon/Postgres khusus test.
+- [ ] Price worker tetap men-sampling tanpa `DATABASE_URL` (hasil tidak tersimpan); pertimbangkan berhenti/peringatan per tick.
 - [ ] Scorecard belum direkap otomatis mingguan (settlement sendiri sudah berjalan tiap 60 menit di `tahansoe schedule run`, lock terpisah; data scorecard baru bermakna setelah scheduler jalan beberapa hari).
 - [ ] Modul teknikal lanjutan M2 (volatilitas realized EWMA/GARCH, funding rate ekstrem, open interest perp DEX) belum diimplementasikan.
 - [ ] Pengiriman notifikasi alert Telegram langsung dari server engine belum ada (saat ini masih dipicu dari browser di web app).
@@ -117,7 +137,7 @@
 
 ## Next steps (urutan disarankan)
 
-1. **Wizard Interaktif `tahansoe setup` (Backlog prioritas):** Panduan CLI interaktif untuk inisialisasi `.env` (`LLM_API_URL`, `LLM_API_KEY`), pemilihan provider database (PGlite/Neon, [ADR 0010](decisions/0010-local-pglite-database-option.md)), verifikasi gateway via `/models`, dan verifikasi kesehatan sistem via `doctor`.
+1. **Jalankan agent di background** dengan `tahansoe start --detach` (atau systemd/pm2 di VPS) dan pantau lewat `tahansoe status` / `logs -f`; pastikan `llm_usage_daily` terisi setelah `npm run db:migrate`.
 2. **Jalankan scheduler beberapa hari** (`tahansoe schedule run --with-price`) agar settlement otomatis (sudah tiap 60 menit) menghasilkan label `TRUE_POSITIVE`/`FALSE_POSITIVE`/`MISSED` nyata, lalu uji reflector (lessons) dan rekap scorecard mingguan.
 3. **Implementasi Notifikasi Telegram Server:** Memindahkan trigger alert Telegram dari frontend browser ke engine worker agar alert tetap terkirim saat user tidak membuka web.
 4. **Implementasi Integrasi Web On-chain (Spec M1):** Menghubungkan settings web ke `TahansoeGuardian` v1 (`approve` + `setPolicy`), membaca posisi Aave nyata via wagmi/viem, dan menyelesaikan transisi dashboard demo.
@@ -127,10 +147,10 @@
 
 ## Backlog / ide
 
-- **Test flaky:** satu dari beberapa run `npm test` engine (390 test) sempat gagal 1 test lalu hijau di run berikutnya; kemungkinan terkait waktu/lock-file. Perlu diisolasi.
+- ~~**Test flaky**~~ (selesai 14 Okt 2026): penyebabnya test RSS bergantung tanggal sistem; kini memakai `now` tetap.
 
-- **(SELESAI 9 Okt 2026, commit 8bfa840) `tahansoe setup` wizard:** input `LLM_API_URL` + `LLM_API_KEY` (tersembunyi) → tes `/models` → pilih model + estimasi biaya → simpan `settings.json`; pilih database & RPC; tutup dengan `doctor`. Secret hanya ke `.env` (gitignored), tidak pernah dicetak ulang.
-- [x] **Pilihan database lokal (selesai — ADR 0010):** `DB_DRIVER=pglite` (Postgres embedded, data di `apps/engine/.data/`, tanpa server/akun — skema & query Drizzle tetap sama) di samping `DB_DRIVER=neon`. Auto-migrasi dan file advisory lock selesai.
+- **(SELESAI 9 Okt 2026, commit 8bfa840) `tahansoe setup` wizard:** input `LLM_API_URL` + `LLM_API_KEY` (tersembunyi) → tes `/models` → pilih model + estimasi biaya → simpan `settings.json`; isi `DATABASE_URL` (+ migrasi) & RPC; tutup dengan `doctor`. Secret hanya ke `.env` (gitignored), tidak pernah dicetak ulang.
+- [x] ~~**Pilihan database lokal (ADR 0010)**~~ — di-supersede ADR 0011 (14 Okt 2026), PGlite dihapus: `DB_DRIVER=pglite` (Postgres embedded, data di `apps/engine/.data/`, tanpa server/akun — skema & query Drizzle tetap sama) di samping `DB_DRIVER=neon`. Auto-migrasi dan file advisory lock selesai.
 
 - EIP-7702 untuk smart account tanpa migrasi wallet
 - `repayWithATokens` sebagai opsi sumber dana tanpa modal idle

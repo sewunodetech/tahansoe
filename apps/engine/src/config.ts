@@ -84,7 +84,20 @@ export const env = {
   },
   /** API key gateway. KOSONG = tidak tersedia. JANGAN pernah di-log (I8). */
   llmApiKey: () => optionalEnv("LLM_API_KEY", ""),
+
+  /** Batas waktu satu request HTTP ke gateway LLM (ms). Gateway hang tidak boleh menahan run. */
+  llmRequestTimeoutMs: () => positiveInt("LLM_REQUEST_TIMEOUT_MS", 90_000),
+  /** Batas waktu total satu research run (ms); lewat batas → run dibatalkan tanpa report. */
+  researchRunTimeoutMs: () => positiveInt("RESEARCH_RUN_TIMEOUT_MS", 15 * 60_000),
+  /** Jumlah folder run terbaru di apps/engine/out/ yang dipertahankan. */
+  outKeepRuns: () => positiveInt("OUT_KEEP_RUNS", 50),
 } as const;
+
+/** Bilangan bulat positif dari env; nilai kosong/tidak valid → fallback. */
+function positiveInt(name: string, fallback: number): number {
+  const n = Number.parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
 
 /**
  * Parameter kebijakan research layer. Berversi lewat `PROMPT_VERSION` dan nama

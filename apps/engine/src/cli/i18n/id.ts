@@ -20,8 +20,6 @@ export const idCatalog: TranslationCatalog = {
   "repl.noData": "belum ada data",
   "repl.gatewayTelegramActive": "Telegram aktif · @{bot} · {chats} chat",
   "repl.gatewayTelegramOff": "Telegram nonaktif ({chats} chat terhubung)",
-  "repl.dbPglite": "pglite (lokal)",
-  "repl.dbNeon": "neon (cloud)",
 
   "repl.suggested": "Perintah yang disarankan:",
   "repl.suggestedAnalyze": "/analyze    Jalankan analisis risiko & kartu skor",

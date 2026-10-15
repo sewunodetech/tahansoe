@@ -20,8 +20,6 @@ export const enCatalog: TranslationCatalog = {
   "repl.noData": "no data available",
   "repl.gatewayTelegramActive": "Telegram on · @{bot} · {chats} chats",
   "repl.gatewayTelegramOff": "Telegram off ({chats} chats connected)",
-  "repl.dbPglite": "pglite (local)",
-  "repl.dbNeon": "neon (cloud)",
 
   "repl.suggested": "Suggested commands:",
   "repl.suggestedAnalyze": "/analyze    Run risk research pass + report card",

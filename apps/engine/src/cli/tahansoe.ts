@@ -1,6 +1,7 @@
 /**
- * Entry CLI `tahansoe` (spec m3-cli). Satu pintu untuk analyze/schedule/history/
- * report/models/settings/eval/doctor. Dispatch dengan node:util (tanpa framework).
+ * Entry CLI `tahansoe` (spec m3-cli, ADR 0011). Alat operator: start/stop/status/
+ * logs, analyze, schedule, history, report, models, settings, eval, doctor, dst.
+ * Tanya-jawab (chat) hanya lewat channel gateway (Telegram), bukan CLI.
  *
  * Exit code: 0 ok · 1 error · 2 config salah (mis. LLM_API_URL/KEY hilang).
  * Tanpa aksi on-chain; tidak pernah mencetak secret.
@@ -11,7 +12,10 @@ import { detectTheme, banner, dim, bold, maskHost, regimeColor } from "./render.
 import { EXIT_OK, EXIT_ERROR, EXIT_CONFIG } from "./commands/args.ts";
 
 const COMMANDS = [
-  ["start", "Run the standalone risk agent in one process"],
+  ["start", "Run the risk agent (research + fusion + gateway); --detach for background"],
+  ["stop", "Stop the background agent"],
+  ["status", "Background agent status + latest research run"],
+  ["logs", "Show background agent log (-f to follow)"],
   ["analyze", "Run one risk-research pass + report card"],
   ["schedule", "Run the scheduler (foreground) or show status"],
   ["gateway", "Channel gateway operations (run, pair, status)"],
@@ -24,7 +28,6 @@ const COMMANDS = [
   ["settle", "Settle due research reports (ADR 0005)"],
   ["scorecard", "Research-agent accuracy scorecard"],
   ["carry", "Aave V3 carry & interest-rate risk monitor"],
-  ["ask", "Ask grounded risk research question (non-interactive)"],
   ["setup", "First-time setup wizard (gateway, models, DB)"],
   ["doctor", "Check env & connectivity"],
 ] as const;
@@ -67,7 +70,7 @@ async function quickStatus(): Promise<void> {
     process.stdout.write(dim(theme, " tip      jalankan 'tahansoe setup' untuk konfigurasi awal\n"));
   }
 
-  // Regime terakhir dari DB (bila DATABASE_URL diset).
+  // Regime terakhir dari DB (ADR 0011: Postgres server, DATABASE_URL wajib).
   if (process.env.DATABASE_URL) {
     try {
       const { recentReports } = await import("./../db/history.ts");
@@ -122,11 +125,6 @@ export async function main(argv: string[]): Promise<number> {
   const rest = filteredArgv.slice(1);
 
   if (!cmd) {
-    if (Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY)) {
-      const { startRepl } = await import("./repl/repl.ts");
-      await startRepl();
-      return EXIT_OK;
-    }
     await quickStatus();
     return EXIT_OK;
   }
@@ -140,12 +138,23 @@ export async function main(argv: string[]): Promise<number> {
       const { startCommand } = await import("./commands/start.ts");
       return startCommand(rest);
     }
+    case "stop": {
+      const { stopCommand } = await import("./commands/daemon.ts");
+      return stopCommand(rest);
+    }
+    case "status": {
+      const { statusCommand } = await import("./commands/daemon.ts");
+      return statusCommand(rest);
+    }
+    case "logs": {
+      const { logsCommand } = await import("./commands/daemon.ts");
+      return logsCommand(rest);
+    }
     case "gateway": {
       const sub = rest[0];
       const subRest = rest.slice(1);
       if (sub === "run") {
         try {
-          // @ts-ignore - concurrently built by Antigravity #1
           const { gatewayRunCommand } = await import("../gateway/cli.ts");
           const res = await gatewayRunCommand(subRest);
           return typeof res === "number" ? res : EXIT_OK;
@@ -214,10 +223,6 @@ export async function main(argv: string[]): Promise<number> {
     case "carry": {
       const { carryCommand } = await import("./commands/carry.ts");
       return carryCommand(rest);
-    }
-    case "ask": {
-      const { askCommand } = await import("./commands/ask.ts");
-      return askCommand(rest);
     }
     case "setup": {
       const { setupCommand } = await import("./commands/setup.ts");

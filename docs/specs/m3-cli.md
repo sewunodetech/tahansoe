@@ -1,9 +1,9 @@
 # Spec: Tahansoe CLI (`tahansoe`) — analisa langsung & scheduler dari terminal
 
 - **Milestone:** M3 (research agents) — tooling operator/developer
-- **Status:** In progress (REPL & grounded Q&A selesai; setup wizard pending)
+- **Status:** In progress — revisi 14 Okt 2026 ([ADR 0011](../decisions/0011-postgres-only-gateway-only-chat.md)): REPL & `tahansoe ask` dihapus, chat hanya lewat channel gateway; `start --detach` + `stop`/`status`/`logs` ditambahkan; DB Postgres server saja.
 - **Pemilik:** Kiro (shell + command), Antigravity (renderer + test), Claude Code (review)
-- **Terkait:** [m3-research-agents](m3-research-agents.md), [m2-risk-fusion-v1](m2-risk-fusion-v1.md), [ADR 0009](../decisions/0009-single-openai-compatible-gateway.md), [ADR 0010](../decisions/0010-local-pglite-database-option.md), [ADR 0006](../decisions/0006-business-model-free-info-paid-automation.md)
+- **Terkait:** [m3-research-agents](m3-research-agents.md), [m2-risk-fusion-v1](m2-risk-fusion-v1.md), [ADR 0009](../decisions/0009-single-openai-compatible-gateway.md), [ADR 0011](../decisions/0011-postgres-only-gateway-only-chat.md) (men-supersede ADR 0010), [ADR 0006](../decisions/0006-business-model-free-info-paid-automation.md)
 
 ## 1. Tujuan
 
@@ -12,9 +12,9 @@ Saat ini engine punya 15 script npm yang terpisah (`research`, `research:once`, 
 ### 1.1 Catatan Implementasi (9 Okt 2026)
 
 - **Command terimplementasi:** `analyze` (dengan live progress dan kartu laporan), `schedule` (`run`/`status` dengan `--once` dan `--with-price`), `history`, `report`, `doctor`, `models`, `settings`, `eval`, `carry`, `fuse`, `settle`, `scorecard`, `ask`.
-- **Mode interaktif (REPL) & Q&A:** Mode REPL (`tahansoe` tanpa argumen di TTY) dan command `tahansoe ask "<pertanyaan>"` telah terimplementasi dengan grounded Q&A (data laporan, sinyal aktif, rate_samples, makro) dan penolakan tegas atas permintaan prediksi harga / sinyal trading (non-goals).
+- **Mode interaktif (REPL) & Q&A:** ~~REPL dan `tahansoe ask`~~ **dihapus 14 Okt 2026 (ADR 0011).** Grounded Q&A tetap ada, tetapi hanya lewat channel gateway (Telegram); modulnya pindah ke `apps/engine/src/chat/` (`chat.ts`, `context.ts`).
 - **Deviasi tata letak renderer:** Seluruh helper rendering terminal (banner, box, bar, sparkline, progress, kartu laporan, penyamaran host, sanitasi teks) ditempatkan terpusat di `apps/engine/src/cli/render.ts` (bukan di subfolder `src/cli/ui/` seperti rencana awal). Deviasi ini menyederhanakan pemeliharaan file tanpa mengurangi cakupan unit test maupun fungsionalitas UI.
-- **Pending di backlog:** Wizard interaktif `tahansoe setup` untuk inisialisasi awal provider DB (PGlite/Neon) dan API key.
+- **Setup wizard:** `tahansoe setup` selesai (gateway LLM, model, `DATABASE_URL` + migrasi, Telegram, opsi tambahan). Sejak ADR 0011 tidak ada lagi pilihan PGlite.
 
 ## 2. Scope
 
@@ -105,34 +105,26 @@ Pada non-TTY (cron, pipe) tidak ada animasi; satu baris log per run (format work
 - **Aksesibilitas:** hormati `NO_COLOR`, `--no-color`, lebar terminal (`process.stdout.columns`, min 60), fallback ASCII jika `TERM=dumb`. Exit code: 0 ok, 1 error, 2 config salah (mis. env LLM hilang).
 - **Warna regime:** CALM hijau, ELEVATED kuning, STRESSED oranye/magenta, CRISIS merah. Selaras dengan token di `DESIGN.md` bila ada padanannya.
 
-### 3.5 Mode interaktif (REPL) — tambahan 9 Okt 2026
+### 3.5 Mode interaktif (REPL) — DIHAPUS 14 Okt 2026
 
-`tahansoe` tanpa argumen di terminal interaktif (TTY) membuka sesi seperti CLI AI agent. Non-TTY tetap mencetak banner + daftar command (perilaku lama).
+REPL interaktif dan `tahansoe ask` dihapus ([ADR 0011](../decisions/0011-postgres-only-gateway-only-chat.md)). Alasan: prompt raw-mode di atas readline yang di-pause berisiko membaca input secret, Ctrl+C di wizard mematikan sesi, input yang diketik saat `/analyze` tertampung dan dieksekusi belakangan, konteks chat basi, dan ada dua pintu chat dengan guardrail berbeda.
 
-```
- ▲ TAHANSOE  risk research · Arbitrum One · gpt-6-luna
- Last: ELEVATED (ETH, USDC) · 14:06 UTC · 8 active signals
- Type /help for commands, or ask a question about the latest analysis.
+Tanya-jawab grounded tetap tersedia **hanya lewat channel gateway** (Telegram, [spec gateway](m3-channel-gateway-telegram.md)). Aturan Q&A yang berlaku sama: hanya dari data tersimpan (konteks dirakit kode, tanpa tools), sumber per poin, penanda data basi, penolakan prediksi harga/saran beli-jual/ranking yield/janji anti-likuidasi, output diredaksi + disanitasi. Tambahan: **budget harian dicek sebelum memanggil LLM** (pesan Telegram = input eksternal).
 
- › /carry
- (tabel carry seperti `tahansoe carry`)
- › kenapa USDC ELEVATED?
- USDC is ELEVATED mainly because of on-chain interest-rate stress, not price:
- • USDC.e pool 92.1% utilized, past its 90% kink (borrow APR 18.3%)  [signal ONCHAIN T11, 14:06]
- • Negative carry WETH→USDC −4.7%/yr → HF 1.50→1.45 in ~265 days     [rate_samples 14:00]
- Research (14:01) proposed ELEVATED with confidence 0.48 (cap 0.60).
- informational · not investment advice
-```
+`tahansoe` tanpa argumen kini selalu mencetak banner + status singkat + daftar command.
 
-**Slash command** (memanggil fungsi command yang sudah ada, tanpa proses baru): `/analyze [--dry]`, `/fuse`, `/carry`, `/history`, `/report [id|latest]`, `/settle`, `/scorecard`, `/models`, `/settings`, `/doctor`, `/status`, `/help`, `/clear`, `/exit`. Autocomplete dengan Tab, riwayat input dengan ↑/↓. `schedule run` tidak tersedia di REPL (proses jangka panjang; jalankan terpisah).
+### 3.7 Mode background — `start --detach` (14 Okt 2026)
 
-**Tanya-jawab (Q&A):**
-- Dijawab model gateway (peran baru `chat` di `settings.json`, default sama dengan analyst) **hanya dari data tersimpan**: laporan riset terbaru + 24 jam terakhir, risk assessment terbaru per aset, sinyal aktif, `rate_samples` terbaru/carry, ringkasan `price_samples`, kalender makro mendatang. Konteks dirakit kode (deterministik), bukan oleh model; tanpa tools.
-- Jawaban mengikuti bahasa pertanyaan user (Indonesia/Inggris). System prompt berbahasa Inggris.
-- Wajib menyebut sumber per poin (jenis data + waktu), dan menyatakan "data tidak tersedia, jalankan /analyze" bila konteks kosong atau basi (> 6 jam).
-- Dilarang: prediksi harga, saran beli/jual, ranking yield, saran pindah aset, janji anti-likuidasi (positioning: bertahan lama, bukan cepat kaya). Pertanyaan semacam itu dijawab dengan penolakan singkat + penjelasan risiko posisi yang relevan.
-- Riwayat percakapan dalam sesi (maks. 10 giliran) ikut dikirim; tidak disimpan ke DB.
-- Output melewati `redactInstructions` (data berita bisa berisi injeksi) dan disanitasi dari kode ANSI sebelum dicetak. Biaya per jawaban dicatat di budget harian dan ditampilkan kecil di bawah jawaban.
+`tahansoe start` sudah menjalankan research worker, fusion, settlement, price/rate sampler, dan gateway Telegram dalam satu proses. Untuk menjalankannya tanpa terminal terbuka:
+
+| Command | Fungsi |
+|---------|--------|
+| `tahansoe start --detach [flag start lain]` | Spawn proses `start` terpisah (detached). Log ke `apps/engine/.data/logs/tahansoe.log` (dirotasi bila > 10 MB), pid file `apps/engine/.data/tahansoe.pid`. Menolak bila daemon sudah jalan. |
+| `tahansoe status [--json]` | Daemon jalan/tidak (pid, uptime, flag) + run riset terakhir dari DB. |
+| `tahansoe logs [-n N] [-f]` | Ekor log daemon; `-f` mengikuti (polling, portabel di Windows). |
+| `tahansoe stop [--force]` | Tulis file `tahansoe.stop` yang dipantau daemon → shutdown bersih (lock dilepas, run yang berjalan dibatalkan). Force kill bila tidak keluar dalam 30 detik. |
+
+Shutdown lewat file (bukan sinyal) karena di Windows `SIGTERM` adalah terminate paksa. Daemon menulis pid file dan mulai memantau file stop **sebelum** komponen apa pun start (run riset pertama bisa bermenit-menit), dan menghapus file stop sebagai tanda terima. Bila file stop tidak diambil dalam batas waktu, pid file dianggap basi (crash/reboot, pid dipakai ulang proses lain) dan dihapus **tanpa** kill; force kill hanya untuk daemon yang sudah menerima stop tetapi macet. Untuk produksi/VPS tetap disarankan supervisor proses (systemd/pm2/Docker) yang menjalankan `tahansoe start` di foreground.
 
 ### 3.6 Tampilan & bahasa (permintaan user 2026-10-10, gaya Hermes/OpenClaw)
 
@@ -140,18 +132,18 @@ Pada non-TTY (cron, pipe) tidak ada animasi; satu baris log per run (format work
 - **Banner ASCII** "TAHANSOE" (huruf blok) dengan gradien brand `#4ab5e0` → `#34d399` + tagline "non-custodial liquidation-risk agent · Arbitrum". Versi ringkas otomatis bila terminal < 80 kolom; tanpa banner untuk `--json` dan non-TTY.
 - **Warna semantik konsisten**: brand `#4ab5e0` (aksen/judul), safe `#34d399` (CALM/OK), warning `#fbbf24` (ELEVATED), danger `#f87171` (STRESSED/CRISIS), teks sekunder `#c8bca9`, garis `#26332f`. Satu modul tema (`src/cli/ui/theme.ts`), dipakai semua command.
 - **Komponen**: kartu/panel ber-border bulat, header bagian, badge regime, progress/spinner seragam, tabel rapi, baris status (model · gateway · DB · regime terakhir), footer tip. Ikon unicode dengan fallback ASCII bila terminal tidak mendukung.
-- **Layar sambutan REPL**: banner + panel status (regime per aset, sinyal aktif, data basi/segar, gateway on/off, model) + 3 saran perintah. `/help` dikelompokkan (Analisa · Risiko & Bunga · Gateway · Konfigurasi · Sistem).
 
 **Bahasa (i18n):**
-- Dua bahasa UI: **`id`** (Indonesia) dan **`en`** (Inggris). Semua teks UI CLI/REPL/wizard lewat katalog `src/cli/i18n/{id,en}.ts` dengan kunci bertipe (TypeScript memastikan kedua katalog lengkap).
+- Dua bahasa UI: **`id`** (Indonesia) dan **`en`** (Inggris). Semua teks UI CLI/wizard lewat katalog `src/cli/i18n/{id,en}.ts` dengan kunci bertipe (TypeScript memastikan kedua katalog lengkap).
 - Prioritas: flag `--lang id|en` → `settings.json` `ui.language` → env `TAHANSOE_LANG` → locale sistem (`Intl`) → `en`.
-- Ganti bahasa: `tahansoe settings set ui.language id`, REPL `/lang id|en` (tersimpan), dan langkah pertama di `tahansoe setup`.
+- Ganti bahasa: `tahansoe settings set ui.language id` dan langkah pertama di `tahansoe setup`.
 - Yang **tidak** diterjemahkan: prompt LLM (tetap Inggris, aturan repo), output `--json`, kode/istilah teknis (HF, regime, T1–T11). Jawaban tanya-jawab tetap mengikuti bahasa pertanyaan.
 - Pesan bot Telegram ikut `ui.language` sebagai default (per-chat `/lang` menyusul di gateway).
 
 ## 4. Dampak keamanan
 
-- REPL Q&A (§3.5): model tanpa tools, konteks dirakit kode, output diredaksi + disanitasi, tidak ada aksi on-chain dari REPL; batas Non-Goals ditegakkan di prompt dan dicek di eval (pertanyaan "harus beli apa?" → penolakan).
+- Q&A (§3.5, kini hanya lewat gateway): model tanpa tools, konteks dirakit kode, output diredaksi + disanitasi, tidak ada aksi on-chain; batas Non-Goals ditegakkan di prompt dan dicek di eval (pertanyaan "harus beli apa?" → penolakan); budget harian dicek sebelum memanggil LLM.
+- I8 (§3.7): pid file dan log daemon di `apps/engine/.data/` (gitignored), tanpa env/secret.
 
 - I2: CLI hanya membaca dan menulis laporan riset/settings; tidak ada aksi on-chain, tanpa private key.
 - I5/I8: kartu laporan menampilkan konten eksternal (judul berita) sebagai **teks**. Karakter kontrol/ANSI dari sumber eksternal **dibuang** sebelum dicetak, untuk mencegah injeksi escape sequence ke terminal.
@@ -167,8 +159,9 @@ Pada non-TTY (cron, pipe) tidak ada animasi; satu baris log per run (format work
 - [x] Teks eksternal dengan escape ANSI disanitasi (ada test).
 - [x] Script npm lama tetap jalan (alias).
 - [x] Typecheck 0 error, `npm test` hijau.
-- [x] Mode REPL interaktif dan grounded Q&A (`tahansoe ask` / REPL chat) terimplementasi dengan guardrail non-goals.
-- [ ] Wizard `tahansoe setup` (konfigurasi interaktif DB PGlite/Neon & gateway LLM; pending di backlog).
+- [x] ~~Mode REPL interaktif dan `tahansoe ask`~~ — dihapus (ADR 0011); grounded Q&A hanya lewat gateway.
+- [x] Wizard `tahansoe setup` (gateway LLM, model, `DATABASE_URL` + migrasi, Telegram).
+- [x] `start --detach` + `stop` / `status` / `logs`; stop bersih terverifikasi di Windows (smoke test 14 Okt 2026).
 
 ## 6. Rencana test
 

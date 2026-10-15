@@ -52,6 +52,11 @@ export interface LlmRequest<T> {
   /** Nama schema untuk tool/format provider. */
   outputName: string;
   maxOutputTokens?: number;
+  /**
+   * Pembatalan dari pemanggil (deadline run / shutdown). Bila abort, provider
+   * berhenti secepatnya dan router TIDAK mencoba ulang / fallback.
+   */
+  signal?: AbortSignal;
 }
 
 export interface LlmMessage {
@@ -82,6 +87,10 @@ export interface LlmResult<T> {
    * konten eksternal — hanya penanda.
    */
   schemaInvalid?: boolean;
+  /** True bila request dibatalkan pemanggil (deadline run / shutdown) — jangan retry. */
+  aborted?: boolean;
+  /** Saran jeda dari header `retry-after` (ms), mis. pada HTTP 429. */
+  retryAfterMs?: number;
 }
 
 /** Kontrak provider. Satu metode: structured output tervalidasi. */
@@ -96,4 +105,17 @@ export interface LlmProvider {
  */
 export function isNonRetryableStatus(status: number | undefined): boolean {
   return status === 400 || status === 401 || status === 403;
+}
+
+/**
+ * Bungkus provider agar setiap request membawa `signal` (mis. deadline run).
+ * Signal milik request sendiri (bila ada) tetap dihormati.
+ */
+export function withSignal(provider: LlmProvider, signal: AbortSignal): LlmProvider {
+  return {
+    structured<T>(req: LlmRequest<T>): Promise<LlmResult<T>> {
+      const merged = req.signal ? AbortSignal.any([req.signal, signal]) : signal;
+      return provider.structured({ ...req, signal: merged });
+    },
+  };
 }

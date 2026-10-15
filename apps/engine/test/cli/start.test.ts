@@ -400,3 +400,53 @@ test("startCommand: gateway mendeteksi webhook_active mencetak pesan instruktif 
     /This bot uses a webhook to n8n\.workflow\.io\. Messages go there, not to Tahansoe\. Use a dedicated bot, or run: tahansoe gateway pair --delete-webhook/,
   );
 });
+
+test("startCommand (daemon): pid file ditulis SEBELUM run riset pertama selesai; stop membatalkan startup", async () => {
+  const { mkdtemp, rm, writeFile } = await import("node:fs/promises");
+  const { existsSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { daemonPaths, runningDaemon } = await import("../../src/cli/commands/daemon.ts");
+
+  const dir = await mkdtemp(join(tmpdir(), "tahansoe-start-daemon-"));
+  const paths = daemonPaths({ TAHANSOE_DATA_DIR: dir });
+  let releaseFirstRun: (() => void) | null = null;
+  let workerStopped = false;
+  try {
+    const runPromise = startCommand(["--no-color", "--no-gateway"], {
+      env: { TAHANSOE_DAEMON: "1", DATABASE_URL: "postgres://fake" },
+      daemonPaths: paths,
+      exitFn: () => {},
+      stdout: () => {},
+      stderr: () => {},
+      gatewayStatus: () => ({ configured: false, channels: [] }),
+      startPriceWorker: async () => async () => {},
+      // Run riset pertama "lama": baru selesai saat worker dihentikan.
+      makeWorker: () => ({
+        start: () =>
+          new Promise<boolean>((resolve) => {
+            releaseFirstRun = () => resolve(true);
+          }),
+        stop: async () => {
+          workerStopped = true;
+          releaseFirstRun?.();
+        },
+      }),
+      settleJob: async () => ({ totalEvaluated: 0, settled: [], insufficientData: [] }),
+      makeSettleLock: async () => ({ acquired: true, release: async () => {} }),
+      fusionRun: async () => fakeFusionResult as any,
+      makeFusionLock: async () => ({ acquired: true, release: async () => {} }),
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(runningDaemon(paths)?.pid, process.pid, "pid file harus ada selama run pertama berjalan");
+
+    await writeFile(paths.stopFile, "now");
+    const exitCode = await runPromise;
+    assert.equal(exitCode, EXIT_OK);
+    assert.equal(workerStopped, true, "stop saat startup harus menghentikan worker");
+    assert.equal(existsSync(paths.pidFile), false, "pid file dibersihkan setelah shutdown");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

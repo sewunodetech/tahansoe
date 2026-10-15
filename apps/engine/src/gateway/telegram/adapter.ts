@@ -135,6 +135,7 @@ export class TelegramAdapter implements ChannelAdapter {
   public async send(chatId: string, message: string, options?: SendOptions): Promise<void> {
     await this.queue.enqueue(chatId, message, {
       replyMarkup: options?.replyMarkup,
+      parseMode: options?.parseMode,
     });
   }
 

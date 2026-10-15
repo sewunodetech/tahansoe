@@ -23,7 +23,6 @@ import { budget } from "../llm/budget.ts";
 import {
   acquireAdvisoryLock,
   createNeonLockClient,
-  createPgliteLockClient,
   releaseAdvisoryLock,
   unwrapError,
   type AdvisoryLockClient,
@@ -54,6 +53,7 @@ export interface ResearchWorkerOptions {
     trigger: ResearchTrigger;
     chainId: number;
     assets: string[];
+    signal?: AbortSignal;
   }) => Promise<RunResult>;
   /** Abstraksi waktu untuk unit test deterministik. */
   clock?: ResearchWorkerClock;
@@ -73,6 +73,7 @@ export class ResearchWorker {
     trigger: ResearchTrigger;
     chainId: number;
     assets: string[];
+    signal?: AbortSignal;
   }) => Promise<RunResult>;
   private clock: ResearchWorkerClock;
   private env: Record<string, string | undefined>;
@@ -85,6 +86,8 @@ export class ResearchWorker {
 
   private isRunning = false;
   private isExecuting = false;
+  /** Membatalkan run yang sedang berjalan saat stop() (shutdown bersih). */
+  private runAbort: AbortController | null = null;
   private isLockLost = false;
   private scheduledTimer: any = null;
   private lastRegime: Regime = "CALM";
@@ -119,10 +122,7 @@ export class ResearchWorker {
     // 1. Ambil Postgres advisory lock jika belum disediakan
     if (this.lockClient === undefined || this.lockClient === null) {
       const dbUrl = this.env.DATABASE_URL;
-      const driver = (this.env.DB_DRIVER as any) || (dbUrl ? "neon" : "pglite");
-      if (driver === "pglite") {
-        this.lockClient = createPgliteLockClient(this.env.PGLITE_DATA_DIR);
-      } else if (dbUrl) {
+      if (dbUrl) {
         try {
           const makeLock = this.makeLockClient ?? createNeonLockClient;
           this.lockClient = await makeLock(dbUrl, {
@@ -185,8 +185,6 @@ export class ResearchWorker {
    */
   async tryReacquireLock(): Promise<boolean> {
     const dbUrl = this.env.DATABASE_URL;
-    const driver = (this.env.DB_DRIVER as any) || (dbUrl ? "neon" : "pglite");
-
     if (this.lockClient) {
       try {
         await this.lockClient.end?.();
@@ -194,24 +192,6 @@ export class ResearchWorker {
         /* abaikan */
       }
       this.lockClient = null;
-    }
-
-    if (driver === "pglite") {
-      this.lockClient = createPgliteLockClient(this.env.PGLITE_DATA_DIR);
-      let locked = false;
-      try {
-        locked = await acquireAdvisoryLock(this.lockClient);
-      } catch (err) {
-        this.logger.warn(`[worker] gagal re-acquire lock: ${unwrapError(err)} — coba lagi tick berikutnya.`);
-        return false;
-      }
-      if (!locked) {
-        this.logger.info("[worker] lock dipegang instance lain — tetap pasif hingga tick berikutnya.");
-        return false;
-      }
-      this.isLockLost = false;
-      this.logger.info("[worker] pglite advisory lock berhasil diambil kembali.");
-      return true;
     }
 
     if (!dbUrl) return false;
@@ -251,6 +231,8 @@ export class ResearchWorker {
   async stop(): Promise<void> {
     if (!this.isRunning) return;
     this.isRunning = false;
+    // Batalkan run yang sedang berjalan agar shutdown tidak menunggu panggilan LLM.
+    this.runAbort?.abort();
 
     if (this.scheduledTimer) {
       this.clock.clearTimeout(this.scheduledTimer);
@@ -320,7 +302,11 @@ export class ResearchWorker {
         return;
       }
 
-      // 2. Guard Budget Harian
+      // 2. Guard Budget Harian (disinkronkan dengan total bersama di DB)
+      if (this.env.DATABASE_URL) {
+        const { syncSharedBudget } = await import("../db/budget-store.ts");
+        await syncSharedBudget(budget);
+      }
       const isBudgetExceeded = budget.exceeded();
       if (isBudgetExceeded) {
         nextDelayMs = msUntilNextUtcMidnight(this.clock.now());
@@ -342,10 +328,12 @@ export class ResearchWorker {
       }
 
       // 3. Eksekusi Runner Utama
+      this.runAbort = new AbortController();
       const result = await this.runner({
         trigger,
         chainId: this.chainId,
         assets: this.assets,
+        signal: this.runAbort.signal,
       });
 
       const endTime = this.clock.now();
@@ -409,6 +397,7 @@ export class ResearchWorker {
 
       this.onRunCompleted?.(null);
     } finally {
+      this.runAbort = null;
       this.isExecuting = false;
       this.scheduleNext(nextDelayMs);
     }

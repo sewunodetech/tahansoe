@@ -6,12 +6,10 @@
 export {
   db,
   getDb,
-  getDbDriver,
-  resolvePgliteDir,
+  isDbConfigured,
   ensureDb,
   resetDbClient,
   type Db,
-  type DbDriver,
 } from "./client";
 export * from "./schema";
 export * from "./research";

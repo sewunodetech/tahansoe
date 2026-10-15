@@ -174,6 +174,57 @@ export function loadGatewayStateSync(path: string = defaultStatePath()): Gateway
 }
 
 /**
+ * Gabungkan data pairing yang ditulis proses LAIN ke state memori sebelum disimpan.
+ *
+ * Kode pairing dibuat oleh `tahansoe gateway pair` (proses terpisah) langsung ke
+ * file, sedangkan daemon menyimpan seluruh state memorinya (mis. tiap offset
+ * getUpdates berubah). Tanpa penggabungan ini, simpanan daemon yang memorinya
+ * belum memuat ulang kode (long-poll 50 detik) MENGHAPUS kode baru di disk →
+ * `/start <kode>` ditolak dan CLI melaporkan "kedaluwarsa".
+ *
+ * Aturan: union per hash (record `paired` / attempts lebih besar menang), union
+ * timestamp percobaan gagal per chat, lalu pangkas yang kedaluwarsa. State memori
+ * ikut diperbarui. Disk yang tidak terbaca → tidak ada yang digabung.
+ */
+export function mergePairingsFromDisk(state: GatewayRuntimeState, path: string, nowMs: number = Date.now()): void {
+  let raw: string;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch {
+    return;
+  }
+  let disk: Partial<GatewayRuntimeState>;
+  try {
+    disk = JSON.parse(raw) as Partial<GatewayRuntimeState>;
+  } catch {
+    return;
+  }
+
+  const diskPending = disk.pendingPairings && typeof disk.pendingPairings === "object" ? disk.pendingPairings : {};
+  const merged: Record<string, PairingStateRecord> = { ...(state.pendingPairings ?? {}) };
+  for (const [hash, d] of Object.entries(diskPending)) {
+    if (!d) continue;
+    const m = merged[hash];
+    if (!m) {
+      merged[hash] = d;
+    } else if ((d.paired && !m.paired) || (d.paired === m.paired && (d.attempts ?? 0) > (m.attempts ?? 0))) {
+      merged[hash] = d;
+    }
+  }
+  state.pendingPairings = merged;
+
+  const diskFailed =
+    disk.failedPairingAttempts && typeof disk.failedPairingAttempts === "object" ? disk.failedPairingAttempts : {};
+  for (const [chatId, ts] of Object.entries(diskFailed)) {
+    if (!Array.isArray(ts)) continue;
+    const union = new Set([...(state.failedPairingAttempts[chatId] ?? []), ...ts]);
+    state.failedPairingAttempts[chatId] = [...union].sort((a, b) => a - b);
+  }
+
+  pruneExpiredPairings(state, nowMs);
+}
+
+/**
  * Tulis state runtime secara atomik (tmp lalu rename).
  */
 export async function saveGatewayState(
@@ -181,6 +232,7 @@ export async function saveGatewayState(
   path: string = defaultStatePath(),
 ): Promise<void> {
   assertNotProductionPathInTest(path);
+  mergePairingsFromDisk(state, path);
   await mkdir(dirname(path), { recursive: true });
   const tmp = `${path}.tmp-${process.pid}-${Date.now()}`;
   const body = JSON.stringify(state, null, 2) + "\n";
@@ -202,8 +254,10 @@ export async function saveGatewayState(
 export function saveGatewayStateSync(
   state: GatewayRuntimeState,
   path: string = defaultStatePath(),
+  nowMs: number = Date.now(),
 ): void {
   assertNotProductionPathInTest(path);
+  mergePairingsFromDisk(state, path, nowMs);
   mkdirSync(dirname(path), { recursive: true });
   const tmp = `${path}.tmp-${process.pid}-${Date.now()}`;
   const body = JSON.stringify(state, null, 2) + "\n";
