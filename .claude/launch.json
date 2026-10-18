@@ -1,6 +1,7 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "web", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--", "-p", "3100"], "port": 3100 }
+    { "name": "web", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--", "-p", "3100"], "port": 3100 },
+    { "name": "simulation", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "simulation", "run", "dev", "--", "--port", "5180", "--strictPort"], "port": 5180 }
   ]
 }

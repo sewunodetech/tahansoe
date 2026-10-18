@@ -1,0 +1,193 @@
+@import "tailwindcss";
+
+/* Tokens ported from the main app (app/globals.css, dark "Mostar night"). */
+:root {
+  --bg:              #0b1110;
+  --bg-subtle:       #101816;
+  --bg-elevated:     #15201d;
+  --bg-overlay:      #1a2623;
+  --bg-hover:        #1c2926;
+
+  --border:          #26332f;
+  --border-strong:   #34423d;
+
+  --text-primary:    #fdf1e1;
+  --text-secondary:  #c8bca9;
+  --text-tertiary:   #8f897c;
+  --text-disabled:   #4d4a43;
+
+  --accent-bg:       #fdf1e1;
+  --accent-text:     #111411;
+  --accent-hover:    #f0e2cc;
+
+  --brand:           #4ab5e0;
+  --brand-dim:       #2f8fb8;
+  --brand-bg:        #0e2a36;
+  --brand-glow:      rgba(74, 181, 224, 0.15);
+
+  --gold:            #fbbf24;
+  --gold-bg:         #1c1403;
+
+  --safe:            #34d399;
+  --safe-bg:         #052e16;
+  --safe-border:     #065f46;
+  --warning:         #fbbf24;
+  --warning-bg:      #1c1403;
+  --warning-border:  #713f12;
+  --danger:          #f87171;
+  --danger-bg:       #1c0606;
+  --danger-border:   #7f1d1d;
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-overlay: var(--bg-overlay);
+  --color-bg-hover: var(--bg-hover);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--text-primary);
+  --color-ink-2: var(--text-secondary);
+  --color-ink-3: var(--text-tertiary);
+  --color-ink-4: var(--text-disabled);
+  --color-accent: var(--accent-bg);
+  --color-accent-ink: var(--accent-text);
+  --color-accent-hover: var(--accent-hover);
+  --color-brand: var(--brand);
+  --color-brand-dim: var(--brand-dim);
+  --color-brand-bg: var(--brand-bg);
+  --color-gold: var(--gold);
+  --color-gold-bg: var(--gold-bg);
+  --color-safe: var(--safe);
+  --color-safe-bg: var(--safe-bg);
+  --color-safe-line: var(--safe-border);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-line: var(--warning-border);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-line: var(--danger-border);
+
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+  --font-display: "Instrument Serif", Georgia, serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Range input styled to the token set */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, var(--brand) var(--fill, 0%), var(--border-strong) var(--fill, 0%));
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--text-primary);
+  border: 3px solid var(--brand);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: var(--text-primary);
+  border: 3px solid var(--brand);
+  cursor: pointer;
+}
+input[type="range"]:disabled {
+  opacity: 0.5;
+}
+input[type="range"]:focus-visible {
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+/* Board arrows: CSS (not JS) animations so they still play after a tab regains focus. */
+@keyframes edge-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.edge-draw {
+  stroke-dasharray: 1;
+  animation: edge-draw 0.9s ease-in-out both;
+}
+.edge-fade {
+  animation: fade-in 0.6s ease-out both;
+}
+.fade-late {
+  animation: fade-in 0.25s ease-out 0.55s both;
+}
+
+@keyframes log-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.log-in {
+  animation: log-in 0.3s ease-out both;
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.pop-in {
+  animation: pop-in 0.18s ease-out both;
+}
+
+.popover-arrow[data-side="right"] { border-left-width: 1px; border-bottom-width: 1px; }
+.popover-arrow[data-side="left"] { border-top-width: 1px; border-right-width: 1px; }
+.popover-arrow[data-side="below"] { border-top-width: 1px; border-left-width: 1px; }
+
+@keyframes node-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.45); }
+  70%, 100% { box-shadow: 0 0 0 14px rgba(251, 191, 36, 0); }
+}
+.node-pulse {
+  animation: node-pulse 1.8s ease-out infinite;
+}
+
+.board-dots {
+  background-image: radial-gradient(circle, var(--border-strong) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+
+.grain {
+  background-image:
+    radial-gradient(900px 500px at 15% -10%, rgba(74, 181, 224, 0.08), transparent 60%),
+    radial-gradient(700px 400px at 100% 0%, rgba(251, 191, 36, 0.05), transparent 60%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
