@@ -12,10 +12,17 @@ interactive example.
 
 ## Run
 
+It ships as `/simulation` on the main Tahansoe site. From the repo root:
+
 ```bash
-npm install
-npm run dev      # http://localhost:5173
-npm run build    # static site in dist/
+npm run build:simulation   # builds into public/simulation (also runs before `npm run build`)
+npm run dev                # then open http://localhost:3000/simulation
+```
+
+For fast iteration on the simulator alone (hot reload):
+
+```bash
+npm --prefix simulation run dev   # http://localhost:5173/simulation/
 ```
 
 ## Presenter controls
@@ -38,5 +45,7 @@ npm run build    # static site in dist/
 | `src/components/Board.tsx` | The node/arrow board and live examples on each node |
 | `src/stations/*` | The interactive example opened from each node |
 
-This folder is a standalone package. The root Next.js app ignores it
-(`tsconfig.json` exclude, `eslint.config.mjs` ignore).
+This folder is a standalone package. The root Next.js app ignores its source
+(`tsconfig.json` exclude, `eslint.config.mjs` ignore) and serves the built
+output through a rewrite in `next.config.ts`. `public/simulation/` is generated
+and git-ignored.

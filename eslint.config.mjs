@@ -16,6 +16,7 @@ const eslintConfig = defineConfig([
     "contracts/**",
     // Standalone Vite simulation app (own package.json)
     "simulation/**",
+    "public/simulation/**",
   ]),
 ]);
 
