@@ -19,7 +19,7 @@ export function Yield() {
       lead={<>Your 1 BTC sits locked for the whole loan. What if it earned while it waited, and that yield paid down the loan for you? Pick where it goes.</>}
       doneNote={`Earning ~${fmtPct(v.apy, 0)}`}
     >
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 @xl:grid-cols-3">
         {YIELD_VENUES.map((venue) => {
           const selected = venue.id === v.id;
           return (
@@ -56,7 +56,7 @@ export function Yield() {
         edges={["earns", "splits", "+"]}
       />
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 @sm:grid-cols-3">
         <Stat label="Yield per year" value={fmtUsd(yearly)} tone="brand" />
         <Stat label="Interest per year" value={fmtUsd(interest)} sub={`${fmtPct(BORROWER_FIXED_RATE, 0)} on ${fmtUsd(state.borrowed)}`} />
         <Stat

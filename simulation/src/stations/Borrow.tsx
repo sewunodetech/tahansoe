@@ -61,7 +61,7 @@ export function Borrow() {
 
       <HFGauge hf={hf} />
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 @sm:grid-cols-3">
         <Stat label="Health factor" value={fmtHf(hf)} sub="collateral × 78% ÷ debt" />
         <Stat label="Tahansoe acts at" value={fmtUsd(trig)} tone="warning" sub={`BTC −${fmtPct(1 - trig / state.price, 0)}`} />
         <Stat label="Liquidated at" value={fmtUsd(liq)} tone="danger" sub={`BTC −${fmtPct(1 - liq / state.price, 0)}`} />

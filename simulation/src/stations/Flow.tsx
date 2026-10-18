@@ -12,7 +12,7 @@ export interface FlowNode {
 /** A small left-to-right flow that echoes the whiteboard sketch. */
 export function Flow({ nodes, edges }: { nodes: FlowNode[]; edges: string[] }) {
   return (
-    <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+    <div className="flex flex-col items-stretch gap-2 @lg:flex-row @lg:items-center">
       {nodes.map((n, i) => (
         <Fragment key={n.title}>
           <div
@@ -26,15 +26,15 @@ export function Flow({ nodes, edges }: { nodes: FlowNode[]; edges: string[] }) {
             {n.sub && <div className="mt-0.5 text-xs text-ink-3 tabular">{n.sub}</div>}
           </div>
           {i < edges.length && (
-            <div className="flex shrink-0 items-center justify-center gap-1.5 px-1 font-mono text-[10.5px] uppercase tracking-wider text-ink-3 sm:flex-col sm:gap-0.5">
+            <div className="flex shrink-0 items-center justify-center gap-1.5 px-1 font-mono text-[10.5px] uppercase tracking-wider text-ink-3 @lg:flex-col @lg:gap-0.5">
               <span className="text-center">{edges[i]}</span>
               <motion.span
                 className="text-brand"
                 animate={{ x: [0, 4, 0] }}
                 transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
               >
-                <span className="hidden sm:inline">→</span>
-                <span className="sm:hidden">↓</span>
+                <span className="hidden @lg:inline">→</span>
+                <span className="@lg:hidden">↓</span>
               </motion.span>
             </div>
           )}

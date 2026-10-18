@@ -26,10 +26,10 @@ export function Faucet() {
           <Droplets size={16} /> {done ? "Claimed" : `Claim ${FAUCET_BTC} mock BTC`}
         </Button>
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 @sm:grid-cols-3">
         <Stat label="Wallet" value={fmtBtc(state.walletBtc)} />
         <Stat label="Value" value={fmtUsd(state.walletBtc * state.price)} />
-        <Stat label="Network" value="Arbitrum" sub="simulated" className="hidden sm:block" />
+        <Stat label="Network" value="Arbitrum" sub="simulated" className="hidden @sm:block" />
       </div>
     </Frame>
   );

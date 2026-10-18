@@ -145,6 +145,25 @@ input[type="range"]:focus-visible {
   animation: fade-in 0.25s ease-out 0.55s both;
 }
 
+@keyframes log-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.log-in {
+  animation: log-in 0.3s ease-out both;
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.pop-in {
+  animation: pop-in 0.18s ease-out both;
+}
+
+.popover-arrow[data-side="right"] { border-left-width: 1px; border-bottom-width: 1px; }
+.popover-arrow[data-side="left"] { border-top-width: 1px; border-right-width: 1px; }
+.popover-arrow[data-side="below"] { border-top-width: 1px; border-left-width: 1px; }
+
 @keyframes node-pulse {
   0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.45); }
   70%, 100% { box-shadow: 0 0 0 14px rgba(251, 191, 36, 0); }

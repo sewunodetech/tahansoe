@@ -33,7 +33,7 @@ export function TimeMachine() {
       lead={<>Fast-forward the loan. You pay a fixed amount each month; your collateral's yield pays on top. Compare against the same loan with idle collateral.</>}
       doneNote={`Now at month ${state.committedMonth}`}
     >
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 @lg:grid-cols-2">
         <div>
           <div className="flex items-baseline justify-between">
             <Label>Your monthly payment</Label>
@@ -90,7 +90,7 @@ export function TimeMachine() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 @lg:grid-cols-4">
         <Stat label="Paid off (idle)" value={months(payWithout)} sub={payWithout === null ? "payment ≤ interest" : undefined} />
         <Stat label="Paid off (yield)" value={months(payWith)} tone="brand" sub={sooner ? `${sooner} months sooner` : payWith !== null && payWithout === null ? "yield makes it possible" : undefined} />
         <Stat label={`Debt at m${month}`} value={fmtUsd(pt.debtWith)} sub={`idle: ${fmtUsd(pt.debtWithout)}`} />

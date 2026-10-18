@@ -24,7 +24,7 @@ export function Supply() {
         ]}
         edges={["supply"]}
       />
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 @lg:grid-cols-4">
         <Stat label="Collateral value" value={fmtUsd(value)} />
         <Stat label="Liq. threshold" value={fmtPct(LIQ_THRESHOLD, 0)} sub="mock, WBTC-like" />
         <Stat label="Max LTV" value={fmtPct(MAX_LTV, 0)} />

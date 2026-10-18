@@ -24,14 +24,14 @@ export function Guard() {
       lead={<>Markets don't sleep; you do. Pick a scenario and replay it twice on your exact position: once with Tahansoe guarding, once without.</>}
       doneNote="Stress-tested"
     >
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 @lg:grid-cols-4">
         <Stat label="Health factor now" value={fmtHf(hf)} tone="safe" />
         <Stat label="Tahansoe acts at" value={fmtUsd(triggerPrice(state.collBtc, state.debt))} tone="warning" sub={`HF < ${TRIGGER_HF.toFixed(2)}`} />
         <Stat label="Liquidation at" value={fmtUsd(liquidationPrice(state.collBtc, state.debt))} tone="danger" />
         <Stat label="Guard reserve" value={fmtUsd(state.reserve)} tone="gold" sub="from collateral yield" />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 @lg:grid-cols-3">
         {SCENARIOS.map((s) => {
           const ran = state.guardRuns.some((r) => r.scenario === s.id);
           const running = active?.run.summary.scenario === s.id;
@@ -114,7 +114,7 @@ function ChartCard({ title, sub, children }: { title: string; sub: string; child
 function Outcome({ s }: { s: GuardSummary }) {
   const idle = s.actions === 0;
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+    <div className="grid gap-3 @xl:grid-cols-2">
       <Card className="border-brand-dim/60 p-4">
         <div className="flex items-center gap-2 text-sm font-medium text-brand">
           <ShieldCheck size={16} /> With Tahansoe

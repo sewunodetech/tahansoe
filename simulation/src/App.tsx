@@ -1,14 +1,13 @@
-import { motion } from "motion/react";
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { Board } from "./components/Board";
 import { BrandMark } from "./components/BrandMark";
-import { EventLog } from "./components/EventLog";
+import { ActionPopover } from "./components/ActionPopover";
+import { LogDock } from "./components/EventLog";
 import { PositionPanel } from "./components/PositionPanel";
 import { Button, Pill } from "./components/ui";
 import { STATIONS } from "./sim/constants";
 import { useAutoDemo, useGuardDriver, useKeyboard, useTimeMachineDriver } from "./sim/drivers";
 import { SimProvider, useSim } from "./sim/store";
-import { STATION_VIEWS } from "./stations";
 
 export function App() {
   return (
@@ -25,13 +24,11 @@ function Shell() {
   useKeyboard();
   useAutoDemo();
 
-  const station = STATIONS[state.view];
-  const View = STATION_VIEWS[station.id];
   const doneCount = STATIONS.filter((s) => state.done[s.id]).length;
 
   return (
-    <div className="grain min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur">
+    <div className="grain min-h-screen pb-24">
+      <header data-keep-popover className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between gap-3 px-4 lg:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <BrandMark size={24} />
@@ -66,7 +63,7 @@ function Shell() {
           <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
             <div>
               <h1 className="font-display text-3xl leading-none tracking-tight sm:text-4xl">From 1 BTC to a guarded loan</h1>
-              <p className="mt-2 text-sm text-ink-3">Follow the arrows. Click the glowing node to try each step.</p>
+              <p className="mt-2 text-sm text-ink-3">Follow the arrows. Click the glowing node to try each step right there on the board.</p>
             </div>
             <span className="hidden font-mono text-[11px] text-ink-3 xl:inline">← → move · Enter open · Esc close · R reset</span>
           </div>
@@ -75,35 +72,11 @@ function Shell() {
 
         <aside className="space-y-3 lg:sticky lg:top-[76px] lg:self-start">
           <PositionPanel />
-          <EventLog />
         </aside>
       </div>
 
-      {/* No exit animation: the drawer closes instantly so the next arrow draws in plain view. */}
-      {state.drawerOpen && (
-          <>
-            <motion.div
-              key="backdrop"
-              className="fixed inset-0 top-14 z-40 bg-bg/60 backdrop-blur-[2px]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              onClick={() => dispatch({ type: "CLOSE" })}
-            />
-            <motion.aside
-              key="drawer"
-              role="dialog"
-              aria-label={station.title}
-              className="fixed bottom-0 right-0 top-14 z-50 w-full overflow-y-auto border-l border-line bg-bg sm:w-[640px] sm:p-4"
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              transition={{ type: "spring", stiffness: 260, damping: 30 }}
-            >
-              <motion.div key={station.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-                <View />
-              </motion.div>
-            </motion.aside>
-          </>
-      )}
+      <ActionPopover />
+      <LogDock />
     </div>
   );
 }

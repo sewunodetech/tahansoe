@@ -23,7 +23,7 @@ export function Lender() {
         ]}
         edges={["lends", "backs loans"]}
       />
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 @sm:grid-cols-3">
         <Stat label="Lender supplies" value={fmtUsd(LENDER_SUPPLY)} />
         <Stat label="Lender wants" value={`${fmtPct(LENDER_APY, 0)} APY`} tone="gold" sub="fixed, not floating" />
         <Stat label="Available to borrow" value={fmtUsd(state.lenderSupplied)} tone="brand" />

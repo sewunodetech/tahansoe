@@ -29,7 +29,7 @@ export function FixedRate() {
       lead={<>Most DeFi borrow rates float. One busy week can double what you pay. Tahansoe matches a fixed-term lender with a fixed-term borrower, so both sides know the number upfront.</>}
       doneNote={`${fmtPct(BORROWER_FIXED_RATE, 0)} locked`}
     >
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 @xl:grid-cols-3">
         {STEPS.map((s) => (
           <div key={s.n} className="rounded-xl border border-line bg-bg-subtle p-4">
             <div className="grid h-6 w-6 place-items-center rounded-full bg-brand-bg font-mono text-[11px] font-semibold text-brand">{s.n}</div>
@@ -78,7 +78,7 @@ export function FixedRate() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 @lg:grid-cols-4">
         <Stat label="Fixed interest" value={fmtUsd(last.cumFixed)} tone="brand" sub={`on ${fmtUsd(state.borrowed)}`} />
         <Stat label="Variable would cost" value={fmtUsd(last.cumVariable)} sub={`peaked at ${fmtPct(peak, 0)}`} />
         <Stat label={saved >= 0 ? "Certainty saved" : "Certainty cost"} value={fmtUsd(Math.abs(saved))} tone={saved >= 0 ? "safe" : "warning"} />
