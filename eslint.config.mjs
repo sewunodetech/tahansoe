@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Foundry project (Solidity + vendored libs)
     "contracts/**",
+    // Standalone Vite simulation app (own package.json)
+    "simulation/**",
   ]),
 ]);
 
