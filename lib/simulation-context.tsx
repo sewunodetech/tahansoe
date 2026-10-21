@@ -96,6 +96,7 @@ export type PolicySettings = {
   notifExecSuccess:  boolean;
   notifExecFailed:   boolean;
   notifPositionSafe: boolean;
+  hasPolicy:         boolean;
 };
 
 export const DEFAULT_POLICY: PolicySettings = {
@@ -105,14 +106,14 @@ export const DEFAULT_POLICY: PolicySettings = {
   flashLoanEnabled:  true,
   hotReserveEnabled: true,
   deleverageEnabled: true,
-  l1Enabled:         true,
-  l1Approved:        true,
+  l1Enabled:         false,
+  l1Approved:        false,
   l1Cap:             1000,
-  l2Enabled:         true,
-  l2Approved:        true,
+  l2Enabled:         false,
+  l2Approved:        false,
   l2Cap:             2500,
-  l3Enabled:         true,
-  l3Approved:        true,
+  l3Enabled:         false,
+  l3Approved:        false,
   l3Cap:             10000,
   slippageBps:       50,
   alertsEnabled:     true,
@@ -121,6 +122,7 @@ export const DEFAULT_POLICY: PolicySettings = {
   notifExecSuccess:  true,
   notifExecFailed:   true,
   notifPositionSafe: true,
+  hasPolicy:         false,
 };
 
 /* ─────────────────────────────────────────────

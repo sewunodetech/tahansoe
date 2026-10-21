@@ -50,6 +50,7 @@ export interface UseProtectionReturn {
   actions: ProtectionActions;
   isPaused: boolean;
   ethPrice: { price: number; change24h: number };
+  hasPolicy: boolean;
 }
 
 function calculateZone(hf: number, triggerHf: number): RiskZone {
@@ -192,6 +193,7 @@ export function useProtection(preferredPositionId?: string): UseProtectionReturn
       l3Approved: false,
       l3Cap: 0,
       l3Enabled: false,
+      hasPolicy: false,
     });
   }, [updatePolicy]);
 
@@ -258,5 +260,6 @@ export function useProtection(preferredPositionId?: string): UseProtectionReturn
     actions,
     isPaused: state.isPaused,
     ethPrice: state.ethPrice,
+    hasPolicy: Boolean(state.policy.hasPolicy),
   };
 }

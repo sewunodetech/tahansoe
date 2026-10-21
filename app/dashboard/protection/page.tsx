@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   RotateCcw,
   TrendingDown,
+  Sparkles,
 } from "lucide-react";
 import { useProtection } from "@/hooks/useProtection";
 import { Button } from "@/components/ui/button";
@@ -14,10 +16,24 @@ import { Switch } from "@/components/ui/switch";
 import { NumberInput } from "@/components/ui/number-input";
 import { ZoneBar } from "@/components/ui/zone-bar";
 import { ApprovalExplainer } from "@/components/ui/approval-explainer";
+import { TxPreviewModal } from "@/components/dashboard/protection/tx-preview-modal";
 
 export default function ProtectionPage() {
   const { position, hf, zone, layers, policy, actions } = useProtection();
   const [showExplainer, setShowExplainer] = useState<number | null>(null);
+  const [approvingLayer, setApprovingLayer] = useState<1 | 2 | 3 | null>(null);
+
+  const getApprovingToken = () => {
+    if (approvingLayer === 1) return "USDC";
+    if (approvingLayer === 2) return "Vault Shares / aToken";
+    return "Aave Flash Loan";
+  };
+
+  const getApprovingCap = () => {
+    if (approvingLayer === 1) return `${layers.l1.capacity.toLocaleString()} USDC`;
+    if (approvingLayer === 2) return `$${layers.l2.capacity.toLocaleString()}`;
+    return `Up to $${layers.l3.capacity.toLocaleString()}`;
+  };
 
   return (
     <div className="w-full p-5 md:p-7 space-y-6 max-w-7xl mx-auto">
@@ -32,7 +48,19 @@ export default function ProtectionPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="text-xs font-mono"
+            title="Launch step-by-step setup wizard"
+          >
+            <Link href="/dashboard/protection/setup">
+              <Sparkles className="w-3.5 h-3.5 mr-1 text-[var(--brand)]" /> Setup Wizard
+            </Link>
+          </Button>
+
           <Button
             variant="danger"
             size="sm"
@@ -163,7 +191,7 @@ export default function ProtectionPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => actions.approve(1)}
+                onClick={() => setApprovingLayer(1)}
                 className="w-full text-xs"
               >
                 Approve Layer 1
@@ -244,7 +272,7 @@ export default function ProtectionPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => actions.approve(2)}
+                onClick={() => setApprovingLayer(2)}
                 className="w-full text-xs"
               >
                 Approve Layer 2
@@ -325,7 +353,7 @@ export default function ProtectionPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => actions.approve(3)}
+                onClick={() => setApprovingLayer(3)}
                 className="w-full text-xs"
               >
                 Approve Layer 3
@@ -334,6 +362,21 @@ export default function ProtectionPage() {
           </CardFooter>
         </Card>
       </div>
+
+      {approvingLayer !== null && (
+        <TxPreviewModal
+          open={approvingLayer !== null}
+          onOpenChange={(open) => !open && setApprovingLayer(null)}
+          layer={approvingLayer}
+          tokenSymbol={getApprovingToken()}
+          amountCap={getApprovingCap()}
+          onConfirm={() => {
+            if (approvingLayer) {
+              actions.approve(approvingLayer);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

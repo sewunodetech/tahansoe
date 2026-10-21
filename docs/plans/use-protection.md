@@ -26,7 +26,8 @@ function useProtection(preferredPositionId?: string): UseProtectionReturn
 | `hf` | `number` | Health Factor of the selected position (e.g. `1.82`). |
 | `zone` | `RiskZone` | Risk zone category: `"Safe"` \| `"Watch"` \| `"Warning"` \| `"Critical"`. |
 | `layers` | `ProtectionLayers` | Configuration and readiness for each of the 3 protection layers (`l1`, `l2`, `l3`). |
-| `policy` | `PolicySettings` | The full user policy settings object (thresholds, caps, notifications). |
+| `policy` | `PolicySettings` | The full user policy settings object (thresholds, caps, notifications, `hasPolicy`). |
+| `hasPolicy` | `boolean` | Whether an active protection policy has been configured/activated. |
 | `activity` | `HistoryEntry[]` | Audit trail of past executions, remediations, and status checks. |
 | `actions` | `ProtectionActions` | Interactive mutation functions for layers, caps, approvals, policies, and simulation. |
 | `isPaused` | `boolean` | Whether simulation engine ticker is currently paused. |
