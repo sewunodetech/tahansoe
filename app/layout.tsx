@@ -1,8 +1,21 @@
 import type { Metadata } from "next";
-import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Web3Provider } from "@/components/providers/Web3Provider";
 import "./globals.css";
+
+const geist = Geist({
+  variable: "--font-geist",
+  subsets: ["latin"],
+  weight: ["300", "400"],
+  display: "swap",
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 const inter = Inter({
   variable: "--font-inter",
@@ -10,23 +23,10 @@ const inter = Inter({
   display: "swap",
 });
 
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-serif-fallback",
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "Tahansoe — Liquidation Risk Automation",
+  title: "Tahansoe — 3-Layer Liquidation Protection",
   description:
-    "Tahansoe monitors your Health Factor 24/7 and executes automatic remediation before liquidation strikes.",
+    "Tahansoe guards your DeFi position with three self-approved protection layers: wallet reserve, position reserve, and flash deleverage — monitored 24/7 by the HF Sentinel.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable}`}
+      className={`${geist.variable} ${geistMono.variable} ${inter.variable}`}
     >
       <body>
         <ThemeProvider>

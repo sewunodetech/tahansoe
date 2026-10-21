@@ -115,8 +115,7 @@ export default function ConnectPage() {
 
       <div className="relative z-10 w-full max-w-[400px]">
         <div className="flex flex-col items-center mb-10">
-          {/* Page is always dark, so pin the mark to the dark-theme colors */}
-          <BrandMark size={44} ink="#fdf1e1" accent="#4ab5e0" className="mb-5" />
+          <BrandMark size={44} className="mb-5" />
           <h1 className="font-display text-[32px] font-normal text-white leading-tight mb-1">
             {step === "connect" ? "Connect to Tahansoe" : "Sign in"}
           </h1>

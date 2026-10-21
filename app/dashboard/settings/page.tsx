@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useAccount, useDisconnect, useChainId, useChains } from "wagmi";
 import {
-  ShieldCheck, AlertTriangle, ToggleLeft, ToggleRight,
+  ShieldCheck, AlertTriangle,
   Info, Copy, CheckCheck, Zap, TrendingDown,
   Shield, CheckCircle, Play, Pause, Bell, BellOff, Gauge,
   RefreshCw,
 } from "lucide-react";
 import { useSimulation, DEFAULT_POLICY } from "@/lib/simulation-context";
+import { Switch } from "@/components/ui/switch";
+import { NumberInput as UiNumberInput } from "@/components/ui/number-input";
 
 /* ── Shared primitives ───────────────────────────────────────────────────── */
 function SectionCard({ title, description, children }: {
@@ -43,33 +45,19 @@ function NumberInput({ value, onChange, min, max, step = 0.01 }: {
   value: number; onChange: (v: number) => void; min: number; max: number; step?: number;
 }) {
   return (
-    <input
-      type="number"
+    <UiNumberInput
       value={value}
-      step={step}
+      onChange={onChange}
       min={min}
       max={max}
-      onChange={(e) => {
-        const v = parseFloat(e.target.value);
-        if (!isNaN(v)) onChange(v);
-      }}
-      className="w-24 h-8 px-3 rounded-[6px] text-[12px] font-mono text-white/70 outline-none text-right transition-colors"
-      style={{ background: "rgba(253,241,225,0.04)", border: "1px solid rgba(253,241,225,0.08)" }}
-      onFocus={(e) => { e.currentTarget.style.border = "1px solid rgba(74,181,224,0.4)"; e.currentTarget.style.background = "rgba(74,181,224,0.04)"; }}
-      onBlur={(e)  => { e.currentTarget.style.border = "1px solid rgba(253,241,225,0.08)"; e.currentTarget.style.background = "rgba(253,241,225,0.04)"; }}
+      step={step}
+      className="w-24 h-8 text-right"
     />
   );
 }
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button onClick={() => onChange(!on)} className="flex items-center transition-colors" aria-pressed={on}>
-      {on
-        ? <ToggleRight style={{ width: 32, height: 32, color: "#4ab5e0" }}    strokeWidth={1.5} />
-        : <ToggleLeft  style={{ width: 32, height: 32 }} className="text-white/20" strokeWidth={1.5} />
-      }
-    </button>
-  );
+  return <Switch checked={on} onCheckedChange={onChange} size="md" />;
 }
 
 /* ── Page ────────────────────────────────────────────────────────────────── */
