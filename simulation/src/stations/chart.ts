@@ -1,7 +1,7 @@
 /** Shared Recharts styling bound to the CSS tokens. */
 export const axis = {
   stroke: "var(--border-strong)",
-  tick: { fill: "var(--text-tertiary)", fontSize: 11, fontFamily: "JetBrains Mono Variable, monospace" },
+  tick: { fill: "var(--text-tertiary)", fontSize: 11, fontFamily: "Geist Mono, ui-monospace, monospace" },
   tickLine: false,
 } as const;
 
@@ -15,7 +15,8 @@ export const tooltip = {
     fontSize: 12,
     color: "var(--text-primary)",
   },
-  labelStyle: { color: "var(--text-tertiary)", fontFamily: "JetBrains Mono Variable, monospace", fontSize: 11 },
+  labelStyle: { color: "var(--text-tertiary)", fontFamily: "Geist Mono, ui-monospace, monospace", fontSize: 11 },
   itemStyle: { padding: 0 },
   cursor: { stroke: "var(--border-strong)" },
 } as const;
+

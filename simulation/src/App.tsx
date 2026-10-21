@@ -1,6 +1,7 @@
-import { Pause, Play, RotateCcw } from "lucide-react";
+import { Moon, Pause, Play, RotateCcw, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Board } from "./components/Board";
-import { BrandMark } from "./components/BrandMark";
+import { BrandMark } from "../../components/ui/brand-mark";
 import { ActionPopover } from "./components/ActionPopover";
 import { LogDock } from "./components/EventLog";
 import { PositionPanel } from "./components/PositionPanel";
@@ -8,6 +9,25 @@ import { Button, Pill } from "./components/ui";
 import { STATIONS } from "./sim/constants";
 import { useAutoDemo, useGuardDriver, useKeyboard, useTimeMachineDriver } from "./sim/drivers";
 import { SimProvider, useSim } from "./sim/store";
+
+function useTheme() {
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window === "undefined") return "dark";
+    const saved = localStorage.getItem("theme");
+    if (saved === "light" || saved === "dark") return saved;
+    return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.colorScheme = theme;
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+
+  return { theme, toggleTheme };
+}
 
 export function App() {
   return (
@@ -19,6 +39,7 @@ export function App() {
 
 function Shell() {
   const { state, dispatch } = useSim();
+  const { theme, toggleTheme } = useTheme();
   useTimeMachineDriver();
   useGuardDriver();
   useKeyboard();
@@ -54,6 +75,14 @@ function Shell() {
               <RotateCcw size={15} />
               <span className="hidden sm:inline">Reset</span>
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            >
+              {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+            </Button>
           </div>
         </div>
       </header>
@@ -62,7 +91,7 @@ function Shell() {
         <main className="min-w-0">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
             <div>
-              <h1 className="font-display text-3xl leading-none tracking-tight sm:text-4xl">From 1 BTC to a guarded loan</h1>
+              <h1 className="font-display text-3xl font-light leading-none tracking-tight sm:text-4xl">From 1 BTC to a guarded loan</h1>
               <p className="mt-2 text-sm text-ink-3">Follow the arrows. Click the glowing node to try each step right there on the board.</p>
             </div>
             <span className="hidden font-mono text-[11px] text-ink-3 xl:inline">← → move · Enter open · Esc close · R reset</span>

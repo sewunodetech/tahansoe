@@ -51,7 +51,7 @@ export function Receipt() {
         <div className="space-y-4">
           <div className="rounded-xl border border-gold/40 bg-gold-bg p-5">
             <Label className="text-gold">Lender</Label>
-            <div className="mt-2 font-display text-4xl tabular">{fmtUsd(state.lenderEarned)}</div>
+            <div className="mt-2 font-display text-4xl font-light tabular">{fmtUsd(state.lenderEarned)}</div>
             <div className="mt-1 text-sm text-ink-2">earned at a fixed {fmtPct(LENDER_APY, 0)}, plus {fmtUsd(state.spreadEarned)} in the rate buffer</div>
           </div>
 

@@ -18,7 +18,7 @@ export function Button({
     <button
       {...rest}
       className={cx(
-        "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors",
+        "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors cursor-pointer",
         size === "md" && "h-10 px-4",
         size === "lg" && "h-11 px-6",
         size === "sm" && "h-9 px-3",
@@ -26,8 +26,8 @@ export function Button({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
         "disabled:opacity-40 disabled:cursor-not-allowed",
         variant === "primary" && "bg-accent text-accent-ink hover:bg-accent-hover",
-        variant === "brand" && "bg-brand text-accent-ink hover:bg-brand-dim",
-        variant === "ghost" && "border border-line-strong text-ink-2 hover:bg-bg-hover hover:text-ink",
+        variant === "brand" && "bg-brand text-accent-ink hover:bg-accent-hover",
+        variant === "ghost" && "border border-line text-ink-2 hover:bg-bg-hover hover:text-ink",
         variant === "danger" && "border border-danger-line bg-danger-bg text-danger hover:border-danger",
         className,
       )}

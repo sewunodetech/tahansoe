@@ -1,44 +1,178 @@
 @import "tailwindcss";
 
-/* Tokens ported from the main app (app/globals.css, dark "Mostar night"). */
+/* ══════════════════════════════════════════════════════════════════════════
+   MORPHO PRIMITIVE TOKENS
+   Raw scale values — consistent with app/globals.css
+   ══════════════════════════════════════════════════════════════════════════ */
 :root {
-  --bg:              #0b1110;
-  --bg-subtle:       #101816;
-  --bg-elevated:     #15201d;
-  --bg-overlay:      #1a2623;
-  --bg-hover:        #1c2926;
+  /* Neutral scale */
+  --color-neutral-050: #f4f7ff;
+  --color-neutral-100: #edf3fe;
+  --color-neutral-150: #dee8fc;
+  --color-neutral-200: #d0ddf7;
+  --color-neutral-300: #b1c0dd;
+  --color-neutral-400: #95a1b8;
+  --color-neutral-500: #727f99;
+  --color-neutral-600: #5b677e;
+  --color-neutral-700: #464f60;
+  --color-neutral-800: #353a46;
+  --color-neutral-850: #2c313a;
+  --color-neutral-900: #1e2227;
+  --color-neutral-950: #15181a;
+  --color-neutral-990: #121212;
 
-  --border:          #26332f;
-  --border-strong:   #34423d;
+  /* Brand scale */
+  --color-brand-100: #86b1ff;
+  --color-brand-200: #79a8ff;
+  --color-brand-300: #5792ff;
+  --color-brand-400: #3c80ff;
+  --color-brand-500: #2b76ff;
+  --color-brand-accent: #b5e6e2;
+  --color-brand-midnight: #003185;
 
-  --text-primary:    #fdf1e1;
-  --text-secondary:  #c8bca9;
-  --text-tertiary:   #8f897c;
-  --text-disabled:   #4d4a43;
+  /* Status — success */
+  --color-success-100: #d9efed;
+  --color-success-200: #b4e0db;
+  --color-success-300: #7fcbc3;
+  --color-success-400: #3dada3;
+  --color-success-500: #04675b;
 
-  --accent-bg:       #fdf1e1;
-  --accent-text:     #111411;
-  --accent-hover:    #f0e2cc;
+  /* Status — warning */
+  --color-warning-100: #ffe9cf;
+  --color-warning-200: #ffd1a0;
+  --color-warning-300: #ffb162;
+  --color-warning-400: #e07833;
+  --color-warning-500: #774205;
 
-  --brand:           #4ab5e0;
-  --brand-dim:       #2f8fb8;
-  --brand-bg:        #0e2a36;
-  --brand-glow:      rgba(74, 181, 224, 0.15);
+  /* Status — error */
+  --color-error-100: #ffdadf;
+  --color-error-200: #ffb3bb;
+  --color-error-300: #ff7b8a;
+  --color-error-400: #db3655;
+  --color-error-500: #ab103f;
 
-  --gold:            #fbbf24;
-  --gold-bg:         #1c1403;
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-s:  8px;
+  --radius-m:  12px;
+  --radius-l:  16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+}
 
-  --safe:            #34d399;
-  --safe-bg:         #052e16;
-  --safe-border:     #065f46;
-  --warning:         #fbbf24;
-  --warning-bg:      #1c1403;
-  --warning-border:  #713f12;
-  --danger:          #f87171;
-  --danger-bg:       #1c0606;
-  --danger-border:   #7f1d1d;
+/* ══════════════════════════════════════════════════════════════════════════
+   SEMANTIC TOKENS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── DARK (default) ─────────────────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  /* Surfaces */
+  --bg:              var(--color-neutral-950);
+  --bg-subtle:       var(--color-neutral-900);
+  --bg-elevated:     var(--color-neutral-850);
+  --bg-overlay:      var(--color-neutral-800);
+  --bg-hover:        var(--color-neutral-800);
+
+  /* Borders */
+  --border:          rgba(255, 255, 255, 0.07);
+  --border-strong:   rgba(255, 255, 255, 0.12);
+  --border-focus:    var(--color-brand-500);
+
+  /* Foreground text */
+  --text-primary:    var(--color-neutral-050);
+  --text-secondary:  var(--color-neutral-300);
+  --text-tertiary:   var(--color-neutral-500);
+  --text-placeholder:var(--color-neutral-600);
+  --text-disabled:   var(--color-neutral-700);
+
+  /* Interactive states */
+  --item-hover:      var(--color-neutral-850);
+  --item-active-bg:  var(--color-neutral-800);
+  --item-active-text:var(--color-neutral-050);
+
+  /* Accent (CTA) */
+  --accent-bg:       var(--color-brand-500);
+  --accent-text:     #ffffff;
+  --accent-hover:    var(--color-brand-400);
+
+  /* Brand */
+  --brand:           var(--color-brand-500);
+  --brand-dim:       var(--color-brand-midnight);
+  --brand-bg:        rgba(43, 118, 255, 0.12);
+  --brand-glow:      rgba(43, 118, 255, 0.20);
+
+  /* Simulation accent / warm gold */
+  --gold:            var(--color-warning-300);
+  --gold-bg:         rgba(119, 66, 5, 0.22);
+
+  /* Status */
+  --safe:            var(--color-success-300);
+  --safe-bg:         rgba(4, 103, 91, 0.15);
+  --safe-border:     rgba(4, 103, 91, 0.35);
+  --warning:         var(--color-warning-300);
+  --warning-bg:      rgba(119, 66, 5, 0.18);
+  --warning-border:  rgba(119, 66, 5, 0.40);
+  --danger:          var(--color-error-300);
+  --danger-bg:       rgba(171, 16, 63, 0.15);
+  --danger-border:   rgba(171, 16, 63, 0.35);
 
   color-scheme: dark;
+}
+
+/* ── LIGHT ──────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  /* Surfaces */
+  --bg:              var(--color-neutral-050);
+  --bg-subtle:       var(--color-neutral-100);
+  --bg-elevated:     #ffffff;
+  --bg-overlay:      var(--color-neutral-150);
+  --bg-hover:        var(--color-neutral-150);
+
+  /* Borders */
+  --border:          var(--color-neutral-200);
+  --border-strong:   var(--color-neutral-300);
+  --border-focus:    var(--color-brand-500);
+
+  /* Foreground text */
+  --text-primary:    var(--color-neutral-990);
+  --text-secondary:  var(--color-neutral-700);
+  --text-tertiary:   var(--color-neutral-500);
+  --text-placeholder:var(--color-neutral-400);
+  --text-disabled:   var(--color-neutral-300);
+
+  /* Interactive states */
+  --item-hover:      var(--color-neutral-100);
+  --item-active-bg:  var(--color-neutral-150);
+  --item-active-text:var(--color-neutral-990);
+
+  /* Accent (CTA) */
+  --accent-bg:       var(--color-brand-500);
+  --accent-text:     #ffffff;
+  --accent-hover:    var(--color-brand-400);
+
+  /* Brand */
+  --brand:           var(--color-brand-500);
+  --brand-dim:       var(--color-brand-midnight);
+  --brand-bg:        var(--color-neutral-100);
+  --brand-glow:      rgba(43, 118, 255, 0.12);
+
+  /* Simulation accent / warm gold */
+  --gold:            var(--color-warning-400);
+  --gold-bg:         var(--color-warning-100);
+
+  /* Status */
+  --safe:            var(--color-success-500);
+  --safe-bg:         var(--color-success-100);
+  --safe-border:     var(--color-success-200);
+  --warning:         var(--color-warning-500);
+  --warning-bg:      var(--color-warning-100);
+  --warning-border:  var(--color-warning-200);
+  --danger:          var(--color-error-500);
+  --danger-bg:       var(--color-error-100);
+  --danger-border:   var(--color-error-200);
+
+  color-scheme: light;
 }
 
 @theme inline {
@@ -71,9 +205,9 @@
   --color-danger-bg: var(--danger-bg);
   --color-danger-line: var(--danger-border);
 
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
-  --font-display: "Instrument Serif", Georgia, serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-display: "Geist", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 html,
@@ -85,7 +219,8 @@ body {
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: "cv11", "ss01";
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .tabular {
@@ -165,8 +300,15 @@ input[type="range"]:focus-visible {
 .popover-arrow[data-side="below"] { border-top-width: 1px; border-left-width: 1px; }
 
 @keyframes node-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.45); }
-  70%, 100% { box-shadow: 0 0 0 14px rgba(251, 191, 36, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(255, 177, 98, 0.5); }
+  70%, 100% { box-shadow: 0 0 0 14px rgba(255, 177, 98, 0); }
+}
+[data-theme="light"] .node-pulse {
+  animation: node-pulse-light 1.8s ease-out infinite;
+}
+@keyframes node-pulse-light {
+  0% { box-shadow: 0 0 0 0 rgba(224, 120, 51, 0.4); }
+  70%, 100% { box-shadow: 0 0 0 14px rgba(224, 120, 51, 0); }
 }
 .node-pulse {
   animation: node-pulse 1.8s ease-out infinite;
@@ -176,11 +318,19 @@ input[type="range"]:focus-visible {
   background-image: radial-gradient(circle, var(--border-strong) 1px, transparent 1.2px);
   background-size: 22px 22px;
 }
+[data-theme="light"] .board-dots {
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.12) 1px, transparent 1.2px);
+}
 
 .grain {
   background-image:
-    radial-gradient(900px 500px at 15% -10%, rgba(74, 181, 224, 0.08), transparent 60%),
-    radial-gradient(700px 400px at 100% 0%, rgba(251, 191, 36, 0.05), transparent 60%);
+    radial-gradient(900px 500px at 15% -10%, rgba(43, 118, 255, 0.08), transparent 60%),
+    radial-gradient(700px 400px at 100% 0%, rgba(255, 177, 98, 0.04), transparent 60%);
+}
+[data-theme="light"] .grain {
+  background-image:
+    radial-gradient(900px 500px at 15% -10%, rgba(43, 118, 255, 0.05), transparent 60%),
+    radial-gradient(700px 400px at 100% 0%, rgba(224, 120, 51, 0.03), transparent 60%);
 }
 
 @media (prefers-reduced-motion: reduce) {

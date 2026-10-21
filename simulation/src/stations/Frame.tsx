@@ -39,7 +39,7 @@ export function Frame({
             <X size={16} />
           </button>
         </div>
-        <h2 className="mt-1.5 font-display text-[28px] leading-[1.05] tracking-tight">{s.title}</h2>
+        <h2 className="mt-1.5 font-display text-[28px] font-normal leading-[1.05] tracking-tight">{s.title}</h2>
         <p className="mt-2 text-sm leading-relaxed text-ink-2">{lead}</p>
       </div>
 

@@ -11,7 +11,12 @@
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../*"]
+    }
   },
   "include": ["src", "vite.config.ts"]
 }
+
