@@ -1,32 +1,33 @@
 import { Navbar } from "@/components/landing/Navbar";
-import { SpotlightHero } from "@/components/landing/SpotlightHero";
+import { Hero } from "@/components/landing/Hero";
 import { HealthFactorExplainer } from "@/components/landing/HealthFactorExplainer";
+import { ProtectionLayers } from "@/components/landing/ProtectionLayers";
+import { Agents } from "@/components/landing/Agents";
 import { HowItWorks } from "@/components/landing/HowItWorks";
-import { Features } from "@/components/landing/Features";
-import { Architecture } from "@/components/landing/Architecture";
+import { Supported } from "@/components/landing/Supported";
+import { OpenByDefault } from "@/components/landing/OpenByDefault";
 import { FAQ } from "@/components/landing/FAQ";
 import { RiskDisclosure } from "@/components/landing/RiskDisclosure";
-import { WaitlistCTA } from "@/components/landing/WaitlistCTA";
+import { CTA } from "@/components/landing/CTA";
 import { Footer } from "@/components/landing/Footer";
-import { MossBand } from "@/components/landing/Scenery";
 
 export default function Home() {
   return (
-    <>
+    <div className="min-h-screen flex flex-col bg-[var(--bg)] text-[var(--text-primary)] transition-colors">
       <Navbar />
-      <main className="bg-[#0b1110]">
-        <SpotlightHero />
+      <main className="flex-1">
+        <Hero />
         <HealthFactorExplainer />
-        <MossBand />
+        <ProtectionLayers />
+        <Agents />
         <HowItWorks />
-        <Features />
-        <MossBand />
-        <Architecture />
+        <Supported />
+        <OpenByDefault />
         <FAQ />
         <RiskDisclosure />
-        <WaitlistCTA />
+        <CTA />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

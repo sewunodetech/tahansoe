@@ -1,62 +1,70 @@
+import { Eyebrow } from "@/components/ui/eyebrow";
+
 const faqs = [
   {
     q: "What is a Health Factor?",
-    a: "A single number that says how safe your loan is: (collateral value × liquidation threshold) ÷ debt. Above 1.0 you're fine; at or below 1.0 your position can be liquidated. The further above 1.0, the bigger your buffer against price drops.",
+    a: "Health Factor (HF) is a numeric representation of your loan's collateral safety margin: (total collateral in USD × liquidation threshold) ÷ total debt in USD. An HF above 1.0 indicates a solvent position; when HF drops below 1.0, your loan is immediately eligible for liquidation.",
   },
   {
-    q: "Does Tahansoe hold my funds?",
-    a: "No. Tahansoe is non-custodial. You approve a Guardian Safe Module with a strict allowlist: it can only repay debt or supply collateral on Aave V3 and Morpho Blue. It cannot transfer funds out or approve arbitrary addresses. Even if Tahansoe were fully compromised, the worst an attacker could do is pay your debt for you.",
+    q: "Does Tahansoe hold or take custody of my funds?",
+    a: "No. Tahansoe is strictly non-custodial. You grant bounded token allowances directly to the TahansoeGuardian smart contract. The contract only pulls funds when your Health Factor drops below your configured trigger, and sends 100% of the funds into your loan repayment on Aave V3. It cannot transfer assets to any third-party address.",
   },
   {
-    q: "What exactly happens when my HF hits the trigger?",
-    a: "The rule engine picks the first available strategy in priority order: repay from your hot reserve, repay with a flash loan, or deleverage by swapping part of your collateral. It repays just enough to bring you back to your target HF (1.60 by default), simulates the transaction first, and executes it atomically. You get a Telegram notification at each step.",
+    q: "How do the three protection layers work?",
+    a: "Tahansoe executes an automated cascade: Layer 1 pulls pre-approved debt tokens (e.g. USDC) from your hot wallet. If Layer 1 is exhausted or insufficient, Layer 2 redeems shares from an approved yield vault (e.g. Morpho Vault). If both are empty and liquidation is imminent, Layer 3 initiates an atomic flash loan to deleverage your position without requiring upfront liquidity.",
   },
   {
-    q: "Can I change the trigger and target?",
-    a: "Yes. The defaults are trigger 1.30 and target 1.60, and you can set your own in the dashboard settings, along with which strategies Tahansoe is allowed to use. If you disable every strategy, Tahansoe still alerts you but won't act.",
+    q: "What role do the two AI agents play?",
+    a: "Agent 1 (Market Pulse) conducts daily macro research on lending rates, spreads, and volatility, and broadcasts a digest to your Telegram. Agent 2 (HF Sentinel) monitors your position on-chain every block, provides natural-language causal explanations when volatility spikes, and triggers the deterministic keeper. The AI never signs transactions or manages private keys.",
   },
   {
-    q: "Is an AI making decisions with my money?",
-    a: "No. An LLM only helps translate what you type in plain language into policy parameters, and you always confirm before anything is saved. The engine that actually fires remediation is pure deterministic logic. The AI never signs a transaction.",
+    q: "Can I adjust or revoke my approvals?",
+    a: "Yes. You have total autonomy. You can modify your trigger and target thresholds, disable individual protection layers, or revoke your ERC-20 allowances to zero at any time directly through the dashboard or via your wallet.",
   },
   {
-    q: "Which protocols are supported?",
-    a: "Aave V3 and Morpho Blue. Aave uses one aggregate Health Factor per account, while Morpho tracks each isolated market separately. Tahansoe handles both through one interface.",
+    q: "What are the protocol fees?",
+    a: "Tahansoe charges 0% protocol fees for Layer 1 and Layer 2 remediation during the testnet phase. Layer 3 flash deleveraging incurs standard DEX swap slippage and third-party flash loan fees (~0.05%), plus network execution gas.",
   },
   {
-    q: "What does it cost?",
-    a: "When a flash loan is used, the provider charges roughly 0.05% of the borrowed amount, plus normal gas. Pricing for Tahansoe itself hasn't been set yet; the product is still in pre-development on testnet.",
-  },
-  {
-    q: "Does this guarantee I'll never be liquidated?",
-    a: "No, and we won't pretend otherwise. Tahansoe greatly reduces the chance by acting early, but an intra-block flash crash, oracle heartbeat delay, or gas spike can still beat any automation. Keep a conservative buffer. See the risk disclosure below for the full list.",
+    q: "Does Tahansoe guarantee I will never be liquidated?",
+    a: "No, and we explicitly disclose this. While Tahansoe significantly reduces liquidation probability by intervening proactively at higher Health Factors (e.g., 1.30), an intra-block flash crash, severe oracle lag, or extreme chain congestion could outpace automated remediation. Always maintain a conservative buffer.",
   },
 ];
 
 export function FAQ() {
   return (
-    <section id="faq" className="py-20 md:py-[80px] border-t border-[#26332f]">
-      <div className="max-w-[1400px] mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.6fr] gap-12 lg:gap-16">
-          <div>
-            <p className="text-[12px] font-medium tracking-[0.08em] uppercase text-[#4ab5e0] mb-5">FAQ</p>
-            <h2 className="text-4xl md:text-5xl font-display font-medium leading-[1.1] tracking-[-0.02em] text-[#fdf1e1]">
+    <section id="faq" className="py-20 md:py-28 border-b border-[var(--border)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
+          <div className="lg:col-span-5 flex flex-col gap-4">
+            <Eyebrow dot variant="brand">
+              Frequently Asked Questions
+            </Eyebrow>
+            <h2 className="font-display font-light text-3xl sm:text-4xl lg:text-5xl tracking-tight text-[var(--text-primary)] leading-tight">
               Questions, answered plainly.
             </h2>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+              Have questions regarding contract security, layer priority, or Telegram alerts? Here is how Tahansoe works under the hood.
+            </p>
           </div>
-          <div className="border-t border-[#26332f]">
+
+          <div className="lg:col-span-7 flex flex-col divide-y divide-[var(--border)] border-y border-[var(--border)]">
             {faqs.map(({ q, a }) => (
-              <details key={q} className="group border-b border-[#26332f]">
-                <summary className="flex items-center justify-between gap-6 py-5 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                  <span className="text-[16px] md:text-[17px] font-medium text-[#fdf1e1] tracking-[-0.01em]">{q}</span>
+              <details key={q} className="group py-5">
+                <summary className="flex items-center justify-between gap-4 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
+                  <span className="text-sm sm:text-base font-medium text-[var(--text-primary)] group-hover:text-[var(--brand)] transition-colors">
+                    {q}
+                  </span>
                   <span
                     aria-hidden="true"
-                    className="shrink-0 w-7 h-7 rounded-full border border-[#fdf1e1]/20 flex items-center justify-center text-[#c8bca9] transition-transform duration-200 group-open:rotate-45"
+                    className="size-6 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-xs text-[var(--text-secondary)] transition-transform duration-200 group-open:rotate-45 shrink-0"
                   >
                     +
                   </span>
                 </summary>
-                <p className="pb-6 pr-12 text-[14px] leading-[1.7] text-[#c8bca9] max-w-[680px]">{a}</p>
+                <p className="pt-3 pr-6 text-xs sm:text-sm leading-relaxed text-[var(--text-secondary)]">
+                  {a}
+                </p>
               </details>
             ))}
           </div>

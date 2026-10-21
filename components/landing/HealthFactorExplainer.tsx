@@ -1,35 +1,41 @@
 "use client";
 
-import { MossBackdrop } from "./Scenery";
-
 import { useState } from "react";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Stat } from "@/components/ui/stat";
+import { StatusPill } from "@/components/ui/status-pill";
 
-const LT = 0.825; // liquidation threshold used across the app
+const LT = 0.825;
 const TRIGGER = 1.3;
 const TARGET = 1.6;
 
-type Zone = { label: string; color: string; action: string };
+type ZoneInfo = {
+  zone: "Safe" | "Watch" | "Warning" | "Critical";
+  action: string;
+};
 
-function zoneFor(hf: number): Zone {
-  if (hf < 1) return {
-    label: "Liquidatable",
-    color: "#f87171",
-    action: "Liquidators can repay part of your debt and seize collateral plus a bonus. Tahansoe aims to never let you get here.",
-  };
-  if (hf <= TRIGGER) return {
-    label: "Tahansoe acts",
-    color: "#fbbf24",
-    action: "Trigger reached. Tahansoe repays debt (hot reserve → flash loan → deleverage) until HF is back at the 1.60 target.",
-  };
-  if (hf < TARGET) return {
-    label: "Watching",
-    color: "#e6c07b",
-    action: "Above trigger but below target. Tahansoe keeps monitoring every block and sends a Telegram warning as HF approaches 1.30.",
-  };
+function getZoneInfo(hf: number): ZoneInfo {
+  if (hf < 1.0) {
+    return {
+      zone: "Critical",
+      action: "Liquidators can seize collateral and impose a 5-10% penalty. Tahansoe aims to trigger before this threshold.",
+    };
+  }
+  if (hf <= TRIGGER) {
+    return {
+      zone: "Warning",
+      action: "Trigger reached. Tahansoe fires remediation across Layer 1, 2, or 3 until Health Factor reaches the 1.60 target.",
+    };
+  }
+  if (hf < TARGET) {
+    return {
+      zone: "Watch",
+      action: "Position is in the caution zone. Sentinel monitors each block and dispatches Telegram warnings.",
+    };
+  }
   return {
-    label: "Safe",
-    color: "#4ab5e0",
-    action: "Comfortable buffer. Tahansoe monitors quietly in the background.",
+    zone: "Safe",
+    action: "Comfortable collateral buffer. Sentinel monitors quietly in the background without intervention.",
   };
 }
 
@@ -47,132 +53,186 @@ export function HealthFactorExplainer() {
   const liqPrice = debt / (collateralEth * LT);
   const triggerPrice = (debt * TRIGGER) / (collateralEth * LT);
   const repayNeeded = Math.max(0, debt - (collateralUsd * LT) / TARGET);
-  const zone = zoneFor(hf);
-  const gaugePct = Math.min(100, Math.max(0, ((Math.min(hf, 2.2) - 0.8) / 1.4) * 100));
+  const zoneInfo = getZoneInfo(hf);
+
+  const gaugePct = Math.min(100, Math.max(0, ((Math.min(hf, 2.5) - 0.8) / 1.7) * 100));
 
   return (
-    <section id="health-factor" className="relative isolate overflow-hidden py-20 md:py-[80px]">
-      <MossBackdrop position="bottom" />
-      <div className="max-w-[1400px] mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-12 lg:gap-16 items-start">
-          <div>
-            <p className="text-[12px] font-medium tracking-[0.08em] uppercase text-[#4ab5e0] mb-5">
-              The problem
-            </p>
-            <h2 className="text-4xl md:text-5xl font-display font-medium leading-[1.1] tracking-[-0.02em] text-[#fdf1e1] mb-6">
+    <section id="health-factor" className="py-20 md:py-28 border-b border-[var(--border)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
+          <div className="lg:col-span-5 flex flex-col gap-6">
+            <Eyebrow dot variant="brand">
+              Market Mechanics
+            </Eyebrow>
+
+            <h2 className="font-display font-light text-3xl sm:text-4xl lg:text-5xl tracking-tight text-[var(--text-primary)] leading-tight">
               Liquidation happens while you sleep.
             </h2>
-            <div className="space-y-4 text-[15px] leading-[1.65] text-[#c8bca9] max-w-[480px]">
+
+            <div className="space-y-4 text-sm text-[var(--text-secondary)] leading-relaxed">
               <p>
-                When you borrow on Aave or Morpho, your collateral must stay worth more than your debt.
-                The <span className="text-[#fdf1e1]">Health Factor</span> tracks that ratio. If it drops
-                below <span className="text-[#f87171]">1.0</span>, anyone can liquidate you: they repay
-                part of your debt and take your collateral at a discount, usually a 5–10% penalty.
+                When you borrow against collateral on Aave or Morpho, your loan is protected by a{" "}
+                <span className="text-[var(--text-primary)] font-medium">Health Factor</span>. If market
+                volatility drives your Health Factor below{" "}
+                <span className="text-[var(--danger)] font-medium">1.0</span>, liquidators can liquidate
+                your debt and seize your collateral with a bonus fee.
               </p>
               <p>
-                Crypto prices move 24/7. A 30% drop overnight is enough to wipe out a position you set
-                up carefully in the afternoon. Watching it manually doesn&apos;t scale, and you
-                can&apos;t always react in time.
+                A sudden 20% pullback overnight can breach your safety margins before you can log in to a
+                wallet. Manual position management fails during sharp selloffs.
               </p>
               <p>
-                Tahansoe does the watching and the reacting for you. Try it: drag the price drop
-                slider and see when Tahansoe would step in.
+                Tahansoe watches your Health Factor every block. Drag the price drop slider to observe how
+                Tahansoe intervenes when prices decline.
               </p>
             </div>
           </div>
 
-          <div className="glass-card rounded-[24px] p-6 md:p-8">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <NumberField label="Collateral (ETH)" value={collateralEth} step={0.5} min={0.1} onChange={setCollateralEth} />
-              <NumberField label="ETH price ($)" value={ethPrice} step={50} min={1} onChange={setEthPrice} />
-              <NumberField label="Debt (USDC)" value={debt} step={500} min={0} onChange={setDebt} />
+          <div className="lg:col-span-7 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-6 sm:p-8 flex flex-col gap-6 shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-tertiary)]">
+                  Collateral (ETH)
+                </span>
+                <input
+                  type="number"
+                  value={collateralEth}
+                  step={0.5}
+                  min={0.1}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v) && v > 0) setCollateralEth(v);
+                  }}
+                  className="h-10 px-3 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--text-primary)] text-sm font-mono outline-none focus:border-[var(--brand)] transition-colors"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-tertiary)]">
+                  ETH Initial Price ($)
+                </span>
+                <input
+                  type="number"
+                  value={ethPrice}
+                  step={50}
+                  min={1}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v) && v > 0) setEthPrice(v);
+                  }}
+                  className="h-10 px-3 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--text-primary)] text-sm font-mono outline-none focus:border-[var(--brand)] transition-colors"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-tertiary)]">
+                  Debt (USDC)
+                </span>
+                <input
+                  type="number"
+                  value={debt}
+                  step={500}
+                  min={0}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v) && v >= 0) setDebt(v);
+                  }}
+                  className="h-10 px-3 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--text-primary)] text-sm font-mono outline-none focus:border-[var(--brand)] transition-colors"
+                />
+              </label>
             </div>
 
-            <label className="block mb-8">
-              <span className="flex justify-between text-[11px] font-medium tracking-[0.08em] uppercase text-[#8f897c] mb-3">
-                <span>ETH price drop</span>
-                <span className="text-[#fdf1e1]">−{drop}% · ${fmt(price)}</span>
-              </span>
-              <input
-                type="range" min={0} max={60} value={drop}
-                onChange={(e) => setDrop(Number(e.target.value))}
-                className="w-full accent-[#4ab5e0]"
-              />
-            </label>
-
-            <div className="flex items-end justify-between gap-4 mb-3">
-              <div>
-                <p className="text-[11px] font-medium tracking-[0.08em] uppercase text-[#8f897c] mb-1">Health Factor</p>
-                <p className="font-display text-7xl leading-none tabular-nums" style={{ color: zone.color }}>
-                  {Number.isFinite(hf) ? hf.toFixed(2) : "∞"}
-                </p>
+            <div className="flex flex-col gap-2 pt-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="uppercase text-[var(--text-tertiary)]">Simulate Market Drop</span>
+                <span className="text-[var(--text-primary)] font-medium">
+                  −{drop}% · ETH @ ${fmt(price)}
+                </span>
               </div>
-              <span
-                className="text-[11px] font-medium tracking-[0.08em] uppercase px-3 py-1.5 rounded-full border"
-                style={{ color: zone.color, borderColor: zone.color }}
-              >
-                {zone.label}
-              </span>
-            </div>
-
-            <div className="relative h-2 rounded-full mb-2"
-              style={{ background: "linear-gradient(90deg,#f87171 0%,#f87171 14.3%,#fbbf24 14.3%,#fbbf24 35.7%,#e6c07b 35.7%,#e6c07b 57.1%,#4ab5e0 57.1%)" }}
-            >
-              <div
-                className="absolute -top-1.5 w-1 h-5 rounded-full bg-[#fdf1e1] shadow transition-[left] duration-150"
-                style={{ left: `calc(${gaugePct}% - 2px)` }}
+              <input
+                type="range"
+                min={0}
+                max={50}
+                value={drop}
+                onChange={(e) => setDrop(Number(e.target.value))}
+                className="w-full h-1.5 bg-[var(--bg-elevated)] rounded-lg appearance-none cursor-pointer accent-[var(--brand)]"
               />
             </div>
-            <div className="relative h-4 font-mono text-[10px] text-[#8f897c] mb-6">
-              <span className="absolute" style={{ left: "14.3%", transform: "translateX(-50%)" }}>1.0</span>
-              <span className="absolute" style={{ left: "35.7%", transform: "translateX(-50%)" }}>1.3</span>
-              <span className="absolute" style={{ left: "57.1%", transform: "translateX(-50%)" }}>1.6</span>
+
+            <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] flex flex-col gap-4">
+              <div className="flex items-end justify-between">
+                <div>
+                  <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-tertiary)] block mb-1">
+                    Current Health Factor
+                  </span>
+                  <div className="font-display text-5xl sm:text-6xl font-light text-[var(--text-primary)] leading-none tabular-nums">
+                    {Number.isFinite(hf) ? hf.toFixed(2) : "∞"}
+                  </div>
+                </div>
+                <StatusPill zone={zoneInfo.zone} size="md" />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <div className="relative h-2 w-full rounded-full bg-[var(--bg-elevated)] overflow-hidden">
+                  <div className="absolute inset-0 flex">
+                    <div className="w-[15%] bg-[var(--danger)] h-full" />
+                    <div className="w-[15%] bg-[var(--warning)] h-full" />
+                    <div className="w-[25%] bg-[var(--warning)]/50 h-full" />
+                    <div className="w-[45%] bg-[var(--safe)] h-full" />
+                  </div>
+                  <div
+                    className="absolute top-0 bottom-0 w-1.5 bg-white shadow-xs rounded-full -translate-x-1/2 transition-all duration-150"
+                    style={{ left: `${gaugePct}%` }}
+                  />
+                </div>
+
+                <div className="flex justify-between text-[10px] font-mono text-[var(--text-tertiary)] uppercase">
+                  <span>Critical 1.0</span>
+                  <span>Trigger 1.30</span>
+                  <span>Target 1.60</span>
+                  <span>Safe 2.0+</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed pt-1">
+                {zoneInfo.action}
+              </p>
             </div>
 
-            <p className="text-[14px] leading-[1.6] text-[#e6dac6] mb-6 min-h-[45px]">{zone.action}</p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-[#26332f] rounded-[16px] overflow-hidden">
-              <Stat label="Tahansoe triggers at" value={`$${fmt(triggerPrice)}`} color="#fbbf24" />
-              <Stat label="Liquidation at" value={`$${fmt(liqPrice)}`} color="#f87171" />
-              <Stat
-                label="Repay to reach 1.60"
-                value={repayNeeded > 0 ? `$${fmt(repayNeeded)}` : "—"}
-                color="#4ab5e0"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-3.5 rounded-lg border border-[var(--border)] bg-[var(--bg)]">
+                <Stat
+                  label="Tahansoe Triggers"
+                  value={`$${fmt(triggerPrice)}`}
+                  sub="HF reaches 1.30"
+                  size="sm"
+                />
+              </div>
+              <div className="p-3.5 rounded-lg border border-[var(--border)] bg-[var(--bg)]">
+                <Stat
+                  label="Liquidation Point"
+                  value={`$${fmt(liqPrice)}`}
+                  sub="HF reaches 1.00"
+                  size="sm"
+                />
+              </div>
+              <div className="p-3.5 rounded-lg border border-[var(--border)] bg-[var(--bg)]">
+                <Stat
+                  label="Repayment Needed"
+                  value={repayNeeded > 0 ? `$${fmt(repayNeeded)}` : "None"}
+                  sub="To restore HF to 1.60"
+                  size="sm"
+                />
+              </div>
             </div>
-            <p className="mt-4 text-[11px] text-[#8f897c]">
-              Illustrative. Uses a 0.825 liquidation threshold; real thresholds vary per asset and market.
+
+            <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+              Illustrative calculation based on Aave V3 ETH Liquidation Threshold (82.5%). Actual parameters vary per asset and market.
             </p>
           </div>
         </div>
       </div>
     </section>
-  );
-}
-
-function NumberField({
-  label, value, step, min, onChange,
-}: { label: string; value: number; step: number; min: number; onChange: (v: number) => void }) {
-  return (
-    <label className="block">
-      <span className="text-[11px] font-medium tracking-[0.08em] uppercase text-[#8f897c] block mb-2">{label}</span>
-      <input
-        type="number" value={value} step={step} min={min}
-        onChange={(e) => {
-          const v = Number(e.target.value);
-          if (Number.isFinite(v) && v >= min) onChange(v);
-        }}
-        className="w-full h-11 rounded-full bg-[#0b1110] border border-[#26332f] px-4 text-[14px] text-[#fdf1e1] tabular-nums outline-none focus:border-[#5b6660]"
-      />
-    </label>
-  );
-}
-
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="bg-[#0b1110] px-5 py-4">
-      <p className="text-[11px] font-medium tracking-[0.08em] uppercase text-[#8f897c] mb-1">{label}</p>
-      <p className="text-[18px] font-medium tabular-nums" style={{ color }}>{value}</p>
-    </div>
   );
 }

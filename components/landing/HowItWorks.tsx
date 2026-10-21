@@ -1,69 +1,69 @@
-import { MossBackdrop } from "./Scenery";
+import { Eyebrow } from "@/components/ui/eyebrow";
 
 const steps = [
   {
     index: "01",
     title: "Connect your position",
-    body: "Link your Aave V3 or Morpho Blue position. Tahansoe reads Health Factor directly from Chainlink oracles, the same source the protocol uses.",
+    body: "Connect your Web3 wallet. Tahansoe detects your active borrow positions on Aave V3 and reads real-time Health Factors from on-chain feeds.",
   },
   {
     index: "02",
-    title: "Set your thresholds",
-    body: "Define your trigger threshold (default 1.30) and target recovery HF (default 1.60). Tahansoe translates your intent into deterministic policy parameters.",
+    title: "Choose your layers",
+    body: "Configure how much hot wallet USDC to allocate for Layer 1, pick an optional secondary yield vault for Layer 2, and decide if you want Layer 3 flash deleveraging enabled.",
   },
   {
     index: "03",
-    title: "Approve the Guardian Module",
-    body: "A Safe Module with a strict allowlist is deployed. It can only repay debt or supply collateral. It cannot transfer funds out or approve arbitrary addresses.",
+    title: "Approve with exact caps",
+    body: "Grant explicit, capped token allowances for your chosen layers. Review what the contract can and cannot do before signing in your wallet.",
   },
   {
     index: "04",
-    title: "Automated remediation",
-    body: "When HF drops below your trigger, the rule engine fires: repay via flash loan or reserve, restoring your position in a single atomic transaction.",
+    title: "Sentinel watches 24/7",
+    body: "Sentinel monitors your Health Factor every block. If a price drop triggers your policy, remediation executes atomically to restore your target buffer.",
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative isolate overflow-hidden py-20 md:py-[80px]">
-      <MossBackdrop position="top" />
-      <div className="max-w-[1400px] mx-auto px-6">
-        {/* Section header */}
-        <div className="mb-14">
-          <h2 className="text-4xl md:text-5xl font-display font-medium leading-[1.1] tracking-[-0.02em] text-[#fdf1e1] max-w-[480px]">
+    <section id="how-it-works" className="py-20 md:py-28 border-b border-[var(--border)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex flex-col items-start gap-4 max-w-3xl mb-14">
+          <Eyebrow dot variant="brand">
+            Process
+          </Eyebrow>
+          <h2 className="font-display font-light text-3xl sm:text-4xl lg:text-5xl tracking-tight text-[var(--text-primary)] leading-tight">
             From setup to protection in four steps.
           </h2>
+          <p className="text-base text-[var(--text-secondary)] leading-relaxed">
+            Non-custodial by design. You never transfer custody of your collateral to Tahansoe.
+          </p>
         </div>
 
-        {/* Steps */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {steps.map((step) => (
-            <StepCard key={step.index} {...step} />
+            <div
+              key={step.index}
+              className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-6 sm:p-7 flex flex-col justify-between shadow-xs transition-colors hover:border-[var(--border-strong)]"
+            >
+              <div>
+                <span className="font-display font-light text-3xl text-[var(--brand)] block mb-4">
+                  {step.index}
+                </span>
+                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2 tracking-tight">
+                  {step.title}
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  {step.body}
+                </p>
+              </div>
+
+              <div className="pt-6 mt-6 border-t border-[var(--border)] font-mono text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">
+                Step {step.index} of 04
+              </div>
+            </div>
           ))}
         </div>
       </div>
     </section>
-  );
-}
-
-function StepCard({
-  index,
-  title,
-  body,
-}: {
-  index: string;
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="glass-card rounded-[24px] p-8 md:p-10 transition-transform duration-300 hover:-translate-y-1">
-      <p className="font-display text-[44px] leading-none text-[#4ab5e0] mb-6">
-        {index}
-      </p>
-      <h3 className="text-[20px] font-medium text-[#fdf1e1] tracking-[-0.015em] mb-3 leading-snug">
-        {title}
-      </h3>
-      <p className="text-[14px] leading-[1.65] text-[#c8bca9] max-w-[380px]">{body}</p>
-    </div>
   );
 }

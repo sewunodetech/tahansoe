@@ -1,91 +1,96 @@
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { AlertCircle } from "lucide-react";
+
 const risks = [
   {
-    risk: "Flash crash",
-    impact: "Intra-block price drop; MEV liquidator faster than agent",
-    mitigation: "Conservative buffer; explicitly disclosed as unpreventable",
+    risk: "Flash crash / MEV",
+    impact: "Intra-block collapse where liquidator front-runs automated remediation",
+    mitigation: "Conservative trigger buffer (e.g. HF 1.30); explicit disclaimer that extreme gaps cannot be prevented",
   },
   {
-    risk: "Oracle lag",
-    impact: "Deviation threshold delays detection vs. real price",
-    mitigation: "Identical oracle to protocol; Pyth/RedStone as early-detection fallback",
+    risk: "Oracle latency",
+    impact: "Heartbeat delay causes deviation between market price and on-chain valuation",
+    mitigation: "Tracks native protocol oracles block-for-block; Sentinel triggers proactively before threshold",
   },
   {
-    risk: "Reserve liquidity failure",
-    impact: "High utilization prevents reserve withdrawal",
-    mitigation: "Reserve placed in separate venue; maxWithdraw() checked before use",
+    risk: "Secondary vault illiquidity",
+    impact: "Layer 2 vault high utilization temporarily halts redemption",
+    mitigation: "Checks redemption liquidity before firing; automatically cascades down to Layer 3 flash deleverage",
   },
   {
-    risk: "Flash loan revert",
-    impact: "Slippage exceeds limit; transaction reverts",
-    mitigation: "Simulate before execution; slippage cap; smaller retry",
+    risk: "Flash loan slippage",
+    impact: "Extreme market illiquidity during Layer 3 collateral swap causes revert",
+    mitigation: "Configurable max slippage bounds; simulation executed before broadcast",
   },
   {
-    risk: "Gas limit breach",
-    impact: "Repay + swap + flash loan exceeds performUpkeep limit",
-    mitigation: "Detection and execution split into separate contracts",
+    risk: "Network congestion",
+    impact: "Arbitrum sequencer or gas fee surge delays keeper transaction execution",
+    mitigation: "Dual-keeper architecture (Tahansoe Sentinel + Chainlink Automation fallback)",
   },
   {
-    risk: "Smart contract bug",
-    impact: "Potential fund loss",
-    mitigation: "Audit; minimal module scope; kill switch",
+    risk: "Smart contract vulnerability",
+    impact: "Potential compromise of approved token allowances",
+    mitigation: "Non-custodial design, strictly capped allowances, no admin keys, audited base primitives",
   },
 ];
 
 export function RiskDisclosure() {
   return (
-    <section id="risk" className="py-20 md:py-[80px] border-t border-[#26332f]">
-      <div className="max-w-[1400px] mx-auto px-6">
-        {/* Header */}
-        <div className="mb-12">
-          <h2 className="text-4xl md:text-5xl font-display font-medium leading-[1.1] tracking-[-0.02em] text-[#fdf1e1] mb-4">
-            What Tahansoe cannot do.
+    <section id="risk" className="py-20 md:py-28 border-b border-[var(--border)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex flex-col items-start gap-4 max-w-3xl mb-12">
+          <Eyebrow dot variant="danger">
+            Risk & Limitations
+          </Eyebrow>
+          <h2 className="font-display font-light text-3xl sm:text-4xl lg:text-5xl tracking-tight text-[var(--text-primary)] leading-tight">
+            What Tahansoe cannot guarantee.
           </h2>
-          <p className="text-[15px] leading-[1.6] text-[#c8bca9] max-w-[500px]">
-            Risk automation is not a liquidation guarantee. These limitations are not in
-            a footnote - they are a core part of the product.
+          <p className="text-base text-[var(--text-secondary)] leading-relaxed">
+            Automated defense is an active risk mitigation system, not an absolute liquidation guarantee. Clear disclosure of limitations is integral to our security model.
           </p>
         </div>
 
-        {/* Risk table */}
-        <div className="glass-card rounded-[24px] overflow-hidden">
-          {/* Header row */}
-          <div className="grid grid-cols-3 gap-px bg-[#26332f]">
-            <div className="bg-[#15201d] px-6 py-4">
-              <span className="text-[12px] font-medium tracking-[0.08em] uppercase text-[#4ab5e0]">Risk</span>
-            </div>
-            <div className="bg-[#15201d] px-6 py-4">
-              <span className="text-[12px] font-medium tracking-[0.08em] uppercase text-[#4ab5e0]">Impact</span>
-            </div>
-            <div className="bg-[#15201d] px-6 py-4">
-              <span className="text-[12px] font-medium tracking-[0.08em] uppercase text-[#4ab5e0]">Mitigation</span>
-            </div>
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-[var(--bg-elevated)]">
+                  <th className="py-3.5 px-5 font-mono uppercase tracking-wider text-[var(--text-tertiary)] font-medium w-1/4">
+                    Risk Factor
+                  </th>
+                  <th className="py-3.5 px-5 font-mono uppercase tracking-wider text-[var(--text-tertiary)] font-medium w-3/8">
+                    Potential Impact
+                  </th>
+                  <th className="py-3.5 px-5 font-mono uppercase tracking-wider text-[var(--text-tertiary)] font-medium w-3/8">
+                    Mitigation Strategy
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {risks.map((row) => (
+                  <tr key={row.risk} className="hover:bg-[var(--bg-hover)] transition-colors">
+                    <td className="py-3.5 px-5 font-semibold text-[var(--text-primary)] align-top">
+                      {row.risk}
+                    </td>
+                    <td className="py-3.5 px-5 text-[var(--text-secondary)] leading-relaxed align-top">
+                      {row.impact}
+                    </td>
+                    <td className="py-3.5 px-5 text-[var(--text-secondary)] leading-relaxed align-top">
+                      {row.mitigation}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-
-          {/* Data rows */}
-          {risks.map((row) => (
-            <div
-              key={row.risk}
-              className="grid grid-cols-3 gap-px bg-[#26332f] border-t border-[#26332f]"
-            >
-              <div className="bg-[#0b1110] px-6 py-4">
-                <span className="text-[13px] text-[#fdf1e1] font-medium">{row.risk}</span>
-              </div>
-              <div className="bg-[#0b1110] px-6 py-4">
-                <span className="text-[13px] text-[#c8bca9] leading-snug">{row.impact}</span>
-              </div>
-              <div className="bg-[#0b1110] px-6 py-4">
-                <span className="text-[13px] text-[#c8bca9] leading-snug">{row.mitigation}</span>
-              </div>
-            </div>
-          ))}
         </div>
 
-        {/* Footnote */}
-        <p className="mt-6 text-[12px] text-[#8f897c] max-w-[600px]">
-          Tahansoe is risk automation. No system can prevent liquidation caused by an
-          intra-block flash crash, oracle heartbeat delay, or gas limit breach.
-          Always maintain a conservative Health Factor buffer independent of Tahansoe.
-        </p>
+        <div className="mt-6 flex items-start gap-3 p-4 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] text-xs text-[var(--text-tertiary)] leading-relaxed">
+          <AlertCircle className="size-4 text-[var(--warning)] shrink-0 mt-0.5" />
+          <span>
+            Always maintain a conservative personal Health Factor buffer. Tahansoe cannot prevent liquidations resulting from black swan oracle discontinuities or unprecedented market halts.
+          </span>
+        </div>
       </div>
     </section>
   );
