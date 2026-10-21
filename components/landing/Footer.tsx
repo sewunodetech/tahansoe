@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { ExternalLink, Send } from "lucide-react";
+import { TELEGRAM_BOT_USERNAME } from "@/lib/telegram";
 
 const CONTRACT_ADDRESS = "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E";
 const ARBISCAN_URL = `https://sepolia.arbiscan.io/address/${CONTRACT_ADDRESS}`;
 
 export function Footer() {
-  const telegramBot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "cuustos_bot";
+  const telegramBot = TELEGRAM_BOT_USERNAME;
 
   return (
     <footer className="py-12 bg-[var(--bg)] border-t border-[var(--border)]">

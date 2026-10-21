@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { ArrowUpRight, Send, Shield } from "lucide-react";
+import { TELEGRAM_BOT_USERNAME } from "@/lib/telegram";
 
 export function CTA() {
-  const telegramBot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "cuustos_bot";
+  const telegramBot = TELEGRAM_BOT_USERNAME;
 
   return (
     <section className="py-20 md:py-28 border-b border-[var(--border)] relative overflow-hidden">

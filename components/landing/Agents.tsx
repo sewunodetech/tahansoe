@@ -1,9 +1,10 @@
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Badge } from "@/components/ui/badge";
 import { Send, Activity, ShieldCheck, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
+import { TELEGRAM_BOT_USERNAME } from "@/lib/telegram";
 
 export function Agents() {
-  const telegramBot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "cuustos_bot";
+  const telegramBot = TELEGRAM_BOT_USERNAME;
 
   return (
     <section id="agents" className="py-20 md:py-28 border-b border-[var(--border)]">

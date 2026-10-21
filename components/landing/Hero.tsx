@@ -2,9 +2,10 @@ import Link from "next/link";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Stat } from "@/components/ui/stat";
 import { ArrowUpRight, Send, ShieldCheck, Zap } from "lucide-react";
+import { TELEGRAM_BOT_USERNAME } from "@/lib/telegram";
 
 export function Hero() {
-  const telegramBot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "cuustos_bot";
+  const telegramBot = TELEGRAM_BOT_USERNAME;
 
   return (
     <section className="relative min-h-[90dvh] flex flex-col justify-center overflow-hidden pt-24 pb-16 md:pt-32 md:pb-24 border-b border-[var(--border)]">
