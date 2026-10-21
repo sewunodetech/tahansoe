@@ -3,7 +3,7 @@
 import { useAccount, useBalance, useChainId, useChains } from "wagmi";
 import { formatEther } from "viem";
 import {
-  AreaChart, Area, LineChart, Line, PieChart, Pie, Cell,
+  LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import {
@@ -11,14 +11,13 @@ import {
   Zap, ArrowRight, CheckCircle, Clock,
 } from "lucide-react";
 import { useSimulation } from "@/lib/simulation-context";
-import { PORTFOLIO_BREAKDOWN } from "@/lib/mock-data";
+import type { Position } from "@/lib/mock-data";
 
 // ── helpers ───────────────────────────────────────────────────────────────
 function hfBarPct(hf: number) {
   return Math.min(100, Math.max(0, ((hf - 1.0) / 1.0) * 100));
 }
 
-const HF_COLOR = { safe: "#34d399", warning: "#facc15", critical: "#f87171" };
 const HF_BG    = {
   safe:     "bg-emerald-400/[0.06] border-emerald-400/20",
   warning:  "bg-yellow-400/[0.06] border-yellow-400/20",
@@ -27,15 +26,21 @@ const HF_BG    = {
 const HF_TEXT  = { safe: "text-emerald-400", warning: "text-yellow-400", critical: "text-red-400" };
 const HF_LABEL = { safe: "Safe", warning: "Monitor", critical: "At risk" };
 
+interface TooltipItem {
+  name?: string;
+  value?: number;
+  color?: string;
+}
+
 // ── custom tooltip ────────────────────────────────────────────────────────
-function ChartTooltip({ active, payload, label }: any) {
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipItem[]; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-[8px] border border-white/[0.08] px-3 py-2" style={{ background: "#0b1110" }}>
       <p className="text-[10px] font-mono text-white/30 mb-1">{label}</p>
-      {payload.map((p: any) => (
+      {payload.map((p) => (
         <p key={p.name} className="text-[12px] font-mono" style={{ color: p.color }}>
-          {p.name}: {p.value.toFixed(2)}
+          {p.name}: {p.value ? p.value.toFixed(2) : "0.00"}
         </p>
       ))}
     </div>
@@ -72,7 +77,7 @@ function StatCard({ label, value, sub, icon: Icon, colorIndex = 0 }: {
 }
 
 // ── position mini-card ────────────────────────────────────────────────────
-function PositionMini({ pos, triggerHF }: { pos: any; triggerHF: number }) {
+function PositionMini({ pos, triggerHF }: { pos: Position; triggerHF: number }) {
   const pct  = hfBarPct(pos.hf);
   const tPct = hfBarPct(triggerHF);
   const s    = pos.status;

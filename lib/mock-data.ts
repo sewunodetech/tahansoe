@@ -52,7 +52,7 @@ export const POSITIONS: Position[] = [
   },
 ];
 
-export type HistoryAction = "REPAY" | "SUPPLY_COLLATERAL" | "NOOP" | "FLASH_LOAN";
+export type HistoryAction = "REPAY" | "SUPPLY_COLLATERAL" | "NOOP" | "FLASH_LOAN" | "DELEVERAGE";
 
 export interface HistoryEntry {
   id: string;
@@ -61,6 +61,7 @@ export interface HistoryEntry {
   protocol: string;
   chain: string;
   action: HistoryAction;
+  layer?: 1 | 2 | 3;
   amount: string;
   asset: string;
   source: string;
@@ -77,11 +78,12 @@ export const HISTORY: HistoryEntry[] = [
     timestamp: "2026-08-19 14:32:11",
     positionId: "aave-base-eth",
     protocol: "Aave V3",
-    chain: "Base",
+    chain: "Arbitrum",
     action: "REPAY",
+    layer: 1,
     amount: "500",
     asset: "USDC",
-    source: "Flash loan",
+    source: "Wallet Reserve (L1)",
     hfBefore: 1.29,
     hfAfter: 1.62,
     txHash: "0xabc123…def456",
@@ -93,11 +95,12 @@ export const HISTORY: HistoryEntry[] = [
     timestamp: "2026-08-18 09:17:44",
     positionId: "aave-base-eth",
     protocol: "Aave V3",
-    chain: "Base",
+    chain: "Arbitrum",
     action: "REPAY",
-    amount: "300",
+    layer: 2,
+    amount: "450",
     asset: "USDC",
-    source: "Flash loan",
+    source: "Position Reserve (L2)",
     hfBefore: 1.27,
     hfAfter: 1.58,
     txHash: "0xfed987…abc321",
@@ -109,12 +112,13 @@ export const HISTORY: HistoryEntry[] = [
     timestamp: "2026-08-17 22:04:03",
     positionId: "morpho-eth-usdc",
     protocol: "Morpho Blue",
-    chain: "Ethereum",
-    action: "SUPPLY_COLLATERAL",
-    amount: "0.5",
-    asset: "ETH",
-    source: "Hot reserve",
-    hfBefore: 1.31,
+    chain: "Arbitrum",
+    action: "DELEVERAGE",
+    layer: 3,
+    amount: "800",
+    asset: "ETH→USDC",
+    source: "Flash Deleverage (L3)",
+    hfBefore: 1.25,
     hfAfter: 1.55,
     txHash: "0x112233…aabbcc",
     status: "success",
@@ -125,7 +129,7 @@ export const HISTORY: HistoryEntry[] = [
     timestamp: "2026-08-16 11:52:37",
     positionId: "aave-base-eth",
     protocol: "Aave V3",
-    chain: "Base",
+    chain: "Arbitrum",
     action: "NOOP",
     amount: "0",
     asset: "—",

@@ -63,7 +63,14 @@ function saveSettings(s: PersistedSettings) {
 /* ─────────────────────────────────────────────
    Policy settings (owned by Settings page)
 ───────────────────────────────────────────── */
-export type RemediationStrategy = "repay" | "top_up" | "deleverage";
+export type RemediationStrategy = "repay" | "top_up" | "deleverage" | "l1_hot" | "l2_warm" | "l3_flash";
+
+export type LayerConfig = {
+  enabled: boolean;
+  approved: boolean;
+  capacity: number;
+  coversPct?: number;
+};
 
 export type PolicySettings = {
   triggerHF:         number;
@@ -72,6 +79,16 @@ export type PolicySettings = {
   flashLoanEnabled:  boolean;
   hotReserveEnabled: boolean;
   deleverageEnabled: boolean;
+  // 3-Layer architecture settings
+  l1Enabled:         boolean;
+  l1Approved:        boolean;
+  l1Cap:             number;
+  l2Enabled:         boolean;
+  l2Approved:        boolean;
+  l2Cap:             number;
+  l3Enabled:         boolean;
+  l3Approved:        boolean;
+  l3Cap:             number;
   slippageBps:       number;
   alertsEnabled:     boolean;
   notifHfWarning:    boolean;
@@ -86,8 +103,17 @@ export const DEFAULT_POLICY: PolicySettings = {
   targetHF:          1.60,
   bufferPct:         10,
   flashLoanEnabled:  true,
-  hotReserveEnabled: false,
-  deleverageEnabled: false,
+  hotReserveEnabled: true,
+  deleverageEnabled: true,
+  l1Enabled:         true,
+  l1Approved:        true,
+  l1Cap:             1000,
+  l2Enabled:         true,
+  l2Approved:        true,
+  l2Cap:             2500,
+  l3Enabled:         true,
+  l3Approved:        true,
+  l3Cap:             10000,
   slippageBps:       50,
   alertsEnabled:     true,
   notifHfWarning:    true,
@@ -145,7 +171,9 @@ type Action =
   | { type: "SET_RUNNING";           payload: boolean }
   | { type: "SET_PAUSED";            payload: boolean }
   | { type: "SET_TELEGRAM_ENABLED";  payload: boolean }
-  | { type: "UPDATE_POLICY";         payload: Partial<PolicySettings> };
+  | { type: "UPDATE_POLICY";         payload: Partial<PolicySettings> }
+  | { type: "SIMULATE_PRICE_DROP";   payload?: number }
+  | { type: "RESET_SIMULATION" };
 
 /* ─────────────────────────────────────────────
    Initial state — hydrates from localStorage
@@ -205,6 +233,34 @@ function reducer(state: SimState, action: Action): SimState {
     case "SET_TELEGRAM_ENABLED": return { ...state, telegramEnabled: action.payload };
     case "UPDATE_POLICY":
       return { ...state, policy: { ...state.policy, ...action.payload } };
+    case "SIMULATE_PRICE_DROP": {
+      const dropPct = action.payload ?? 15;
+      const factor = 1 - dropPct / 100;
+      const newPrice = Math.max(1200, state.ethPrice.price * factor);
+      const updatedPositions = state.positions.map((pos) => {
+        const newCollateral = pos.collateralUsd * factor;
+        const rawHF = (newCollateral * 0.825) / pos.debtUsd;
+        const hf = Math.max(0.85, Math.min(3.5, rawHF));
+        const status = hf <= state.policy.triggerHF ? "critical" : hf <= state.policy.triggerHF + 0.25 ? "warning" : "safe";
+        return {
+          ...pos,
+          collateralUsd: Math.round(newCollateral),
+          hf: parseFloat(hf.toFixed(3)),
+          status: status as Position["status"],
+          lastChecked: "just now",
+        };
+      });
+      return {
+        ...state,
+        ethPrice: {
+          price: Math.round(newPrice * 100) / 100,
+          change24h: parseFloat((state.ethPrice.change24h - dropPct).toFixed(2)),
+        },
+        positions: updatedPositions,
+      };
+    }
+    case "RESET_SIMULATION":
+      return buildInitial();
     default:
       return state;
   }
@@ -221,6 +277,8 @@ type SimContextValue = {
   setPaused:          (v: boolean) => void;
   setTelegramEnabled: (v: boolean) => void;
   updatePolicy:       (patch: Partial<PolicySettings>) => void;
+  simulatePriceDrop:  (percent?: number) => void;
+  resetSimulation:    () => void;
 };
 
 const SimContext = createContext<SimContextValue | null>(null);
@@ -249,6 +307,12 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const updatePolicy = useCallback(
     (patch: Partial<PolicySettings>) => dispatch({ type: "UPDATE_POLICY", payload: patch }), []
   );
+  const simulatePriceDrop = useCallback(
+    (percent?: number) => dispatch({ type: "SIMULATE_PRICE_DROP", payload: percent }), []
+  );
+  const resetSimulation = useCallback(
+    () => dispatch({ type: "RESET_SIMULATION" }), []
+  );
 
   const activeAlerts = state.alerts.filter((a) => !a.dismissed);
 
@@ -256,6 +320,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     <SimContext.Provider value={{
       state, dispatch, dismissAlert, activeAlerts,
       setPaused, setTelegramEnabled, updatePolicy,
+      simulatePriceDrop, resetSimulation,
     }}>
       {children}
     </SimContext.Provider>

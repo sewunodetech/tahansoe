@@ -18,3 +18,4 @@ export * from "./layer-badge";
 export * from "./approval-explainer";
 export * from "./theme-toggle";
 export * from "./brand-mark";
+export * from "./dashboard-topbar";

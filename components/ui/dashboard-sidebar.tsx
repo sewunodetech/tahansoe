@@ -1,10 +1,20 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard, ShieldCheck, Clock, Settings, LogOut,
-  Search, MessageSquare, Bot, Hash, ChevronRight, X,
-  Command, MoreHorizontal,
+  LayoutDashboard,
+  ShieldCheck,
+  Clock,
+  Settings,
+  LogOut,
+  Search,
+  Sparkles,
+  Send,
+  X,
+  Command,
+  MoreHorizontal,
 } from "lucide-react";
 import { BrandMark } from "@/components/ui/brand-mark";
 
@@ -12,230 +22,158 @@ import { BrandMark } from "@/components/ui/brand-mark";
    TYPES
    ══════════════════════════════════════════════════════════════════════════ */
 export type NavItem = {
-  id: string;
+  href: string;
   label: string;
   icon: React.ElementType;
   badge?: string | number;
   shortcut?: string;
-  children?: NavItem[];
+  tourId?: string;
 };
-type NavGroup = { heading?: string; items: NavItem[] };
 
 /* ══════════════════════════════════════════════════════════════════════════
-   NAV DATA
+   NAV DATA (Phase 3: Overview · Protection · Activity · Agents · Telegram · Settings)
    ══════════════════════════════════════════════════════════════════════════ */
-const NAV_GROUPS: NavGroup[] = [
+export const MAIN_NAV_ITEMS: NavItem[] = [
   {
-    items: [
-      { id: "home",      label: "Overview",  icon: LayoutDashboard },
-      {
-        id: "positions", label: "Positions", icon: ShieldCheck,
-        children: [
-          { id: "pos-active",     label: "Active",     icon: Hash },
-          { id: "pos-monitoring", label: "Monitoring", icon: Hash },
-        ],
-      },
-      { id: "history", label: "History", icon: Clock },
-    ],
+    href: "/dashboard",
+    label: "Overview",
+    icon: LayoutDashboard,
+    tourId: "tour-nav-home",
   },
   {
-    heading: "Intelligence",
-    items: [
-      { id: "chat", label: "AI Assistant", icon: MessageSquare, badge: "Soon" },
-      { id: "bot",  label: "Telegram Bot", icon: Bot },
-    ],
+    href: "/dashboard/protection",
+    label: "Protection",
+    icon: ShieldCheck,
+    tourId: "tour-nav-protection",
+    badge: "3 Layers",
+  },
+  {
+    href: "/dashboard/activity",
+    label: "Activity",
+    icon: Clock,
+    tourId: "tour-nav-activity",
+  },
+  {
+    href: "/dashboard/agents",
+    label: "Agents",
+    icon: Sparkles,
+    tourId: "tour-nav-agents",
+    badge: "2 Active",
+  },
+  {
+    href: "/dashboard/telegram",
+    label: "Telegram",
+    icon: Send,
+    tourId: "tour-nav-telegram",
   },
 ];
 
-const BOTTOM_ITEMS: NavItem[] = [
-  { id: "settings", label: "Settings",    icon: Settings, shortcut: "⌘," },
-  { id: "logout",   label: "Disconnect",  icon: LogOut },
+export const BOTTOM_ITEMS: NavItem[] = [
+  {
+    href: "/dashboard/settings",
+    label: "Settings",
+    icon: Settings,
+    shortcut: "⌘,",
+    tourId: "tour-nav-settings",
+  },
 ];
 
 /* ══════════════════════════════════════════════════════════════════════════
-   NAV ROW
+   NAV LINK COMPONENT
    ══════════════════════════════════════════════════════════════════════════ */
-/* ── Tour target mapping ──────────────────────────────────────────────────── */
-const TOUR_IDS: Record<string, string> = {
-  home:     "tour-nav-home",
-  positions:"tour-nav-positions",
-  history:  "tour-nav-history",
-  chat:     "tour-nav-chat",
-  bot:      "tour-nav-bot",
-  settings: "tour-nav-settings",
-};
-
-function NavRow({
-  item, activeId, onSelect, level = 0, collapsed,
+function NavLinkRow({
+  item,
+  collapsed,
+  isActive,
 }: {
   item: NavItem;
-  activeId: string;
-  onSelect: (id: string) => void;
-  level?: number;
   collapsed: boolean;
+  isActive: boolean;
 }) {
-  const isActive    = activeId === item.id || (item.children?.some((c) => c.id === activeId) ?? false);
-  const hasChildren = !!item.children;
-  const [open, setOpen] = useState(isActive);
-
-  const handleClick = () => {
-    if (hasChildren) { setOpen((v) => !v); return; }
-    onSelect(item.id);
-  };
-
   return (
-    <div className="flex flex-col w-full">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={handleClick}
-        onKeyDown={(e) => e.key === "Enter" && handleClick()}
-        title={collapsed ? item.label : undefined}
-        data-tour-id={TOUR_IDS[item.id]}
-        className="relative flex items-center w-full rounded-[6px] cursor-pointer select-none outline-none transition-colors duration-100"
-        style={{
-          gap: collapsed ? 0 : 8,
-          paddingTop: 6,
-          paddingBottom: 6,
-          paddingLeft: collapsed ? 8 : level * 16 + 10,
-          paddingRight: collapsed ? 8 : 8,
-          justifyContent: collapsed ? "center" : "flex-start",
-          backgroundColor: isActive && !hasChildren ? "var(--item-active-bg)" : undefined,
-          color: isActive && !hasChildren ? "var(--item-active-text)" : "var(--text-secondary)",
-        }}
-        onMouseEnter={(e) => {
-          if (!(isActive && !hasChildren)) {
-            (e.currentTarget as HTMLDivElement).style.backgroundColor = "var(--item-hover)";
-            (e.currentTarget as HTMLDivElement).style.color = "var(--text-primary)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!(isActive && !hasChildren)) {
-            (e.currentTarget as HTMLDivElement).style.backgroundColor = "";
-            (e.currentTarget as HTMLDivElement).style.color = "var(--text-secondary)";
-          }
-        }}
-      >
-        {/* Active left bar */}
-        {isActive && !hasChildren && !collapsed && (
-          <span
-            className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full"
-            style={{ backgroundColor: "#4ab5e0" }}
-          />
-        )}
-
-        <item.icon
-          style={{
-            width: 15, height: 15,
-            flexShrink: 0,
-            color: isActive && !hasChildren ? "#4ab5e0" : "var(--text-tertiary)",
-          }}
-          strokeWidth={isActive && !hasChildren ? 2 : 1.5}
+    <Link
+      href={item.href}
+      title={collapsed ? item.label : undefined}
+      data-tour-id={item.tourId}
+      className={`relative flex items-center w-full rounded-md select-none outline-none transition-colors duration-100 ${
+        collapsed ? "justify-center px-2 py-1.5" : "gap-2 px-2.5 py-1.5"
+      } ${
+        isActive
+          ? "bg-[var(--item-active-bg)] text-[var(--item-active-text)] font-medium"
+          : "text-[var(--text-secondary)] hover:bg-[var(--item-hover)] hover:text-[var(--text-primary)]"
+      }`}
+    >
+      {/* Active left indicator bar */}
+      {isActive && !collapsed && (
+        <span
+          className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full bg-[var(--brand)]"
         />
-
-        {!collapsed && (
-          <>
-            <span className="flex-1 text-[12.5px] tracking-[-0.01em] truncate leading-none">
-              {item.label}
-            </span>
-
-            <div className="flex items-center gap-1 ml-auto shrink-0">
-              {item.badge && (
-                <span
-                  className="inline-flex items-center h-4 px-1.5 rounded-[4px] text-[9px] font-bold font-mono tracking-wide"
-                  style={{
-                    backgroundColor: "var(--item-active-bg)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  {item.badge}
-                </span>
-              )}
-              {item.shortcut && (
-                <kbd
-                  className="hidden group-hover:inline-flex items-center h-4 px-1.5 text-[9px] font-mono rounded-[4px]"
-                  style={{
-                    color: "var(--text-tertiary)",
-                    backgroundColor: "var(--bg-subtle)",
-                    border: "1px solid var(--border)",
-                  }}
-                >
-                  {item.shortcut}
-                </kbd>
-              )}
-              {hasChildren && (
-                <ChevronRight
-                  style={{
-                    width: 12, height: 12,
-                    color: "var(--text-tertiary)",
-                    transform: open ? "rotate(90deg)" : undefined,
-                    transition: "transform 0.2s",
-                  }}
-                  strokeWidth={2}
-                />
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Children */}
-      {hasChildren && !collapsed && (
-        <div
-          className="grid transition-[grid-template-rows,opacity] duration-200 ease-in-out"
-          style={{ gridTemplateRows: open ? "1fr" : "0fr", opacity: open ? 1 : 0 }}
-        >
-          <div className="overflow-hidden min-h-0 relative flex flex-col gap-0.5 mt-0.5">
-            <div
-              className="absolute top-0 bottom-0 w-px"
-              style={{
-                left: level * 16 + 18,
-                backgroundColor: "var(--border)",
-              }}
-            />
-            {item.children!.map((child) => (
-              <NavRow
-                key={child.id}
-                item={child}
-                activeId={activeId}
-                onSelect={onSelect}
-                level={level + 1}
-                collapsed={false}
-              />
-            ))}
-          </div>
-        </div>
       )}
-    </div>
+
+      <item.icon
+        className={`shrink-0 transition-colors ${
+          isActive ? "text-[var(--brand)]" : "text-[var(--text-tertiary)]"
+        }`}
+        style={{ width: 15, height: 15 }}
+        strokeWidth={isActive ? 2 : 1.5}
+      />
+
+      {!collapsed && (
+        <>
+          <span className="flex-1 text-[12.5px] tracking-[-0.01em] truncate leading-none">
+            {item.label}
+          </span>
+
+          <div className="flex items-center gap-1 ml-auto shrink-0">
+            {item.badge && (
+              <span className="inline-flex items-center h-4 px-1.5 rounded-[4px] text-[9px] font-bold font-mono tracking-wide bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border)]">
+                {item.badge}
+              </span>
+            )}
+            {item.shortcut && (
+              <kbd className="hidden group-hover:inline-flex items-center h-4 px-1.5 text-[9px] font-mono rounded-[4px] text-[var(--text-tertiary)] bg-[var(--bg-subtle)] border border-[var(--border)]">
+                {item.shortcut}
+              </kbd>
+            )}
+          </div>
+        </>
+      )}
+    </Link>
   );
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
    SIDEBAR NAV
    ══════════════════════════════════════════════════════════════════════════ */
-export function SidebarNav({
-  activeId = "home",
-  onSelect,
-  address,
-  onDisconnect,
-  collapsed = false,
-}: {
+export interface SidebarNavProps {
   activeId?: string;
   onSelect?: (id: string) => void;
   address?: string;
   onDisconnect?: () => void;
   collapsed?: boolean;
-}) {
-  const short = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "Not connected";
+}
 
-  const handleSelect = (id: string) => {
-    if (id === "logout") { onDisconnect?.(); return; }
-    onSelect?.(id);
+export function SidebarNav({
+  address,
+  onDisconnect,
+  collapsed = false,
+}: SidebarNavProps) {
+  const pathname = usePathname();
+
+  const short = address
+    ? `${address.slice(0, 6)}…${address.slice(-4)}`
+    : "0x1A5D…D97E";
+
+  const isItemActive = (href: string) => {
+    if (href === "/dashboard") {
+      return pathname === "/dashboard";
+    }
+    return pathname.startsWith(href);
   };
 
   return (
     <nav
-      className="flex flex-col h-full overflow-hidden"
+      className="flex flex-col h-full overflow-hidden select-none"
       style={{
         width: collapsed ? 52 : 232,
         background: "var(--sidebar-bg)",
@@ -247,118 +185,94 @@ export function SidebarNav({
         className="shrink-0 flex items-center h-[52px] px-4"
         style={{ borderBottom: "1px solid var(--sidebar-border)" }}
       >
-        {collapsed ? (
-          <div data-tour-id="tour-logo" className="w-7 h-7 flex items-center justify-center">
-            <BrandMark size={22} />
-          </div>
-        ) : (
-          <div data-tour-id="tour-logo" className="flex items-center gap-2.5">
-            <BrandMark size={24} className="shrink-0" />
-            <div className="flex flex-col">
-              <span
-                className="font-display text-[19px] leading-none"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Tahansoe
-              </span>
-              <span
-                className="text-[10px] leading-none mt-0.5 font-mono"
-                style={{ color: "#4ab5e0", opacity: 0.6 }}
-              >
-                Risk Automation
-              </span>
+        <Link href="/dashboard" className="flex items-center">
+          {collapsed ? (
+            <div data-tour-id="tour-logo" className="w-7 h-7 flex items-center justify-center">
+              <BrandMark size={22} />
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Nav groups ──────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide px-2 py-3 flex flex-col gap-5">
-        {NAV_GROUPS.map((group, gi) => (
-          <div key={gi} className="flex flex-col gap-0.5">
-            {group.heading && !collapsed && (
-              <div className="px-2 pb-1 pt-0.5">
-                <span
-                  className="text-[10px] font-semibold tracking-[0.08em] uppercase"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {group.heading}
+          ) : (
+            <div data-tour-id="tour-logo" className="flex items-center gap-2.5">
+              <BrandMark size={24} className="shrink-0" />
+              <div className="flex flex-col">
+                <span className="font-display text-[18px] font-medium leading-none text-[var(--text-primary)]">
+                  Tahansoe
+                </span>
+                <span className="text-[10px] leading-none mt-0.5 font-mono text-[var(--brand)] opacity-80">
+                  Risk Automation
                 </span>
               </div>
-            )}
-            {group.items.map((item) => (
-              <NavRow
-                key={item.id}
-                item={item}
-                activeId={activeId}
-                onSelect={handleSelect}
-                collapsed={collapsed}
-              />
-            ))}
+            </div>
+          )}
+        </Link>
+      </div>
+
+      {/* ── Main nav items ───────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-2 py-3 flex flex-col gap-1">
+        {!collapsed && (
+          <div className="px-2 pb-1 pt-0.5">
+            <span className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[var(--text-tertiary)] font-mono">
+              Dashboard
+            </span>
           </div>
+        )}
+
+        {MAIN_NAV_ITEMS.map((item) => (
+          <NavLinkRow
+            key={item.href}
+            item={item}
+            collapsed={collapsed}
+            isActive={isItemActive(item.href)}
+          />
         ))}
       </div>
 
-      {/* ── Bottom: settings + wallet ─────────────────────────── */}
+      {/* ── Bottom: Settings + Disconnect + Wallet ───────────────── */}
       <div
-        className="shrink-0 px-2 py-2 flex flex-col gap-0.5"
+        className="shrink-0 px-2 py-2 flex flex-col gap-1"
         style={{ borderTop: "1px solid var(--sidebar-border)" }}
       >
         {BOTTOM_ITEMS.map((item) => (
-          <NavRow
-            key={item.id}
+          <NavLinkRow
+            key={item.href}
             item={item}
-            activeId={activeId}
-            onSelect={handleSelect}
             collapsed={collapsed}
+            isActive={isItemActive(item.href)}
           />
         ))}
 
-        {/* Wallet identity row */}
-        {!collapsed && (
-          <div
-            className="flex items-center gap-2.5 mt-1.5 px-2.5 py-2 rounded-[8px]"
-            style={{
-              background: "var(--bg-subtle)",
-              border: "1px solid var(--border)",
-            }}
+        {/* Disconnect button */}
+        {onDisconnect && (
+          <button
+            type="button"
+            onClick={onDisconnect}
+            title={collapsed ? "Disconnect" : undefined}
+            className={`flex items-center w-full rounded-md text-[var(--text-tertiary)] hover:bg-[var(--item-hover)] hover:text-[var(--danger)] transition-colors ${
+              collapsed ? "justify-center p-1.5" : "gap-2 px-2.5 py-1.5"
+            }`}
           >
-            {/* Avatar */}
-            <div
-              className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[11px] font-semibold"
-              style={{
-                background: "var(--item-active-bg)",
-                border: "1px solid var(--border-strong)",
-                color: "var(--text-primary)",
-              }}
-            >
-              {address ? address.slice(2, 4).toUpperCase() : "?"}
+            <LogOut style={{ width: 15, height: 15 }} strokeWidth={1.5} />
+            {!collapsed && <span className="text-[12.5px]">Disconnect</span>}
+          </button>
+        )}
+
+        {/* Wallet info row */}
+        {!collapsed && (
+          <div className="flex items-center gap-2.5 mt-1 px-2.5 py-2 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border)]">
+            <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[10px] font-semibold bg-[var(--item-active-bg)] border border-[var(--border-strong)] text-[var(--text-primary)]">
+              {address ? address.slice(2, 4).toUpperCase() : "0X"}
             </div>
             <div className="flex flex-col min-w-0 flex-1">
-              <span
-                className="text-[11.5px] font-medium leading-none truncate"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <span className="text-[11.5px] font-mono leading-none truncate text-[var(--text-primary)]">
                 {short}
               </span>
-              {/* <div className="flex items-center gap-1 mt-0.5">
-                <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: "var(--safe)" }}
-                />
-                <span
-                  className="text-[10px] font-mono leading-none"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Base · Connected
-                </span>
-              </div> */}
+              <span className="text-[9.5px] font-mono text-[var(--text-tertiary)] mt-0.5">
+                Arbitrum One
+              </span>
             </div>
             <button
-              className="shrink-0 p-1 rounded-[4px] transition-colors"
-              style={{ color: "var(--text-tertiary)" }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-secondary)")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-tertiary)")}
+              type="button"
+              className="shrink-0 p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
+              title="Wallet options"
             >
               <MoreHorizontal style={{ width: 13, height: 13 }} strokeWidth={1.5} />
             </button>
@@ -370,142 +284,98 @@ export function SidebarNav({
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   FLAT ITEMS FOR SEARCH
-   ══════════════════════════════════════════════════════════════════════════ */
-const flattenItems = (items: NavItem[]): NavItem[] =>
-  items.reduce((acc, item) => {
-    acc.push(item);
-    if (item.children) acc.push(...flattenItems(item.children));
-    return acc;
-  }, [] as NavItem[]);
-
-export const flatNavItems = flattenItems([
-  ...NAV_GROUPS.flatMap((g) => g.items),
-  ...BOTTOM_ITEMS,
-]);
-
-/* ══════════════════════════════════════════════════════════════════════════
    SEARCH MODAL
    ══════════════════════════════════════════════════════════════════════════ */
 export function SearchModal({
-  onClose, onSelect,
+  onClose,
+  onSelect,
 }: {
   onClose: () => void;
-  onSelect: (id: string) => void;
+  onSelect?: (href: string) => void;
 }) {
   const [query, setQuery] = useState("");
+  const router = useRouter();
+
+  const allItems = [...MAIN_NAV_ITEMS, ...BOTTOM_ITEMS];
   const results = query.length > 0
-    ? flatNavItems.filter((i) => i.label.toLowerCase().includes(query.toLowerCase()))
-    : flatNavItems.filter((i) => !["pos-active", "pos-monitoring", "logout"].includes(i.id));
+    ? allItems.filter((i) => i.label.toLowerCase().includes(query.toLowerCase()))
+    : allItems;
+
+  const handleSelect = (href: string) => {
+    if (onSelect) {
+      onSelect(href);
+    } else {
+      router.push(href);
+    }
+    onClose();
+  };
 
   return (
     <div
-      className="absolute inset-0 z-50 flex items-start justify-center px-4"
-      style={{ paddingTop: "12vh", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+      className="fixed inset-0 z-50 flex items-start justify-center px-4"
+      style={{
+        paddingTop: "12vh",
+        background: "rgba(0,0,0,0.5)",
+        backdropFilter: "blur(4px)",
+      }}
     >
-      <div className="absolute inset-0" onClick={onClose} />
-      <div
-        className="relative w-full max-w-[520px] rounded-[12px] shadow-2xl overflow-hidden"
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border-strong)",
-        }}
-      >
-        {/* Input row */}
-        <div
-          className="flex items-center gap-3 px-4"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
-          <Search style={{ width: 14, height: 14, color: "var(--text-tertiary)", flexShrink: 0 }} strokeWidth={1.5} />
+      <div className="fixed inset-0" onClick={onClose} />
+      <div className="relative w-full max-w-[500px] rounded-xl shadow-2xl overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border-strong)]">
+        {/* Input */}
+        <div className="flex items-center gap-3 px-4 border-b border-[var(--border)]">
+          <Search className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" strokeWidth={1.5} />
           <input
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Escape" && onClose()}
-            className="flex-1 bg-transparent py-3.5 outline-none text-[13px]"
-            style={{ color: "var(--text-primary)" }}
-            placeholder="Search pages and actions..."
+            className="flex-1 bg-transparent py-3 outline-none text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)]"
+            placeholder="Search pages, protection layers, activity..."
           />
           <button
+            type="button"
             onClick={onClose}
-            className="p-1 rounded-[5px] transition-colors"
-            style={{ color: "var(--text-tertiary)" }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "var(--item-hover)";
-              (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "";
-              (e.currentTarget as HTMLButtonElement).style.color = "var(--text-tertiary)";
-            }}
+            className="p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors"
           >
-            <X style={{ width: 13, height: 13 }} strokeWidth={1.5} />
+            <X className="w-3.5 h-3.5" strokeWidth={1.5} />
           </button>
         </div>
 
         {/* Results */}
-        <div className="p-2 max-h-[300px] overflow-y-auto scrollbar-hide">
-          {!query && (
-            <p
-              className="px-3 py-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Quick access
-            </p>
-          )}
-
-          {results.length > 0 ? results.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => { onSelect(item.id); onClose(); }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-[7px] text-left transition-colors"
-              style={{ color: "var(--text-secondary)" }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "var(--item-hover)";
-                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "";
-                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
-              }}
-            >
-              <div
-                className="w-6 h-6 rounded-[6px] flex items-center justify-center shrink-0"
-                style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+        <div className="p-2 max-h-[280px] overflow-y-auto scrollbar-hide">
+          {results.length > 0 ? (
+            results.map((item) => (
+              <button
+                key={item.href}
+                type="button"
+                onClick={() => handleSelect(item.href)}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors"
               >
-                <item.icon style={{ width: 13, height: 13, color: "var(--text-tertiary)" }} strokeWidth={1.5} />
-              </div>
-              <span className="text-[13px]">{item.label}</span>
-              {item.shortcut && (
-                <kbd
-                  className="ml-auto text-[9px] font-mono px-1.5 py-0.5 rounded-[4px]"
-                  style={{
-                    color: "var(--text-tertiary)",
-                    background: "var(--bg-subtle)",
-                    border: "1px solid var(--border)",
-                  }}
-                >
-                  {item.shortcut}
-                </kbd>
-              )}
-            </button>
-          )) : (
+                <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-[var(--bg-subtle)] border border-[var(--border)]">
+                  <item.icon className="w-3.5 h-3.5 text-[var(--text-tertiary)]" strokeWidth={1.5} />
+                </div>
+                <span className="text-[13px]">{item.label}</span>
+                {item.badge && (
+                  <span className="ml-auto text-[9px] font-mono font-medium px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] text-[var(--text-tertiary)] border border-[var(--border)]">
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            ))
+          ) : (
             <div className="py-8 flex flex-col items-center gap-2">
-              <Command style={{ width: 18, height: 18, color: "var(--text-tertiary)" }} strokeWidth={1.5} />
-              <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+              <Command className="w-4 h-4 text-[var(--text-tertiary)]" strokeWidth={1.5} />
+              <p className="text-[12px] text-[var(--text-tertiary)]">
                 No results for &ldquo;{query}&rdquo;
               </p>
             </div>
           )}
         </div>
 
-        {/* Footer hints */}
-        <div
-          className="px-4 py-2 flex items-center gap-4"
-          style={{ borderTop: "1px solid var(--border)" }}
-        >
+        {/* Hints */}
+        <div className="px-4 py-2 flex items-center gap-4 border-t border-[var(--border)] bg-[var(--bg-subtle)]">
           {["↑↓ navigate", "↵ open", "esc close"].map((hint) => (
-            <span key={hint} className="text-[10px] font-mono" style={{ color: "var(--text-tertiary)" }}>
+            <span key={hint} className="text-[10px] font-mono text-[var(--text-tertiary)]">
               {hint}
             </span>
           ))}

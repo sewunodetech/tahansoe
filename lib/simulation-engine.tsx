@@ -72,6 +72,7 @@ function hfStatus(hf: number, triggerHF: number, warnThreshold: number): Positio
 ───────────────────────────────────────────── */
 type RemediationResult = {
   strategy:      RemediationStrategy;
+  layer:         1 | 2 | 3;
   newCollateral: number;
   newDebt:       number;
   newHF:         number;
@@ -86,57 +87,94 @@ function remediate(
   policy: PolicySettings
 ): RemediationResult | null {
   const effective = policy.targetHF * (1 + policy.bufferPct / 100);
+  const targetDebt = (pos.collateralUsd * LIQ_THRESHOLD) / effective;
+  const neededRepayUsd = Math.max(0, pos.debtUsd - targetDebt);
 
-  // ── Strategy 1: REPAY (reduce debt)
-  // Solve for newDebt: (collateral × LIQ_THRESHOLD) / newDebt = effectiveTarget
-  // → newDebt = (collateral × LIQ_THRESHOLD) / effectiveTarget
-  if (policy.hotReserveEnabled || policy.flashLoanEnabled) {
-    const newDebt    = (pos.collateralUsd * LIQ_THRESHOLD) / effective;
-    const repayUsd   = Math.max(0, pos.debtUsd - newDebt);
-    const newHF      = calcHF(pos.collateralUsd, newDebt);
-    const source     = policy.hotReserveEnabled ? "Hot reserve" : "Flash loan";
+  if (neededRepayUsd <= 0) return null;
+
+  // ── Layer 1: Hot Reserve (Wallet Reserve)
+  const l1Active = (policy.l1Enabled ?? policy.hotReserveEnabled) && (policy.l1Approved ?? true);
+  const l1Cap = policy.l1Cap ?? 1000;
+  if (l1Active && l1Cap >= neededRepayUsd) {
+    const newDebt = targetDebt;
+    const newHF = calcHF(pos.collateralUsd, newDebt);
     return {
-      strategy:      "repay",
+      strategy:      "l1_hot",
+      layer:         1,
       newCollateral: pos.collateralUsd,
       newDebt,
       newHF,
-      actionLabel:   `Repay ${Math.round(repayUsd).toLocaleString()} USDC`,
-      amount:        Math.round(repayUsd),
+      actionLabel:   `Repay ${Math.round(neededRepayUsd).toLocaleString()} USDC`,
+      amount:        Math.round(neededRepayUsd),
       asset:         "USDC",
-      source,
+      source:        "Wallet Reserve (L1)",
     };
   }
 
-  // ── Strategy 2: DELEVERAGE (sell collateral, repay debt)
-  // We sell enough collateral → USDC → repay debt until HF = effectiveTarget.
-  // Let x = USD of collateral sold = USD of debt repaid (ignoring slippage for sim).
-  // HF = ((collateral - x) × LIQ_THRESHOLD) / (debt - x) = effectiveTarget
-  // Solve: (C - x) × L = T × (D - x)
-  //        CL - xL = TD - Tx
-  //        CL - TD = xL - Tx = x(L - T)
-  //        x = (CL - TD) / (L - T)
-  if (policy.deleverageEnabled) {
+  // ── Layer 2: Warm Reserve (Position Reserve e.g. ERC-4626 vault or aToken)
+  const l2Active = (policy.l2Enabled ?? false) && (policy.l2Approved ?? true);
+  const l2Cap = policy.l2Cap ?? 2500;
+  if (l2Active && l2Cap >= neededRepayUsd) {
+    const newDebt = targetDebt;
+    const newHF = calcHF(pos.collateralUsd, newDebt);
+    return {
+      strategy:      "l2_warm",
+      layer:         2,
+      newCollateral: pos.collateralUsd,
+      newDebt,
+      newHF,
+      actionLabel:   `Repay ${Math.round(neededRepayUsd).toLocaleString()} USDC`,
+      amount:        Math.round(neededRepayUsd),
+      asset:         "USDC",
+      source:        "Position Reserve (L2)",
+    };
+  }
+
+  // ── Layer 3: Flash Deleverage (L3 Flash Loan)
+  const l3Active = (policy.l3Enabled ?? (policy.flashLoanEnabled || policy.deleverageEnabled)) && (policy.l3Approved ?? true);
+  if (l3Active) {
     const C = pos.collateralUsd;
     const D = pos.debtUsd;
     const L = LIQ_THRESHOLD;
     const T = effective;
     const denom = L - T;
-    if (denom >= 0) return null; // can't solve (target too low)
-    const x          = (C * L - T * D) / denom;
-    const newCollateral = C - x;
-    const newDebt       = D - x;
-    if (newCollateral <= 0 || newDebt < 0) return null;
-    const newHF      = calcHF(newCollateral, Math.max(0.01, newDebt));
-    const slippageFactor = 1 - policy.slippageBps / 10_000;
+    if (denom < 0) {
+      const x = (C * L - T * D) / denom;
+      const newCollateral = C - x;
+      const newDebt = D - x;
+      if (newCollateral > 0 && newDebt >= 0) {
+        const newHF = calcHF(newCollateral, Math.max(0.01, newDebt));
+        const slippageFactor = 1 - (policy.slippageBps ?? 50) / 10_000;
+        return {
+          strategy:      "l3_flash",
+          layer:         3,
+          newCollateral,
+          newDebt,
+          newHF,
+          actionLabel:   `Deleverage ${Math.round(x).toLocaleString()} USD`,
+          amount:        Math.round(x * slippageFactor),
+          asset:         "ETH→USDC",
+          source:        "Flash Deleverage (L3)",
+        };
+      }
+    }
+  }
+
+  // Fallback: If L1 was active with partial cap
+  if (l1Active) {
+    const repayAmount = Math.min(neededRepayUsd, l1Cap);
+    const newDebt = Math.max(0, pos.debtUsd - repayAmount);
+    const newHF = calcHF(pos.collateralUsd, newDebt);
     return {
-      strategy:      "deleverage",
-      newCollateral,
+      strategy:      "l1_hot",
+      layer:         1,
+      newCollateral: pos.collateralUsd,
       newDebt,
       newHF,
-      actionLabel:   `Deleverage ${Math.round(x).toLocaleString()} USD`,
-      amount:        Math.round(x * slippageFactor),
-      asset:         "ETH→USDC",
-      source:        "Deleverage",
+      actionLabel:   `Repay ${Math.round(repayAmount).toLocaleString()} USDC`,
+      amount:        Math.round(repayAmount),
+      asset:         "USDC",
+      source:        "Wallet Reserve (L1)",
     };
   }
 
@@ -159,7 +197,10 @@ function makeHistoryEntry(
   const actionMap: Record<RemediationStrategy, HistoryEntry["action"]> = {
     repay:       "REPAY",
     top_up:      "SUPPLY_COLLATERAL",
-    deleverage:  "REPAY",
+    deleverage:  "DELEVERAGE",
+    l1_hot:      "REPAY",
+    l2_warm:     "REPAY",
+    l3_flash:    "DELEVERAGE",
   };
   return {
     id:         `live-${makeId()}`,
@@ -167,7 +208,8 @@ function makeHistoryEntry(
     positionId: pos.id,
     protocol:   pos.protocol,
     chain:      pos.chain,
-    action:     actionMap[result.strategy],
+    action:     actionMap[result.strategy] ?? "REPAY",
+    layer:      result.layer,
     amount:     String(result.amount),
     asset:      result.asset,
     source:     result.source,
@@ -211,7 +253,10 @@ export function SimulationEngine() {
   const { state, dispatch } = useSimulation();
 
   const stateRef       = useRef(state);
-  stateRef.current     = state;
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const baseEthRef     = useRef(3_400);
   const cooldownRef    = useRef<Map<string, number>>(new Map());
@@ -321,7 +366,7 @@ export function SimulationEngine() {
               if (s.policy.notifTriggerFired)
                 sendTelegramAlert({ type: "trigger_fired",     positionId: pos.id, hf: pos.hf,         triggerAt: policy.triggerHF, protocol: pos.protocol, chain: pos.chain });
               if (s.policy.notifExecSuccess)
-                sendTelegramAlert({ type: "execution_success", positionId: pos.id, hf: result.newHF,   targetHf:  result.newHF,     protocol: pos.protocol, chain: pos.chain, amount: result.amount, asset: result.asset });
+                sendTelegramAlert({ type: "execution_success", positionId: pos.id, hf: result.newHF,   targetHf:  policy.targetHF,  protocol: pos.protocol, chain: pos.chain, amount: result.amount, asset: result.asset });
             }
           } else {
             if (s.telegramEnabled && s.policy.notifExecFailed) {
