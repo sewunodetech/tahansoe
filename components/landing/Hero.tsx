@@ -1,122 +1,92 @@
-import Link from "next/link";
-import { Eyebrow } from "@/components/ui/eyebrow";
-import { Stat } from "@/components/ui/stat";
-import { ArrowUpRight, Send, ShieldCheck, Zap } from "lucide-react";
-import { TELEGRAM_BOT_USERNAME } from "@/lib/telegram";
-
-export function Hero() {
-  const telegramBot = TELEGRAM_BOT_USERNAME;
+/**
+ * Three nested arcs = the three protection layers sitting between the
+ * position (centre) and the liquidation line (bottom edge).
+ */
+function LayersIllustration() {
+  const rings = [
+    { r: 120, label: "L1" },
+    { r: 190, label: "L2" },
+    { r: 260, label: "L3" },
+  ];
+  const ticks = Array.from({ length: 37 }, (_, i) => (i * 180) / 36);
 
   return (
-    <section className="relative min-h-[90dvh] flex flex-col justify-center overflow-hidden pt-24 pb-16 md:pt-32 md:pb-24 border-b border-[var(--border)]">
-      <div
-        className="absolute inset-0 grid-lines opacity-40 pointer-events-none"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute inset-0 bg-radial from-[var(--color-brand-midnight)]/15 via-transparent to-transparent pointer-events-none"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-[var(--bg)] to-transparent pointer-events-none"
-        aria-hidden="true"
-      />
+    <svg
+      viewBox="-330 -330 660 400"
+      className="absolute left-1/2 top-[30%] md:top-1/2 -translate-x-1/2 -translate-y-[78%] w-[560px] md:w-[640px] max-w-none opacity-90"
+      aria-hidden="true"
+    >
+      {rings.map(({ r }, i) => (
+        <g key={r}>
+          <path
+            d={`M ${-r} 0 A ${r} ${r} 0 0 1 ${r} 0`}
+            fill="none"
+            stroke="var(--brand)"
+            strokeOpacity={0.55 - i * 0.12}
+            strokeWidth={1}
+          />
+          {ticks.map((deg) => {
+            const a = (deg * Math.PI) / 180;
+            const x = Math.cos(a) * r;
+            const y = -Math.sin(a) * r;
+            return (
+              <circle key={deg} cx={x} cy={y} r={1.4} fill="var(--brand)" fillOpacity={0.45 - i * 0.1} />
+            );
+          })}
+        </g>
+      ))}
+      {ticks.filter((_, i) => i % 3 === 0).map((deg) => {
+        const a = (deg * Math.PI) / 180;
+        return (
+          <line
+            key={deg}
+            x1={Math.cos(a) * 40}
+            y1={-Math.sin(a) * 40}
+            x2={Math.cos(a) * 300}
+            y2={-Math.sin(a) * 300}
+            stroke="var(--text-tertiary)"
+            strokeOpacity={0.25}
+            strokeWidth={0.75}
+          />
+        );
+      })}
+      <circle cx={0} cy={0} r={6} fill="var(--brand)" />
+      <line x1={-320} y1={0} x2={320} y2={0} stroke="var(--text-tertiary)" strokeOpacity={0.4} strokeDasharray="3 5" />
+    </svg>
+  );
+}
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-          <div className="lg:col-span-7 flex flex-col items-start gap-6">
-            <Eyebrow dot variant="brand">
-              Autonomous Liquidation Defense · Arbitrum Sepolia
-            </Eyebrow>
+function HeroStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col items-end gap-1.5">
+      <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--text-secondary)]">{label}</span>
+      <span className="font-display text-2xl sm:text-[28px] tracking-tight text-[var(--text-primary)] tabular-nums">
+        {value}
+      </span>
+    </div>
+  );
+}
 
-            <h1 className="font-display font-light text-4xl sm:text-5xl lg:text-6xl tracking-tight text-[var(--text-primary)] leading-[1.12]">
-              Three layers between your loan and liquidation.
-            </h1>
+export function Hero() {
+  return (
+    <section className="pt-20 pb-24 md:pb-32">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
+        <div className="relative overflow-hidden border border-[var(--grid-line)] grid-lines min-h-[780px] md:min-h-[640px] flex flex-col justify-end">
+          <LayersIllustration />
 
-            <p className="text-base sm:text-lg text-[var(--text-secondary)] max-w-2xl leading-relaxed">
-              Tahansoe watches your Health Factor 24/7 and triggers self-approved repayments from wallet reserves, vault shares, or flash loans before liquidators can seize your collateral.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-2 h-11 px-6 rounded-lg bg-[var(--brand)] text-white hover:bg-[var(--color-brand-400)] active:bg-[var(--color-brand-midnight)] text-sm font-medium transition-all shadow-xs"
-              >
-                <span>Launch app</span>
-                <ArrowUpRight className="size-4" />
-              </Link>
-
-              <a
-                href={`https://t.me/${telegramBot}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 h-11 px-5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-strong)] text-sm font-medium transition-all"
-              >
-                <Send className="size-4 text-[var(--brand)]" />
-                <span>Join on Telegram</span>
-              </a>
+          <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-12 p-6 sm:p-10 md:p-16">
+            <div className="max-w-md">
+              <h1 className="font-display font-light text-[40px] sm:text-[52px] leading-[1.12] tracking-[-0.02em] text-[var(--text-primary)]">
+                Three layers between your loan and liquidation
+              </h1>
+              <p className="mt-6 text-[15px] leading-relaxed text-[var(--text-secondary)] max-w-sm">
+                Approve your own safety net. Tahansoe repays your Aave debt before liquidators can.
+              </p>
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-[var(--text-tertiary)] pt-2 font-mono">
-              <ShieldCheck className="size-4 text-[var(--safe)] shrink-0" />
-              <span>Non-custodial smart contracts · You approve every layer · Revoke anytime</span>
-            </div>
-          </div>
-
-          <div className="lg:col-span-5 flex flex-col gap-4">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/80 backdrop-blur-md p-6 sm:p-8 flex flex-col gap-6 shadow-sm">
-              <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
-                <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-tertiary)] font-medium">
-                  Protocol Metrics
-                </span>
-                <span className="font-mono text-[11px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--brand)] border border-[var(--border)]">
-                  Testnet / Demo
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-6">
-                <div className="flex items-center justify-between">
-                  <Stat
-                    label="Protected Debt"
-                    value="$12.4M"
-                    sub="Cumulative collateral protected"
-                    size="md"
-                  />
-                  <div className="size-8 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] flex items-center justify-center text-[var(--brand)] shrink-0">
-                    <ShieldCheck className="size-4" />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 lg:pt-0 border-t sm:border-t-0 lg:border-t border-[var(--border)]">
-                  <Stat
-                    label="Positions Guarded"
-                    value="1,420"
-                    sub="Active loan policies"
-                    size="md"
-                  />
-                  <div className="size-8 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] flex items-center justify-center text-[var(--safe)] shrink-0">
-                    <Zap className="size-4" />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 lg:pt-0 border-t sm:border-t-0 lg:border-t border-[var(--border)]">
-                  <Stat
-                    label="Liquidations Avoided"
-                    value="342"
-                    sub="Automated repay executions"
-                    size="md"
-                  />
-                  <div className="size-8 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] flex items-center justify-center text-[var(--warning)] shrink-0">
-                    <ArrowUpRight className="size-4" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-[var(--border)]">
-                <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed">
-                  Automated risk defense — not a 100% guarantee against extreme volatility or network congestion.
-                </p>
-              </div>
+            <div className="flex flex-col gap-6">
+              <HeroStat label="Protected debt · demo" value="$12,400,000" />
+              <HeroStat label="Liquidations avoided · demo" value="342" />
             </div>
           </div>
         </div>

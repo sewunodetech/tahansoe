@@ -27,7 +27,7 @@ export function ThemeToggle({ className, showLabel = false, ...props }: ThemeTog
   const { theme, setTheme, resolvedTheme } = useTheme();
   const mounted = useMounted();
 
-  const currentTheme = theme ?? resolvedTheme ?? "dark";
+  const currentTheme = theme ?? resolvedTheme ?? "light";
   const isDark = currentTheme === "dark";
 
   const toggle = () => {

@@ -71,8 +71,7 @@
    var(--…) references continue to work without edits.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── DARK (default) ─────────────────────────────────────────────────────── */
-:root,
+/* ── DARK ───────────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
   /* Surfaces */
   --bg:              var(--color-neutral-950);
@@ -85,6 +84,7 @@
   --border:          rgba(255,255,255,0.07);
   --border-strong:   rgba(255,255,255,0.12);
   --border-focus:    var(--color-brand-500);
+  --grid-line:       rgba(121,168,255,0.07);
 
   /* Foreground text */
   --text-primary:    var(--color-neutral-050);
@@ -151,11 +151,12 @@
   color-scheme: dark;
 }
 
-/* ── LIGHT ──────────────────────────────────────────────────────────────── */
+/* ── LIGHT (default) ────────────────────────────────────────────────────── */
+:root:not([data-theme="dark"]),
 [data-theme="light"] {
   /* Surfaces */
-  --bg:              var(--color-neutral-050);
-  --bg-subtle:       var(--color-neutral-100);
+  --bg:              var(--color-neutral-100);
+  --bg-subtle:       var(--color-neutral-050);
   --bg-elevated:     #ffffff;
   --bg-overlay:      var(--color-neutral-150);
   --bg-hover:        var(--color-neutral-150);
@@ -164,6 +165,7 @@
   --border:          var(--color-neutral-200);
   --border-strong:   var(--color-neutral-300);
   --border-focus:    var(--color-brand-500);
+  --grid-line:       rgba(43,118,255,0.13);
 
   /* Foreground text */
   --text-primary:    var(--color-neutral-990);
@@ -206,7 +208,7 @@
   --danger-border:   var(--color-error-200);
 
   /* shadcn tokens */
-  --background:      var(--color-neutral-050);
+  --background:      var(--color-neutral-100);
   --foreground:      var(--color-neutral-990);
   --card:            #ffffff;
   --card-foreground: var(--color-neutral-990);
@@ -320,19 +322,36 @@
    ══════════════════════════════════════════════════════════════════════════ */
 @layer components {
 
-/* ── Morpho hero grid lines ─────────────────────────────────────────────── */
+/* ── Grid lines (hero frame, brand panels) ──────────────────────────────── */
 .grid-lines {
   background-image:
-    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-  background-size: 64px 64px;
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 22px 22px;
+  background-position: -1px -1px;
 }
 
-[data-theme="light"] .grid-lines {
+/* ── Brand panel: blue gradient square used as section visual ───────────── */
+.brand-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 120% at 30% 20%, var(--color-brand-100) 0%, var(--color-brand-300) 55%, var(--color-brand-400) 100%);
+}
+.brand-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
   background-image:
-    linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
-  background-size: 64px 64px;
+    linear-gradient(rgba(255,255,255,0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.16) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(70% 70% at 50% 50%, #000 40%, transparent 100%);
+  pointer-events: none;
+}
+.brand-panel--midnight {
+  background:
+    radial-gradient(120% 120% at 30% 20%, var(--color-brand-400) 0%, var(--color-brand-midnight) 70%);
 }
 
 /* ── Eyebrow pill (mono uppercase, no background) ───────────────────────── */

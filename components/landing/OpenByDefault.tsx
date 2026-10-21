@@ -1,123 +1,80 @@
-import { Eyebrow } from "@/components/ui/eyebrow";
-import { ArrowUpRight, Code2, ExternalLink } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { Tag } from "./Tag";
 
 const CONTRACT_ADDRESS = "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E";
 const ARBISCAN_URL = `https://sepolia.arbiscan.io/address/${CONTRACT_ADDRESS}`;
 
-const CODE_SNIPPET = `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+const CODE_LINES = [
+  "function protect(address user) external nonReentrant {",
+  "    Policy memory policy = policies[user];",
+  "    uint256 hf = healthFactor(user);",
+  '    require(hf < policy.triggerHf, "HF above trigger");',
+  "",
+  "    uint256 amount = quoteRepay(user, policy.targetHf);",
+  "    if (amount > policy.maxRepayCap) amount = policy.maxRepayCap;",
+  "",
+  "    debt.transferFrom(user, address(this), amount);",
+  "    AAVE_POOL.repay(address(debt), amount, 2, user);",
+  '    require(healthFactor(user) > hf, "HF did not improve");',
+  "}",
+];
 
-import { IPool } from "./interfaces/IPool.sol";
-import { IERC20 } from "./interfaces/IERC20.sol";
-
-contract TahansoeGuardian {
-    struct Policy {
-        bool enabled;
-        address debtAsset;
-        uint128 triggerHf;  // 1.30e18
-        uint128 targetHf;   // 1.60e18
-        uint256 maxRepayCap;
-    }
-
-    mapping(address => Policy) public policies;
-
-    /// @notice Anyone can trigger remediation once HF drops below policy threshold.
-    /// @dev Protects user by repaying debt from pre-approved reserves.
-    function protect(address user) external nonReentrant {
-        Policy memory policy = policies[user];
-        require(policy.enabled, "Policy not active");
-
-        uint256 currentHf = getHealthFactor(user);
-        require(currentHf < policy.triggerHf, "Health factor above trigger");
-
-        uint256 repayAmount = quoteRepay(user, policy.targetHf);
-        if (repayAmount > policy.maxRepayCap) {
-            repayAmount = policy.maxRepayCap;
-        }
-
-        // Pull pre-approved debt token and repay Aave debt on behalf of user
-        IERC20(policy.debtAsset).transferFrom(user, address(this), repayAmount);
-        IERC20(policy.debtAsset).approve(address(AAVE_POOL), repayAmount);
-        AAVE_POOL.repay(policy.debtAsset, repayAmount, 2, user);
-
-        require(getHealthFactor(user) > currentHf, "HF did not improve");
-        emit PositionProtected(user, currentHf, getHealthFactor(user), repayAmount);
-    }
-}`;
+const facts = [
+  { title: "Non-custodial", body: "Funds only ever repay your own debt.", href: ARBISCAN_URL, cta: "View contract" },
+  { title: "Revoke anytime", body: "Set any approval back to zero in one click.", href: "/dashboard/protection", cta: "Manage" },
+  { title: "Not a guarantee", body: "A flash crash can still outrun a keeper.", href: "#faq", cta: "Read more" },
+];
 
 export function OpenByDefault() {
   return (
-    <section className="py-20 md:py-28 border-b border-[var(--border)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
-          <div className="lg:col-span-5 flex flex-col gap-6">
-            <Eyebrow dot variant="brand">
-              Transparency
-            </Eyebrow>
+    <section id="contract" className="py-20 md:py-28">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
+        <div className="flex flex-col items-center text-center">
+          <Tag>Contract</Tag>
+          <h2 className="mt-4 font-display text-[28px] sm:text-[34px] tracking-[-0.01em] text-[var(--text-primary)]">
+            Open by default
+          </h2>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            Anyone can read the rules. Anyone can call <code className="font-mono text-[13px]">protect()</code>.
+          </p>
+        </div>
 
-            <h2 className="font-display font-light text-3xl sm:text-4xl lg:text-5xl tracking-tight text-[var(--text-primary)] leading-tight">
-              Open by default. Verified on-chain.
-            </h2>
-
-            <div className="space-y-4 text-sm text-[var(--text-secondary)] leading-relaxed">
-              <p>
-                Tahansoe is built on immutable, permissionless primitives. Any keeper or automated scheduler can invoke{" "}
-                <code className="font-mono text-xs text-[var(--text-primary)] bg-[var(--bg-elevated)] px-1.5 py-0.5 rounded border border-[var(--border)]">
-                  protect(user)
-                </code>{" "}
-                when your Health Factor breaches the configured trigger.
-              </p>
-              <p>
-                The contract can never transfer tokens to an unauthorized address, never borrows funds in your name without an atomic rebalance, and cannot block you from revoking approvals at any time.
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-5 flex flex-col gap-3">
-              <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-tertiary)]">
-                Arbitrum Sepolia Deployment
-              </span>
-              <div className="flex items-center justify-between gap-2">
-                <code className="font-mono text-xs text-[var(--brand)] break-all select-all">
-                  {CONTRACT_ADDRESS}
-                </code>
+        <div className="mt-10 max-w-[760px] mx-auto border border-[var(--border)] bg-[var(--bg-elevated)] rounded-[8px] overflow-hidden">
+          <div className="flex items-center justify-between h-10 px-4 border-b border-[var(--border)]">
+            <span className="font-mono text-[11px] text-[var(--text-secondary)]">TahansoeGuardian.sol</span>
+            <a
+              href={ARBISCAN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-mono text-[11px] text-[var(--text-tertiary)] hover:text-[var(--brand)]"
+            >
+              Arbiscan <ArrowUpRight className="size-3" />
+            </a>
+          </div>
+          <pre className="p-4 sm:p-5 overflow-x-auto font-mono text-[12px] leading-[1.7]">
+            {CODE_LINES.map((line, i) => (
+              <div key={i} className="flex">
+                <span className="w-8 shrink-0 select-none text-[var(--text-placeholder)]">{i + 1}</span>
+                <span className="text-[var(--text-secondary)] whitespace-pre">{line}</span>
               </div>
+            ))}
+          </pre>
+        </div>
+
+        <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-10 max-w-[900px] mx-auto text-center">
+          {facts.map(({ title, body, href, cta }) => (
+            <div key={title}>
+              <p className="text-[15px] text-[var(--text-primary)]">{title}</p>
+              <p className="mt-1 text-[13px] text-[var(--text-secondary)]">{body}</p>
               <a
-                href={ARBISCAN_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--text-primary)] hover:text-[var(--brand)] transition-colors pt-1"
+                href={href}
+                {...(href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                className="mt-3 inline-flex items-center gap-1 text-[13px] text-[var(--brand)]"
               >
-                <span>View on Arbiscan</span>
-                <ExternalLink className="size-3.5" />
+                {cta} <ArrowUpRight className="size-3.5" />
               </a>
             </div>
-          </div>
-
-          <div className="lg:col-span-7 flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] overflow-hidden shadow-xs">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border)] bg-[var(--bg)]">
-              <div className="flex items-center gap-2">
-                <Code2 className="size-4 text-[var(--text-tertiary)]" />
-                <span className="font-mono text-xs text-[var(--text-secondary)] font-medium">
-                  TahansoeGuardian.sol
-                </span>
-              </div>
-              <a
-                href={ARBISCAN_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] font-mono text-[var(--brand)] hover:underline"
-              >
-                <span>Contract Code</span>
-                <ArrowUpRight className="size-3" />
-              </a>
-            </div>
-
-            <div className="p-4 sm:p-6 overflow-x-auto bg-[var(--bg)]/50">
-              <pre className="font-mono text-[11px] sm:text-xs leading-relaxed text-[var(--text-secondary)]">
-                <code>{CODE_SNIPPET}</code>
-              </pre>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>
