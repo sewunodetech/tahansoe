@@ -2,7 +2,8 @@ import * as React from "react";
 import { ellipse, iso, pathThrough, poly, type P3 } from "./iso";
 import type { Material } from "./Defs";
 
-const EDGE = "rgba(255,255,255,0.75)";
+const EDGE = "var(--geo-edge, rgba(255,255,255,0.75))";
+const EDGE_TOP = "var(--geo-edge-highlight, var(--geo-edge, rgba(255,255,255,0.75)))";
 
 type BoxProps = {
   at: P3;
@@ -18,10 +19,10 @@ export function IsoBox({ at: [x, y, z], size: [w, d, h], m = "glass", opacity = 
   const left: P3[] = [[x, y + d, z], [x + w, y + d, z], [x + w, y + d, z + h], [x, y + d, z + h]];
   const right: P3[] = [[x + w, y, z], [x + w, y + d, z], [x + w, y + d, z + h], [x + w, y, z + h]];
   return (
-    <g opacity={opacity} className={className} strokeLinejoin="round">
-      <polygon points={poly(left)} fill={`url(#geo-${m}-left)`} stroke={EDGE} strokeWidth={0.8} />
-      <polygon points={poly(right)} fill={`url(#geo-${m}-right)`} stroke={EDGE} strokeWidth={0.8} />
-      <polygon points={poly(top)} fill={`url(#geo-${m}-top)`} stroke={EDGE} strokeWidth={0.8} />
+    <g opacity={opacity} className={className} strokeLinejoin="round" strokeLinecap="round">
+      <polygon points={poly(left)} fill={`url(#geo-${m}-left)`} stroke={EDGE} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+      <polygon points={poly(right)} fill={`url(#geo-${m}-right)`} stroke={EDGE} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+      <polygon points={poly(top)} fill={`url(#geo-${m}-top)`} stroke={EDGE_TOP} strokeWidth={1} vectorEffect="non-scaling-stroke" />
     </g>
   );
 }
@@ -39,9 +40,9 @@ export function IsoCylinder({
   const [, cyBot] = iso(x, y, z);
   const side = `M${cx - rx},${cyTop} L${cx - rx},${cyBot} A${rx},${ry} 0 0 0 ${cx + rx},${cyBot} L${cx + rx},${cyTop} Z`;
   return (
-    <g className={className}>
-      <path d={side} fill={`url(#geo-${m}-right)`} stroke={EDGE} strokeWidth={0.8} />
-      <ellipse cx={cx} cy={cyTop} rx={rx} ry={ry} fill={`url(#geo-${m}-top)`} stroke={EDGE} strokeWidth={0.8} />
+    <g className={className} strokeLinejoin="round" strokeLinecap="round">
+      <path d={side} fill={`url(#geo-${m}-right)`} stroke={EDGE} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+      <ellipse cx={cx} cy={cyTop} rx={rx} ry={ry} fill={`url(#geo-${m}-top)`} stroke={EDGE_TOP} strokeWidth={1} vectorEffect="non-scaling-stroke" />
     </g>
   );
 }
@@ -64,13 +65,13 @@ export function IsoSphere({ at, r, glass = false, className }: { at: P3; r: numb
   return (
     <g className={className}>
       <ellipse cx={cx} cy={cy + r + 4} rx={r * 0.9} ry={r * 0.28} fill="url(#geo-floor)" />
-      <circle cx={cx} cy={cy} r={r} fill={`url(#geo-sphere-${glass ? "glass" : "pearl"})`} stroke={EDGE} strokeWidth={0.8} />
+      <circle cx={cx} cy={cy} r={r} fill={`url(#geo-sphere-${glass ? "glass" : "pearl"})`} stroke={EDGE_TOP} strokeWidth={1} vectorEffect="non-scaling-stroke" />
     </g>
   );
 }
 
 /** Flat horizontal ring on the floor (flash-loan loop, radar sweep). */
-export function IsoRing({ at, r, width = 2, dashed = false, className }: {
+export function IsoRing({ at, r, width = 1.5, dashed = false, className }: {
   at: P3; r: number; width?: number; dashed?: boolean; className?: string;
 }) {
   const { rx, ry } = ellipse(r);
@@ -84,7 +85,8 @@ export function IsoRing({ at, r, width = 2, dashed = false, className }: {
       fill="none"
       stroke="url(#geo-iridescent)"
       strokeWidth={width}
-      strokeDasharray={dashed ? "4 6" : undefined}
+      strokeDasharray={dashed ? "5 6" : undefined}
+      vectorEffect="non-scaling-stroke"
       className={className}
     />
   );
@@ -102,35 +104,93 @@ export function FlowPath({ from, to, lift = 40, danger = false }: { from: P3; to
   const d = pathThrough(from, to, lift);
   return (
     <g fill="none">
-      <path d={d} stroke={danger ? "#ff7b8a" : "url(#geo-iridescent)"} strokeOpacity={0.35} strokeWidth={1.5} />
-      <path d={d} stroke={danger ? "#db3655" : "url(#geo-iridescent)"} strokeWidth={3} strokeLinecap="round" strokeDasharray="1 12" className="geo-flow" />
+      <path
+        d={d}
+        stroke={danger ? "var(--danger)" : "url(#geo-iridescent)"}
+        strokeOpacity={0.35}
+        strokeWidth={1.5}
+        vectorEffect="non-scaling-stroke"
+      />
+      <path
+        d={d}
+        stroke={danger ? "var(--danger)" : "url(#geo-iridescent)"}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeDasharray="2 12"
+        vectorEffect="non-scaling-stroke"
+        className="geo-flow"
+      />
     </g>
   );
 }
 
 /** Dashed line on the floor, e.g. the liquidation line. */
-export function IsoLine({ from, to, color = "#db3655", dashed = true }: { from: P3; to: P3; color?: string; dashed?: boolean }) {
+export function IsoLine({ from, to, color = "var(--danger)", dashed = true }: { from: P3; to: P3; color?: string; dashed?: boolean }) {
   return (
-    <path d={pathThrough(from, to)} stroke={color} strokeWidth={1.5} strokeDasharray={dashed ? "5 5" : undefined} fill="none" />
+    <path
+      d={pathThrough(from, to)}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeDasharray={dashed ? "5 5" : undefined}
+      vectorEffect="non-scaling-stroke"
+      fill="none"
+    />
   );
 }
 
 /** Small mono label anchored at a world point. */
-export function IsoLabel({ at, children, dy = 0, anchor = "middle", tone = "muted" }: {
-  at: P3; children: React.ReactNode; dy?: number; anchor?: "start" | "middle" | "end"; tone?: "muted" | "strong" | "danger";
+export function IsoLabel({ at, children, dy = 0, anchor = "middle", tone = "muted", badge = true }: {
+  at: P3; children: React.ReactNode; dy?: number; anchor?: "start" | "middle" | "end"; tone?: "muted" | "strong" | "danger" | "brand" | "safe" | "warn"; badge?: boolean;
 }) {
   const [x, y] = iso(...at);
-  const fill = tone === "danger" ? "#db3655" : tone === "strong" ? "var(--text-primary)" : "var(--text-tertiary)";
+  const textY = y + dy;
+  const fill =
+    tone === "danger"
+      ? "var(--danger)"
+      : tone === "brand"
+      ? "var(--brand)"
+      : tone === "safe"
+      ? "var(--safe)"
+      : tone === "warn"
+      ? "var(--warning)"
+      : tone === "strong"
+      ? "var(--text-primary)"
+      : "var(--text-secondary)";
+
+  const textStr = typeof children === "string" ? children : "";
+  const charCount = textStr.length || 8;
+  const badgeWidth = Math.max(36, Math.round(charCount * 7.8 + 18));
+  const badgeHeight = 22;
+  const badgeX = anchor === "middle" ? x - badgeWidth / 2 : anchor === "end" ? x - badgeWidth : x;
+  const badgeY = textY - badgeHeight / 2;
+
   return (
-    <text
-      x={x}
-      y={y + dy}
-      textAnchor={anchor}
-      fill={fill}
-      style={{ font: "500 9px var(--font-geist-mono), ui-monospace, monospace", letterSpacing: "0.08em" }}
-    >
-      {children}
-    </text>
+    <g className="geo-label select-none pointer-events-none">
+      {badge && (
+        <rect
+          x={badgeX}
+          y={badgeY}
+          width={badgeWidth}
+          height={badgeHeight}
+          rx={5}
+          fill="var(--geo-label-bg)"
+          stroke="var(--geo-label-border)"
+          strokeWidth={1}
+          vectorEffect="non-scaling-stroke"
+          style={{ filter: "drop-shadow(0 1px 2px var(--geo-label-shadow))" }}
+        />
+      )}
+      <text
+        x={x}
+        y={textY}
+        textAnchor={anchor}
+        dominantBaseline="central"
+        fill={fill}
+        style={{ font: "600 12px var(--font-geist-mono), ui-monospace, monospace", letterSpacing: "0.06em" }}
+      >
+        {children}
+      </text>
+    </g>
   );
 }
 
@@ -144,7 +204,14 @@ export function IsoPhone({ at: [x, y, z], className }: { at: P3; className?: str
     <g className={className}>
       <IsoBox at={[x, y, z]} size={[3, 28, 54]} m="pearl" />
       {lines.map(([a, b], i) => (
-        <path key={i} d={pathThrough([a[0] - 1, a[1], a[2]], [b[0] - 1, b[1], b[2]])} stroke="url(#geo-iridescent)" strokeWidth={2.5} strokeLinecap="round" />
+        <path
+          key={i}
+          d={pathThrough([a[0] - 1, a[1], a[2]], [b[0] - 1, b[1], b[2]])}
+          stroke="url(#geo-iridescent)"
+          strokeWidth={2}
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+        />
       ))}
     </g>
   );
@@ -155,7 +222,14 @@ export function Scene({ children, label, className, viewBox = "-180 -150 360 300
   children: React.ReactNode; label: string; className?: string; viewBox?: string;
 }) {
   return (
-    <svg viewBox={viewBox} role="img" aria-label={label} className={className ?? "w-full h-auto"}>
+    <svg
+      viewBox={viewBox}
+      role="img"
+      aria-label={label}
+      shapeRendering="geometricPrecision"
+      className={className ?? "w-full h-auto"}
+    >
+      <title>{label}</title>
       {children}
     </svg>
   );
