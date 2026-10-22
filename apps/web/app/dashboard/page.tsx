@@ -23,8 +23,11 @@ import { LayerBadge } from "@/components/ui/layer-badge";
 import { ZoneBar } from "@/components/ui/zone-bar";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { useDashboardMode } from "@/lib/dashboard-mode";
+import { LivePage } from "@/components/dashboard/live/live-page";
+import { LiveOverview } from "@/components/dashboard/live/live-overview";
 
-export default function DashboardPage() {
+function DemoDashboardPage() {
   const router = useRouter();
   const {
     position,
@@ -614,5 +617,15 @@ export default function DashboardPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  const { isLive } = useDashboardMode();
+  if (!isLive) return <DemoDashboardPage />;
+  return (
+    <LivePage eyebrow="Overview" title="Position Health & Protection" subtitle="Your Aave V3 position and what the Guardian holds for it.">
+      <LiveOverview />
+    </LivePage>
   );
 }

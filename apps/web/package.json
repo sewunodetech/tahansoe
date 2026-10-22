@@ -7,6 +7,7 @@
     "build": "next build",
     "prebuild": "npm run build:simulation",
     "build:simulation": "npm --prefix simulation ci && npm --prefix simulation run build",
+    "abi": "node scripts/export-guardian-abi.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit"

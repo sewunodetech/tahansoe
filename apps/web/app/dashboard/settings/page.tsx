@@ -18,6 +18,8 @@ import { NotificationsSection } from "@/components/dashboard/settings/notificati
 import { ThemeSection } from "@/components/dashboard/settings/theme-section";
 import { DemoModeSection } from "@/components/dashboard/settings/demo-mode-section";
 import { WalletSection } from "@/components/dashboard/settings/wallet-section";
+import Link from "next/link";
+import { useDashboardMode } from "@/lib/dashboard-mode";
 
 export default function SettingsPage() {
   const {
@@ -30,6 +32,7 @@ export default function SettingsPage() {
   } = useSimulation();
 
   const { policy, telegramEnabled } = state;
+  const { isLive } = useDashboardMode();
   const [flash, setFlash] = useState(false);
 
   function handleUpdatePolicy(patch: Partial<PolicySettings>) {
@@ -85,6 +88,16 @@ export default function SettingsPage() {
         {/* Left column */}
         <div className="space-y-6">
           {/* Thresholds */}
+          {isLive && (
+            <div className="p-3.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border)] text-xs text-[var(--text-secondary)]">
+              These thresholds only drive the demo simulator. Your live trigger and target are stored on-chain in the
+              Guardian; change them on{" "}
+              <Link href="/dashboard/protection" className="text-[var(--brand)] hover:underline">
+                Protection
+              </Link>
+              .
+            </div>
+          )}
           <ThresholdsSection policy={policy} onUpdatePolicy={handleUpdatePolicy} />
 
           {/* Theme */}

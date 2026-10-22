@@ -8,8 +8,11 @@ import { Button } from "@/components/ui/button";
 import { ActivityStats } from "@/components/dashboard/activity/activity-stats";
 import { HfRecoveryChart } from "@/components/dashboard/activity/hf-recovery-chart";
 import { ActivityTable } from "@/components/dashboard/activity/activity-table";
+import { useDashboardMode } from "@/lib/dashboard-mode";
+import { LivePage } from "@/components/dashboard/live/live-page";
+import { LiveActivity } from "@/components/dashboard/live/live-activity";
 
-export default function ActivityPage() {
+function DemoActivityPage() {
   const { activity, actions } = useProtection();
 
   const recoveryData = useMemo(() => {
@@ -79,5 +82,15 @@ export default function ActivityPage() {
       {/* Execution Table */}
       <ActivityTable entries={activity} />
     </div>
+  );
+}
+
+export default function ActivityPage() {
+  const { isLive } = useDashboardMode();
+  if (!isLive) return <DemoActivityPage />;
+  return (
+    <LivePage eyebrow="Audit Trail" title="Guardian Activity" subtitle="Every policy change and repay the Guardian made for this wallet.">
+      <LiveActivity />
+    </LivePage>
   );
 }

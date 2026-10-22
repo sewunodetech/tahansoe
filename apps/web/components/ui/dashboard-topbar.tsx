@@ -7,6 +7,7 @@ import { PanelLeft, Search, Wallet, ChevronRight, Pause, Play } from "lucide-rea
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useTour } from "@/components/ui/onboarding-tour";
 import { useProtection } from "@/hooks/useProtection";
+import { useDashboardMode, type DashboardMode } from "@/lib/dashboard-mode";
 
 export interface DashboardTopbarProps {
   collapsed?: boolean;
@@ -36,6 +37,7 @@ export function DashboardTopbar({
   const pathname = usePathname();
   const { isPaused, actions, ethPrice } = useProtection();
   const { restart: restartTour } = useTour();
+  const { mode, setMode, isLive } = useDashboardMode();
 
   const currentLabel = ROUTE_LABELS[pathname] ?? "Dashboard";
   const shortAddress = address
@@ -80,44 +82,63 @@ export function DashboardTopbar({
         </nav>
       </div>
 
-      {/* ── Right: Live data, Demo pill, Theme, Tour, Wallet ── */}
+      {/* ── Right: Live/Demo switch, simulation controls, Theme, Tour, Wallet ── */}
       <div className="flex items-center gap-2">
-        {/* ETH Price Ticker */}
-        <div className="hidden lg:flex items-center gap-1.5 h-7 px-2.5 rounded-md font-mono text-[11px] bg-[var(--bg-subtle)] border border-[var(--border)]">
-          <span className="text-[var(--text-tertiary)]">ETH</span>
-          <span className="text-[var(--text-secondary)]">
-            ${ethPrice.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-          </span>
-          <span className={isEthUp ? "text-[var(--safe)]" : "text-[var(--danger)]"}>
-            {isEthUp ? "▲" : "▼"} {Math.abs(ethPrice.change24h).toFixed(2)}%
-          </span>
+        {/* Live / Demo switch */}
+        <div
+          role="radiogroup"
+          aria-label="Data source"
+          className="flex items-center h-7 p-0.5 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] text-[11px] font-mono"
+        >
+          {(["live", "demo"] as DashboardMode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={mode === m}
+              onClick={() => setMode(m)}
+              title={m === "live" ? "Your real Aave position on Arbitrum Sepolia" : "Simulated position and market"}
+              className={`flex items-center gap-1.5 h-6 px-2.5 rounded-full transition-colors cursor-pointer ${
+                mode === m
+                  ? "bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-sm"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  m === "live" ? "bg-[var(--safe)]" : "bg-[var(--warning)]"
+                }`}
+              />
+              {m === "live" ? "Live" : "Demo"}
+            </button>
+          ))}
         </div>
 
-        {/* Demo Mode Pill / Ticker */}
-        <div
-          className="flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] text-[11px] font-mono"
-          title="Tahansoe is running in simulated demo mode on Arbitrum"
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${
-              isPaused ? "bg-[var(--text-tertiary)]" : "bg-[var(--safe)] animate-pulse"
-            }`}
-          />
-          <span className="text-[var(--text-secondary)] font-medium">Demo</span>
-          <button
-            type="button"
-            onClick={() => actions.setPaused(!isPaused)}
-            className="ml-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors p-0.5"
-            title={isPaused ? "Resume simulation ticker" : "Pause simulation ticker"}
-            aria-label={isPaused ? "Resume simulation" : "Pause simulation"}
-          >
-            {isPaused ? (
-              <Play className="w-2.5 h-2.5 fill-current" />
-            ) : (
-              <Pause className="w-2.5 h-2.5 fill-current" />
-            )}
-          </button>
-        </div>
+        {!isLive && (
+          <>
+            {/* ETH Price Ticker (simulated) */}
+            <div className="hidden lg:flex items-center gap-1.5 h-7 px-2.5 rounded-md font-mono text-[11px] bg-[var(--bg-subtle)] border border-[var(--border)]">
+              <span className="text-[var(--text-tertiary)]">ETH</span>
+              <span className="text-[var(--text-secondary)]">
+                ${ethPrice.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </span>
+              <span className={isEthUp ? "text-[var(--safe)]" : "text-[var(--danger)]"}>
+                {isEthUp ? "▲" : "▼"} {Math.abs(ethPrice.change24h).toFixed(2)}%
+              </span>
+            </div>
+
+            {/* Simulation ticker pause */}
+            <button
+              type="button"
+              onClick={() => actions.setPaused(!isPaused)}
+              className="flex items-center justify-center w-7 h-7 rounded-md border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+              title={isPaused ? "Resume simulation ticker" : "Pause simulation ticker"}
+              aria-label={isPaused ? "Resume simulation" : "Pause simulation"}
+            >
+              {isPaused ? <Play className="w-2.5 h-2.5 fill-current" /> : <Pause className="w-2.5 h-2.5 fill-current" />}
+            </button>
+          </>
+        )}
 
         {/* ⌘K Search trigger */}
         {onOpenSearch && (

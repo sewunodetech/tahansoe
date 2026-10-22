@@ -9,6 +9,7 @@ import { DashboardTopbar } from "@/components/ui/dashboard-topbar";
 import { SimulationProvider, useSimulation, type AlertEvent } from "@/lib/simulation-context";
 import { SimulationEngine } from "@/lib/simulation-engine";
 import { OnboardingTourProvider } from "@/components/ui/onboarding-tour";
+import { DashboardModeProvider, useDashboardMode } from "@/lib/dashboard-mode";
 import { Loader2, X, AlertTriangle, CheckCircle, Zap, Bell } from "lucide-react";
 
 /* ── Alert toast ─────────────────────────────────────────────────────────── */
@@ -92,7 +93,8 @@ function AlertToast({
 /* ── Toast container (reads from SimulationContext) ──────────────────────── */
 function AlertToastContainer() {
   const { activeAlerts, dismissAlert, state } = useSimulation();
-  if (!state.policy.alertsEnabled) return null;
+  const { isLive } = useDashboardMode();
+  if (isLive || !state.policy.alertsEnabled) return null;
   const visible = activeAlerts.slice(0, 4);
 
   if (visible.length === 0) return null;
@@ -194,12 +196,22 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* ── Simulation ticker: demo mode only ───────────────────────────────────
+   The simulator also posts alerts to Telegram (/api/alerts/notify), so it
+   must not run while the dashboard shows the wallet's real position. */
+function DemoSimulationEngine() {
+  const { isLive } = useDashboardMode();
+  return isLive ? null : <SimulationEngine />;
+}
+
 /* ── Root layout export ──────────────────────────────────────────────────── */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SimulationProvider>
-      <SimulationEngine />
-      <DashboardInner>{children}</DashboardInner>
-    </SimulationProvider>
+    <DashboardModeProvider>
+      <SimulationProvider>
+        <DemoSimulationEngine />
+        <DashboardInner>{children}</DashboardInner>
+      </SimulationProvider>
+    </DashboardModeProvider>
   );
 }

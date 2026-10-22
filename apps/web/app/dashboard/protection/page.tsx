@@ -14,14 +14,21 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { LayerBadge } from "@/components/ui/layer-badge";
 import { Switch } from "@/components/ui/switch";
 import { NumberInput } from "@/components/ui/number-input";
+import { AmountPresets } from "@/components/ui/amount-presets";
+import { demoCapPresets } from "@/lib/cap-presets";
 import { ZoneBar } from "@/components/ui/zone-bar";
 import { ApprovalExplainer } from "@/components/ui/approval-explainer";
 import { TxPreviewModal } from "@/components/dashboard/protection/tx-preview-modal";
+import { useDashboardMode } from "@/lib/dashboard-mode";
+import { LivePage } from "@/components/dashboard/live/live-page";
+import { LiveProtection } from "@/components/dashboard/live/live-protection";
 
-export default function ProtectionPage() {
+function DemoProtectionPage() {
   const { position, hf, zone, layers, policy, actions } = useProtection();
   const [showExplainer, setShowExplainer] = useState<number | null>(null);
   const [approvingLayer, setApprovingLayer] = useState<1 | 2 | 3 | null>(null);
+
+  const capPresets = demoCapPresets(position?.debtUsd ?? 0, policy.triggerHF, policy.targetHF);
 
   const getApprovingToken = () => {
     if (approvingLayer === 1) return "USDC";
@@ -136,6 +143,13 @@ export default function ProtectionPage() {
               <label className="text-[11px] font-mono text-[var(--text-tertiary)] uppercase block mb-1">
                 Approved Cap (USDC)
               </label>
+              <AmountPresets
+                className="mb-2"
+                presets={capPresets}
+                current={layers.l1.capacity}
+                onSelect={(val) => actions.setCap(1, val)}
+                disabled={!layers.l1.enabled}
+              />
               <NumberInput
                 value={layers.l1.capacity}
                 onChange={(val) => actions.setCap(1, val)}
@@ -219,6 +233,13 @@ export default function ProtectionPage() {
               <label className="text-[11px] font-mono text-[var(--text-tertiary)] uppercase block mb-1">
                 Redemption Cap (USD)
               </label>
+              <AmountPresets
+                className="mb-2"
+                presets={capPresets}
+                current={layers.l2.capacity}
+                onSelect={(val) => actions.setCap(2, val)}
+                disabled={!layers.l2.enabled}
+              />
               <NumberInput
                 value={layers.l2.capacity}
                 onChange={(val) => actions.setCap(2, val)}
@@ -378,5 +399,15 @@ export default function ProtectionPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function ProtectionPage() {
+  const { isLive } = useDashboardMode();
+  if (!isLive) return <DemoProtectionPage />;
+  return (
+    <LivePage eyebrow="Protection" title="Liquidation Protection" subtitle="Approve a capped reserve and save your policy on-chain. Revoke anytime.">
+      <LiveProtection />
+    </LivePage>
   );
 }

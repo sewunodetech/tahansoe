@@ -53,7 +53,7 @@ export interface UseProtectionReturn {
   hasPolicy: boolean;
 }
 
-function calculateZone(hf: number, triggerHf: number): RiskZone {
+export function calculateZone(hf: number, triggerHf: number): RiskZone {
   if (hf <= triggerHf) return "Critical";
   if (hf <= triggerHf + 0.15) return "Warning";
   if (hf < 1.6) return "Watch";

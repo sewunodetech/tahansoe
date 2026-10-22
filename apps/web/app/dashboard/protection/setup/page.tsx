@@ -14,6 +14,9 @@ import { StepLayer2 } from "@/components/dashboard/wizard/step-layer2";
 import { StepLayer3 } from "@/components/dashboard/wizard/step-layer3";
 import { StepReview } from "@/components/dashboard/wizard/step-review";
 import { StepTelegram } from "@/components/dashboard/wizard/step-telegram";
+import { useDashboardMode } from "@/lib/dashboard-mode";
+import { LivePage } from "@/components/dashboard/live/live-page";
+import { LiveProtection } from "@/components/dashboard/live/live-protection";
 
 const WIZARD_STEPS = [
   "Position",
@@ -25,7 +28,7 @@ const WIZARD_STEPS = [
   "Telegram",
 ];
 
-export default function ProtectionSetupPage() {
+function DemoProtectionSetupPage() {
   const router = useRouter();
   const { position, hf, ethPrice, policy, actions } = useProtection();
 
@@ -153,6 +156,8 @@ export default function ProtectionSetupPage() {
             approved={l1Approved}
             onApprove={() => setL1Approved(true)}
             debtUsd={debtUsd}
+            triggerHF={triggerHF}
+            targetHF={targetHF}
             onNext={() => setCurrentStep(3)}
             onBack={() => setCurrentStep(1)}
           />
@@ -169,6 +174,8 @@ export default function ProtectionSetupPage() {
             approved={l2Approved}
             onApprove={() => setL2Approved(true)}
             debtUsd={debtUsd}
+            triggerHF={triggerHF}
+            targetHF={targetHF}
             onNext={() => setCurrentStep(4)}
             onBack={() => setCurrentStep(2)}
           />
@@ -220,5 +227,15 @@ export default function ProtectionSetupPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ProtectionSetupPage() {
+  const { isLive } = useDashboardMode();
+  if (!isLive) return <DemoProtectionSetupPage />;
+  return (
+    <LivePage eyebrow="Setup" title="Set up Layer 1" subtitle="Two transactions: approve a capped amount, then save the policy.">
+      <LiveProtection />
+    </LivePage>
   );
 }

@@ -5,6 +5,8 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { NumberInput } from "@/components/ui/number-input";
+import { AmountPresets } from "@/components/ui/amount-presets";
+import { demoCapPresets } from "@/lib/cap-presets";
 import { Switch } from "@/components/ui/switch";
 import { LayerBadge } from "@/components/ui/layer-badge";
 import { ApprovalExplainer } from "@/components/ui/approval-explainer";
@@ -20,6 +22,8 @@ export interface StepLayer2Props {
   approved: boolean;
   onApprove: () => void;
   debtUsd: number;
+  triggerHF: number;
+  targetHF: number;
   onNext: () => void;
   onBack: () => void;
 }
@@ -40,6 +44,8 @@ export function StepLayer2({
   approved,
   onApprove,
   debtUsd,
+  triggerHF,
+  targetHF,
   onNext,
   onBack,
 }: StepLayer2Props) {
@@ -114,6 +120,11 @@ export function StepLayer2({
                 <label className="text-xs font-mono uppercase text-[var(--text-tertiary)]">
                   Redemption Cap (USD)
                 </label>
+                <AmountPresets
+                  presets={demoCapPresets(debtUsd, triggerHF, targetHF)}
+                  current={cap}
+                  onSelect={(val) => setCap(val)}
+                />
                 <NumberInput
                   value={cap}
                   onChange={(val) => setCap(val)}

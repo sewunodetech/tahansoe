@@ -266,7 +266,7 @@ export function SidebarNav({
                 {short}
               </span>
               <span className="text-[11px] font-mono text-[var(--text-tertiary)] mt-1">
-                Arbitrum One
+                Arbitrum Sepolia
               </span>
             </div>
             <button
