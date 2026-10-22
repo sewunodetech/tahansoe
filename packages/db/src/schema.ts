@@ -38,6 +38,7 @@ export const intentStatusEnum = pgEnum("intent_status", [
 
 export const notificationTypeEnum = pgEnum("notification_type", [
   "HF_WARNING",
+  "HF_CRITICAL",
   "EXECUTION_SUCCESS",
   "EXECUTION_FAILED",
   "LINK_CONFIRMED",
@@ -50,6 +51,7 @@ export const users = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     walletAddress: text("wallet_address").notNull(),
     chainId: integer("chain_id").notNull(),
+    isPro: boolean("is_pro").notNull().default(false),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -190,6 +192,23 @@ export const policies = pgTable(
     positionId: uuid("position_id").references(() => positions.id, {
       onDelete: "cascade",
     }),
+    chainId: integer("chain_id").notNull().default(421614),
+    guardianAddress: text("guardian_address"),
+    guardianVersion: integer("guardian_version"),
+    debtAsset: text("debt_asset"),
+    maxRepayPerAction: numeric("max_repay_per_action", { precision: 38, scale: 0 }),
+    layer2Kind: integer("layer2_kind"),
+    layer2Source: text("layer2_source"),
+    layer2MaxAssets: numeric("layer2_max_assets", { precision: 38, scale: 0 }),
+    layer3Enabled: boolean("layer3_enabled").notNull().default(false),
+    layer3CollateralAsset: text("layer3_collateral_asset"),
+    layer3MaxCollateral: numeric("layer3_max_collateral", { precision: 38, scale: 0 }),
+    layer3MaxSlippageBps: integer("layer3_max_slippage_bps"),
+    minTriggerHf: numeric("min_trigger_hf", { precision: 10, scale: 4 }),
+    maxTriggerHf: numeric("max_trigger_hf", { precision: 10, scale: 4 }),
+    riskAgent: text("risk_agent"),
+    dynamicTriggerHf: numeric("dynamic_trigger_hf", { precision: 10, scale: 4 }),
+    dynamicValidUntil: timestamp("dynamic_valid_until", { withTimezone: true }),
     triggerThreshold: numeric("trigger_threshold", { precision: 10, scale: 4 })
       .notNull()
       .default("1.30"),
@@ -214,6 +233,32 @@ export const policies = pgTable(
   },
   (t) => ({
     userIdx: index("policies_user_idx").on(t.userId),
+    userGuardianUnique: uniqueIndex("policies_user_guardian_unique").on(
+      t.userId,
+      t.guardianAddress
+    ),
+    chainActiveIdx: index("policies_chain_active_idx").on(t.chainId, t.isActive),
+  })
+);
+
+export const eventCursors = pgTable(
+  "event_cursors",
+  {
+    id: text("id").primaryKey(),
+    chainId: integer("chain_id").notNull(),
+    contractAddress: text("contract_address").notNull(),
+    cursorName: text("cursor_name").notNull().default("events"),
+    lastBlockNumber: bigint("last_block_number", { mode: "bigint" }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    chainContractCursorIdx: uniqueIndex("event_cursors_key_unique").on(
+      t.chainId,
+      t.contractAddress,
+      t.cursorName
+    ),
   })
 );
 
