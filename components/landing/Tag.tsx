@@ -6,8 +6,8 @@ export function Tag({ children, className }: { children: React.ReactNode; classN
   return (
     <span
       className={cn(
-        "inline-flex items-center h-5 px-1.5 rounded-[4px] border border-[var(--border)] bg-[var(--bg-elevated)]",
-        "font-mono text-[10px] uppercase tracking-[0.08em] leading-none text-[var(--text-secondary)]",
+        "inline-flex items-center gap-2 text-[12px] font-light uppercase tracking-[0.06em] leading-none text-[var(--text-secondary)]",
+        "before:content-[''] before:size-1.5 before:rounded-full before:bg-[image:var(--iridescent)]",
         className
       )}
     >

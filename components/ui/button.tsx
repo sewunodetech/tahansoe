@@ -15,9 +15,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-[var(--brand)] text-white hover:bg-[var(--color-brand-400)] active:bg-[var(--color-brand-midnight)] shadow-[0_1px_2px_rgba(0,0,0,0.2)] border border-transparent",
+          "bg-[linear-gradient(120deg,#1f7bff_0%,#3aa0ff_50%,#7d6bff_100%)] text-white hover:brightness-110 active:brightness-95 shadow-[0_8px_20px_-8px_rgba(31,123,255,0.55),inset_0_1px_0_rgba(255,255,255,0.3)] border border-transparent",
         default:
-          "bg-[var(--brand)] text-white hover:bg-[var(--color-brand-400)] active:bg-[var(--color-brand-midnight)] shadow-[0_1px_2px_rgba(0,0,0,0.2)] border border-transparent",
+          "bg-[linear-gradient(120deg,#1f7bff_0%,#3aa0ff_50%,#7d6bff_100%)] text-white hover:brightness-110 active:brightness-95 shadow-[0_8px_20px_-8px_rgba(31,123,255,0.55),inset_0_1px_0_rgba(255,255,255,0.3)] border border-transparent",
         secondary:
           "bg-[var(--bg-subtle)] text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-strong)] active:bg-[var(--bg-overlay)]",
         outline:
@@ -32,13 +32,13 @@ const buttonVariants = cva(
           "bg-transparent text-[var(--brand)] underline-offset-4 hover:underline p-0 h-auto",
       },
       size: {
-        sm: "h-8 px-3 text-xs gap-1.5 rounded-md [&_svg:not([class*='size-'])]:size-3.5",
-        md: "h-10 px-4 text-sm gap-2 rounded-lg [&_svg:not([class*='size-'])]:size-4",
-        default: "h-10 px-4 text-sm gap-2 rounded-lg [&_svg:not([class*='size-'])]:size-4",
-        lg: "h-11 px-5 text-base gap-2.5 rounded-lg [&_svg:not([class*='size-'])]:size-5",
-        icon: "size-10 rounded-lg p-0 [&_svg:not([class*='size-'])]:size-4",
-        "icon-sm": "size-8 rounded-md p-0 [&_svg:not([class*='size-'])]:size-3.5",
-        "icon-lg": "size-11 rounded-lg p-0 [&_svg:not([class*='size-'])]:size-5",
+        sm: "h-8 px-3 text-xs gap-1.5 rounded-full [&_svg:not([class*='size-'])]:size-3.5",
+        md: "h-10 px-4 text-sm gap-2 rounded-full [&_svg:not([class*='size-'])]:size-4",
+        default: "h-10 px-4 text-sm gap-2 rounded-full [&_svg:not([class*='size-'])]:size-4",
+        lg: "h-11 px-5 text-base gap-2.5 rounded-full [&_svg:not([class*='size-'])]:size-5",
+        icon: "size-10 rounded-full p-0 [&_svg:not([class*='size-'])]:size-4",
+        "icon-sm": "size-8 rounded-full p-0 [&_svg:not([class*='size-'])]:size-3.5",
+        "icon-lg": "size-11 rounded-full p-0 [&_svg:not([class*='size-'])]:size-5",
       },
     },
     defaultVariants: {
