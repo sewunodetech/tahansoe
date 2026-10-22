@@ -5,8 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { GUARDIAN, LEGACY_GUARDIANS, LIVE_CHAIN, debtAssetSymbol, explorerTx, guardianAbi } from "@/lib/contracts";
-import { wadToNumber } from "@tahansoe/domain";
+import { GUARDIAN, LEGACY_GUARDIANS, LIVE_CHAIN, debtAssetSymbol, explorerTx, guardianAbi, guardianV2Abi } from "@/lib/contracts";
+import { isGuardianV2, wadToNumber } from "@tahansoe/domain";
 
 interface ActivityRow {
   key: string;
@@ -29,41 +29,142 @@ export function LiveActivity() {
     queryFn: async (): Promise<ActivityRow[]> => {
       const rows: ActivityRow[] = [];
       for (const g of [GUARDIAN, ...LEGACY_GUARDIANS]) {
-        const base = { address: g.address, abi: guardianAbi, fromBlock: BigInt(g.deployedBlock), args: { user: user! } };
-        const [set, disabled, protectedLogs] = await Promise.all([
-          client!.getContractEvents({ ...base, eventName: "PolicySet" }),
-          client!.getContractEvents({ ...base, eventName: "PolicyDisabled" }),
-          client!.getContractEvents({ ...base, eventName: "Protected" }),
-        ]);
-        for (const log of set) {
-          rows.push({
-            key: `${log.transactionHash}-${log.logIndex}`,
-            block: log.blockNumber,
-            hash: log.transactionHash,
-            version: g.version,
-            label: "Policy saved",
-            detail: `${debtAssetSymbol(log.args.debtAsset)} · trigger ${wadToNumber(log.args.triggerHF!).toFixed(2)} → target ${wadToNumber(log.args.targetHF!).toFixed(2)}`,
-          });
-        }
-        for (const log of disabled) {
-          rows.push({
-            key: `${log.transactionHash}-${log.logIndex}`,
-            block: log.blockNumber,
-            hash: log.transactionHash,
-            version: g.version,
-            label: "Policy disabled",
-            detail: "Tahansoe stopped acting on this wallet",
-          });
-        }
-        for (const log of protectedLogs) {
-          rows.push({
-            key: `${log.transactionHash}-${log.logIndex}`,
-            block: log.blockNumber,
-            hash: log.transactionHash,
-            version: g.version,
-            label: "Debt repaid",
-            detail: `HF ${wadToNumber(log.args.healthFactorBefore!).toFixed(2)} → ${wadToNumber(log.args.healthFactorAfter!).toFixed(2)} · ${debtAssetSymbol(log.args.debtAsset)}`,
-          });
+        const isV2 = isGuardianV2(g);
+        const abi = isV2 ? guardianV2Abi : guardianAbi;
+        const base = { address: g.address, abi, fromBlock: BigInt(g.deployedBlock), args: { user: user! } };
+
+        if (isV2) {
+          const [set, disabled, protectedLogs, l2Set, l3Set, tbSet, dynSet, layerUsed] = await Promise.all([
+            client!.getContractEvents({ ...base, eventName: "PolicySet" as const }),
+            client!.getContractEvents({ ...base, eventName: "PolicyDisabled" as const }),
+            client!.getContractEvents({ ...base, eventName: "Protected" as const }),
+            client!.getContractEvents({ ...base, eventName: "Layer2Set" as const }),
+            client!.getContractEvents({ ...base, eventName: "Layer3Set" as const }),
+            client!.getContractEvents({ ...base, eventName: "TriggerBandSet" as const }),
+            client!.getContractEvents({ ...base, eventName: "DynamicTriggerSet" as const }),
+            client!.getContractEvents({ ...base, eventName: "LayerUsed" as const }),
+          ]);
+
+          for (const log of set) {
+            rows.push({
+              key: `${log.transactionHash}-${log.logIndex}`,
+              block: log.blockNumber,
+              hash: log.transactionHash,
+              version: g.version,
+              label: "Policy saved",
+              detail: `${debtAssetSymbol(log.args.debtAsset)} · trigger ${wadToNumber(log.args.triggerHF!).toFixed(2)} → target ${wadToNumber(log.args.targetHF!).toFixed(2)}`,
+            });
+          }
+          for (const log of disabled) {
+            rows.push({
+              key: `${log.transactionHash}-${log.logIndex}`,
+              block: log.blockNumber,
+              hash: log.transactionHash,
+              version: g.version,
+              label: "Policy disabled",
+              detail: "Tahansoe stopped acting on this wallet",
+            });
+          }
+          for (const log of protectedLogs) {
+            rows.push({
+              key: `${log.transactionHash}-${log.logIndex}`,
+              block: log.blockNumber,
+              hash: log.transactionHash,
+              version: g.version,
+              label: "Debt repaid",
+              detail: `HF ${wadToNumber(log.args.healthFactorBefore!).toFixed(2)} → ${wadToNumber(log.args.healthFactorAfter!).toFixed(2)} · ${debtAssetSymbol(log.args.debtAsset)}`,
+            });
+          }
+          for (const log of l2Set) {
+            const kind = log.args.kind ?? 0;
+            const kindName = kind === 1 ? "ERC-4626 Vault" : kind === 2 ? "aToken Reserve" : "None";
+            rows.push({
+              key: `${log.transactionHash}-${log.logIndex}`,
+              block: log.blockNumber,
+              hash: log.transactionHash,
+              version: g.version,
+              label: "Layer 2 configured",
+              detail: kind === 0 ? "Disabled" : `${kindName} · ${log.args.source?.slice(0, 6)}…${log.args.source?.slice(-4)}`,
+            });
+          }
+          for (const log of l3Set) {
+            rows.push({
+              key: `${log.transactionHash}-${log.logIndex}`,
+              block: log.blockNumber,
+              hash: log.transactionHash,
+              version: g.version,
+              label: "Layer 3 configured",
+              detail: log.args.enabled
+                ? `Collateral ${debtAssetSymbol(log.args.collateralAsset)} · max slippage ${(Number(log.args.maxSlippageBps ?? 0) / 100).toFixed(2)}%`
+                : "Disabled",
+            });
+          }
+          for (const log of tbSet) {
+            rows.push({
+              key: `${log.transactionHash}-${log.logIndex}`,
+              block: log.blockNumber,
+              hash: log.transactionHash,
+              version: g.version,
+              label: "Trigger band configured",
+              detail: `Band ${wadToNumber(log.args.minTriggerHF!).toFixed(2)} - ${wadToNumber(log.args.maxTriggerHF!).toFixed(2)} · agent ${log.args.riskAgent?.slice(0, 6)}…${log.args.riskAgent?.slice(-4)}`,
+            });
+          }
+          for (const log of dynSet) {
+            rows.push({
+              key: `${log.transactionHash}-${log.logIndex}`,
+              block: log.blockNumber,
+              hash: log.transactionHash,
+              version: g.version,
+              label: "Dynamic trigger updated",
+              detail: `Trigger set to ${wadToNumber(log.args.triggerHF!).toFixed(2)} by AI agent`,
+            });
+          }
+          for (const log of layerUsed) {
+            rows.push({
+              key: `${log.transactionHash}-${log.logIndex}`,
+              block: log.blockNumber,
+              hash: log.transactionHash,
+              version: g.version,
+              label: `Layer ${log.args.layer} executed`,
+              detail: `Repaid debt via Layer ${log.args.layer}`,
+            });
+          }
+        } else {
+          const [set, disabled, protectedLogs] = await Promise.all([
+            client!.getContractEvents({ ...base, eventName: "PolicySet" as const }),
+            client!.getContractEvents({ ...base, eventName: "PolicyDisabled" as const }),
+            client!.getContractEvents({ ...base, eventName: "Protected" as const }),
+          ]);
+          for (const log of set) {
+            rows.push({
+              key: `${log.transactionHash}-${log.logIndex}`,
+              block: log.blockNumber,
+              hash: log.transactionHash,
+              version: g.version,
+              label: "Policy saved",
+              detail: `${debtAssetSymbol(log.args.debtAsset)} · trigger ${wadToNumber(log.args.triggerHF!).toFixed(2)} → target ${wadToNumber(log.args.targetHF!).toFixed(2)}`,
+            });
+          }
+          for (const log of disabled) {
+            rows.push({
+              key: `${log.transactionHash}-${log.logIndex}`,
+              block: log.blockNumber,
+              hash: log.transactionHash,
+              version: g.version,
+              label: "Policy disabled",
+              detail: "Tahansoe stopped acting on this wallet",
+            });
+          }
+          for (const log of protectedLogs) {
+            rows.push({
+              key: `${log.transactionHash}-${log.logIndex}`,
+              block: log.blockNumber,
+              hash: log.transactionHash,
+              version: g.version,
+              label: "Debt repaid",
+              detail: `HF ${wadToNumber(log.args.healthFactorBefore!).toFixed(2)} → ${wadToNumber(log.args.healthFactorAfter!).toFixed(2)} · ${debtAssetSymbol(log.args.debtAsset)}`,
+            });
+          }
         }
       }
       return rows.sort((a, b) => (a.block === b.block ? 0 : a.block > b.block ? -1 : 1));

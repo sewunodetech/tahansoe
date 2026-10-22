@@ -83,9 +83,13 @@ export type PolicySettings = {
   l1Enabled:         boolean;
   l1Approved:        boolean;
   l1Cap:             number;
+  l1Balance:         number;
+  l1Allowance:       number;
   l2Enabled:         boolean;
   l2Approved:        boolean;
   l2Cap:             number;
+  l2Balance?:        number;
+  l2Allowance?:      number;
   l3Enabled:         boolean;
   l3Approved:        boolean;
   l3Cap:             number;
@@ -109,9 +113,13 @@ export const DEFAULT_POLICY: PolicySettings = {
   l1Enabled:         false,
   l1Approved:        false,
   l1Cap:             1000,
+  l1Balance:         5000,
+  l1Allowance:       3000,
   l2Enabled:         false,
   l2Approved:        false,
   l2Cap:             2500,
+  l2Balance:         10000,
+  l2Allowance:       10000,
   l3Enabled:         false,
   l3Approved:        false,
   l3Cap:             10000,
@@ -241,14 +249,22 @@ function reducer(state: SimState, action: Action): SimState {
       const newPrice = Math.max(1200, state.ethPrice.price * factor);
       const updatedPositions = state.positions.map((pos) => {
         const newCollateral = pos.collateralUsd * factor;
-        const rawHF = (newCollateral * 0.825) / pos.debtUsd;
-        const hf = Math.max(0.85, Math.min(3.5, rawHF));
-        const status = hf <= state.policy.triggerHF ? "critical" : hf <= state.policy.triggerHF + 0.25 ? "warning" : "safe";
+        const lt = pos.liquidationThreshold ?? 0.825;
+        const rawHF = (newCollateral * lt) / pos.debtUsd;
+        const hf = Math.max(0, Math.min(3.5, rawHF));
+        const status: Position["status"] =
+          hf < 1.0
+            ? "liquidated"
+            : hf <= state.policy.triggerHF
+            ? "critical"
+            : hf <= state.policy.triggerHF + 0.25
+            ? "warning"
+            : "safe";
         return {
           ...pos,
           collateralUsd: Math.round(newCollateral),
           hf: parseFloat(hf.toFixed(3)),
-          status: status as Position["status"],
+          status,
           lastChecked: "just now",
         };
       });

@@ -4,7 +4,7 @@ import { useMemo, useState, useCallback } from "react";
 import { useSimulation, type PolicySettings } from "@/lib/simulation-context";
 import type { Position, HistoryEntry } from "@/lib/mock-data";
 
-export type RiskZone = "Safe" | "Watch" | "Warning" | "Critical";
+export type RiskZone = "Safe" | "Watch" | "Warning" | "Critical" | "Liquidated";
 
 export interface ProtectionLayer {
   layer: 1 | 2 | 3;
@@ -14,6 +14,8 @@ export interface ProtectionLayer {
   approved: boolean;
   capacity: number;
   coversPct: number;
+  balance?: number;
+  allowance?: number;
   description: string;
 }
 
@@ -54,6 +56,7 @@ export interface UseProtectionReturn {
 }
 
 export function calculateZone(hf: number, triggerHf: number): RiskZone {
+  if (hf < 1.0) return "Liquidated";
   if (hf <= triggerHf) return "Critical";
   if (hf <= triggerHf + 0.15) return "Warning";
   if (hf < 1.6) return "Watch";
@@ -113,6 +116,8 @@ export function useProtection(preferredPositionId?: string): UseProtectionReturn
         approved: state.policy.l1Approved ?? true,
         capacity: l1Cap,
         coversPct: l1CoversPct,
+        balance: state.policy.l1Balance ?? 5000,
+        allowance: state.policy.l1Allowance ?? 3000,
         description: "Pre-approved hot wallet USDC to repay debt directly.",
       },
       l2: {
@@ -123,6 +128,8 @@ export function useProtection(preferredPositionId?: string): UseProtectionReturn
         approved: state.policy.l2Approved ?? true,
         capacity: l2Cap,
         coversPct: l2CoversPct,
+        balance: state.policy.l2Balance ?? 10000,
+        allowance: state.policy.l2Allowance ?? 10000,
         description: "Redeem secondary vault shares to fund debt repayment.",
       },
       l3: {
@@ -166,16 +173,25 @@ export function useProtection(preferredPositionId?: string): UseProtectionReturn
 
   const approve = useCallback(
     (layer: 1 | 2 | 3) => {
-      if (layer === 1) updatePolicy({ l1Approved: true, l1Enabled: true });
-      else if (layer === 2) updatePolicy({ l2Approved: true, l2Enabled: true });
-      else if (layer === 3) updatePolicy({ l3Approved: true, l3Enabled: true });
+      if (layer === 1) {
+        const cap = state.policy.l1Cap ?? 1000;
+        updatePolicy({
+          l1Approved: true,
+          l1Enabled: true,
+          l1Allowance: Math.max(state.policy.l1Allowance ?? 3000, cap * 3),
+        });
+      } else if (layer === 2) {
+        updatePolicy({ l2Approved: true, l2Enabled: true });
+      } else if (layer === 3) {
+        updatePolicy({ l3Approved: true, l3Enabled: true });
+      }
     },
-    [updatePolicy]
+    [updatePolicy, state.policy.l1Cap, state.policy.l1Allowance]
   );
 
   const revoke = useCallback(
     (layer: 1 | 2 | 3) => {
-      if (layer === 1) updatePolicy({ l1Approved: false, l1Cap: 0, l1Enabled: false });
+      if (layer === 1) updatePolicy({ l1Approved: false, l1Cap: 0, l1Allowance: 0, l1Enabled: false });
       else if (layer === 2) updatePolicy({ l2Approved: false, l2Cap: 0, l2Enabled: false });
       else if (layer === 3) updatePolicy({ l3Approved: false, l3Cap: 0, l3Enabled: false });
     },
@@ -186,6 +202,7 @@ export function useProtection(preferredPositionId?: string): UseProtectionReturn
     updatePolicy({
       l1Approved: false,
       l1Cap: 0,
+      l1Allowance: 0,
       l1Enabled: false,
       l2Approved: false,
       l2Cap: 0,
