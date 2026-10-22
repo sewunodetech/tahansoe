@@ -22,6 +22,7 @@
     "doctor": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts doctor",
     "settle": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts settle",
     "scorecard": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts scorecard",
+    "sentinel": "tsx --env-file-if-exists=.env src/cli/tahansoe.ts sentinel",
     "reflect:settle": "tsx --env-file-if-exists=.env src/reflection/settle.ts",
     "reflect:daily": "tsx --env-file-if-exists=.env src/reflection/reflect.ts"
   },

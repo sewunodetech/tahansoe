@@ -60,6 +60,13 @@ export const env = {
   alphaVantageApiKey: () => optionalEnv("ALPHA_VANTAGE_API_KEY", ""),
   /** RPC Arbitrum untuk data teknikal on-chain (AaveOracle, reserve, perp DEX). */
   arbitrumRpcUrl: () => optionalEnv("ARBITRUM_RPC_URL", ""),
+  /** RPC Arbitrum Sepolia untuk testnet Sentinel & Keeper. */
+  arbitrumSepoliaRpcUrl: () =>
+    optionalEnv("ARB_SEPOLIA_RPC_URL", optionalEnv("ARBITRUM_SEPOLIA_RPC_URL", "")),
+  /** Private key keeper EOA (0x...). KOSONG = dry-run mode (I8: server-only, tidak pernah di-log). */
+  keeperPrivateKey: () => optionalEnv("KEEPER_PRIVATE_KEY", ""),
+  /** Interval polling sentinel loop (detik), default 60s. */
+  sentinelPollIntervalSec: () => positiveInt("SENTINEL_POLL_INTERVAL_SEC", 60),
 
   // --- Gateway LLM OpenAI-compatible TUNGGAL (ADR 0009). Server-only (security.md I8).
   /**

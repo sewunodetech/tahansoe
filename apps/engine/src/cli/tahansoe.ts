@@ -30,6 +30,7 @@ const COMMANDS = [
   ["carry", "Aave V3 carry & interest-rate risk monitor"],
   ["setup", "First-time setup wizard (gateway, models, DB)"],
   ["doctor", "Check env & connectivity"],
+  ["sentinel", "Health Factor Sentinel & Keeper (run, once, sync)"],
 ] as const;
 
 const TOP_HELP = `Usage: tahansoe <command> [options]
@@ -227,6 +228,10 @@ export async function main(argv: string[]): Promise<number> {
     case "setup": {
       const { setupCommand } = await import("./commands/setup.ts");
       return setupCommand(rest);
+    }
+    case "sentinel": {
+      const { sentinelCommand } = await import("./commands/sentinel.ts");
+      return sentinelCommand(rest);
     }
     default:
       process.stderr.write(`perintah tidak dikenal: ${cmd}\n\n${TOP_HELP}\n`);

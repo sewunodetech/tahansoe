@@ -65,5 +65,9 @@ import "./gateway/alerts.test.ts";
 import "./gateway/state.test.ts";
 import "./gateway/views.test.ts";
 import "./gateway/gateway.test.ts";
+import "./sentinel/event-sync.test.ts";
+import "./sentinel/keeper.test.ts";
+import "./sentinel/sentinel-worker.test.ts";
+import "./sentinel/sentinel-cli.test.ts";
 
 

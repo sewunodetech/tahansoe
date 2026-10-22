@@ -22,6 +22,8 @@ neonConfig.coalesceWrites = false;
 
 /** Key advisory lock unik untuk research worker (Arbitrum One + research prefix). */
 export const RESEARCH_WORKER_ADVISORY_LOCK_KEY = 42161001;
+/** Key advisory lock unik untuk sentinel / keeper worker. */
+export const SENTINEL_WORKER_ADVISORY_LOCK_KEY = 42161005;
 
 export interface AdvisoryLockClient {
   query(sql: string, params?: unknown[]): Promise<{ rows: any[] }>;

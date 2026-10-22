@@ -244,9 +244,30 @@ npm run tahansoe -- schedule run --no-settle    # scheduler tanpa settlement job
 npm run tahansoe -- schedule run --no-fusion    # scheduler tanpa risk-fusion job
 npm run tahansoe -- schedule run --once     # satu siklus lalu keluar
 npm run tahansoe -- schedule status         # lock + run terakhir dari DB
+npm run tahansoe -- sentinel run            # jalankan Sentinel & Keeper worker (interval 60s)
+npm run tahansoe -- sentinel once           # satu siklus sinkronisasi + cek posisi + keeper
+npm run tahansoe -- sentinel sync           # sinkronisasi event Guardian on-chain ke database
 ```
 
-`settle` dan `scorecard` membaca/menulis tabel `risk_settlements` lewat job settlement (ADR 0005) — butuh `DATABASE_URL`. `settle` memberi label `TRUE_POSITIVE`/`FALSE_POSITIVE`/`MISSED`/`TRUE_NEGATIVE` (idempoten; report tanpa data harga cukup ditandai *insufficient*, bukan dilabeli palsu). `scorecard` meringkas metrik vs target spec §3.6.
+### 3.2 HF Sentinel & Keeper (Workstream C)
+
+HF Sentinel memantau posisi pinjaman on-chain setiap ~60 detik dan mengeksekusi proteksi likuidasi lewat keeper:
+1. **Event Sync:** membaca event `PolicySet`, `PolicyDisabled`, dan `Protected` (serta event v2 `Layer*` dan `TriggerBand*`) dari blok deploy dengan cursor yang disimpan di tabel `event_cursors`.
+2. **Sentinel Loop:** multicall `getUserAccountData`, `allowance`, `balanceOf`, dan `quoteRepay` untuk setiap policy aktif. Memperbarui tabel `positions` dan menghitung zona risiko (`Safe`, `Watch`, `Warning`, `Critical`).
+3. **Notifikasi Telegram & Log:** mengirim peringatan ke akun Telegram terhubung saat terjadi transisi zona (`Warning`, `Critical`), kapasitas cadangan menipis (`RESERVE_LOW` jika `min(allowance, balance) < maxRepayPerAction`), atau proteksi berhasil dieksekusi (`Protected`). Dideduplikasi sehingga hanya terkirim saat transisi.
+4. **Keeper Non-Custodial:** saat HF < trigger dan `quoteRepay > 0`, memanggil `protect(user)` via viem walletClient. Berjalan otomatis dalam mode **Dry-Run** (hanya mencatat log rencana aksi) bila `KEEPER_PRIVATE_KEY` tidak diatur. Dilengkapi lock 1 in-flight tx per user dan exponential backoff bila terjadi revert.
+
+Variabel lingkungan:
+- `ARB_SEPOLIA_RPC_URL`: RPC Arbitrum Sepolia.
+- `KEEPER_PRIVATE_KEY`: private key EOA keeper (opsional; kosong = mode dry-run).
+- `SENTINEL_POLL_INTERVAL_SEC`: interval pengecekan (default 60 detik).
+
+Jalankan via npm:
+```bash
+npm run sentinel -w apps/engine          # atau: npm run tahansoe -- sentinel run
+```
+
+### 3.3 Tanya-jawab & tampilan CLI
 
 `carry` menampilkan pemantauan risiko bunga & carry Aave V3 (jalur T11, spec m3-carry-interest-monitoring): tabel reserve (supply APY, borrow APY, utilization / kink, status: ok / near kink / past kink), drift HF 1.50 → 1.45 untuk 5 pasangan representatif, dan skenario lonjakan utilization 95%. Tanpa rekomendasi trading atau kata saran investasi.
 
@@ -303,6 +324,7 @@ Advisory lock Postgres memastikan hanya satu instance scheduler aktif; instance 
 | `npm run reflect:daily` | Refleksi harian batch → pelajaran baru (`research_lessons`). |
 | `npm run settle` | Alias `tahansoe settle` — settlement report jatuh tempo (ADR 0005). |
 | `npm run scorecard` | Alias `tahansoe scorecard` — metrik akurasi engine (recall/presisi/lead time). |
+| `npm run sentinel` | Alias `tahansoe sentinel run` — HF Sentinel & Keeper loop (Workstream C). |
 | `npm run test` | Seluruh test suite unit engine offline (`test/all.test.ts`). |
 | `npm run typecheck` | Validasi tipe TypeScript engine (`tsc --noEmit`). |
 
