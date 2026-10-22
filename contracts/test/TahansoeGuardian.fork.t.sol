@@ -8,7 +8,8 @@ import {IPoolAddressesProvider, IAaveOracle} from "../src/interfaces/IAave.sol";
 
 interface IPoolFull {
     function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
-    function borrow(address asset, uint256 amount, uint256 interestRateMode, uint16 referralCode, address onBehalfOf) external;
+    function borrow(address asset, uint256 amount, uint256 interestRateMode, uint16 referralCode, address onBehalfOf)
+        external;
 }
 
 /// End-to-end against the real Aave V3 deployment on Arbitrum Sepolia.
@@ -45,7 +46,7 @@ contract TahansoeGuardianForkTest is Test {
         uint256 borrowUsd = (ethPrice * 50) / 100; // 50% of collateral value, 8 decimals
         aave.borrow(USDC, borrowUsd / 100, 2, 0, alice); // 8 → 6 decimals
 
-        IERC20(USDC).approve(address(guardian), type(uint256).max);
+        IERC20(USDC).approve(address(guardian), 5_000e6);
         guardian.setPolicy(USDC, 1.3e18, 1.6e18, 5_000e6);
         vm.stopPrank();
 
