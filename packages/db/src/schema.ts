@@ -51,7 +51,6 @@ export const users = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     walletAddress: text("wallet_address").notNull(),
     chainId: integer("chain_id").notNull(),
-    isPro: boolean("is_pro").notNull().default(false),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

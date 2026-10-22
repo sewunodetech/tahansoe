@@ -79,14 +79,10 @@ export async function runMigrations(
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       wallet_address TEXT NOT NULL,
       chain_id INTEGER NOT NULL,
-      is_pro BOOLEAN NOT NULL DEFAULT false,
       is_active BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
-  `);
-  await runSql(`
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_pro BOOLEAN NOT NULL DEFAULT false;
   `);
   await runSql(`
     CREATE UNIQUE INDEX IF NOT EXISTS users_wallet_chain_unique ON users (wallet_address, chain_id);
