@@ -28,6 +28,13 @@
   - Reset state: `apps/engine/.data/gateway-state.json` `pendingPairings` direset bersih ke `{}`.
   - Test suite komprehensif (`apps/engine/test/gateway/hardening.test.ts`) 10/10 lulus, suite engine 435/435 hijau.
 
+### Health Factor Sentinel & Keeper — Workstream C (Oktober 2026)
+- **Event Sync:** membaca dan memproses log on-chain `PolicySet`, `PolicyDisabled`, dan `Protected` (serta event v2 `Layer*` dan `TriggerBand*`) dari blok deploy dengan cursor tersimpan di tabel `event_cursors`.
+- **Sentinel Worker Loop (60s):** advisory lock Postgres (`42161005`) mencegah overlap. Multicall batch `getUserAccountData`, `allowance`, `balanceOf`, dan `quoteRepay` untuk semua policy aktif. Memperbarui tabel `positions` dan mendeteksi transisi zona risiko (`calculateZone` di `@tahansoe/domain`).
+- **Alert Telegram Server-Side:** pengiriman peringatan otomatis saat terjadi transisi zona (`Warning`, `Critical`), kapasitas cadangan tipis (`RESERVE_LOW` jika `min(allowance, balance) < maxRepayPerAction`), dan eksekusi proteksi berhasil (`Protected`). Dideduplikasi sehingga hanya terkirim saat transisi zona baru.
+- **Keeper Non-Custodial:** memanggil `protect(user)` pada kontrak Guardian saat HF < trigger dan `quoteRepay > 0`. Mode dry-run aman bila `KEEPER_PRIVATE_KEY` tidak disetel (I4). Dilengkapi in-flight mutex per user dan exponential backoff bila terjadi revert.
+- **CLI & Scripts:** `npm run sentinel -w apps/engine` (alias `tahansoe sentinel run`), `tahansoe sentinel once`, `tahansoe sentinel sync`.
+
 ### Engine fix — audit 14 Okt 2026 ([ADR 0011](decisions/0011-postgres-only-gateway-only-chat.md))
 - **Postgres server saja:** driver PGlite, `DB_DRIVER`, `PGLITE_DATA_DIR`, dan file lock PGlite dihapus dari `packages/db` & engine. `DATABASE_URL` wajib; `setup` meminta `DATABASE_URL` lalu menjalankan migrasi (`--db-url-env` untuk mode non-interaktif). `start` memperingatkan bila DB kosong.
 - **Timeout & pembatalan LLM:** timeout per request (`LLM_REQUEST_TIMEOUT_MS`, default 90 s) + deadline per research run (`RESEARCH_RUN_TIMEOUT_MS`, default 15 menit) + signal shutdown dari worker. Router berhenti tanpa retry/fallback saat dibatalkan, menghormati `retry-after` (maks 30 s), dan mengecek budget sebelum setiap panggilan. Body respons bukan JSON tidak lagi melempar.
@@ -117,7 +124,7 @@
 - [ ] Price worker tetap men-sampling tanpa `DATABASE_URL` (hasil tidak tersimpan); pertimbangkan berhenti/peringatan per tick.
 - [ ] Scorecard belum direkap otomatis mingguan (settlement sendiri sudah berjalan tiap 60 menit di `tahansoe schedule run`, lock terpisah; data scorecard baru bermakna setelah scheduler jalan beberapa hari).
 - [ ] Modul teknikal lanjutan M2 (volatilitas realized EWMA/GARCH, funding rate ekstrem, open interest perp DEX) belum diimplementasikan.
-- [ ] Pengiriman notifikasi alert Telegram langsung dari server engine belum ada (saat ini masih dipicu dari browser di web app).
+- [x] Pengiriman notifikasi alert Telegram langsung dari server engine sudah selesai via Sentinel Worker (Workstream C).
 - [ ] Host deployment untuk long-running engine worker di lingkungan cloud/VPS belum dipilih.
 
 ### Produk Web & Kontrak (M1)

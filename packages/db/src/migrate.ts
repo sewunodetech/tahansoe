@@ -55,7 +55,7 @@ export async function runMigrations(
   );
   await createTypeIfNotExists(
     "notification_type",
-    "'HF_WARNING', 'EXECUTION_SUCCESS', 'EXECUTION_FAILED', 'LINK_CONFIRMED', 'RESERVE_LOW'",
+    "'HF_WARNING', 'HF_CRITICAL', 'EXECUTION_SUCCESS', 'EXECUTION_FAILED', 'LINK_CONFIRMED', 'RESERVE_LOW'",
   );
 
   log("Enums ready.\n");
@@ -68,15 +68,25 @@ export async function runMigrations(
     }
   };
 
+  try {
+    await runSql("ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'HF_CRITICAL';");
+  } catch {
+    // abaikan bila DB tidak mendukung atau sudah ada
+  }
+
   await runSql(`
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       wallet_address TEXT NOT NULL,
       chain_id INTEGER NOT NULL,
+      is_pro BOOLEAN NOT NULL DEFAULT false,
       is_active BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+  `);
+  await runSql(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_pro BOOLEAN NOT NULL DEFAULT false;
   `);
   await runSql(`
     CREATE UNIQUE INDEX IF NOT EXISTS users_wallet_chain_unique ON users (wallet_address, chain_id);
@@ -174,6 +184,23 @@ export async function runMigrations(
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       position_id UUID REFERENCES positions (id) ON DELETE CASCADE,
+      chain_id INTEGER NOT NULL DEFAULT 421614,
+      guardian_address TEXT,
+      guardian_version INTEGER,
+      debt_asset TEXT,
+      max_repay_per_action NUMERIC(38,0),
+      layer2_kind INTEGER,
+      layer2_source TEXT,
+      layer2_max_assets NUMERIC(38,0),
+      layer3_enabled BOOLEAN NOT NULL DEFAULT false,
+      layer3_collateral_asset TEXT,
+      layer3_max_collateral NUMERIC(38,0),
+      layer3_max_slippage_bps INTEGER,
+      min_trigger_hf NUMERIC(10,4),
+      max_trigger_hf NUMERIC(10,4),
+      risk_agent TEXT,
+      dynamic_trigger_hf NUMERIC(10,4),
+      dynamic_valid_until TIMESTAMPTZ,
       trigger_threshold NUMERIC(10,4) NOT NULL DEFAULT 1.30,
       target_health_factor NUMERIC(10,4) NOT NULL DEFAULT 1.60,
       funding_source_priority JSONB NOT NULL DEFAULT '["HOT_RESERVE","WARM_RESERVE","FLASH_LOAN"]',
@@ -184,9 +211,49 @@ export async function runMigrations(
     );
   `);
   await runSql(`
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS chain_id INTEGER NOT NULL DEFAULT 421614;
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS guardian_address TEXT;
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS guardian_version INTEGER;
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS debt_asset TEXT;
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS max_repay_per_action NUMERIC(38,0);
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS layer2_kind INTEGER;
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS layer2_source TEXT;
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS layer2_max_assets NUMERIC(38,0);
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS layer3_enabled BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS layer3_collateral_asset TEXT;
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS layer3_max_collateral NUMERIC(38,0);
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS layer3_max_slippage_bps INTEGER;
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS min_trigger_hf NUMERIC(10,4);
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS max_trigger_hf NUMERIC(10,4);
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS risk_agent TEXT;
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS dynamic_trigger_hf NUMERIC(10,4);
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS dynamic_valid_until TIMESTAMPTZ;
+  `);
+  await runSql(`
     CREATE INDEX IF NOT EXISTS policies_user_idx ON policies (user_id);
   `);
+  await runSql(`
+    CREATE UNIQUE INDEX IF NOT EXISTS policies_user_guardian_unique ON policies (user_id, guardian_address);
+  `);
+  await runSql(`
+    CREATE INDEX IF NOT EXISTS policies_chain_active_idx ON policies (chain_id, is_active);
+  `);
   log("  policies");
+
+  await runSql(`
+    CREATE TABLE IF NOT EXISTS event_cursors (
+      id TEXT PRIMARY KEY,
+      chain_id INTEGER NOT NULL,
+      contract_address TEXT NOT NULL,
+      cursor_name TEXT NOT NULL DEFAULT 'events',
+      last_block_number BIGINT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+  await runSql(`
+    CREATE UNIQUE INDEX IF NOT EXISTS event_cursors_key_unique ON event_cursors (chain_id, contract_address, cursor_name);
+  `);
+  log("  event_cursors");
 
   await runSql(`
     CREATE TABLE IF NOT EXISTS intents (
