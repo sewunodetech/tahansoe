@@ -15,7 +15,7 @@ import { useCallback, useMemo, useState } from "react";
 import { erc20Abi, type Address, type Hash } from "viem";
 import { useAccount, usePublicClient, useReadContracts, useSwitchChain, useWriteContract } from "wagmi";
 import type { GuardianDeployment } from "@tahansoe/domain";
-import { recommendedRepayBase, baseToToken, remainingActions, hfToWad, wadToNumber } from "@tahansoe/domain";
+import { recommendedRepayBase, baseToToken, remainingActions, hfToWad, wadToNumber, isGuardianV2 } from "@tahansoe/domain";
 import {
   AAVE_ORACLE,
   AAVE_POOL,
@@ -26,6 +26,7 @@ import {
   aaveOracleAbi,
   aavePoolAbi,
   guardianAbi,
+  guardianV2Abi,
 } from "@/lib/contracts";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -39,6 +40,35 @@ export interface LivePolicy {
   triggerHf: number;
   targetHf: number;
   maxRepayPerAction: bigint;
+}
+
+export interface LiveLayer2 {
+  kind: number;
+  source: Address;
+  maxAssetsPerAction: bigint;
+}
+
+export interface LiveLayer3 {
+  enabled: boolean;
+  collateralAsset: Address;
+  maxCollateralPerAction: bigint;
+  maxSlippageBps: number;
+}
+
+export interface LiveTriggerBand {
+  minTriggerHf: number;
+  maxTriggerHf: number;
+  riskAgent: Address;
+  dynamicTriggerHf: number;
+  validUntil: bigint;
+}
+
+export interface LiveQuoteProtect {
+  l1Repay: bigint;
+  l2Repay: bigint;
+  l3Collateral: bigint;
+  l3Repay: bigint;
+  expectedHf: number;
 }
 
 export interface LiveAccount {
@@ -65,7 +95,17 @@ export interface LegacyExposure {
   allowances: { asset: Address; symbol: string; decimals: number; amount: bigint }[];
 }
 
-export type TxStep = "switch" | "approve" | "setPolicy" | "disable" | "revoke" | "migrate";
+export type TxStep =
+  | "switch"
+  | "approve"
+  | "setPolicy"
+  | "disable"
+  | "revoke"
+  | "migrate"
+  | "setLayer2"
+  | "setLayer3"
+  | "setTriggerBand"
+  | "protect";
 
 export interface TxState {
   /** Step in flight, null when idle. */
@@ -105,21 +145,35 @@ export function useGuardian(selectedAsset?: Address) {
   const { mutateAsync: switchChain } = useSwitchChain();
   const [tx, setTx] = useState<TxState>({ step: null, last: null, hash: null, error: null });
 
+  const isV2 = isGuardianV2(GUARDIAN);
   const enabled = Boolean(user);
   const query = { enabled, refetchInterval: REFRESH_MS };
 
   /* ── Position + policy on the current Guardian ─────────────────────────── */
+  const v1Contracts = [
+    { chainId: LIVE_CHAIN.id, address: AAVE_POOL, abi: aavePoolAbi, functionName: "getUserAccountData" as const, args: [user!] as const },
+    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianAbi, functionName: "policies" as const, args: [user!] as const },
+    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianAbi, functionName: "quoteRepay" as const, args: [user!] as const },
+  ];
+
+  const v2Contracts = [
+    { chainId: LIVE_CHAIN.id, address: AAVE_POOL, abi: aavePoolAbi, functionName: "getUserAccountData" as const, args: [user!] as const },
+    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianV2Abi, functionName: "policies" as const, args: [user!] as const },
+    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianV2Abi, functionName: "layer2" as const, args: [user!] as const },
+    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianV2Abi, functionName: "layer3" as const, args: [user!] as const },
+    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianV2Abi, functionName: "triggerBands" as const, args: [user!] as const },
+    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianV2Abi, functionName: "effectiveTrigger" as const, args: [user!] as const },
+    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianV2Abi, functionName: "quoteProtect" as const, args: [user!] as const },
+  ];
+
   const core = useReadContracts({
-    contracts: [
-      { chainId: LIVE_CHAIN.id, address: AAVE_POOL, abi: aavePoolAbi, functionName: "getUserAccountData", args: [user!] },
-      { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianAbi, functionName: "policies", args: [user!] },
-      { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianAbi, functionName: "quoteRepay", args: [user!] },
-    ],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    contracts: (isV2 ? v2Contracts : v1Contracts) as any,
     allowFailure: false,
     query,
   });
 
-  const policy = toPolicy(core.data?.[1]);
+  const policy = toPolicy(core.data?.[1] as readonly [boolean, Address, bigint, bigint, bigint] | undefined);
   const debtAsset: Address = selectedAsset ?? policy?.debtAsset ?? DEBT_ASSETS[0].address;
 
   /* ── Debt token: wallet balance, allowance to the Guardian, price ──────── */
@@ -154,7 +208,7 @@ export function useGuardian(selectedAsset?: Address) {
 
   /* ── Derived values ────────────────────────────────────────────────────── */
   const account: LiveAccount | null = useMemo(() => {
-    const raw = core.data?.[0];
+    const raw = core.data?.[0] as unknown as readonly [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
     if (!raw) return null;
     const [collateralBase, debtBase, , lt, , hf] = raw;
     return {
@@ -171,6 +225,60 @@ export function useGuardian(selectedAsset?: Address) {
     const [balance, allowance, decimals, symbol, priceBase] = token.data;
     return { address: debtAsset, symbol, decimals, balance, allowance, priceBase };
   }, [token.data, debtAsset]);
+
+  const layer2: LiveLayer2 | null = useMemo(() => {
+    if (!isV2 || !core.data?.[2]) return null;
+    const raw = core.data[2] as unknown as readonly [number, Address, bigint];
+    return {
+      kind: Number(raw[0]),
+      source: raw[1],
+      maxAssetsPerAction: raw[2],
+    };
+  }, [isV2, core.data]);
+
+  const layer3: LiveLayer3 | null = useMemo(() => {
+    if (!isV2 || !core.data?.[3]) return null;
+    const raw = core.data[3] as unknown as readonly [boolean, Address, bigint, number];
+    return {
+      enabled: raw[0],
+      collateralAsset: raw[1],
+      maxCollateralPerAction: raw[2],
+      maxSlippageBps: Number(raw[3]),
+    };
+  }, [isV2, core.data]);
+
+  const triggerBand: LiveTriggerBand | null = useMemo(() => {
+    if (!isV2 || !core.data?.[4]) return null;
+    const raw = core.data[4] as unknown as readonly [bigint, bigint, Address, bigint, bigint | number];
+    return {
+      minTriggerHf: wadToNumber(raw[0]),
+      maxTriggerHf: wadToNumber(raw[1]),
+      riskAgent: raw[2],
+      dynamicTriggerHf: wadToNumber(raw[3]),
+      validUntil: BigInt(raw[4]),
+    };
+  }, [isV2, core.data]);
+
+  const effectiveTrigger: number | null = useMemo(() => {
+    if (!policy) return null;
+    if (isV2 && core.data?.[5]) {
+      const raw = core.data[5] as bigint;
+      if (raw > 0n) return wadToNumber(raw);
+    }
+    return policy.triggerHf;
+  }, [isV2, core.data, policy]);
+
+  const quoteProtect: LiveQuoteProtect | null = useMemo(() => {
+    if (!isV2 || !core.data?.[6]) return null;
+    const raw = core.data[6] as unknown as readonly [bigint, bigint, bigint, bigint, bigint];
+    return {
+      l1Repay: raw[0],
+      l2Repay: raw[1],
+      l3Collateral: raw[2],
+      l3Repay: raw[3],
+      expectedHf: wadToNumber(raw[4]),
+    };
+  }, [isV2, core.data]);
 
   const legacyExposure: LegacyExposure[] = useMemo(() => {
     if (!legacy.data) return [];
@@ -204,6 +312,21 @@ export function useGuardian(selectedAsset?: Address) {
   const actionsLeft =
     policy && tokenInfo ? remainingActions(tokenInfo.allowance, tokenInfo.balance, policy.maxRepayPerAction) : 0;
 
+  const quoteRepayValue = !isV2 ? (core.data?.[2] as bigint | undefined ?? 0n) : 0n;
+
+  const hasRepay = isV2
+    ? Boolean(quoteProtect && (quoteProtect.l1Repay + quoteProtect.l2Repay + quoteProtect.l3Repay > 0n))
+    : quoteRepayValue > 0n;
+
+  const canProtect = Boolean(
+    policy?.enabled &&
+    account?.hf !== null &&
+    account?.hf !== undefined &&
+    effectiveTrigger !== null &&
+    account.hf < effectiveTrigger &&
+    hasRepay
+  );
+
   /* ── Writes ────────────────────────────────────────────────────────────── */
   const refetch = useCallback(async () => {
     await Promise.all([core.refetch(), token.refetch(), legacy.refetch()]);
@@ -231,13 +354,13 @@ export function useGuardian(selectedAsset?: Address) {
   );
 
   const approve = useCallback(
-    (amount: bigint) =>
+    (amount: bigint, spender?: Address, tokenAddress?: Address) =>
       send("approve", {
         chainId: LIVE_CHAIN.id,
-        address: debtAsset,
+        address: tokenAddress ?? debtAsset,
         abi: erc20Abi,
         functionName: "approve",
-        args: [GUARDIAN.address, amount],
+        args: [spender ?? GUARDIAN.address, amount],
       }),
     [send, debtAsset]
   );
@@ -247,11 +370,11 @@ export function useGuardian(selectedAsset?: Address) {
       send("setPolicy", {
         chainId: LIVE_CHAIN.id,
         address: GUARDIAN.address,
-        abi: guardianAbi,
+        abi: isV2 ? guardianV2Abi : guardianAbi,
         functionName: "setPolicy",
         args: [debtAsset, hfToWad(triggerHf), hfToWad(targetHf), maxRepayPerAction],
       }),
-    [send, debtAsset]
+    [send, isV2, debtAsset]
   );
 
   const disablePolicy = useCallback(
@@ -259,10 +382,58 @@ export function useGuardian(selectedAsset?: Address) {
       send("disable", {
         chainId: LIVE_CHAIN.id,
         address: GUARDIAN.address,
-        abi: guardianAbi,
+        abi: isV2 ? guardianV2Abi : guardianAbi,
         functionName: "disablePolicy",
       }),
+    [send, isV2]
+  );
+
+  const setLayer2 = useCallback(
+    (kind: number, source: Address, maxAssetsPerAction: bigint) =>
+      send("setLayer2", {
+        chainId: LIVE_CHAIN.id,
+        address: GUARDIAN.address,
+        abi: guardianV2Abi,
+        functionName: "setLayer2",
+        args: [kind, source, maxAssetsPerAction],
+      }),
     [send]
+  );
+
+  const setLayer3 = useCallback(
+    (enabled: boolean, collateralAsset: Address, maxCollateralPerAction: bigint, maxSlippageBps: number) =>
+      send("setLayer3", {
+        chainId: LIVE_CHAIN.id,
+        address: GUARDIAN.address,
+        abi: guardianV2Abi,
+        functionName: "setLayer3",
+        args: [enabled, collateralAsset, maxCollateralPerAction, maxSlippageBps],
+      }),
+    [send]
+  );
+
+  const setTriggerBand = useCallback(
+    (minTriggerHf: number, maxTriggerHf: number, riskAgent: Address) =>
+      send("setTriggerBand", {
+        chainId: LIVE_CHAIN.id,
+        address: GUARDIAN.address,
+        abi: guardianV2Abi,
+        functionName: "setTriggerBand",
+        args: [hfToWad(minTriggerHf), hfToWad(maxTriggerHf), riskAgent],
+      }),
+    [send]
+  );
+
+  const protect = useCallback(
+    () =>
+      send("protect", {
+        chainId: LIVE_CHAIN.id,
+        address: GUARDIAN.address,
+        abi: isV2 ? guardianV2Abi : guardianAbi,
+        functionName: "protect",
+        args: [user!],
+      }),
+    [send, isV2, user]
   );
 
   const revoke = useCallback(
@@ -317,19 +488,38 @@ export function useGuardian(selectedAsset?: Address) {
   return {
     user,
     guardian: GUARDIAN,
+    isV2,
     wrongChain,
     isLoading: core.isLoading || token.isLoading,
     readError: core.error ?? token.error ?? null,
     account,
     policy,
     token: tokenInfo,
-    quoteRepay: core.data?.[2] ?? 0n,
+    quoteRepay: quoteRepayValue,
+    quoteProtect,
+    effectiveTrigger,
+    canProtect,
+    layer2,
+    layer3,
+    triggerBand,
     debtInToken,
     actionsLeft,
     recommendedMaxRepay,
     legacy: legacyExposure,
     tx,
-    actions: { approve, setPolicy, disablePolicy, revoke, retireLegacy, switchToLiveChain, refetch },
+    actions: {
+      approve,
+      setPolicy,
+      disablePolicy,
+      revoke,
+      setLayer2,
+      setLayer3,
+      setTriggerBand,
+      protect,
+      retireLegacy,
+      switchToLiveChain,
+      refetch,
+    },
   };
 }
 

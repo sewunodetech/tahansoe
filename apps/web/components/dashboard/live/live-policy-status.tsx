@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { AlertTriangle, ArrowUpRight, Power, RotateCcw } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Power, RotateCcw, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { explorerAddress, debtAssetSymbol } from "@/lib/contracts";
@@ -23,6 +23,9 @@ export function LivePolicyStatus({ g }: { g: UseGuardianReturn }) {
   const t = token!;
   const busy = g.tx.step !== null;
   const lowCapacity = policy?.enabled === true && g.actionsLeft < 1;
+
+  const qp = g.quoteProtect;
+  const hasV2Repay = Boolean(qp && qp.l1Repay + qp.l2Repay + qp.l3Repay > 0n);
 
   return (
     <Card>
@@ -54,8 +57,33 @@ export function LivePolicyStatus({ g }: { g: UseGuardianReturn }) {
               <Row label="Trigger → target">
                 {policy.triggerHf.toFixed(2)} → {policy.targetHf.toFixed(2)}
               </Row>
+              {g.isV2 && g.effectiveTrigger !== null && g.effectiveTrigger !== policy.triggerHf && (
+                <Row label="Effective trigger">
+                  <span className="text-[var(--brand)]">{g.effectiveTrigger.toFixed(2)} (AI dynamic)</span>
+                </Row>
+              )}
               <Row label="Max per action">
                 {formatToken(policy.maxRepayPerAction, t.decimals)} {debtAssetSymbol(policy.debtAsset)}
+              </Row>
+            </>
+          )}
+          {g.isV2 && (
+            <>
+              <Row label="Layer 2">
+                {g.layer2 && g.layer2.kind !== 0 ? (
+                  <span className="text-[var(--safe)]">
+                    {g.layer2.kind === 1 ? "ERC-4626 Vault" : "aToken Reserve"}
+                  </span>
+                ) : (
+                  <span className="text-[var(--text-tertiary)]">Disabled</span>
+                )}
+              </Row>
+              <Row label="Layer 3">
+                {g.layer3 && g.layer3.enabled ? (
+                  <span className="text-[var(--safe)]">Active (Flash Deleverage)</span>
+                ) : (
+                  <span className="text-[var(--text-tertiary)]">Disabled</span>
+                )}
               </Row>
             </>
           )}
@@ -66,10 +94,30 @@ export function LivePolicyStatus({ g }: { g: UseGuardianReturn }) {
             {formatToken(t.balance, t.decimals)} {t.symbol}
           </Row>
           {policy?.enabled && <Row label="Actions left">{g.actionsLeft}</Row>}
-          {policy?.enabled && g.quoteRepay > 0n && (
+          {!g.isV2 && policy?.enabled && g.quoteRepay > 0n && (
             <Row label="Would repay now">
               {formatToken(g.quoteRepay, t.decimals)} {t.symbol}
             </Row>
+          )}
+          {g.isV2 && policy?.enabled && hasV2Repay && qp && (
+            <>
+              <Row label="Would repay now (L1)">
+                {formatToken(qp.l1Repay, t.decimals)} {t.symbol}
+              </Row>
+              {qp.l2Repay > 0n && (
+                <Row label="Would repay now (L2)">
+                  {formatToken(qp.l2Repay, t.decimals)} {t.symbol}
+                </Row>
+              )}
+              {qp.l3Repay > 0n && (
+                <Row label="Would repay now (L3)">
+                  {formatToken(qp.l3Repay, t.decimals)} {t.symbol}
+                </Row>
+              )}
+              <Row label="Expected HF after protect">
+                <span className="text-[var(--safe)]">{qp.expectedHf.toFixed(2)}</span>
+              </Row>
+            </>
           )}
         </div>
 
@@ -81,6 +129,19 @@ export function LivePolicyStatus({ g }: { g: UseGuardianReturn }) {
               when your Health Factor drops.
             </span>
           </div>
+        )}
+
+        {g.canProtect && (
+          <Button
+            variant="danger"
+            size="sm"
+            className="w-full flex items-center justify-center gap-1.5 font-medium shadow-sm"
+            disabled={busy}
+            onClick={g.actions.protect}
+            title="Immediately execute on-chain debt repayment to rescue this position"
+          >
+            <ShieldAlert className="size-4" /> Run protect now
+          </Button>
         )}
 
         <div className="flex flex-col sm:flex-row gap-2">
@@ -105,7 +166,7 @@ export function LivePolicyStatus({ g }: { g: UseGuardianReturn }) {
             <RotateCcw className="size-3.5" /> Revoke allowance
           </Button>
         </div>
-        <TxStatus tx={g.tx} steps={["disable", "revoke"]} />
+        <TxStatus tx={g.tx} steps={["disable", "revoke", "protect"]} />
       </CardContent>
     </Card>
   );

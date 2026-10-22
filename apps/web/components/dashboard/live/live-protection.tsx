@@ -11,6 +11,10 @@ import { LivePositionCard } from "./live-position-card";
 import { LivePolicyForm } from "./live-policy-form";
 import { LivePolicyStatus } from "./live-policy-status";
 import { LiveMigrationBanner } from "./live-migration-banner";
+import { LiveLayer2Form } from "./live-layer2-form";
+import { LiveLayer3Form } from "./live-layer3-form";
+import { LiveTriggerBandForm } from "./live-trigger-band-form";
+import { LiveQuotePreview } from "./live-quote-preview";
 
 const UPCOMING_LAYERS = [
   {
@@ -45,22 +49,35 @@ export function LiveProtection() {
           <LivePolicyStatus g={g} />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {UPCOMING_LAYERS.map((l) => (
-            <Card key={l.layer} className="opacity-70">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <LayerBadge layer={l.layer} showName />
-                  <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[var(--text-tertiary)]">
-                    <Lock className="size-3" /> Coming with Guardian v2
-                  </span>
-                </div>
-                <CardTitle className="text-sm mt-3">{l.title}</CardTitle>
-                <CardDescription className="text-xs">{l.body}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
+        {g.isV2 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+              <LiveLayer2Form g={g} />
+              <LiveLayer3Form g={g} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+              <LiveTriggerBandForm g={g} />
+              <LiveQuotePreview g={g} />
+            </div>
+          </>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {UPCOMING_LAYERS.map((l) => (
+              <Card key={l.layer} className="opacity-70">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <LayerBadge layer={l.layer} showName />
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[var(--text-tertiary)]">
+                      <Lock className="size-3" /> Coming with Guardian v2
+                    </span>
+                  </div>
+                  <CardTitle className="text-sm mt-3">{l.title}</CardTitle>
+                  <CardDescription className="text-xs">{l.body}</CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </LiveGate>
   );

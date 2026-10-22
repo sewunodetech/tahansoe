@@ -23,6 +23,10 @@ const STEP_LABELS: Record<TxStep, string> = {
   disable: "Disabling policy",
   revoke: "Revoking allowance",
   migrate: "Retiring old Guardian",
+  setLayer2: "Saving Layer 2",
+  setLayer3: "Saving Layer 3",
+  setTriggerBand: "Saving trigger band",
+  protect: "Executing protection",
 };
 
 /**
