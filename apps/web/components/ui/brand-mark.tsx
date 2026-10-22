@@ -1,17 +1,34 @@
-/** Tahansoe mark. Colors follow theme tokens so it reads on both dark and light surfaces. */
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export interface BrandMarkProps extends React.SVGAttributes<SVGSVGElement> {
+  size?: number;
+  className?: string;
+  ink?: string;
+  accent?: string;
+}
+
+/**
+ * Tahansoe brand mark — single source of truth.
+ * Colors follow semantic tokens (ink: var(--text-primary), accent: var(--brand))
+ * so it renders legibly on both dark and light surfaces.
+ */
 export function BrandMark({
   size = 28,
   className,
   ink = "var(--text-primary)",
   accent = "var(--brand)",
-}: {
-  size?: number;
-  className?: string;
-  ink?: string;
-  accent?: string;
-}) {
+  ...props
+}: BrandMarkProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 270 270" aria-hidden="true" className={className}>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 270 270"
+      aria-hidden="true"
+      className={cn("shrink-0", className)}
+      {...props}
+    >
       <path
         fill={ink}
         d="M 256 64 L 256 128 L 192.5 128 L 160 95 L 128 64 L 96 95 L 63.5 128 L 64 128 L 128 192 L 128 256 L 64.5 256 L 32 223 L 0 192 L 0 64 L 64 0 L 192 0 Z"

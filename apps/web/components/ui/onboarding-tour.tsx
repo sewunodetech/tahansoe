@@ -4,7 +4,7 @@
  * OnboardingTour
  *
  * App-tour shown to first-time users on dashboard entry.
- * - 8 steps covering every key section
+ * - 7 steps covering the 3 protection layers and 2 AI agents
  * - Spotlight overlay that highlights a target DOM element via data-tour-id attribute
  * - Persists "completed" flag to localStorage so it never re-shows
  * - Can be re-triggered from any page via `useTour().restart()`
@@ -15,9 +15,8 @@ import React, {
   useEffect, useRef, useState,
 } from "react";
 import {
-  ArrowRight, X, ShieldCheck, LayoutDashboard, Activity,
-  Clock, MessageSquare, Bot, Settings, Bell, Zap,
-  ChevronLeft, ChevronRight, CheckCircle,
+  ArrowRight, X, ShieldCheck, LayoutDashboard, Clock,
+  Sparkles, Send, Settings, CheckCircle, ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────
@@ -28,7 +27,7 @@ export interface TourStep {
   targetId:     string;          // matches data-tour-id="…" on DOM element
   title:        string;
   description:  string;
-  icon:         React.ElementType;
+  icon:         import("lucide-react").LucideIcon;
   badge?:       string;          // optional pill label
   action?:      string;          // call-to-action text
   placement:    "right" | "left" | "bottom" | "top" | "center";
@@ -39,7 +38,7 @@ export const TOUR_STEPS: TourStep[] = [
     id:          "welcome",
     targetId:    "tour-logo",
     title:       "Welcome to Tahansoe",
-    description: "Tahansoe is your autonomous DeFi risk manager. It monitors your lending positions 24/7 and automatically executes protective actions — repays, collateral top-ups, flash loans — the moment your Health Factor approaches liquidation territory.",
+    description: "Tahansoe protects your Aave and Morpho positions with 3 self-approved liquidation defense layers and 2 AI agents. Rules execute deterministically — AI never signs transactions.",
     icon:        ShieldCheck,
     badge:       "Start here",
     action:      "Take the tour",
@@ -49,61 +48,53 @@ export const TOUR_STEPS: TourStep[] = [
     id:          "overview",
     targetId:    "tour-nav-home",
     title:       "Overview",
-    description: "Your command center. At a glance you'll see total collateral, active debt, Health Factor trends for the last 24 hours, and a real-time feed of recent Tahansoe executions.",
+    description: "Your live command center. See your Health Factor, risk zone, live ETH price ticker, and instant layer readiness.",
     icon:        LayoutDashboard,
     badge:       "Dashboard",
     placement:   "right",
   },
   {
-    id:          "positions",
-    targetId:    "tour-nav-positions",
-    title:       "Positions",
-    description: "Every Aave V3 and Morpho Blue position you own is listed here with a live Health Factor bar. The yellow marker shows your trigger threshold — when HF touches it, Tahansoe fires automatically. Click any position for a detailed HF trend chart.",
-    icon:        Activity,
-    badge:       "Core feature",
+    id:          "protection",
+    targetId:    "tour-nav-protection",
+    title:       "3 Protection Layers",
+    description: "Layer 1 (Wallet Reserve) repays from idle USDC. Layer 2 (Position Reserve) redeems secondary vault shares. Layer 3 (Flash Deleverage) executes an atomic flash loan. You set the caps and approve each layer.",
+    icon:        ShieldCheck,
+    badge:       "Core Defense",
+    action:      "View Layers →",
     placement:   "right",
   },
   {
-    id:          "hf-chart",
-    targetId:    "tour-hf-chart",
-    title:       "Live Health Factor Chart",
-    description: "This chart updates in real time as ETH price moves. The dashed yellow line is your trigger threshold (1.30 by default). Watch both positions drift — when either line hits the threshold, Tahansoe intervenes automatically.",
-    icon:        Activity,
-    badge:       "Live",
-    placement:   "bottom",
-  },
-  {
-    id:          "history",
-    targetId:    "tour-nav-history",
-    title:       "Execution History",
-    description: "Every action Tahansoe has taken — repays, collateral supplies, flash loans — is logged here with before/after Health Factors, gas used, and on-chain tx hashes. This is your full audit trail.",
+    id:          "activity",
+    targetId:    "tour-nav-activity",
+    title:       "Execution Activity",
+    description: "Full audit trail of every remediation. Inspect which layer fired, before and after Health Factors, gas consumed, and verifiable on-chain transaction hashes.",
     icon:        Clock,
     placement:   "right",
   },
   {
-    id:          "telegram",
-    targetId:    "tour-nav-bot",
-    title:       "Telegram Alerts",
-    description: "Connect your Telegram account to receive instant push notifications whenever Tahansoe detects a warning, fires a trigger, or completes an execution. This is the most important step for staying safe — do it now.",
-    icon:        Bot,
-    badge:       "Recommended",
-    action:      "Connect Telegram →",
+    id:          "agents",
+    targetId:    "tour-nav-agents",
+    title:       "AI Agents",
+    description: "Two specialized agents: Market Pulse delivers daily research briefs, while HF Sentinel continuously watches your positions and provides plain-English risk explanations.",
+    icon:        Sparkles,
+    badge:       "2 Active",
     placement:   "right",
   },
   {
-    id:          "ai-chat",
-    targetId:    "tour-nav-chat",
-    title:       "AI Assistant",
-    description: "Ask your AI assistant anything about your positions in plain English — \"What's my riskiest position?\", \"How does the flash loan fallback work?\", \"What happened in the last execution?\". It has full context of your portfolio.",
-    icon:        MessageSquare,
-    badge:       "AI",
+    id:          "telegram",
+    targetId:    "tour-nav-telegram",
+    title:       "Telegram Alerts",
+    description: "Connect your Telegram account to receive instant push alerts when your Health Factor enters warning territory or when a protection layer triggers.",
+    icon:        Send,
+    badge:       "Recommended",
+    action:      "Connect Telegram →",
     placement:   "right",
   },
   {
     id:          "settings",
     targetId:    "tour-nav-settings",
     title:       "Settings & Thresholds",
-    description: "Customize your trigger HF (when Tahansoe fires), target HF (what it restores to), and execution strategy — flash loans, hot reserve, deleverage. Set these once and Tahansoe handles the rest autonomously.",
+    description: "Customize your trigger HF (e.g. 1.30), target HF (e.g. 1.60), slippage limits, and notification toggles.",
     icon:        Settings,
     action:      "You're all set!",
     placement:   "right",
@@ -165,36 +156,30 @@ function getCardStyle(
     case "right":
       return {
         position: "fixed",
-        top:      Math.min(rect.top, vh - 320),
-        left:     Math.min(rect.left + rect.width + PAD, vw - 340),
-        zIndex:   9999,
-      };
-    case "left":
-      return {
-        position: "fixed",
-        top:      Math.min(rect.top, vh - 320),
-        right:    vw - rect.left + PAD,
+        top:      Math.min(vh - 280, Math.max(PAD, rect.top + rect.height / 2 - 120)),
+        left:     Math.min(vw - 340, rect.left + rect.width + PAD),
         zIndex:   9999,
       };
     case "bottom":
       return {
         position: "fixed",
-        top:      Math.min(rect.top + rect.height + PAD, vh - 320),
-        left:     Math.max(PAD, Math.min(rect.left, vw - 340)),
+        top:      Math.min(vh - 280, rect.top + rect.height + PAD),
+        left:     Math.min(vw - 340, Math.max(PAD, rect.left + rect.width / 2 - 160)),
         zIndex:   9999,
       };
-    case "top":
+    default:
       return {
         position: "fixed",
-        bottom:   vh - rect.top + PAD,
-        left:     Math.max(PAD, Math.min(rect.left, vw - 340)),
+        top:      "50%",
+        left:     "50%",
+        transform: "translate(-50%, -50%)",
         zIndex:   9999,
       };
   }
 }
 
 /* ─────────────────────────────────────────────
-   SVG spotlight overlay
+   Spotlight overlay (SVG cutout)
 ───────────────────────────────────────────── */
 function SpotlightOverlay({
   rect,
@@ -257,7 +242,7 @@ function SpotlightOverlay({
       <rect
         x={x} y={y} width={w} height={h} rx={r}
         fill="none"
-        stroke="rgba(74,181,224,0.5)"
+        stroke="var(--brand)"
         strokeWidth={1.5}
       />
       {/* click-through blocker outside spotlight */}
@@ -303,11 +288,11 @@ function TourCard({
     <div
       style={{
         ...cardStyle,
-        width:    320,
-        background: "rgba(13,14,17,0.97)",
-        border:   "1px solid rgba(74,181,224,0.2)",
+        width: 320,
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border-strong)",
         borderRadius: 14,
-        boxShadow: "0 0 0 1px rgba(74,181,224,0.06), 0 24px 64px rgba(0,0,0,0.7), 0 0 40px rgba(74,181,224,0.08)",
+        boxShadow: "0 24px 64px rgba(0,0,0,0.7), 0 0 20px rgba(43,118,255,0.12)",
       }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -315,87 +300,85 @@ function TourCard({
       <div
         className="h-[3px] rounded-t-[14px] transition-all duration-500"
         style={{
-          background: `linear-gradient(90deg, #4ab5e0 0%, #2f8fb8 ${pct}%, rgba(253,241,225,0.06) ${pct}%)`,
+          background: `linear-gradient(90deg, var(--brand) 0%, var(--brand) ${pct}%, var(--border) ${pct}%)`,
         }}
       />
 
       {/* Header */}
-      <div className="flex items-start justify-between px-5 pt-4 pb-3">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+        <div className="flex items-center gap-2">
           <div
-            className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
+            className="w-7 h-7 rounded-[7px] flex items-center justify-center"
             style={{
-              background: "rgba(74,181,224,0.1)",
-              border:     "1px solid rgba(74,181,224,0.25)",
+              background: "var(--brand-bg)",
+              border: "1px solid var(--border-strong)",
             }}
           >
-            <Icon style={{ width: 17, height: 17, color: "#4ab5e0" }} strokeWidth={1.5} />
+            <Icon style={{ width: 14, height: 14, color: "var(--brand)" }} strokeWidth={1.8} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[13.5px] font-semibold text-white tracking-[-0.01em]">
-                {step.title}
-              </span>
-              {step.badge && (
-                <span
-                  className="text-[9px] font-bold font-mono px-1.5 py-0.5 rounded-[4px] tracking-wide"
-                  style={{
-                    background: "rgba(74,181,224,0.12)",
-                    border:     "1px solid rgba(74,181,224,0.25)",
-                    color:      "#4ab5e0",
-                  }}
-                >
-                  {step.badge}
-                </span>
-              )}
-            </div>
-            <p className="text-[10px] font-mono text-white/25 mt-0.5">
-              Step {stepIdx + 1} of {total}
-            </p>
-          </div>
+          {step.badge && (
+            <span
+              className="px-2 py-0.5 rounded-full text-[9px] font-mono font-medium tracking-wide"
+              style={{
+                background: "var(--brand-bg)",
+                border: "1px solid var(--border)",
+                color: "var(--brand)",
+              }}
+            >
+              {step.badge}
+            </span>
+          )}
         </div>
-        <button
-          onClick={onClose}
-          className="w-6 h-6 rounded-[5px] flex items-center justify-center text-white/25 hover:text-white/60 hover:bg-white/[0.06] transition-colors shrink-0"
-        >
-          <X style={{ width: 12, height: 12 }} strokeWidth={2} />
-        </button>
+
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
+            {stepIdx + 1} / {total}
+          </span>
+          <button
+            onClick={onClose}
+            className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors p-1 rounded-md"
+            aria-label="Close walkthrough"
+          >
+            <X style={{ width: 13, height: 13 }} strokeWidth={2} />
+          </button>
+        </div>
       </div>
 
       {/* Body */}
-      <div className="px-5 pb-4">
-        <p className="text-[12.5px] text-white/55 leading-[1.7]">
+      <div className="px-5 py-2">
+        <h3 className="text-[14px] font-semibold text-[var(--text-primary)] leading-snug tracking-[-0.01em]">
+          {step.title}
+        </h3>
+        <p className="text-[12px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
           {step.description}
         </p>
       </div>
 
-      {/* Dot progress */}
-      <div className="flex items-center justify-center gap-1.5 pb-3">
+      {/* Step dot indicators */}
+      <div className="flex items-center gap-1 px-5 py-2">
         {TOUR_STEPS.map((_, i) => (
           <span
             key={i}
             className="rounded-full transition-all duration-300"
             style={{
-              width:  i === stepIdx ? 16 : 5,
+              width: i === stepIdx ? 16 : 5,
               height: 5,
               background: i === stepIdx
-                ? "#4ab5e0"
+                ? "var(--brand)"
                 : i < stepIdx
-                ? "rgba(74,181,224,0.3)"
-                : "rgba(253,241,225,0.1)",
+                ? "var(--text-tertiary)"
+                : "var(--border)",
             }}
           />
         ))}
       </div>
 
       {/* Footer */}
-      <div
-        className="flex items-center justify-between px-5 pb-4"
-      >
+      <div className="flex items-center justify-between px-5 pb-4 pt-1">
         <button
           onClick={onPrev}
           disabled={isFirst}
-          className="flex items-center gap-1.5 h-8 px-3 rounded-[7px] text-[12px] text-white/40 hover:text-white/70 hover:bg-white/[0.05] transition-colors disabled:opacity-0"
+          className="flex items-center gap-1.5 h-8 px-3 rounded-md text-[12px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors disabled:opacity-0"
         >
           <ChevronLeft style={{ width: 13, height: 13 }} strokeWidth={2} />
           Back
@@ -404,11 +387,7 @@ function TourCard({
         {isLast ? (
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 h-8 px-4 rounded-[7px] text-[12px] font-semibold transition-all"
-            style={{
-              background: "linear-gradient(135deg, #4ab5e0 0%, #2f8fb8 100%)",
-              color:      "#0e2a36",
-            }}
+            className="flex items-center gap-1.5 h-8 px-4 rounded-md text-[12px] font-medium bg-[var(--brand)] text-white hover:bg-[var(--accent-hover)] transition-colors"
           >
             <CheckCircle style={{ width: 13, height: 13 }} strokeWidth={2.5} />
             {step.action ?? "Done"}
@@ -416,11 +395,7 @@ function TourCard({
         ) : (
           <button
             onClick={step.action ? onAction : onNext}
-            className="flex items-center gap-1.5 h-8 px-4 rounded-[7px] text-[12px] font-semibold transition-all"
-            style={{
-              background: "linear-gradient(135deg, #4ab5e0 0%, #2f8fb8 100%)",
-              color:      "#0e2a36",
-            }}
+            className="flex items-center gap-1.5 h-8 px-4 rounded-md text-[12px] font-medium bg-[var(--brand)] text-white hover:bg-[var(--accent-hover)] transition-colors"
           >
             {step.action ?? "Next"}
             {!step.action && <ChevronRight style={{ width: 13, height: 13 }} strokeWidth={2.5} />}
@@ -440,7 +415,7 @@ export function OnboardingTourProvider({
   onNavigate,
 }: {
   children:    React.ReactNode;
-  onNavigate?: (pageId: string) => void;
+  onNavigate?: (path: string) => void;
 }) {
   const [isOpen,  setIsOpen]  = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
@@ -492,9 +467,9 @@ export function OnboardingTourProvider({
   /* Action button: navigate to a relevant page */
   const handleAction = useCallback(() => {
     const step = TOUR_STEPS[stepIdx];
-    if (step.id === "telegram")  onNavigate?.("bot");
-    if (step.id === "settings")  onNavigate?.("settings");
-    if (step.id === "welcome")   {} // just go next
+    if (step.id === "protection") onNavigate?.("/dashboard/protection");
+    if (step.id === "telegram")   onNavigate?.("/dashboard/telegram");
+    if (step.id === "settings")   onNavigate?.("/dashboard/settings");
     goNext();
   }, [stepIdx, onNavigate, goNext]);
 

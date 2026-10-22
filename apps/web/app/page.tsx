@@ -1,32 +1,29 @@
 import { Navbar } from "@/components/landing/Navbar";
-import { SpotlightHero } from "@/components/landing/SpotlightHero";
-import { HealthFactorExplainer } from "@/components/landing/HealthFactorExplainer";
+import { Hero } from "@/components/landing/Hero";
+import { TheProblem } from "@/components/landing/TheProblem";
+import { ProtectionLayers } from "@/components/landing/ProtectionLayers";
+import { Agents } from "@/components/landing/Agents";
 import { HowItWorks } from "@/components/landing/HowItWorks";
-import { Features } from "@/components/landing/Features";
-import { Architecture } from "@/components/landing/Architecture";
+import { OpenByDefault } from "@/components/landing/OpenByDefault";
 import { FAQ } from "@/components/landing/FAQ";
-import { RiskDisclosure } from "@/components/landing/RiskDisclosure";
-import { WaitlistCTA } from "@/components/landing/WaitlistCTA";
 import { Footer } from "@/components/landing/Footer";
-import { MossBand } from "@/components/landing/Scenery";
+import { GeoDefs } from "@/components/landing/geo/Defs";
 
 export default function Home() {
   return (
-    <>
+    <div className="relative min-h-screen bg-[var(--bg)] text-[var(--text-primary)]">
+      <GeoDefs />
       <Navbar />
-      <main className="bg-[#0b1110]">
-        <SpotlightHero />
-        <HealthFactorExplainer />
-        <MossBand />
+      <main>
+        <Hero />
+        <TheProblem />
+        <ProtectionLayers />
+        <Agents />
         <HowItWorks />
-        <Features />
-        <MossBand />
-        <Architecture />
+        <OpenByDefault />
         <FAQ />
-        <RiskDisclosure />
-        <WaitlistCTA />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

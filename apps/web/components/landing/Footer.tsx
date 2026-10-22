@@ -1,49 +1,63 @@
+import Link from "next/link";
+import { BrandMark } from "@/components/ui/brand-mark";
+import { telegramBotUrl } from "@/lib/telegram";
+
+const CONTRACT_ADDRESS = "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E";
+const ARBISCAN_URL = `https://sepolia.arbiscan.io/address/${CONTRACT_ADDRESS}`;
+
+const links = [
+  { href: "#layers", label: "Layers" },
+  { href: "#agents", label: "Agents" },
+  { href: "#faq", label: "FAQ" },
+  { href: telegramBotUrl, label: "Telegram", external: true },
+  { href: ARBISCAN_URL, label: "Contract", external: true },
+];
+
 export function Footer() {
   return (
-    <footer className="py-10 bg-[#0b1110]">
-      <div className="max-w-[1400px] mx-auto px-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          {/* Brand */}
-          <div className="flex items-center gap-3">
-            <svg width="26" height="26" viewBox="0 0 270 270" aria-hidden="true">
-              <path fill="#fdf1e1" d="M 256 64 L 256 128 L 192.5 128 L 160 95 L 128 64 L 96 95 L 63.5 128 L 64 128 L 128 192 L 128 256 L 64.5 256 L 32 223 L 0 192 L 0 64 L 64 0 L 192 0 Z" />
-              <path fill="#4ab5e0" transform="translate(12 12)" d="M 256 192 L 256 256 L 192.5 256 L 160 223 L 128 192 L 128 128 L 192 128 Z" />
-            </svg>
-            <span className="font-display text-[28px] leading-none text-[#fdf1e1]">Tahansoe</span>
-          </div>
-
-          {/* Links */}
-          <nav className="flex flex-wrap gap-6 text-[13px] text-[#8f897c]">
-            <a href="#how-it-works" className="hover:text-[#c8bca9] transition-colors duration-150">
-              How it works
-            </a>
-            <a href="#features" className="hover:text-[#c8bca9] transition-colors duration-150">
-              Features
-            </a>
-            <a href="#faq" className="hover:text-[#c8bca9] transition-colors duration-150">
-              FAQ
-            </a>
-            <a href="#risk" className="hover:text-[#c8bca9] transition-colors duration-150">
-              Risk disclosure
-            </a>
-            <a href="#waitlist" className="hover:text-[#c8bca9] transition-colors duration-150">
-              Waitlist
-            </a>
-          </nav>
-
-          {/* Disclaimer */}
-          <p className="text-[12px] text-[#5b6660] max-w-[260px] text-right leading-relaxed hidden lg:block">
-            Risk automation, not a liquidation guarantee. Use at your own risk.
+    <footer className="pt-20 pb-10">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pb-16">
+          <p className="font-display text-[26px] leading-[1.25] tracking-[-0.01em] text-[var(--text-primary)]">
+            Stay in the loop.
+            <br />
+            Get alerts on Telegram.
           </p>
+          <div className="flex items-center gap-2">
+            <a
+              href={telegramBotUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center h-10 px-5 rounded-full border border-[var(--border-strong)] text-[13px] text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors"
+            >
+              Join on Telegram
+            </a>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center h-10 px-5 rounded-full bg-[var(--brand)] text-white hover:bg-[var(--color-brand-400)] text-[13px] transition-colors"
+            >
+              Launch app
+            </Link>
+          </div>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-[#26332f] flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-          <p className="text-[12px] text-[#5b6660]">
-            Tahansoe - Pre-development. Testnet only.
-          </p>
-          <p className="text-[12px] text-[#5b6660]">
-            Non-custodial. Smart contract audit pending.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-8 border-t border-[var(--border)]">
+          <div className="flex items-center gap-2">
+            <BrandMark size={18} />
+            <span className="text-[13px] text-[var(--text-secondary)]">Liquidation protection on Arbitrum · Testnet</span>
+          </div>
+          <nav className="flex flex-wrap gap-5 text-[13px] text-[var(--text-secondary)]">
+            {links.map(({ href, label, external }) => (
+              <a
+                key={label}
+                href={href}
+                {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                className="hover:text-[var(--text-primary)] transition-colors"
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
         </div>
       </div>
     </footer>

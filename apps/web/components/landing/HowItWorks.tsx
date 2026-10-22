@@ -1,69 +1,47 @@
-import { MossBackdrop } from "./Scenery";
+import Link from "next/link";
+import { Tag } from "./Tag";
+import { MiniIcon, type MiniKind } from "./illustrations/MiniIcon";
 
-const steps = [
-  {
-    index: "01",
-    title: "Connect your position",
-    body: "Link your Aave V3 or Morpho Blue position. Tahansoe reads Health Factor directly from Chainlink oracles, the same source the protocol uses.",
-  },
-  {
-    index: "02",
-    title: "Set your thresholds",
-    body: "Define your trigger threshold (default 1.30) and target recovery HF (default 1.60). Tahansoe translates your intent into deterministic policy parameters.",
-  },
-  {
-    index: "03",
-    title: "Approve the Guardian Module",
-    body: "A Safe Module with a strict allowlist is deployed. It can only repay debt or supply collateral. It cannot transfer funds out or approve arbitrary addresses.",
-  },
-  {
-    index: "04",
-    title: "Automated remediation",
-    body: "When HF drops below your trigger, the rule engine fires: repay via flash loan or reserve, restoring your position in a single atomic transaction.",
-  },
+const steps: { icon: MiniKind; title: string; body: string }[] = [
+  { icon: "connect", title: "Connect", body: "Sign in with your wallet. We find your Aave position on Arbitrum." },
+  { icon: "choose", title: "Choose layers", body: "Pick your trigger and target HF, then which layers to turn on." },
+  { icon: "approve", title: "Approve", body: "Grant each layer a capped allowance. You see exactly what each one allows." },
+  { icon: "watch", title: "Sentinel watches", body: "24/7 checks, Telegram alerts, and automatic repay when needed." },
 ];
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative isolate overflow-hidden py-20 md:py-[80px]">
-      <MossBackdrop position="top" />
-      <div className="max-w-[1400px] mx-auto px-6">
-        {/* Section header */}
-        <div className="mb-14">
-          <h2 className="text-4xl md:text-5xl font-display font-medium leading-[1.1] tracking-[-0.02em] text-[#fdf1e1] max-w-[480px]">
-            From setup to protection in four steps.
+    <section id="how" className="py-20 md:py-28">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
+        <div className="flex flex-col items-center text-center">
+          <Tag>How it works</Tag>
+          <h2 className="mt-4 font-display uppercase text-[32px] sm:text-[40px] leading-[1.1] tracking-[-0.01em] text-[var(--text-primary)]">
+            <span className="font-light">Set up in </span>
+            <span className="font-semibold">four steps</span>
           </h2>
         </div>
 
-        {/* Steps */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {steps.map((step) => (
-            <StepCard key={step.index} {...step} />
+        <ol className="relative mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div
+            aria-hidden="true"
+            className="hidden lg:block absolute top-[52px] left-[12%] right-[12%] border-t border-dashed border-[var(--border-strong)]"
+          />
+          {steps.map((s, i) => (
+            <li key={s.title} className="relative flex flex-col items-center text-center">
+              <div className="glass-surface rounded-full size-[104px] flex items-center justify-center">
+                <MiniIcon kind={s.icon} className="size-20" />
+              </div>
+              <p className="mt-5 text-[11px] font-mono text-[var(--text-tertiary)]">0{i + 1}</p>
+              <p className="mt-1 text-[16px] font-semibold uppercase tracking-[0.02em] text-[var(--text-primary)]">{s.title}</p>
+              <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--text-secondary)] max-w-[240px]">{s.body}</p>
+            </li>
           ))}
+        </ol>
+
+        <div className="mt-14 flex justify-center">
+          <Link href="/connect" className="btn-iridescent">Protect my position</Link>
         </div>
       </div>
     </section>
-  );
-}
-
-function StepCard({
-  index,
-  title,
-  body,
-}: {
-  index: string;
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="glass-card rounded-[24px] p-8 md:p-10 transition-transform duration-300 hover:-translate-y-1">
-      <p className="font-display text-[44px] leading-none text-[#4ab5e0] mb-6">
-        {index}
-      </p>
-      <h3 className="text-[20px] font-medium text-[#fdf1e1] tracking-[-0.015em] mb-3 leading-snug">
-        {title}
-      </h3>
-      <p className="text-[14px] leading-[1.65] text-[#c8bca9] max-w-[380px]">{body}</p>
-    </div>
   );
 }
