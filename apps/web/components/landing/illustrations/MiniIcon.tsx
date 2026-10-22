@@ -27,7 +27,7 @@ const ICONS: Record<MiniKind, React.ReactNode> = {
       <IsoBox at={[-6, -6, 14]} size={[12, 12, 32]} m="pearl" />
     </>
   ),
-  pull: <IsoCoinStack at={[0, 0, 0]} count={4} r={14} />,
+  pull: <IsoCoinStack at={[0, 0, 0]} count={4} r={14} m="usdc" />,
   repay: (
     <>
       <IsoBox at={[-18, -18, 0]} size={[36, 36, 22]} m="chrome" />
@@ -42,20 +42,20 @@ const ICONS: Record<MiniKind, React.ReactNode> = {
   redeem: (
     <>
       <IsoBox at={[-24, -10, 0]} size={[22, 22, 34]} m="glass" />
-      <IsoCylinder at={[14, 14, 0]} r={11} h={5} />
-      <IsoCylinder at={[14, 14, 6]} r={11} h={5} />
+      <IsoCylinder at={[14, 14, 0]} r={11} h={5} m="usdc" />
+      <IsoCylinder at={[14, 14, 6]} r={11} h={5} m="usdc" />
     </>
   ),
   flash: (
     <>
       <IsoRing at={[0, 0, 0]} r={28} width={2} dashed />
-      <IsoCoinStack at={[0, 0, 0]} count={3} r={12} />
+      <IsoCoinStack at={[0, 0, 0]} count={3} r={12} m="usdc" />
     </>
   ),
   swap: (
     <>
       <IsoBox at={[-26, -4, 0]} size={[20, 20, 26]} m="glass" />
-      <IsoCoinStack at={[16, 8, 0]} count={3} r={10} />
+      <IsoCoinStack at={[16, 8, 0]} count={3} r={10} m="usdc" />
     </>
   ),
   connect: (
@@ -73,7 +73,7 @@ const ICONS: Record<MiniKind, React.ReactNode> = {
   ),
   approve: (
     <>
-      <IsoCoinStack at={[-8, -8, 0]} count={2} r={14} />
+      <IsoCoinStack at={[-8, -8, 0]} count={2} r={14} m="usdc" />
       <Check />
     </>
   ),

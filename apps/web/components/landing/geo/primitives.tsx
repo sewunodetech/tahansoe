@@ -43,6 +43,19 @@ export function IsoCylinder({
     <g className={className} strokeLinejoin="round" strokeLinecap="round">
       <path d={side} fill={`url(#geo-${m}-right)`} stroke={EDGE} strokeWidth={1} vectorEffect="non-scaling-stroke" />
       <ellipse cx={cx} cy={cyTop} rx={rx} ry={ry} fill={`url(#geo-${m}-top)`} stroke={EDGE_TOP} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+      {m === "usdc" && (
+        <ellipse
+          cx={cx}
+          cy={cyTop}
+          rx={rx * 0.62}
+          ry={ry * 0.62}
+          fill="none"
+          stroke="var(--geo-edge-highlight)"
+          strokeWidth={0.8}
+          strokeOpacity={0.75}
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
     </g>
   );
 }

@@ -99,18 +99,18 @@ function Label({
 /** A borrow position: collateral, debt, and the liquidation line it must not cross. */
 export function PositionScene() {
   return (
-    <Scene label="Collateral block, debt stack, and the liquidation line" viewBox="-185 -145 370 295">
-      <IsoFloor at={at(0, 40)} r={150} />
-      <IsoLine from={at(-40, 145)} to={at(145, 40)} />
-      <Label x={45} y={124} tone="danger">LIQUIDATION LINE</Label>
+    <Scene label="Collateral block, debt stack, and the liquidation line" viewBox="-190 -145 380 300">
+      <IsoFloor at={at(0, 40)} r={155} />
+      <Label x={-40} y={138} tone="danger">LIQUIDATION LINE</Label>
+      <IsoLine from={at(42, 138)} to={at(168, 75)} />
 
       <g className="geo-float">
-        <Box sx={-85} sy={20} size={[64, 64, 84]} m="glass" />
+        <Box sx={-88} sy={20} size={[64, 64, 84]} m="glass" />
       </g>
-      <Label x={-85} y={80}>COLLATERAL · ETH</Label>
+      <Label x={-88} y={80}>COLLATERAL · ETH</Label>
 
-      <IsoCoinStack at={at(40, 55)} count={7} r={17} m="chrome" />
-      <Label x={40} y={74}>DEBT · USDC</Label>
+      <IsoCoinStack at={at(50, 48)} count={7} r={16} m="usdc" />
+      <Label x={52} y={64}>DEBT · USDC</Label>
 
       <Box sx={130} sy={-15} size={[14, 14, 26]} m="danger" className="geo-pulse" />
       <Box sx={130} sy={-15} z={26} size={[14, 14, 70]} m="pearl" />
@@ -125,7 +125,7 @@ export function L1WalletScene() {
     <Scene label="Coins move from the wallet to repay the debt" viewBox="-185 -145 370 295">
       <IsoFloor at={at(0, 50)} r={150} />
       <Box sx={-100} sy={45} size={[80, 80, 16]} m="glass" />
-      <IsoCoinStack at={at(-100, 45, 16)} count={5} r={16} className="geo-float" />
+      <IsoCoinStack at={at(-100, 45, 16)} count={5} r={16} m="usdc" className="geo-float" />
       <Label x={-100} y={112}>YOUR WALLET · USDC</Label>
 
       <FlowPath from={at(-100, 45, 54)} to={at(100, 45, 84)} lift={60} />
@@ -144,19 +144,19 @@ export function L2VaultScene() {
     <Scene label="Vault shares are redeemed into coins that repay the debt" viewBox="-185 -145 370 295">
       <IsoFloor at={at(0, 50)} r={155} />
       <g className="geo-float">
-        <Box sx={-115} sy={30} size={[56, 56, 96]} m="glass" />
-        <IsoRing at={at(-115, 30, 96)} r={14} width={2} />
+        <Box sx={-122} sy={30} size={[56, 56, 96]} m="glass" />
+        <IsoRing at={at(-122, 30, 96)} r={14} width={2} />
       </g>
-      <Label x={-115} y={90}>VAULT SHARES</Label>
+      <Label x={-122} y={82}>VAULT SHARES</Label>
 
-      <FlowPath from={at(-115, 30, 70)} to={at(0, 75, 34)} lift={30} />
-      <IsoCoinStack at={at(0, 75)} count={4} r={15} />
-      <Label x={0} y={112}>REDEEM → USDC</Label>
+      <FlowPath from={at(-122, 30, 70)} to={at(0, 75, 34)} lift={30} />
+      <IsoCoinStack at={at(0, 75)} count={4} r={15} m="usdc" />
+      <Label x={0} y={118}>REDEEM → USDC</Label>
 
-      <FlowPath from={at(0, 75, 30)} to={at(115, 30, 70)} lift={36} />
-      <Box sx={115} sy={30} size={[60, 60, 46]} m="chrome" />
-      <Box sx={115} sy={30} z={46} size={[60, 60, 20]} m="danger" className="geo-pulse" />
-      <Label x={115} y={90}>AAVE DEBT</Label>
+      <FlowPath from={at(0, 75, 30)} to={at(122, 30, 70)} lift={36} />
+      <Box sx={122} sy={30} size={[60, 60, 46]} m="chrome" />
+      <Box sx={122} sy={30} z={46} size={[60, 60, 20]} m="danger" className="geo-pulse" />
+      <Label x={122} y={82}>AAVE DEBT</Label>
     </Scene>
   );
 }
@@ -167,11 +167,11 @@ export function L3FlashScene() {
     <Scene label="Flash loan loop: borrow, repay, swap collateral, close" viewBox="-195 -165 390 330">
       <IsoRing at={at(0, 30)} r={118} width={2} dashed className="geo-flow-slow" />
 
-      <IsoCoinStack at={at(-110, -25)} count={4} r={15} m="brand" />
-      <Label x={-110} y={12} tone="brand">① FLASH LOAN</Label>
+      <IsoCoinStack at={at(-110, -25)} count={4} r={15} m="usdc" />
+      <Label x={-110} y={8} tone="brand">① FLASH LOAN</Label>
 
       <Box sx={115} sy={-60} size={[46, 46, 44]} m="chrome" />
-      <Label x={115} y={-120}>② REPAY DEBT</Label>
+      <Label x={115} y={-136}>② REPAY DEBT</Label>
       <FlowPath from={at(-110, -25, 30)} to={at(115, -60, 56)} lift={50} />
 
       <g className="geo-float">
@@ -182,8 +182,8 @@ export function L3FlashScene() {
       <Box sx={-15} sy={115} size={[26, 26, 26]} m="glass" opacity={0.9} />
       <FlowPath from={at(75, 95, 44)} to={at(-15, 115, 28)} lift={18} />
 
-      <IsoCoinStack at={at(-120, 85)} count={3} r={13} />
-      <Label x={-120} y={122}>④ SWAP → CLOSE</Label>
+      <IsoCoinStack at={at(-120, 85)} count={3} r={13} m="usdc" />
+      <Label x={-120} y={126}>④ SWAP → CLOSE</Label>
       <FlowPath from={at(-15, 115, 20)} to={at(-120, 85, 20)} lift={18} />
       <FlowPath from={at(-120, 85, 22)} to={at(-110, -25, 26)} lift={10} />
     </Scene>
@@ -212,19 +212,19 @@ export function CascadeScene() {
         </g>
       ))}
 
-      <IsoLine from={at(220, 55)} to={at(80, 140)} />
-      <Label x={185} y={116} tone="danger" size={15}>LIQUIDATION</Label>
+      <IsoLine from={at(220, 50)} to={at(105, 116)} />
+      <Label x={175} y={138} tone="danger" size={15}>LIQUIDATION</Label>
     </Scene>
   );
 }
 
 /** Agent 1: one research run broadcast to every subscriber. */
 export function PulseScene() {
-  const phones: [number, number][] = [[-125, 45], [120, -20], [105, 105]];
+  const phones: [number, number][] = [[-125, 45], [120, -20], [118, 80]];
   const top = at(0, 40, 112);
   const [sx, sy] = iso(...top);
   return (
-    <Scene label="One research tower broadcasting to many phones" viewBox="-185 -150 370 310">
+    <Scene label="One research tower broadcasting to many phones" viewBox="-185 -150 370 315">
       <IsoFloor at={at(0, 50)} r={150} />
       <Box sx={0} sy={40} size={[28, 28, 92]} m="chrome" />
       <IsoRing at={top} r={40} width={1.5} className="geo-pulse" />
@@ -236,18 +236,18 @@ export function PulseScene() {
       {phones.map(([px, py], i) => (
         <IsoPhone key={i} at={boxAt(px, py, 3, 28)} className={i % 2 ? "geo-float geo-delay" : "geo-float"} />
       ))}
-      <Label x={0} y={124} tone="brand">1 RESEARCH RUN → ALL SUBSCRIBERS</Label>
+      <Label x={0} y={132} tone="brand">1 RESEARCH RUN → ALL SUBSCRIBERS</Label>
     </Scene>
   );
 }
 
 /** Agent 2: radar watching HF zones; execution is locked to rules. */
 export function SentinelScene() {
-  const cols: { h: number; m: Material; label: string; tone: "safe" | "strong" | "warn" | "danger" }[] = [
-    { h: 92, m: "safe", label: "SAFE", tone: "safe" },
-    { h: 68, m: "glass", label: "WATCH", tone: "strong" },
-    { h: 44, m: "warn", label: "WARN", tone: "warn" },
-    { h: 22, m: "danger", label: "ACT", tone: "danger" },
+  const cols: { sx: number; h: number; m: Material; label: string; tone: "safe" | "strong" | "warn" | "danger" }[] = [
+    { sx: -36, h: 92, m: "safe", label: "SAFE", tone: "safe" },
+    { sx: 24, h: 68, m: "glass", label: "WATCH", tone: "strong" },
+    { sx: 84, h: 44, m: "warn", label: "WARN", tone: "warn" },
+    { sx: 138, h: 22, m: "danger", label: "ACT", tone: "danger" },
   ];
   const [lx, ly] = [125, -30];
   const [ax, ay] = iso(...at(lx - 9, ly, 26));
@@ -257,12 +257,12 @@ export function SentinelScene() {
       <IsoFloor at={at(0, 40)} r={150} />
       <IsoRing at={at(-105, -10)} r={52} width={1.5} dashed className="geo-flow-slow" />
       <IsoSphere at={at(-105, -10, 36)} r={24} glass />
-      <Label x={-105} y={58} tone="brand">HF SENTINEL</Label>
+      <Label x={-105} y={66} tone="brand">HF SENTINEL</Label>
 
-      {cols.map(({ h, m, label, tone }, i) => (
+      {cols.map(({ sx, h, m, label, tone }) => (
         <g key={label}>
-          <Box sx={-25 + i * 42} sy={75} size={[22, 22, h]} m={m} />
-          <Label x={-25 + i * 42} y={108} tone={tone}>{label}</Label>
+          <Box sx={sx} sy={75} size={[20, 20, h]} m={m} />
+          <Label x={sx} y={108} tone={tone}>{label}</Label>
         </g>
       ))}
 

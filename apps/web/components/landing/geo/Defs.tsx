@@ -2,7 +2,7 @@
  * Shared gradients for every isometric illustration on the page. Rendered
  * once (hidden) so each scene can reference `url(#geo-…)`.
  */
-export type Material = "glass" | "chrome" | "brand" | "danger" | "safe" | "warn" | "pearl";
+export type Material = "glass" | "chrome" | "brand" | "danger" | "safe" | "warn" | "pearl" | "usdc";
 
 const FACES: Record<Material, { top: [string, string]; left: [string, string]; right: [string, string] }> = {
   glass:  { top: ["#edf6ff", "#d6ecff"], left: ["#a5d2ff", "#bee8fa"], right: ["#7b94ff", "#a491ff"] },
@@ -12,6 +12,7 @@ const FACES: Record<Material, { top: [string, string]; left: [string, string]; r
   safe:   { top: ["#bbf7d0", "#86efac"], left: ["#10b981", "#059669"], right: ["#047857", "#065f46"] },
   warn:   { top: ["#fef08a", "#fde047"], left: ["#f59e0b", "#d97706"], right: ["#b45309", "#92400e"] },
   pearl:  { top: ["#ffffff", "#f1f4fb"], left: ["#eaeef8", "#dde2f1"], right: ["#cfd5e7", "#bec5dc"] },
+  usdc:   { top: ["#60a5fa", "#2775ca"], left: ["#2563eb", "#1d4ed8"], right: ["#1d4ed8", "#1e40af"] },
 };
 
 export const MATERIALS = Object.keys(FACES) as Material[];
@@ -79,6 +80,13 @@ export function GeoDefs() {
             --geo-pearl-left-1: #dde2f1;
             --geo-pearl-right-0: #cfd5e7;
             --geo-pearl-right-1: #bec5dc;
+
+            --geo-usdc-top-0: #60a5fa;
+            --geo-usdc-top-1: #2775ca;
+            --geo-usdc-left-0: #2563eb;
+            --geo-usdc-left-1: #1d4ed8;
+            --geo-usdc-right-0: #1d4ed8;
+            --geo-usdc-right-1: #1e40af;
 
             --geo-sphere-pearl-0: #ffffff;
             --geo-sphere-pearl-55: #eef2fb;
@@ -152,6 +160,13 @@ export function GeoDefs() {
             --geo-pearl-left-1: #1a1e27;
             --geo-pearl-right-0: #141720;
             --geo-pearl-right-1: #0e1017;
+
+            --geo-usdc-top-0: #93c5fd;
+            --geo-usdc-top-1: #3b82f6;
+            --geo-usdc-left-0: #2563eb;
+            --geo-usdc-left-1: #1d4ed8;
+            --geo-usdc-right-0: #1d4ed8;
+            --geo-usdc-right-1: #1e3a8a;
 
             --geo-sphere-pearl-0: #546078;
             --geo-sphere-pearl-55: #323a49;
