@@ -2,6 +2,8 @@ import { arbitrumSepolia } from "wagmi/chains";
 import { ARBITRUM_SEPOLIA, currentGuardian, legacyGuardians, type Address } from "@tahansoe/domain";
 
 export { guardianAbi } from "./guardian-abi";
+export { guardianV2Abi } from "./guardian-v2-abi";
+
 
 /** Chain the live dashboard runs on until mainnet. */
 export const LIVE_CHAIN = arbitrumSepolia;
