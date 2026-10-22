@@ -22,6 +22,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import { simulateCascade } from "@tahansoe/domain";
 import { useSimulation, type PolicySettings } from "@/lib/simulation-context";
 import type { Position, HistoryEntry, PositionStatus } from "@/lib/mock-data";
 import type { AlertEvent, HFPoint, RemediationStrategy } from "@/lib/simulation-context";
@@ -52,23 +53,22 @@ function nextEthPrice(current: number): number {
 
 /* ─────────────────────────────────────────────
    HF formula
-   HF = (collateralUsd × LIQ_THRESHOLD) / debtUsd
+   HF = (collateralUsd × liquidationThreshold) / debtUsd
 ───────────────────────────────────────────── */
-function calcHF(collateralUsd: number, debtUsd: number): number {
+function calcHF(collateralUsd: number, debtUsd: number, lt = LIQ_THRESHOLD): number {
   if (debtUsd <= 0) return 99;
-  return (collateralUsd * LIQ_THRESHOLD) / debtUsd;
+  return (collateralUsd * lt) / debtUsd;
 }
 
 function hfStatus(hf: number, triggerHF: number, warnThreshold: number): PositionStatus {
+  if (hf < 1.0)            return "liquidated";
   if (hf <= triggerHF)     return "critical";
   if (hf <= warnThreshold) return "warning";
   return "safe";
 }
 
 /* ─────────────────────────────────────────────
-   Remediation math
-   All three strategies bring HF to effectiveTarget.
-   effectiveTarget = targetHF × (1 + bufferPct/100)
+   Remediation math via simulateCascade
 ───────────────────────────────────────────── */
 type RemediationResult = {
   strategy:      RemediationStrategy;
@@ -80,105 +80,87 @@ type RemediationResult = {
   amount:        number;
   asset:         string;
   source:        string;
+  l1Repay:       number;
 };
 
 function remediate(
   pos: Position,
   policy: PolicySettings
 ): RemediationResult | null {
-  const effective = policy.targetHF * (1 + policy.bufferPct / 100);
-  const targetDebt = (pos.collateralUsd * LIQ_THRESHOLD) / effective;
-  const neededRepayUsd = Math.max(0, pos.debtUsd - targetDebt);
-
-  if (neededRepayUsd <= 0) return null;
-
-  // ── Layer 1: Hot Reserve (Wallet Reserve)
+  const lt = pos.liquidationThreshold ?? LIQ_THRESHOLD;
   const l1Active = (policy.l1Enabled ?? policy.hotReserveEnabled) && (policy.l1Approved ?? true);
-  const l1Cap = policy.l1Cap ?? 1000;
-  if (l1Active && l1Cap >= neededRepayUsd) {
-    const newDebt = targetDebt;
-    const newHF = calcHF(pos.collateralUsd, newDebt);
-    return {
-      strategy:      "l1_hot",
-      layer:         1,
-      newCollateral: pos.collateralUsd,
-      newDebt,
-      newHF,
-      actionLabel:   `Repay ${Math.round(neededRepayUsd).toLocaleString()} USDC`,
-      amount:        Math.round(neededRepayUsd),
-      asset:         "USDC",
-      source:        "Wallet Reserve (L1)",
-    };
-  }
-
-  // ── Layer 2: Warm Reserve (Position Reserve e.g. ERC-4626 vault or aToken)
   const l2Active = (policy.l2Enabled ?? false) && (policy.l2Approved ?? true);
-  const l2Cap = policy.l2Cap ?? 2500;
-  if (l2Active && l2Cap >= neededRepayUsd) {
-    const newDebt = targetDebt;
-    const newHF = calcHF(pos.collateralUsd, newDebt);
-    return {
-      strategy:      "l2_warm",
-      layer:         2,
-      newCollateral: pos.collateralUsd,
-      newDebt,
-      newHF,
-      actionLabel:   `Repay ${Math.round(neededRepayUsd).toLocaleString()} USDC`,
-      amount:        Math.round(neededRepayUsd),
-      asset:         "USDC",
-      source:        "Position Reserve (L2)",
-    };
-  }
-
-  // ── Layer 3: Flash Deleverage (L3 Flash Loan)
   const l3Active = (policy.l3Enabled ?? (policy.flashLoanEnabled || policy.deleverageEnabled)) && (policy.l3Approved ?? true);
-  if (l3Active) {
-    const C = pos.collateralUsd;
-    const D = pos.debtUsd;
-    const L = LIQ_THRESHOLD;
-    const T = effective;
-    const denom = L - T;
-    if (denom < 0) {
-      const x = (C * L - T * D) / denom;
-      const newCollateral = C - x;
-      const newDebt = D - x;
-      if (newCollateral > 0 && newDebt >= 0) {
-        const newHF = calcHF(newCollateral, Math.max(0.01, newDebt));
-        const slippageFactor = 1 - (policy.slippageBps ?? 50) / 10_000;
-        return {
-          strategy:      "l3_flash",
-          layer:         3,
-          newCollateral,
-          newDebt,
-          newHF,
-          actionLabel:   `Deleverage ${Math.round(x).toLocaleString()} USD`,
-          amount:        Math.round(x * slippageFactor),
-          asset:         "ETH→USDC",
-          source:        "Flash Deleverage (L3)",
-        };
-      }
+
+  const cascade = simulateCascade({
+    collateralUsd: pos.collateralUsd,
+    debtUsd: pos.debtUsd,
+    liquidationThreshold: lt,
+    collateralAssetLt: lt,
+    triggerHf: policy.triggerHF,
+    targetHf: policy.targetHF,
+    version: 2,
+    l1: {
+      enabled: l1Active,
+      cap: policy.l1Cap ?? 1000,
+      balance: policy.l1Balance ?? 5000,
+      allowance: policy.l1Allowance ?? 3000,
+    },
+    l2: {
+      enabled: l2Active,
+      cap: policy.l2Cap ?? 2500,
+      balance: policy.l2Balance ?? 10000,
+      allowance: policy.l2Allowance ?? 10000,
+    },
+    l3: {
+      enabled: l3Active,
+      maxCollateral: policy.l3Cap ?? 10000,
+      slippageBps: policy.slippageBps ?? 50,
+      flashPremiumBps: 5,
+    },
+  });
+
+  if (cascade.totalRepaid <= 0) return null;
+
+  let strategy: RemediationStrategy = "l1_hot";
+  let layer: 1 | 2 | 3 = 1;
+  const sources: string[] = [];
+
+  if (cascade.l1Repay > 0) {
+    sources.push("Wallet Reserve (L1)");
+    strategy = "l1_hot";
+    layer = 1;
+  }
+  if (cascade.l2Repay > 0) {
+    sources.push("Position Reserve (L2)");
+    if (cascade.l3Collateral === 0) {
+      strategy = "l2_warm";
+      layer = 2;
     }
   }
-
-  // Fallback: If L1 was active with partial cap
-  if (l1Active) {
-    const repayAmount = Math.min(neededRepayUsd, l1Cap);
-    const newDebt = Math.max(0, pos.debtUsd - repayAmount);
-    const newHF = calcHF(pos.collateralUsd, newDebt);
-    return {
-      strategy:      "l1_hot",
-      layer:         1,
-      newCollateral: pos.collateralUsd,
-      newDebt,
-      newHF,
-      actionLabel:   `Repay ${Math.round(repayAmount).toLocaleString()} USDC`,
-      amount:        Math.round(repayAmount),
-      asset:         "USDC",
-      source:        "Wallet Reserve (L1)",
-    };
+  if (cascade.l3Collateral > 0) {
+    sources.push("Flash Deleverage (L3)");
+    strategy = "l3_flash";
+    layer = 3;
   }
 
-  return null; // no strategy available — alert only
+  const actionLabel =
+    cascade.l3Collateral > 0
+      ? `Deleverage $${Math.round(cascade.l3Collateral).toLocaleString()} + Repay $${Math.round(cascade.totalRepaid).toLocaleString()}`
+      : `Repay ${Math.round(cascade.totalRepaid).toLocaleString()} USDC`;
+
+  return {
+    strategy,
+    layer,
+    newCollateral: cascade.newCollateralUsd,
+    newDebt: cascade.newDebtUsd,
+    newHF: cascade.newHf,
+    actionLabel,
+    amount: Math.round(cascade.totalRepaid),
+    asset: cascade.l3Collateral > 0 ? "ETH→USDC" : "USDC",
+    source: sources.join(" + ") || "Guardian Cascade",
+    l1Repay: cascade.l1Repay,
+  };
 }
 
 /* ─────────────────────────────────────────────
@@ -286,8 +268,9 @@ export function SimulationEngine() {
 
         // Update collateral USD proportionally to price change
         const newCollateralUsd = pos.collateralUsd * (newEthPrice / prevEthPrice);
-        const rawHF            = calcHF(newCollateralUsd, pos.debtUsd);
-        const hf               = Math.max(1.01, Math.min(3.5, rawHF));
+        const lt               = pos.liquidationThreshold ?? LIQ_THRESHOLD;
+        const rawHF            = calcHF(newCollateralUsd, pos.debtUsd, lt);
+        const hf               = Math.max(0, Math.min(3.5, rawHF));
         const status           = hfStatus(hf, policy.triggerHF, warnThreshold);
 
         return {
@@ -307,6 +290,30 @@ export function SimulationEngine() {
 
       for (let i = 0; i < updatedPositions.length; i++) {
         const pos = updatedPositions[i];
+
+        /* ── LIQUIDATED: HF < 1.00 ──── */
+        if (pos.status === "liquidated") {
+          const cdKey  = `${pos.id}:liquidated`;
+          const lastAt = cdMap.get(cdKey) ?? 0;
+          if (now - lastAt < ALERT_COOLDOWN) continue;
+          cdMap.set(cdKey, now);
+
+          newAlerts.push({
+            id:            makeId(),
+            positionId:    pos.id,
+            protocol:      pos.protocol,
+            chain:         pos.chain,
+            hf:            pos.hf,
+            triggerAt:     policy.triggerHF,
+            type:          "critical",
+            strategy:      null,
+            message:       `💀 POSITION LIQUIDATED — ${pos.protocol} (${pos.chain})\nHF ${pos.hf.toFixed(2)} dropped below 1.00. Collateral seized.`,
+            timestamp:     now,
+            dismissed:     false,
+            sentToTelegram: false,
+          });
+          continue;
+        }
 
         /* ── CRITICAL: trigger fired ──── */
         if (pos.status === "critical") {
@@ -342,6 +349,16 @@ export function SimulationEngine() {
               hf:            parseFloat(result.newHF.toFixed(3)),
               status:        "safe",
             };
+
+            if (result.l1Repay > 0) {
+              dispatch({
+                type: "UPDATE_POLICY",
+                payload: {
+                  l1Balance: Math.max(0, (policy.l1Balance ?? 5000) - result.l1Repay),
+                  l1Allowance: Math.max(0, (policy.l1Allowance ?? 3000) - result.l1Repay),
+                },
+              });
+            }
 
             newHistory.push(makeHistoryEntry(pos, result, pos.hf));
             recoveryRef.current.set(pos.id, now + RECOVERY_PAUSE);

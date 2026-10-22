@@ -1,7 +1,7 @@
 // Shared mock data for all dashboard pages.
 // Replace with live on-chain reads when protocol adapters are ready.
 
-export type PositionStatus = "safe" | "warning" | "critical";
+export type PositionStatus = "safe" | "warning" | "critical" | "liquidated";
 
 export interface Position {
   id: string;
@@ -17,6 +17,7 @@ export interface Position {
   targetHf: number;
   oracleSource: string;
   lastChecked: string;
+  liquidationThreshold?: number;
 }
 
 export const POSITIONS: Position[] = [
@@ -34,6 +35,7 @@ export const POSITIONS: Position[] = [
     targetHf: 1.6,
     oracleSource: "Chainlink ETH/USD",
     lastChecked: "2s ago",
+    liquidationThreshold: 0.825,
   },
   {
     id: "morpho-eth-usdc",
@@ -49,6 +51,7 @@ export const POSITIONS: Position[] = [
     targetHf: 1.6,
     oracleSource: "Chainlink ETH/USD",
     lastChecked: "2s ago",
+    liquidationThreshold: 0.86,
   },
 ];
 

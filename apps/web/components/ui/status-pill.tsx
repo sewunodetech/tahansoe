@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export type StatusZone = "Safe" | "Watch" | "Warning" | "Critical";
+export type StatusZone = "Safe" | "Watch" | "Warning" | "Critical" | "Liquidated";
 
 export interface StatusPillProps extends React.HTMLAttributes<HTMLSpanElement> {
   zone: StatusZone;
@@ -29,6 +29,12 @@ const zoneStyles: Record<StatusZone, { bg: string; text: string; border: string;
     dot: "bg-[var(--warning)]",
   },
   Critical: {
+    bg: "bg-[var(--danger-bg)]",
+    text: "text-[var(--danger)]",
+    border: "border-[var(--danger-border)]",
+    dot: "bg-[var(--danger)]",
+  },
+  Liquidated: {
     bg: "bg-[var(--danger-bg)]",
     text: "text-[var(--danger)]",
     border: "border-[var(--danger-border)]",
