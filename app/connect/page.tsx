@@ -29,7 +29,7 @@ const WALLETS = [
     id: "injected",
     name: "Browser Wallet",
     description: "Coinbase, Rabby, or any injected wallet",
-    icon: <Wallet className="w-6 h-6 text-white/50" strokeWidth={1.5} />,
+    icon: <Wallet className="w-6 h-6 text-[var(--text-secondary)]" strokeWidth={1.5} />,
   },
   {
     id: "walletConnect",
@@ -103,7 +103,7 @@ export default function ConnectPage() {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4"
-      style={{ background: "#0b1110" }}
+      style={{ background: "var(--bg)" }}
     >
       <div
         className="absolute inset-0 pointer-events-none"
@@ -116,10 +116,10 @@ export default function ConnectPage() {
       <div className="relative z-10 w-full max-w-[400px]">
         <div className="flex flex-col items-center mb-10">
           <BrandMark size={44} className="mb-5" />
-          <h1 className="font-display text-[32px] font-normal text-white leading-tight mb-1">
+          <h1 className="font-display text-[32px] font-normal text-[var(--text-primary)] leading-tight mb-1">
             {step === "connect" ? "Connect to Tahansoe" : "Sign in"}
           </h1>
-          <p className="text-[13px] text-white/35 text-center max-w-[280px]">
+          <p className="text-[13px] text-[var(--text-tertiary)] text-center max-w-[280px]">
             {step === "connect"
               ? "Connect your wallet to monitor and protect your DeFi positions."
               : "Sign the message to verify wallet ownership."}
@@ -140,25 +140,25 @@ export default function ConnectPage() {
                   key={wallet.id}
                   onClick={() => handleConnect(wallet.id)}
                   disabled={isPending || !connector}
-                  className="w-full flex items-center gap-4 px-4 py-3.5 rounded-[10px] border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed text-left group"
+                  className="w-full flex items-center gap-4 px-4 py-3.5 rounded-[16px] glass-surface hover:border-[var(--border-strong)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed text-left group"
                 >
-                  <div className="w-10 h-10 rounded-[8px] bg-white/5 border border-white/[0.07] flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-[8px] bg-[var(--bg-subtle)] border border-[var(--border)] flex items-center justify-center shrink-0">
                     {isLoading ? (
-                      <Loader2 className="w-5 h-5 text-white/50 animate-spin" strokeWidth={1.5} />
+                      <Loader2 className="w-5 h-5 text-[var(--text-secondary)] animate-spin" strokeWidth={1.5} />
                     ) : (
                       wallet.icon
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-white/80 group-hover:text-white transition-colors">
+                    <p className="text-[13px] font-medium text-[var(--text-primary)] group-hover:text-[var(--text-primary)] transition-colors">
                       {wallet.name}
                     </p>
-                    <p className="text-[11px] text-white/30 mt-0.5">
+                    <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
                       {wallet.description}
                     </p>
                   </div>
                   {!connector && (
-                    <span className="text-[10px] font-mono text-white/20 shrink-0">
+                    <span className="text-[10px] font-mono text-[var(--text-disabled)] shrink-0">
                       Not detected
                     </span>
                   )}
@@ -181,29 +181,29 @@ export default function ConnectPage() {
 
         {step === "sign" && (
           <div className="flex flex-col items-center gap-4">
-            <div className="w-full p-4 rounded-[10px] border border-white/[0.07] bg-white/[0.02]">
+            <div className="w-full p-4 rounded-[16px] glass-surface">
               <div className="flex items-center gap-2.5 mb-3">
                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="font-mono text-[11px] text-white/45">{short}</span>
-                <span className="text-[10px] text-white/15">{chainId ? `Chain ${chainId}` : ""}</span>
+                <span className="font-mono text-[11px] text-[var(--text-secondary)]">{short}</span>
+                <span className="text-[10px] text-[var(--text-disabled)]">{chainId ? `Chain ${chainId}` : ""}</span>
               </div>
 
               {authStatus === "loading-nonce" && (
-                <div className="flex items-center gap-2.5 text-white/30">
+                <div className="flex items-center gap-2.5 text-[var(--text-tertiary)]">
                   <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />
                   <span className="text-[12px]">Fetching sign-in request...</span>
                 </div>
               )}
 
               {authStatus === "awaiting-signature" && (
-                <div className="flex items-center gap-2.5 text-white/50">
+                <div className="flex items-center gap-2.5 text-[var(--text-secondary)]">
                   <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />
                   <span className="text-[12px]">Waiting for signature...</span>
                 </div>
               )}
 
               {authStatus === "verifying" && (
-                <div className="flex items-center gap-2.5 text-white/30">
+                <div className="flex items-center gap-2.5 text-[var(--text-tertiary)]">
                   <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />
                   <span className="text-[12px]">Verifying signature...</span>
                 </div>
@@ -218,14 +218,14 @@ export default function ConnectPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={handleBack}
-                      className="flex items-center gap-1.5 h-8 px-3 rounded-[6px] border border-white/[0.08] text-white/40 text-[12px] hover:bg-white/[0.04] hover:text-white/60 transition-colors"
+                      className="flex items-center gap-1.5 h-8 px-3 rounded-[6px] border border-[var(--border)] text-[var(--text-tertiary)] text-[12px] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] transition-colors"
                     >
                       <ArrowLeft className="w-3 h-3" strokeWidth={1.5} />
                       Back
                     </button>
                     <button
                       onClick={signIn}
-                      className="h-8 px-4 rounded-[6px] bg-white text-[#0b1110] text-[12px] font-semibold hover:bg-white/90 transition-colors"
+                      className="h-8 px-4 rounded-full btn-iridescent !h-8 !text-[12px] font-semibold transition-colors"
                     >
                       Try again
                     </button>
@@ -236,9 +236,9 @@ export default function ConnectPage() {
           </div>
         )}
 
-        <p className="mt-8 text-center text-[11px] text-white/20">
+        <p className="mt-8 text-center text-[11px] text-[var(--text-disabled)]">
           By connecting you agree to our{" "}
-          <span className="underline underline-offset-2 cursor-pointer hover:text-white/40 transition-colors">
+          <span className="underline underline-offset-2 cursor-pointer hover:text-[var(--text-tertiary)] transition-colors">
             terms
           </span>
           . Tahansoe never has custody of your funds.
