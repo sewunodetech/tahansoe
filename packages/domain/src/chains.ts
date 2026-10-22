@@ -13,6 +13,19 @@ export interface ChainAaveConfig {
   oracle?: Address;
 }
 
+/**
+ * Satu deployment TahansoeGuardian. Guardian immutable tanpa admin (security.md I2),
+ * jadi "update" = deploy versi baru lalu user migrasi: disablePolicy + approve 0 di
+ * versi lama, approve + setPolicy di versi baru. Versi lama tetap dicantumkan agar
+ * UI bisa menemukan policy dan allowance yang masih aktif di sana.
+ */
+export interface GuardianDeployment {
+  version: number;
+  address: Address;
+  /** Block deploy; batas bawah pencarian event. */
+  deployedBlock: number;
+}
+
 export interface ChainMorphoConfig {
   morpho: Address;
 }
@@ -24,7 +37,10 @@ export interface ChainConfig {
   blockTimeMs: number;
   aave?: ChainAaveConfig;
   morpho?: ChainMorphoConfig;
+  /** Guardian versi terbaru (= versi tertinggi di `guardians`). */
   guardian?: Address;
+  /** Semua deployment Guardian, lama dan baru. */
+  guardians?: GuardianDeployment[];
   sequencerUptimeFeed?: Address;      // wajib untuk L2
   priceFeeds: Record<string, Address>;
   tokens?: Record<string, Address>;   // alamat token ERC-20 (bukan price feed)
@@ -43,9 +59,18 @@ export const ARBITRUM_SEPOLIA: ChainConfig = {
   aave: {
     poolAddressesProvider: "0xB25a5D144626a0D488e52AE717A051a2E9997076",
     pool: "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff",
+    oracle: "0xEf95A6B9e88Bd509Fd67BA741cf2b263DaC65c00",
   },
   guardian: "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E",
+  guardians: [
+    { version: 1, address: "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E", deployedBlock: 313944170 },
+  ],
   priceFeeds: {},
+  /** Reserve Aave V3 testnet (Pool.getReservesList, diverifikasi on-chain 22 Okt 2026). */
+  tokens: {
+    USDC: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+    WETH: "0x1dF462e2712496373A347f8ad10802a5E95f053D",
+  },
   explorer: "https://sepolia.arbiscan.io",
 };
 
@@ -114,4 +139,21 @@ export function getChainConfig(
     ...base,
     rpcUrls: urls,
   };
+}
+
+/** Guardian versi tertinggi di chain, atau undefined jika belum ada deployment. */
+export function currentGuardian(chain: ChainConfig): GuardianDeployment | undefined {
+  const list = chain.guardians ?? [];
+  return list.reduce<GuardianDeployment | undefined>(
+    (best, g) => (best === undefined || g.version > best.version ? g : best),
+    undefined
+  );
+}
+
+/** Semua Guardian selain versi terbaru (kandidat migrasi), dari versi terbaru ke terlama. */
+export function legacyGuardians(chain: ChainConfig): GuardianDeployment[] {
+  const current = currentGuardian(chain);
+  return (chain.guardians ?? [])
+    .filter((g) => g !== current)
+    .sort((a, b) => b.version - a.version);
 }
