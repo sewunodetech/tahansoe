@@ -84,7 +84,7 @@ export default function ProtectionSetupPage() {
   };
 
   return (
-    <div className="w-full p-5 md:p-8 max-w-4xl mx-auto space-y-6">
+    <div className="w-full p-5 md:p-8 space-y-6">
       {/* Top Header & Breadcrumb */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

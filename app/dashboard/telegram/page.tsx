@@ -57,7 +57,7 @@ export default function TelegramPage() {
       : "—";
 
   return (
-    <div className="w-full p-5 md:p-7 space-y-6 max-w-7xl mx-auto">
+    <div className="w-full p-5 md:p-8 space-y-6">
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1.5">

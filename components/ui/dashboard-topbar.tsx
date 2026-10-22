@@ -46,7 +46,7 @@ export function DashboardTopbar({
 
   return (
     <header
-      className="shrink-0 flex items-center justify-between h-[52px] px-4 select-none"
+      className="shrink-0 flex items-center justify-between h-[60px] px-4 select-none"
       style={{
         background: "var(--topbar-bg)",
         borderBottom: "1px solid var(--topbar-border)",

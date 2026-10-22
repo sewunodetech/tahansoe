@@ -150,7 +150,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
         {/* Sidebar */}
         <div
           className="h-full shrink-0 overflow-hidden transition-[width] duration-200 ease-in-out"
-          style={{ width: collapsed ? 52 : 232 }}
+          style={{ width: collapsed ? 64 : 264 }}
         >
           <SidebarNav
             address={address}

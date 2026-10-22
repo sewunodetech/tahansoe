@@ -24,7 +24,7 @@ import { BrandMark } from "@/components/ui/brand-mark";
 export type NavItem = {
   href: string;
   label: string;
-  icon: React.ElementType;
+  icon: import("lucide-react").LucideIcon;
   badge?: string | number;
   shortcut?: string;
   tourId?: string;
@@ -96,7 +96,7 @@ function NavLinkRow({
       title={collapsed ? item.label : undefined}
       data-tour-id={item.tourId}
       className={`relative flex items-center w-full rounded-md select-none outline-none transition-colors duration-100 ${
-        collapsed ? "justify-center px-2 py-1.5" : "gap-2 px-2.5 py-1.5"
+        collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5"
       } ${
         isActive
           ? "bg-[var(--item-active-bg)] text-[var(--item-active-text)] font-medium"
@@ -114,19 +114,19 @@ function NavLinkRow({
         className={`shrink-0 transition-colors ${
           isActive ? "text-[var(--brand)]" : "text-[var(--text-tertiary)]"
         }`}
-        style={{ width: 15, height: 15 }}
+        style={{ width: 18, height: 18 }}
         strokeWidth={isActive ? 2 : 1.5}
       />
 
       {!collapsed && (
         <>
-          <span className="flex-1 text-[12.5px] tracking-[-0.01em] truncate leading-none">
+          <span className="flex-1 text-[14px] tracking-[-0.01em] truncate leading-none">
             {item.label}
           </span>
 
           <div className="flex items-center gap-1 ml-auto shrink-0">
             {item.badge && (
-              <span className="inline-flex items-center h-4 px-1.5 rounded-[4px] text-[9px] font-bold font-mono tracking-wide bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border)]">
+              <span className="inline-flex items-center h-5 px-1.5 rounded-[4px] text-[10px] font-bold font-mono tracking-wide bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border)]">
                 {item.badge}
               </span>
             )}
@@ -175,29 +175,29 @@ export function SidebarNav({
     <nav
       className="flex flex-col h-full overflow-hidden select-none"
       style={{
-        width: collapsed ? 52 : 232,
+        width: collapsed ? 64 : 264,
         background: "var(--sidebar-bg)",
         borderRight: "1px solid var(--sidebar-border)",
       }}
     >
       {/* ── Logo header ──────────────────────────────────────────── */}
       <div
-        className="shrink-0 flex items-center h-[52px] px-4"
+        className="shrink-0 flex items-center h-[60px] px-4"
         style={{ borderBottom: "1px solid var(--sidebar-border)" }}
       >
         <Link href="/dashboard" className="flex items-center">
           {collapsed ? (
-            <div data-tour-id="tour-logo" className="w-7 h-7 flex items-center justify-center">
-              <BrandMark size={22} />
+            <div data-tour-id="tour-logo" className="w-8 h-8 flex items-center justify-center">
+              <BrandMark size={26} />
             </div>
           ) : (
             <div data-tour-id="tour-logo" className="flex items-center gap-2.5">
-              <BrandMark size={24} className="shrink-0" />
+              <BrandMark size={28} className="shrink-0" />
               <div className="flex flex-col">
-                <span className="font-display text-[18px] font-medium leading-none text-[var(--text-primary)]">
+                <span className="font-display text-[20px] font-medium leading-none text-[var(--text-primary)]">
                   Tahansoe
                 </span>
-                <span className="text-[10px] leading-none mt-0.5 font-mono text-[var(--brand)] opacity-80">
+                <span className="text-[11px] leading-none mt-1 font-mono text-[var(--brand)] opacity-80">
                   Risk Automation
                 </span>
               </div>
@@ -207,10 +207,10 @@ export function SidebarNav({
       </div>
 
       {/* ── Main nav items ───────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide px-2 py-3 flex flex-col gap-1">
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-3 py-4 flex flex-col gap-1.5">
         {!collapsed && (
-          <div className="px-2 pb-1 pt-0.5">
-            <span className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[var(--text-tertiary)] font-mono">
+          <div className="px-3 pb-1.5 pt-0.5">
+            <span className="text-[11px] font-semibold tracking-[0.08em] uppercase text-[var(--text-tertiary)] font-mono">
               Dashboard
             </span>
           </div>
@@ -228,7 +228,7 @@ export function SidebarNav({
 
       {/* ── Bottom: Settings + Disconnect + Wallet ───────────────── */}
       <div
-        className="shrink-0 px-2 py-2 flex flex-col gap-1"
+        className="shrink-0 px-3 py-3 flex flex-col gap-1.5"
         style={{ borderTop: "1px solid var(--sidebar-border)" }}
       >
         {BOTTOM_ITEMS.map((item) => (
@@ -247,25 +247,25 @@ export function SidebarNav({
             onClick={onDisconnect}
             title={collapsed ? "Disconnect" : undefined}
             className={`flex items-center w-full rounded-md text-[var(--text-tertiary)] hover:bg-[var(--item-hover)] hover:text-[var(--danger)] transition-colors ${
-              collapsed ? "justify-center p-1.5" : "gap-2 px-2.5 py-1.5"
+              collapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2.5"
             }`}
           >
-            <LogOut style={{ width: 15, height: 15 }} strokeWidth={1.5} />
-            {!collapsed && <span className="text-[12.5px]">Disconnect</span>}
+            <LogOut style={{ width: 18, height: 18 }} strokeWidth={1.5} />
+            {!collapsed && <span className="text-[14px]">Disconnect</span>}
           </button>
         )}
 
         {/* Wallet info row */}
         {!collapsed && (
-          <div className="flex items-center gap-2.5 mt-1 px-2.5 py-2 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border)]">
-            <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[10px] font-semibold bg-[var(--item-active-bg)] border border-[var(--border-strong)] text-[var(--text-primary)]">
+          <div className="flex items-center gap-3 mt-1 px-3 py-2.5 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border)]">
+            <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[11px] font-semibold bg-[var(--item-active-bg)] border border-[var(--border-strong)] text-[var(--text-primary)]">
               {address ? address.slice(2, 4).toUpperCase() : "0X"}
             </div>
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-[11.5px] font-mono leading-none truncate text-[var(--text-primary)]">
+              <span className="text-[13px] font-mono leading-none truncate text-[var(--text-primary)]">
                 {short}
               </span>
-              <span className="text-[9.5px] font-mono text-[var(--text-tertiary)] mt-0.5">
+              <span className="text-[11px] font-mono text-[var(--text-tertiary)] mt-1">
                 Arbitrum One
               </span>
             </div>
