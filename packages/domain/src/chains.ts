@@ -19,11 +19,18 @@ export interface ChainAaveConfig {
  * versi lama, approve + setPolicy di versi baru. Versi lama tetap dicantumkan agar
  * UI bisa menemukan policy dan allowance yang masih aktif di sana.
  */
+export interface GuardianFeatures {
+  layer2?: boolean;
+  layer3?: boolean;
+  triggerBand?: boolean;
+}
+
 export interface GuardianDeployment {
   version: number;
   address: Address;
   /** Block deploy; batas bawah pencarian event. */
   deployedBlock: number;
+  features?: GuardianFeatures;
 }
 
 export interface ChainMorphoConfig {
@@ -157,3 +164,10 @@ export function legacyGuardians(chain: ChainConfig): GuardianDeployment[] {
     .filter((g) => g !== current)
     .sort((a, b) => b.version - a.version);
 }
+
+/** Memeriksa apakah suatu deployment Guardian mendukung fitur v2 (Layer 2, Layer 3, trigger band). */
+export function isGuardianV2(deployment?: GuardianDeployment): boolean {
+  if (!deployment) return false;
+  return deployment.version >= 2 || Boolean(deployment.features?.layer2 || deployment.features?.layer3);
+}
+
