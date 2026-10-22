@@ -31,7 +31,7 @@ export function OpenByDefault() {
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
         <div className="flex flex-col items-center text-center">
           <Tag>Contract</Tag>
-          <h2 className="mt-4 font-display text-[28px] sm:text-[34px] tracking-[-0.01em] text-[var(--text-primary)]">
+          <h2 className="mt-4 font-display uppercase font-light text-[28px] sm:text-[34px] tracking-[-0.01em] text-[var(--text-primary)]">
             Open by default
           </h2>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
@@ -39,7 +39,7 @@ export function OpenByDefault() {
           </p>
         </div>
 
-        <div className="mt-10 max-w-[760px] mx-auto border border-[var(--border)] bg-[var(--bg-elevated)] rounded-[8px] overflow-hidden">
+        <div className="mt-10 max-w-[760px] mx-auto glass-surface rounded-[24px] overflow-hidden">
           <div className="flex items-center justify-between h-10 px-4 border-b border-[var(--border)]">
             <span className="font-mono text-[11px] text-[var(--text-secondary)]">TahansoeGuardian.sol</span>
             <a

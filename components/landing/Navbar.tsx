@@ -10,6 +10,7 @@ import { Menu, X } from "lucide-react";
 const navLinks = [
   { href: "#layers", label: "Layers" },
   { href: "#agents", label: "Agents" },
+  { href: "#how", label: "How it works" },
   { href: "#contract", label: "Contract" },
   { href: "#faq", label: "FAQ" },
 ];
@@ -33,7 +34,7 @@ export function Navbar() {
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <BrandMark size={22} />
-            <span className="text-[15px] tracking-tight text-[var(--text-primary)]">Tahansoe</span>
+            <span className="text-[15px] font-semibold uppercase tracking-[0.02em] text-[var(--text-primary)]">Tahansoe</span>
           </Link>
 
           <div className="flex items-center gap-1">
@@ -42,7 +43,7 @@ export function Navbar() {
                 <a
                   key={l.href}
                   href={l.href}
-                  className="px-3.5 text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                  className="px-5 text-[12px] uppercase tracking-[0.04em] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                 >
                   {l.label}
                 </a>
@@ -53,7 +54,7 @@ export function Navbar() {
 
             <Link
               href="/dashboard"
-              className="hidden sm:inline-flex items-center h-9 px-4 rounded-full bg-[var(--brand)] text-white hover:bg-[var(--color-brand-400)] text-[13px] transition-colors"
+              className="hidden sm:inline-flex btn-iridescent !h-9 !px-4 !text-[13px]"
             >
               {cta}
             </Link>

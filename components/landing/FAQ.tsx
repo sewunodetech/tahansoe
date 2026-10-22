@@ -21,11 +21,11 @@ const faqs = [
 
 export function FAQ() {
   return (
-    <section id="faq" className="py-20 md:py-28 bg-[var(--bg-subtle)]">
+    <section id="faq" className="py-20 md:py-28">
       <div className="max-w-[760px] mx-auto px-4 sm:px-6">
         <div className="flex flex-col items-center text-center">
           <Tag>FAQ</Tag>
-          <h2 className="mt-4 font-display text-[28px] sm:text-[34px] tracking-[-0.01em] text-[var(--text-primary)]">
+          <h2 className="mt-4 font-display uppercase font-light text-[28px] sm:text-[34px] tracking-[-0.01em] text-[var(--text-primary)]">
             Questions
           </h2>
         </div>
