@@ -32,7 +32,7 @@ type NotifDef = {
   >;
   label: string;
   description: string;
-  icon: React.ElementType;
+  icon: import("lucide-react").LucideIcon;
   iconClass: string;
 };
 

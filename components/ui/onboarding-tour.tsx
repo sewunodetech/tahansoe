@@ -27,7 +27,7 @@ export interface TourStep {
   targetId:     string;          // matches data-tour-id="…" on DOM element
   title:        string;
   description:  string;
-  icon:         React.ElementType;
+  icon:         import("lucide-react").LucideIcon;
   badge?:       string;          // optional pill label
   action?:      string;          // call-to-action text
   placement:    "right" | "left" | "bottom" | "top" | "center";
