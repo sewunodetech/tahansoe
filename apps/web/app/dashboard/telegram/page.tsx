@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Bot, Lock } from "lucide-react";
+import { Bot, Lock, BellRing, Shield } from "lucide-react";
 import { useTelegramLink } from "@/hooks/useTelegramLink";
 import { useSimulation } from "@/lib/simulation-context";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import { TelegramConnectionCard, type ConnectionStatus } from "@/components/dashboard/telegram/telegram-connection-card";
+import {
+  TelegramConnectionCard,
+  type ConnectionStatus,
+} from "@/components/dashboard/telegram/telegram-connection-card";
 import { NotificationPrefsCard } from "@/components/dashboard/telegram/notification-prefs-card";
 import { TELEGRAM_BOT_USERNAME } from "@/lib/telegram";
 
@@ -17,18 +20,44 @@ export default function TelegramPage() {
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [statusLoading, setStatusLoading] = useState(true);
 
-  const { linkCode, status: linkStatus, error: linkError, generateCode, reset: resetLink } =
-    useTelegramLink();
+  const {
+    linkCode,
+    status: linkStatus,
+    error: linkError,
+    generateCode,
+    reset: resetLink,
+  } = useTelegramLink();
 
   useEffect(() => {
     fetch("/api/telegram/status")
       .then((r) => r.json())
       .then((d) => {
-        if (d.linked) setStatus("connected");
+        if (d.linked) {
+          setStatus(d.isActive ? "connected" : "paused");
+        } else {
+          setStatus("disconnected");
+        }
       })
       .catch(() => {})
       .finally(() => setStatusLoading(false));
   }, []);
+
+  // Poll status while awaiting code verification to auto-update on mobile completion
+  useEffect(() => {
+    if (!linkCode || status === "connected") return;
+    const interval = setInterval(() => {
+      fetch("/api/telegram/status")
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.linked && d.isActive) {
+            setStatus("connected");
+            resetLink();
+          }
+        })
+        .catch(() => {});
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [linkCode, status, resetLink]);
 
   const handleDisconnect = async () => {
     try {
@@ -37,10 +66,11 @@ export default function TelegramPage() {
       /* best-effort */
     }
     resetLink();
-    setStatus("disconnected");
+    setStatus("paused");
   };
 
-  const effectiveStatus: ConnectionStatus = linkStatus === "loading" ? "pending" : status;
+  const effectiveStatus: ConnectionStatus =
+    linkStatus === "loading" ? "pending" : status;
   const alertsSent = alerts.length;
   const executions = history.filter(
     (h) => h.action !== "NOOP" && h.status === "success"
@@ -72,7 +102,7 @@ export default function TelegramPage() {
           Telegram Notifications
         </h1>
         <p className="text-xs text-[var(--text-secondary)] mt-1 font-mono">
-          Connect @{TELEGRAM_BOT_USERNAME} for real-time mobile push notifications on risk events
+          Connect @{TELEGRAM_BOT_USERNAME} for scheduled risk research digests (2x daily) and real-time risk alerts
         </p>
       </div>
 
@@ -127,12 +157,16 @@ export default function TelegramPage() {
                   className={`size-2 rounded-full ${
                     effectiveStatus === "connected"
                       ? "bg-[var(--safe)]"
+                      : effectiveStatus === "paused"
+                      ? "bg-[var(--warning)]"
                       : "bg-[var(--text-tertiary)]"
                   }`}
                 />
                 <span className="text-xs font-medium text-[var(--text-primary)]">
                   {effectiveStatus === "connected"
                     ? "Active & Relay Ready"
+                    : effectiveStatus === "paused"
+                    ? "Paused via /stop"
                     : "Awaiting One-Time Link"}
                 </span>
               </div>
@@ -140,14 +174,32 @@ export default function TelegramPage() {
 
             <div className="text-[11px] text-[var(--text-secondary)] space-y-2.5 pt-2 border-t border-[var(--border)] leading-relaxed">
               <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-[var(--text-tertiary)] font-semibold">
+                <BellRing className="size-3 text-[var(--brand)]" />
+                <span>What You Receive</span>
+              </div>
+              <ul className="space-y-1.5 pl-3 list-disc text-[var(--text-secondary)] text-[11px]">
+                <li>
+                  <strong className="text-[var(--text-primary)]">Scheduled Digests:</strong> Curated risk research summaries sent twice daily (morning & evening).
+                </li>
+                <li>
+                  <strong className="text-[var(--text-primary)]">Real-Time Alerts:</strong> Immediate push when health factors breach buffer or market regimes shift.
+                </li>
+              </ul>
+
+              <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-[var(--text-tertiary)] font-semibold pt-2 border-t border-[var(--border)]">
                 <Lock className="size-3 text-[var(--brand)]" />
                 <span>Zero-Knowledge Relay</span>
               </div>
               <p>
-                Tahansoe alerts originate from decentralized keeper monitoring events and are routed directly to your unique Telegram chat ID.
+                Tahansoe risk alerts and scheduled research digests are routed directly from server monitoring to your unique Telegram chat ID. Your private keys and credentials are <strong>never</strong> transmitted.
               </p>
-              <p>
-                Your private keys, seed phrases, and wallet credentials are <strong>never</strong> transmitted or requested.
+
+              <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-[var(--text-tertiary)] font-semibold pt-2 border-t border-[var(--border)]">
+                <Shield className="size-3 text-[var(--text-tertiary)]" />
+                <span>Risk Disclosure</span>
+              </div>
+              <p className="text-[10px] text-[var(--text-tertiary)] leading-normal">
+                Tahansoe provides defensive risk automation to reduce liquidation risk. It does not provide trading advice, price predictions, or liquidation guarantees.
               </p>
             </div>
           </Card>
