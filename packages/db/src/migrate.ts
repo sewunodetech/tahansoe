@@ -451,6 +451,21 @@ export async function runMigrations(
   `);
   log("  llm_usage_daily");
 
+  await runSql(`
+    CREATE TABLE IF NOT EXISTS broadcasts (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      kind TEXT NOT NULL,
+      dedupe_key TEXT NOT NULL,
+      message TEXT NOT NULL,
+      recipients_count INTEGER NOT NULL,
+      sent_count INTEGER NOT NULL,
+      failed_count INTEGER NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+  await runSql(`CREATE UNIQUE INDEX IF NOT EXISTS broadcasts_dedupe_key_unique ON broadcasts (dedupe_key);`);
+  log("  broadcasts");
+
   log("\nMigration complete.");
 }
 

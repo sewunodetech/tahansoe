@@ -11,7 +11,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
-    "generate": "drizzle-kit generate"
+    "generate": "drizzle-kit generate",
+    "copy-engine": "tsx scripts/copy-engine-data.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
