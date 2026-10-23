@@ -20,7 +20,7 @@ Dokumen ini menjelaskan *bagaimana* sistem dibangun. Bagian bertanda **(rencana)
                             ▼              ▼                              ▼
                     ┌──────────────────────────────┐        ┌──────────────────────────────┐
                     │ TahansoeGuardian (per chain) │        │ Postgres (Neon)              │
-                    │ contracts/                   │        │ ADR 0010                     │
+                    │ contracts/                   │        │ satu DB web+engine (ADR 0012)│
                     └───────┬──────────────────────┘        └─────────┬────────────────────┘
                             ▼                                         │
                     Aave V3 / Morpho Blue              ┌──────────────┴───────────┐
@@ -32,8 +32,9 @@ Dokumen ini menjelaskan *bagaimana* sistem dibangun. Bagian bertanda **(rencana)
 |----------|--------|--------|
 | Web app (landing, dashboard, API) | `app/`, `components/`, `hooks/`, `lib/` | Ada; dashboard masih memakai simulasi |
 | Auth (SIWE + iron-session) | `app/api/auth/`, `lib/session.ts` | Ada |
-| Telegram (link, webhook, alert) | `app/api/telegram/`, `app/api/alerts/` | Ada; alert dipicu dari browser |
-| Database | `packages/db/src/schema.ts`, `packages/db/scripts/migrate.ts` | Ada; Postgres server (Neon) saja ([ADR 0011](decisions/0011-postgres-only-gateway-only-chat.md), men-supersede ADR 0010) |
+| Telegram inbound (link `/start <code>`, `/stop`) | `apps/web/app/api/telegram/` (webhook bot web) | Ada; web satu-satunya pemilik inbound bot ([ADR 0012](decisions/0012-unified-db-outbound-research-broadcast.md)) |
+| Telegram outbound (digest riset, alert risiko, alert posisi) | `apps/engine/src/broadcast/`, `apps/engine/src/telegram/`, `apps/engine/src/sentinel/` | Ada; engine hanya `sendMessage` ke semua `telegram_accounts` aktif ([spec](specs/m3-research-broadcast.md)) |
+| Database | `packages/db/src/schema.ts`, `packages/db/src/migrate.ts` | Ada; **satu** Postgres server (Neon) untuk web & engine ([ADR 0012](decisions/0012-unified-db-outbound-research-broadcast.md); ADR 0011 untuk Postgres-only) |
 | Guardian v1 | `contracts/src/TahansoeGuardian.sol` | Live di Arbitrum Sepolia |
 | Core Risk Engine | `apps/engine/` (workspace `@tahansoe/engine`, ADR 0007) | Ada; riset multi-agent, emitter sinyal deterministik, Risk Fusion v1, settlement & scorecard, CLI `tahansoe` |
 | Keeper | `engine/src/keeper/` | **(rencana)** |
@@ -62,11 +63,12 @@ engine/                 (apps/engine) Core Risk Engine — service Node.js
     reflection/         Settlement job (src/reflection/settle-job.ts), outcome evaluation, scorecard, lessons (ADR 0005)
     fusion/             Risk Fusion v1 (signals → RiskAssessment; aturan deterministik + guardrail unconfirmed signals)
     cli/                CLI terpadu (apps/engine/src/cli/tahansoe.ts, commands/ termasuk daemon.ts, render.ts)
-    chat/               Grounded Q&A (chat.ts, context.ts) — dipakai channel gateway saja (ADR 0011)
+    broadcast/          BroadcastWorker: digest terjadwal + alert regime/sinyal kritis ke semua telegram_accounts aktif (ADR 0012)
+    telegram/           Klien Bot API outbound saja (sendMessage, antrean rate limit, views HTML) — tanpa getUpdates/webhook
+    sentinel/           HF sentinel + keeper (alert per user lewat telegram/)
     worker/             Scheduled Research Worker (advisory lock Postgres, background runner)
     policy/             Rule engine deterministik → Intent
     keeper/             Loop needsProtection → protect; (v2) setDynamicTrigger
-    notify/             Telegram dari server
     backtest/           Replay skenario historis
     index.ts            Entry point / scheduler
   test/
@@ -178,7 +180,8 @@ Skema saat ini di `packages/db/src/schema.ts` (satu-satunya sumber, ADR 0007).
 |-------|--------|--------|
 | `users` | User per wallet | Ada — saat ini unik per `(wallet, chainId)`; **perlu diubah** menjadi unik per wallet |
 | `siwe_nonces`, `link_nonces` | Nonce SIWE & kode link Telegram | Ada, dipakai |
-| `telegram_accounts` | Akun Telegram terhubung | Ada, dipakai |
+| `telegram_accounts` | Akun Telegram terhubung; `is_active=false` lewat `/stop` atau saat bot diblokir (403) | Ada, dipakai — penerima broadcast engine |
+| `broadcasts` | Log & dedupe broadcast engine (`dedupe_key` unik, jumlah terkirim/gagal) | Ada, dipakai — [ADR 0012](decisions/0012-unified-db-outbound-research-broadcast.md) |
 | `positions` | Snapshot posisi | Ada, belum dipakai |
 | `policies` | Mirror policy on-chain | Ada, belum dipakai |
 | `intents` | Audit trail keputusan & eksekusi | Ada, belum dipakai |
@@ -199,7 +202,8 @@ Kolom `chainId` wajib ada di setiap tabel yang menyimpan data on-chain (position
 
 - `packages/db` hanya memakai `@neondatabase/serverless` (HTTP untuk query, WebSocket direct session untuk advisory lock worker). `DATABASE_URL` wajib; `getDb()` melempar error jelas bila kosong.
 - Engine berjalan multi-proses (`tahansoe start` sebagai daemon + perintah CLI lain), jadi DB harus server. PGlite (ADR 0010) dihapus karena hanya aman untuk satu proses.
-- Single-instance job dijamin session-level advisory lock Postgres: research `42161001`, settlement `42161002`, fusion `42161003`.
+- **Satu DB untuk web & engine** ([ADR 0012](decisions/0012-unified-db-outbound-research-broadcast.md)): `apps/web/.env` dan `apps/engine/.env` memakai `DATABASE_URL` yang sama, sehingga engine membaca `telegram_accounts` hasil link dari web. `npm run db:check` menampilkan host DB tersamar untuk verifikasi; `npm run db:copy-engine` adalah skrip satu kali (insert-only) untuk menyalin data riset dari DB engine lama.
+- Single-instance job dijamin session-level advisory lock Postgres: research `42161001`, settlement `42161002`, fusion `42161003`, sentinel `42161005`, broadcaster `42161006`.
 - `llm_usage_daily` menyimpan total biaya LLM per hari UTC agar `LLM_DAILY_BUDGET_USD` berlaku lintas proses dan tidak reset saat restart.
 
 ---
@@ -228,7 +232,7 @@ Konvensi angka:
 | DB | Postgres server (Neon) via Drizzle ORM ([ADR 0011](decisions/0011-postgres-only-gateway-only-chat.md)). Migrasi skema idempoten (`npm run db:migrate` / `tahansoe setup`) |
 | Kontrak | Foundry, Solidity 0.8.26, OpenZeppelin v5 |
 | LLM | Gateway tunggal OpenAI-compatible (`LLM_API_URL` + `LLM_API_KEY`, [ADR 0009](decisions/0009-single-openai-compatible-gateway.md)), default model **`gpt-6-luna`** untuk semua peran (lolos eval benchmark 24/24), cadangan `deepseek-v4-flash`, router peran + fallback berantai di `settings.json` v2, Zod schema validation (di-embed dalam prompt + 1 retry repair), budget harian dinamis |
-| CLI | CLI operator `tahansoe` (`apps/engine/src/cli/tahansoe.ts`, `render.ts`): `start [--detach]`, `stop`, `status`, `logs`, `analyze`, `carry`, `fuse`, `settle`, `scorecard`, `schedule`, `doctor`, `models`, `settings`, `eval`, `setup`, `gateway`. Tanpa REPL/`ask`; grounded Q&A hanya lewat channel gateway (ADR 0011) |
+| CLI | CLI operator `tahansoe` (`apps/engine/src/cli/tahansoe.ts`, `render.ts`): `start [--detach]`, `stop`, `status`, `logs`, `analyze`, `carry`, `fuse`, `settle`, `scorecard`, `schedule`, `doctor`, `models`, `settings`, `eval`, `setup`, `broadcast digest|once [--dry]`, `sentinel`. Tanpa REPL/`ask`, tanpa gateway/pairing; Q&A chat Telegram dihapus ([ADR 0012](decisions/0012-unified-db-outbound-research-broadcast.md)) |
 | Notifikasi | Telegram Bot API |
 | Automation (prod) | Chainlink Automation + cron cadangan |
 
@@ -245,7 +249,9 @@ Semua variabel environment di bawah bersifat server-only kecuali yang diawali `N
 | `RESEARCH_RUN_TIMEOUT_MS` | engine | Batas waktu total satu research run (default 900000); lewat batas → run batal tanpa report |
 | `OUT_KEEP_RUNS` | engine | Jumlah folder `apps/engine/out/<stamp>` yang dipertahankan (default 50) |
 | `SESSION_SECRET`, `NEXT_PUBLIC_APP_DOMAIN` | app | Autentikasi sesi wallet & domain web |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` | app, engine | Bot notifikasi dan webhook Telegram |
+| `TELEGRAM_BOT_TOKEN` | app, engine | Token bot web yang **sama** di kedua app; web memakai webhook, engine hanya `sendMessage` |
+| `TELEGRAM_WEBHOOK_SECRET` | app | Secret header webhook Telegram |
+| `BROADCAST_ENABLED`, `BROADCAST_DIGEST_TIMES`, `BROADCAST_TZ`, `BROADCAST_LANG` | engine | Broadcaster: kill switch, jam digest (default `08:00,20:00`), zona waktu (default `Asia/Jakarta`), bahasa (default `id`) |
 | `NEXT_PUBLIC_WC_PROJECT_ID` | app | WalletConnect project id |
 | `ARB_SEPOLIA_RPC_URL`, `ARBISCAN_API_KEY` | contracts, engine | RPC & verifikasi blok Arbitrum Sepolia |
 | `KEEPER_PRIVATE_KEY` atau signer eksternal | engine/keeper **(rencana)** | Private key eksekusi transaksi proteksi Guardian |

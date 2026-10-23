@@ -436,7 +436,7 @@ User menyatakan niat ("jaga posisiku konservatif, tahan drop 30%"). LLM menerjem
 - [ ] `ProtocolAdapter` interface + `AaveAdapter` (read posisi asli)
 - [ ] Settings → `approve` + `setPolicy` on-chain
 - [ ] Keeper cron + viem: `needsProtection` → `protect`, catat ke tabel `intents`
-- [ ] Notifikasi Telegram dari server (bukan dari browser)
+- [x] Notifikasi Telegram dari server (bukan dari browser) — sentinel (alert posisi per user) + broadcaster riset ([ADR 0012](decisions/0012-unified-db-outbound-research-broadcast.md)); `app/api/alerts/notify` simulasi browser masih ada
 - [ ] Identitas user berbasis wallet (lepas `chainId` dari tabel `users`)
 
 ### Milestone 2 — Core Risk Engine v1 (`core-dev`)

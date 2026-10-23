@@ -1,7 +1,11 @@
 # Spec: Channel Gateway — engine sebagai agent mandiri, Telegram sebagai kanal pertama
 
+> [!NOTE]
+> **Sebagian di-supersede oleh [ADR 0012](../decisions/0012-unified-db-outbound-research-broadcast.md) dan [Spec m3-research-broadcast](m3-research-broadcast.md):**
+> Arsitektur gateway inbound di engine (long-polling `getUpdates`, router Q&A chat Telegram, pairing kode via CLI, allowlist di `settings.json`, dan state di `gateway-state.json`) ditiadakan. Engine beralih ke model **outbound-only research broadcast** yang menggunakan bot web tunggal (`cuustos_bot`) dan database terpadu (`custos`). Komponen visualisasi, views HTML, dan logika deteksi alert deterministik dari spec ini dipindahkan ke implementasi broadcast baru.
+
 - **Milestone:** M1 "Notifikasi Telegram dari server" + M2 "Dry-run: rekomendasi di Telegram tanpa mengubah on-chain" ([PRD §10](../prd.md#10-roadmap-eksekusi))
-- **Status:** Approved (user, 2026-10-09)
+- **Status:** Approved (user, 2026-10-09) — Sebagian di-supersede oleh [ADR 0012](../decisions/0012-unified-db-outbound-research-broadcast.md)
 - **Pemilik:** Antigravity (implementasi), Claude Code (review)
 - **Terkait:** PRD §2 (Telegram-first), PRD §7 (penjelasan perubahan regime), [m3-cli §3.5](m3-cli.md) (REPL/ask), [ADR 0006](../decisions/0006-business-model-free-info-paid-automation.md), [security.md](../security.md)
 
