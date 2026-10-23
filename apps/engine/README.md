@@ -104,24 +104,17 @@ Biaya operasional sekitar **Rp 5–15 per analisa** (tergantung banyaknya berita
 
 ## 2. Cara Pakai
 
-Tahansoe beroperasi sebagai **agent mandiri (autonomous risk agent)**: dijalankan sekali oleh operator di server/komputer lokal, lalu dipakai oleh user **lewat Telegram**. Terminal CLI disediakan untuk operator & debugging; tanya-jawab hanya lewat Telegram ([ADR 0011](../../docs/decisions/0011-postgres-only-gateway-only-chat.md)).
+Tahansoe beroperasi sebagai **agent mandiri (autonomous risk agent)**: dijalankan sekali oleh operator di server/komputer lokal, lalu menyiarkan ringkasan risiko dan peringatan proaktif ke kanal Telegram outbound ([ADR 0012](../../docs/decisions/0012-unified-db-outbound-research-broadcast.md)). Terminal CLI disediakan untuk operator & debugging.
 
 ### Alur Utama (Agent Model)
 
-1. **Setup** — Konfigurasi gateway LLM, model, database (`DATABASE_URL` Postgres server, wajib), dan bot Telegram:
+1. **Setup** — Konfigurasi gateway LLM, model, database (`DATABASE_URL` Postgres server, wajib), dan validasi bot Telegram:
    ```bash
    npm run tahansoe -- setup
    ```
    *(Atau non-interaktif: `npm run tahansoe -- setup --yes --db-url-env MY_DB_URL --model gpt-6-luna --telegram-token-env BOT_TOKEN`)*
 
-2. **Pairing Telegram** — Hubungkan chat Telegram untuk menerima alert risiko:
-   ```bash
-   npm run tahansoe -- gateway pair
-   ```
-   Kirim `/start <KODE>` ke bot Telegram dalam 10 menit. Periksa status bot dan chat terdaftar dengan:
-   ```bash
-   npm run tahansoe -- gateway status
-   ```
+2. **Koneksi Akun Telegram** — User menghubungkan akun Telegram dari dashboard web (`/dashboard/telegram`) untuk menerima notifikasi. Tidak ada pairing dari CLI engine.
 
 3. **Start (Jalankan Agent)** — Satu proses jangka panjang yang mengorkestrasi seluruh loop proteksi:
    ```bash
@@ -131,9 +124,9 @@ Tahansoe beroperasi sebagai **agent mandiri (autonomous risk agent)**: dijalanka
    npm run tahansoe -- logs -f          # ikuti log
    npm run tahansoe -- stop             # shutdown bersih (force kill setelah 30 detik)
    ```
-   Menjalankan: scheduler riset multi-agent, sampler harga (60s) & bunga Aave V3 (15m), Risk Fusion v1, settlement berkala, alert proaktif, serta gateway Telegram dalam satu proses terisolasi (I6). Untuk server/VPS, jalankan `tahansoe start` (foreground) di bawah systemd/pm2/Docker.
+   Menjalankan: scheduler riset multi-agent, sampler harga (60s) & bunga Aave V3 (15m), Risk Fusion v1, settlement berkala, HF Sentinel & Keeper, serta Broadcaster Telegram outbound dalam satu proses terisolasi (I6). Untuk server/VPS, jalankan `tahansoe start` (foreground) di bawah systemd/pm2/Docker.
 
-4. **Pakai lewat Telegram** — User menerima peringatan dini (regime naik, depeg, lonjakan bunga) dan mengirim perintah chat (`/status`, `/fuse`, `/carry`, atau pertanyaan bebas).
+4. **Menerima Broadcast Telegram** — Pengguna menerima peringatan dini proaktif (regime naik, depeg, lonjakan bunga) dan digest harian terjadwal di Telegram.
 
 5. **CLI untuk Operator** — Operator dapat memantau atau mengaudit secara manual lewat terminal:
    ```bash
@@ -247,6 +240,9 @@ npm run tahansoe -- schedule status         # lock + run terakhir dari DB
 npm run tahansoe -- sentinel run            # jalankan Sentinel & Keeper worker (interval 60s)
 npm run tahansoe -- sentinel once           # satu siklus sinkronisasi + cek posisi + keeper
 npm run tahansoe -- sentinel sync           # sinkronisasi event Guardian on-chain ke database
+npm run tahansoe -- broadcast                # status broadcaster (penerima aktif & jadwal)
+npm run tahansoe -- broadcast digest --dry   # dry-run digest risiko harian (tanpa kirim pesan)
+npm run tahansoe -- broadcast alert --dry    # dry-run alert proaktif ke terminal
 ```
 
 ### 3.2 HF Sentinel & Keeper (Workstream C)
@@ -277,9 +273,18 @@ npm run sentinel -w apps/engine          # atau: npm run tahansoe -- sentinel ru
 
 Opsi global: `--lang <id|en>` (pilih bahasa UI), `--json` (output mesin, hanya di stdout), `--no-color` (nonaktifkan ANSI; otomatis mati pada pipe/`NO_COLOR`/`TERM=dumb`). Exit code: `0` ok · `1` error · `2` konfigurasi salah (mis. `LLM_API_URL`/`LLM_API_KEY` belum diisi). Setiap kartu laporan diakhiri "not a trading signal"; CLI tidak pernah melakukan aksi on-chain dan tidak pernah mencetak secret.
 
-### 3.2 Tanya-jawab & tampilan CLI
+### 3.3 Outbound Broadcaster Telegram & Tampilan CLI
 
-REPL interaktif dan `tahansoe ask` **dihapus** ([ADR 0011](../../docs/decisions/0011-postgres-only-gateway-only-chat.md)). Tanya-jawab grounded (hanya dari data tersimpan, dengan penolakan prediksi harga / saran beli-jual / ranking yield / janji anti-likuidasi) tersedia **lewat bot Telegram** setelah `tahansoe gateway pair`. Budget harian dicek sebelum setiap jawaban.
+Inbound Q&A Telegram telah digantikan oleh **Telegram Outbound Broadcaster** ([ADR 0012](../../docs/decisions/0012-unified-db-outbound-research-broadcast.md)). Pengguna menghubungkan Telegram dari dashboard web (`/dashboard/telegram`), dan Broadcaster mengirimkan:
+1. **Alert Proaktif**: Notifikasi langsung saat regime naik (`CALM` → `ELEVATED`/`STRESSED`/`CRISIS`) atau sinyal depeg terdeteksi. Dideduplikasi (jeda 6 jam kecuali severity naik) dengan hysteresis penurunan regime (ditahan >= 1 jam).
+2. **Daily Digest**: Ringkasan risiko pasar harian terjadwal (default 08:00 dan 20:00 WIB / `Asia/Jakarta`) yang memuat penilaian pasar Aave V3, saran trigger HF, sinyal aktif, dan riset AI terkini.
+
+Variabel lingkungan Broadcaster (`.env`):
+- `TELEGRAM_BOT_TOKEN`: Token bot Telegram dari @BotFather.
+- `BROADCAST_ENABLED`: Sakelar utama broadcaster (default: `true`).
+- `BROADCAST_DIGEST_TIMES`: Jadwal pengiriman digest (format HH:mm, default: `08:00,20:00`).
+- `BROADCAST_TZ`: Zona waktu jadwal digest (default: `Asia/Jakarta`).
+- `BROADCAST_LANG`: Bahasa pesan broadcast (`id` atau `en`, default: `id`).
 
 Tampilan CLI tetap memakai tema Tahansoe (brand `#4ab5e0`, safe `#34d399`, warning `#fbbf24`, danger `#f87171`; truecolor dengan fallback 256-color/plain) dan i18n ID/EN (`--lang` → `settings.json ui.language` → `TAHANSOE_LANG` → locale sistem → `en`).
 
@@ -336,22 +341,33 @@ Advisory lock Postgres memastikan hanya satu instance scheduler aktif; instance 
 apps/engine/
 ├── src/
 │   ├── agents/          # Pipeline riset: 4 analis, debat Hawk/Dove, assessor, schemas, to-signal, run
-│   ├── cli/             # CLI interaktif: research model picker, models list, env-writer
+│   ├── broadcast/       # Telegram outbound broadcaster: worker, cron digest, proactive alerts, dedupe
+│   ├── cli/             # CLI interaktif & subcommands (start, doctor, setup, broadcast, sentinel, dll.)
 │   ├── db/              # Penyimpanan laporan riset ke Neon Postgres dan query history
 │   ├── eval/            # Eval runner quota-aware (daily quota handling & 429 retry), scoring types
+│   ├── fusion/          # Risk Fusion v1: guardrails, drawdown, decay, synthesis regime deterministik
 │   ├── llm/             # Interface LlmProvider, Anthropic, OpenAI-compatible, registry router, pricing, estimate, budget
 │   ├── reflection/      # Settlement label, ekstraksi lessons, dan penghitungan scorecard
+│   ├── sentinel/        # HF Sentinel & Keeper loop (Workstream C)
+│   ├── settings/        # Schema & loader settings.json non-rahasia
+│   ├── signals/         # Generator sinyal deterministik (carry, rate shock, price drawdown)
 │   ├── sources/         # Adapter pengumpul data: RSS terkurasi, FRED API, kalender makro, DefiLlama, on-chain Arbitrum
+│   ├── telegram/        # Klien outbound Telegram Bot API, queue berbatas laju, formatting aman, & views
 │   ├── worker/          # Scheduled Research Worker (Postgres advisory lock, adaptive schedule, lifecycle guards)
 │   ├── config.ts        # Variabel konfigurasi lingkungan dan batas kebijakan engine
 │   └── index.ts         # Entry point runner utama
 ├── test/
 │   ├── agents/          # Unit test analis, debat, schemas, signal mapping, run dry
-│   ├── cli/             # Unit test CLI helpers
+│   ├── broadcast/       # Unit test broadcaster, formatting, api masking, queue rate limit, views
+│   ├── cli/             # Unit test CLI helpers & commands
 │   ├── db/              # Unit test query riwayat database
 │   ├── eval/            # Kasus eval (16 injection + 8 scenarios), test scorer, runner offline
+│   ├── fusion/          # Unit test Risk Fusion v1 & scenarios
 │   ├── llm/             # Unit test provider, budget calculation, pricing parser, registry router
 │   ├── reflection/      # Unit test settlement, lessons ranking, scorecard calculation
+│   ├── sentinel/        # Unit test Sentinel & Keeper worker
+│   ├── settings/        # Unit test schema & loader settings
+│   ├── signals/         # Unit test sinyal deterministik
 │   ├── sources/         # Unit test adapter berita RSS, FRED, kalender makro, DefiLlama, on-chain
 │   ├── worker/          # Unit test penjadwalan adaptif, Postgres lock, anti-overlap, error resilience
 │   ├── fake-provider.ts # LlmProvider palsu deterministik untuk pengujian offline tanpa jaringan

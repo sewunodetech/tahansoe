@@ -169,7 +169,7 @@ export interface DetachDeps {
 
 /**
  * `tahansoe start --detach`: spawn proses `start` (tanpa --detach) di background.
- * `startArgs` adalah argumen start lain yang diteruskan (mis. --no-gateway).
+ * `startArgs` adalah argumen start lain yang diteruskan (mis. --no-broadcast).
  */
 export async function startDetached(startArgs: string[], deps: DetachDeps = {}): Promise<number> {
   const env = deps.env ?? process.env;

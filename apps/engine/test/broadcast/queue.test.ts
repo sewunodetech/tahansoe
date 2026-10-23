@@ -11,7 +11,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { TelegramMessageQueue } from "../../src/gateway/telegram/queue.ts";
+import { TelegramMessageQueue } from "../../src/telegram/queue.ts";
 
 const FAKE_BOT_TOKEN = "987654321:XYZ_secret_bot_token_test_12345678";
 

@@ -4,18 +4,17 @@ import { encodeEventTopics, encodeAbiParameters, parseAbiItem } from "viem";
 import { hfToWad } from "@tahansoe/domain";
 import { syncGuardianEvents } from "../../src/sentinel/event-sync.ts";
 import { InMemorySentinelDatabase } from "../../src/sentinel/db-adapter.ts";
-import type { ChannelAdapter, InboundMessage } from "../../src/gateway/core/adapter.ts";
+import type { TelegramSender } from "../../src/telegram/index.ts";
 
-class FakeChannelAdapter implements ChannelAdapter {
+class FakeChannelAdapter implements TelegramSender {
   readonly channelName = "telegram";
   public sentMessages: Array<{ chatId: string; message: string; options?: any }> = [];
 
   async start(): Promise<void> {}
   async stop(): Promise<void> {}
-  async send(chatId: string, message: string, options?: any): Promise<void> {
-    this.sentMessages.push({ chatId, message, options });
+  async send(chatId: string | number | bigint, message: string, options?: any): Promise<void> {
+    this.sentMessages.push({ chatId: String(chatId), message, options });
   }
-  onMessage(_handler: (msg: InboundMessage) => Promise<void>): void {}
 }
 
 test("event-sync: memproses PolicySet dan PolicyDisabled ke database", async () => {

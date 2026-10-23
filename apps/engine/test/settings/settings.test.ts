@@ -157,3 +157,21 @@ test("gatewayPricingUrl: settings.pricingUrl menang; kosong → diturunkan dari 
   assert.equal(defaultPricingUrlFor(""), undefined);
   assert.equal(defaultPricingUrlFor("not a url"), undefined);
 });
+
+test("parseSettings: settings dengan field gateway/allowlist lama tetap toleran (diabaikan)", () => {
+  const old = JSON.stringify({
+    version: 2,
+    roles: { analyst: ["agnes-2.5-flash"] },
+    gateway: {
+      channels: {
+        telegram: {
+          allowedChats: [{ id: "12345" }],
+        },
+      },
+    },
+  });
+  const { settings } = parseSettings(old);
+  assert.equal(settings.version, 2);
+  assert.deepEqual(settings.roles.analyst, ["agnes-2.5-flash"]);
+  assert.equal((settings as any).gateway, undefined);
+});

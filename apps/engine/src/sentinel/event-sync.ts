@@ -18,7 +18,7 @@ import {
   dynamicTriggerSetEventAbi,
 } from "./abi.ts";
 import { protectedExecutionAlert } from "./views.ts";
-import type { ChannelAdapter } from "../gateway/core/adapter.ts";
+import type { TelegramSender } from "../telegram/index.ts";
 
 export const GUARDIAN_EVENTS_ABI = [
   policySetEventAbi,
@@ -98,7 +98,7 @@ export interface SyncOptions {
   db: EventSyncDatabase;
   chainId?: number;
   chunkSize?: bigint;
-  channelAdapter?: ChannelAdapter;
+  channelAdapter?: TelegramSender;
   logger?: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void };
 }
 

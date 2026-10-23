@@ -28,10 +28,10 @@ async function tempPaths() {
 test("attachDaemonRuntime: menulis pid file, abort saat file stop muncul, cleanup menghapus pid", async () => {
   const { dir, paths } = await tempPaths();
   try {
-    const rt = attachDaemonRuntime(["--no-gateway"], paths, 20);
+    const rt = attachDaemonRuntime(["--no-broadcast"], paths, 20);
     const rec = runningDaemon(paths);
     assert.equal(rec?.pid, process.pid);
-    assert.deepEqual(rec?.args, ["--no-gateway"]);
+    assert.deepEqual(rec?.args, ["--no-broadcast"]);
 
     await writeFile(paths.stopFile, "now");
     await new Promise<void>((resolve) => rt.signal.addEventListener("abort", () => resolve(), { once: true }));

@@ -1,16 +1,16 @@
 /**
- * `tahansoe start [--no-gateway] [--no-research] [--once]` (spec m3-channel-gateway-telegram §1–§4, §7).
+ * `tahansoe start [--no-broadcast] [--no-research] [--once]` (spec m3-research-broadcast).
  *
  * Menjalankan agent mandiri penuh dalam satu proses jangka panjang:
  *  - Research worker (jadwal adaptif 1-2 jam)
  *  - Price sampler (tiap 60s) & rate sampler Aave V3 T11 (tiap 15m) via PriceWorker
  *  - Risk Fusion v1 ticker (tiap 15m & pemicu setelah research run)
  *  - Settlement job ticker (tiap 60m)
- *  - Channel Gateway (Telegram) bila terkonfigurasi (startGateway)
+ *  - Risk Broadcaster (Telegram) bila terkonfigurasi (BroadcastWorker)
  *
- * Independensi (I6): kegagalan gateway tidak pernah mematikan riset/fusi dan sebaliknya.
+ * Independensi (I4): kegagalan broadcaster tidak pernah mematikan riset/fusi dan sebaliknya.
  * Shutdown bersih: SIGINT / SIGTERM menghentikan seluruh layanan & melepas semua advisory lock.
- * TTY dashboard: status settlement, fusi, dan gateway. Non-TTY: one-line log format.
+ * TTY dashboard: status settlement dan fusi. Non-TTY: one-line log format.
  */
 
 import { parseArgs } from "node:util";
@@ -31,7 +31,6 @@ import {
   attachNeonTransientGuards,
   type ScheduleDeps,
 } from "./schedule.ts";
-import { loadSettingsSync, settingsPath } from "../../settings/settings.ts";
 
 export const START_HELP = `tahansoe start — run the standalone risk agent in one process
 
@@ -39,7 +38,7 @@ Usage:
   tahansoe start [options]
 
 Options:
-  --no-gateway   Do not start the channel gateway (Telegram)
+  --no-broadcast Do not start the risk broadcaster (Telegram)
   --no-research  Do not start the LLM research worker
   --once         Run a single cycle across components then exit
   --detach       Run in the background (see: tahansoe status | logs | stop)
@@ -48,28 +47,10 @@ Options:
   --no-color     Disable ANSI colors
   --help         Show this help message`;
 
-export interface GatewayStatusResult {
-  configured: boolean;
-  channels: string[];
-  botUsername?: string;
-  botName?: string;
-  allowedChatsCount?: number;
-  lastAlertAt?: Date | null;
-}
-
-export interface PairingApi {
-  createPairingCode(channel: string): { code: string; expiresAt: Date | number };
-  pairingStatus(code: string): { status: "pending" | "paired" | "expired"; chatId?: string | number };
-}
-
 export interface StartDeps extends ScheduleDeps {
-  /** Memulai channel gateway. Injectable untuk test isolasi. */
-  startGateway?: (opts?: {
-    logger?: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void };
-    signal?: AbortSignal;
-  }) => Promise<{ stop: () => Promise<void>; pairing?: PairingApi }>;
-  /** Memeriksa konfigurasi status gateway. */
-  gatewayStatus?: (env?: NodeJS.ProcessEnv, settings?: unknown) => GatewayStatusResult | Promise<GatewayStatusResult>;
+  /** Factory broadcaster worker (default: BroadcastWorker dari src/broadcast/worker.ts). */
+  broadcastWorker?: any;
+  startBroadcastWorker?: () => Promise<{ stop: () => Promise<void>; onRunCompleted?: (r: any) => Promise<void> }>;
   /** Factory price worker (default: startPriceWorker dari src/worker/price-worker.ts). */
   startPriceWorker?: (opts?: unknown) => Promise<() => Promise<void>>;
   /** One-shot price sampler untuk --once. */
@@ -87,98 +68,23 @@ export interface StartDeps extends ScheduleDeps {
   exitFn?: (code: number) => void;
 }
 
-/** Format baris dashboard status gateway. */
-export function formatGatewayDashboardLine(
-  status: GatewayStatusResult | null,
-  opts: { noGateway?: boolean; isRunning?: boolean; webhookHost?: string; isWebhookActive?: boolean } = {},
-): string {
-  if (opts.noGateway) return "Gateway: (disabled)";
-  if (!status || !status.configured) return "Gateway: (not configured)";
-  if (opts.isWebhookActive || (status as any)?.status === "webhook_active") {
-    const host = opts.webhookHost ?? (status as any)?.webhookHost ?? "external";
-    return `Gateway: (webhook to ${host})`;
-  }
-  if (opts.isRunning === false) return "Gateway: (failed to start)";
-
-  const channel = status.channels?.[0] || "telegram";
-  let botPart = "@bot";
-  if (status.botUsername) {
-    botPart = `@${status.botUsername.replace(/^@/, "")}`;
-  } else if (status.botName) {
-    botPart = `@${status.botName.replace(/^@/, "")}`;
-  }
-
-  const chatsCount = status.allowedChatsCount ?? 0;
-  const lastAlertStr = status.lastAlertAt
-    ? status.lastAlertAt.toISOString().slice(11, 16)
-    : "—";
-
-  return `Gateway: ${channel} ${botPart}, ${chatsCount} chats, last alert ${lastAlertStr}`;
-}
-
-async function defaultGatewayStatus(
-  env: NodeJS.ProcessEnv = process.env,
-  settingsInput?: unknown,
-): Promise<GatewayStatusResult> {
-  let settings = settingsInput;
-  if (!settings) {
-    try {
-      const { settings: s } = loadSettingsSync(settingsPath(env));
-      settings = s;
-    } catch {
-      settings = undefined;
-    }
-  }
-
-  try {
-    // @ts-ignore - concurrently built by Antigravity #1
-    const { gatewayStatus } = await import("../../gateway/index.ts");
-    const res = await gatewayStatus(env, settings);
-    return {
-      configured: Boolean(res?.configured),
-      channels: Array.isArray(res?.channels) ? res.channels : ["telegram"],
-      botUsername: res?.botUsername,
-      botName: res?.botName,
-      allowedChatsCount: res?.allowedChatsCount,
-      lastAlertAt: res?.lastAlertAt,
-    };
-  } catch {
-    // Fallback deteksi via env/settings bila modul gateway belum ada
-    const hasToken = Boolean(env.TELEGRAM_BOT_TOKEN?.trim());
-    const tgSettings = (settings as any)?.gateway?.channels?.telegram;
-    const allowed = tgSettings?.allowedChats;
-    const allowedChatsCount = Array.isArray(allowed) ? allowed.length : 0;
-    const botUsername = tgSettings?.botUsername;
-    return {
-      configured: hasToken,
-      channels: hasToken ? ["telegram"] : [],
-      botUsername,
-      allowedChatsCount,
-      lastAlertAt: null,
-    };
-  }
-}
-
-async function defaultStartGateway(opts?: {
-  logger?: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void };
-  signal?: AbortSignal;
-}): Promise<{ stop: () => Promise<void>; pairing?: PairingApi }> {
-  // @ts-ignore - concurrently built by Antigravity #1
-  const { startGateway } = await import("../../gateway/index.ts");
-  return startGateway(opts);
-}
-
 export async function startCommand(argv: string[], deps: StartDeps = {}): Promise<number> {
   const env = deps.env ?? process.env;
   const writeOut = deps.stdout ?? ((s: string) => void process.stdout.write(s));
   const writeErr = deps.stderr ?? ((s: string) => void process.stderr.write(s));
+
+  const logger = {
+    info: (m: string) => writeOut(`${m}\n`),
+    warn: (m: string) => writeErr(`[WARN] ${m}\n`),
+    error: (m: string) => writeErr(`[ERROR] ${m}\n`),
+  };
 
   let parsed;
   try {
     parsed = parseArgs({
       args: argv,
       options: {
-        "no-gateway": { type: "boolean" },
+        "no-broadcast": { type: "boolean" },
         "no-research": { type: "boolean" },
         once: { type: "boolean" },
         detach: { type: "boolean" },
@@ -199,50 +105,37 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
     return EXIT_OK;
   }
 
-  if (parsed.values.detach) {
-    if (parsed.values.once) {
-      writeErr("--detach tidak bisa digabung dengan --once.\n");
-      return EXIT_ERROR;
-    }
+  const isDetach = Boolean(parsed.values.detach);
+  if (isDetach) {
     const { startDetached } = await import("./daemon.ts");
-    return startDetached(argv.filter((a) => a !== "--detach"), { env, stdout: writeOut, stderr: writeErr });
+    // Forward argv tanpa --detach
+    const forwardedArgs = argv.filter((a) => a !== "--detach" && !a.startsWith("--detach="));
+    return startDetached(forwardedArgs, {
+      env,
+      stdout: writeOut,
+      stderr: writeErr,
+      paths: deps.daemonPaths,
+    });
   }
 
-  const noGateway = Boolean(flagOrNpm(parsed.values["no-gateway"], "no_gateway", ["no-gateway"]));
   const noResearch = Boolean(flagOrNpm(parsed.values["no-research"], "no_research", ["no-research"]));
-  const once = Boolean(flagOrNpm(parsed.values.once, "once"));
+  const noBroadcast = Boolean(flagOrNpm(parsed.values["no-broadcast"], "no_broadcast", ["no-broadcast"]));
+  const once = Boolean(flagOrNpm(parsed.values.once, "once", ["once"]));
   const noSettle = Boolean(flagOrNpm(parsed.values["no-settle"], "no_settle", ["no-settle"]));
   const noFusion = Boolean(flagOrNpm(parsed.values["no-fusion"], "no_fusion", ["no-fusion"]));
 
-  const theme: Theme = detectTheme(argv, env, process.stdout);
-  const isTTY = deps.isTTY ?? Boolean(process.stdout.isTTY && !parsed.values["no-color"]);
+  const theme = detectTheme(argv, env, process.stdout);
+  const isTTY = deps.isTTY ?? (Boolean(process.stdout.isTTY) && !process.env.CI);
 
-  const logger = {
-    info: (m: string) => writeOut(m + "\n"),
-    warn: (m: string) => writeErr(m + "\n"),
-    error: (m: string) => writeErr(m + "\n"),
-  };
-
-  // Mode daemon (start --detach, ADR 0011): pid file + pemantau file stop dipasang
-  // SEBELUM komponen apa pun start. Research worker menunggu run pertama (bisa
-  // bermenit-menit); bila dipasang sesudahnya, parent mengira daemon gagal dan
-  // `stop`/`status` tidak melihatnya selama itu.
-  let daemon: { signal: AbortSignal; cleanup: () => void } | null = null;
-  let worker: { start: () => Promise<boolean>; stop: () => Promise<void> } | null = null;
+  // Inisialisasi status daemon bila berjalan sebagai background worker
+  let daemon: { signal: AbortSignal; cleanup: () => void } | undefined;
   if (env.TAHANSOE_DAEMON === "1" && !once) {
-    const { attachDaemonRuntime } = await import("./daemon.ts");
-    daemon = attachDaemonRuntime(argv, deps.daemonPaths);
-    // Stop saat startup: batalkan run riset pertama yang sedang berjalan.
-    daemon.signal.addEventListener("abort", () => void worker?.stop(), { once: true });
-  }
-
-  // Status gateway awal
-  const statusCheck = deps.gatewayStatus ?? defaultGatewayStatus;
-  let gwStatus: GatewayStatusResult = { configured: false, channels: [] };
-  try {
-    gwStatus = await statusCheck(env);
-  } catch {
-    /* abaikan */
+    try {
+      const { attachDaemonRuntime } = await import("./daemon.ts");
+      daemon = attachDaemonRuntime(argv, deps.daemonPaths);
+    } catch {
+      /* abaikan */
+    }
   }
 
   // Tampilkan Startup Banner yang menyatakan komponen apa saja yang berjalan
@@ -253,13 +146,12 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
   writeOut("  ✔ rate sampler     [ON: 15m]\n");
   writeOut(`  ${noFusion ? dim(theme, "○ risk fusion      [OFF: --no-fusion]") : "✔ risk fusion      [ON: 15m + event-driven]"}\n`);
   writeOut(`  ${noSettle ? dim(theme, "○ settle job       [OFF: --no-settle]") : "✔ settle job       [ON: 60m]"}\n`);
-  if (noGateway) {
-    writeOut(`  ${dim(theme, "○ channel gateway  [OFF: --no-gateway]")}\n`);
-  } else if (gwStatus.configured) {
-    const botName = gwStatus.botUsername ? `@${gwStatus.botUsername}` : "@bot";
-    writeOut(`  ✔ channel gateway  [ON: telegram ${botName}]\n`);
+  if (noBroadcast) {
+    writeOut(`  ${dim(theme, "○ broadcaster      [OFF: --no-broadcast]")}\n`);
+  } else if (env.BROADCAST_ENABLED === "false") {
+    writeOut(`  ${dim(theme, "○ broadcaster      [OFF: BROADCAST_ENABLED=false]")}\n`);
   } else {
-    writeOut(`  ${dim(theme, "○ channel gateway  [OFF: not configured]")}\n`);
+    writeOut("  ✔ broadcaster      [ON: digest 08:00/20:00 + proactive alerts]\n");
   }
   writeOut("\n");
   if (!env.DATABASE_URL?.trim()) {
@@ -275,12 +167,13 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
   }
 
   // -------------------------------------------------------------------------
-  // Mode --once: jalankan satu putaran seluruh komponen lalu keluar
+  // MODE ONCE: Eksekusi satu siklus berurutan lalu selesai
   // -------------------------------------------------------------------------
   if (once) {
-    logger.info("[start] running single cycle (--once)...");
+    writeOut(bold(theme, "Running single cycle (--once)...\n"));
+    let code = EXIT_OK;
 
-    // 1. Price & rate sampling
+    // 1. Price sampler & rate sampler once
     try {
       if (deps.sampleOnce) {
         await deps.sampleOnce();
@@ -294,11 +187,13 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
         const { sampleRatesOnce } = await import("../../sources/rate-sampler.ts");
         await sampleRatesOnce();
       }
+      writeOut("  ✔ price & rate samples captured\n");
     } catch (err) {
-      logger.warn(`[start:price] sampling gagal: ${err instanceof Error ? err.message : String(err)}`);
+      writeErr(`  ✖ price/rate sampling error: ${err instanceof Error ? err.message : String(err)}\n`);
+      code = EXIT_ERROR;
     }
 
-    // 2. Research worker
+    // 2. Research worker once
     let reportProduced = false;
     if (!noResearch) {
       if (!deps.makeWorker && !isGatewayConfigured()) {
@@ -306,58 +201,72 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
       } else {
         const makeWorker = deps.makeWorker ?? defaultMakeWorker;
         const worker = await makeWorker({
+          ...deps,
           logger,
           clock: noTimerClock,
           exitFn: () => {},
-          onRunCompleted: (r) => {
+          onRunCompleted: (r: any) => {
             if (r && r.report) reportProduced = true;
           },
         });
         try {
           await worker.start();
         } catch (err) {
-          logger.error(`[worker] error saat start: ${err instanceof Error ? err.message : String(err)}`);
+          logger.error(`[worker] error saat start: ${String(err)}`);
+          code = EXIT_ERROR;
         }
         await worker.stop();
+        writeOut("  ✔ research cycle complete\n");
       }
     }
 
-    // 3. Risk fusion
+    // 3. Risk Fusion once
     if (!noFusion) {
       if (reportProduced || noResearch) {
-        await runFusionOnce(deps, logger, true);
+        try {
+          await runFusionOnce(deps, logger, true);
+          writeOut("  ✔ risk fusion cycle complete\n");
+        } catch (err) {
+          writeErr(`  ✖ risk fusion error: ${err instanceof Error ? err.message : String(err)}\n`);
+          code = EXIT_ERROR;
+        }
       } else {
         logger.info("[fusion] skipped (no research report this cycle)");
       }
     }
 
-    // 4. Settle job
+    // 4. Settle job once
     if (!noSettle) {
-      await runSettleOnce(deps, logger);
+      try {
+        await runSettleOnce(deps, logger);
+        writeOut("  ✔ settlement cycle complete\n");
+      } catch (err) {
+        writeErr(`  ✖ settlement error: ${err instanceof Error ? err.message : String(err)}\n`);
+        code = EXIT_ERROR;
+      }
     }
 
-    logger.info("[start] single cycle completed.");
-    return EXIT_OK;
+    // 5. Broadcaster once
+    if (!noBroadcast && env.BROADCAST_ENABLED !== "false") {
+      try {
+        const { BroadcastWorker } = await import("../../broadcast/worker.ts");
+        const bw = new BroadcastWorker({ env, logger });
+        const sent = await bw.pollOnce();
+        writeOut(`  ✔ broadcast poll complete (${sent} messages sent)\n`);
+      } catch (err) {
+        writeErr(`  ✖ broadcast error: ${err instanceof Error ? err.message : String(err)}\n`);
+      }
+    }
+
+    writeOut(bold(theme, "Single cycle finished.\n"));
+    return code;
   }
 
   // -------------------------------------------------------------------------
-  // Mode Foreground (Long-Running Agent):
+  // MODE DAEMON / PERSISTENT RUN
   // -------------------------------------------------------------------------
 
-  // 1. Price worker (harga 60s + bunga 15m)
-  let stopPrice: (() => Promise<void>) | null = null;
-  try {
-    if (deps.startPriceWorker) {
-      stopPrice = await deps.startPriceWorker();
-    } else {
-      const { startPriceWorker } = await import("../../worker/price-worker.ts");
-      stopPrice = await startPriceWorker();
-    }
-  } catch (err) {
-    logger.warn(`[start] price worker gagal dimulai: ${err instanceof Error ? err.message : String(err)}`);
-  }
-
-  // 2. Risk Fusion Ticker
+  // 1. Risk Fusion ticker
   let fusionTicker: FusionTicker | null = null;
   if (!noFusion) {
     const runFn = deps.fusionRun ?? (await import("../../fusion/run.ts")).runFusion;
@@ -372,7 +281,7 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
     await fusionTicker.start();
   }
 
-  // 3. Settle Ticker
+  // 2. Settlement ticker
   let settleTicker: SettleTicker | null = null;
   if (!noSettle) {
     const job = deps.settleJob ?? (await import("../../reflection/settle-job.ts")).runSettlementJob;
@@ -387,73 +296,80 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
     await settleTicker.start();
   }
 
-  // 4. Research Worker
+  // Dideklarasikan sebelum research worker: callback onRunCompleted bisa terpanggil
+  // saat worker.start() menjalankan run pertama, sebelum broadcaster dibuat (blok 4b).
+  let broadcastWorkerInstance: { stop: () => Promise<void>; onRunCompleted?: (r: any) => Promise<void> } | null = null;
+
+  // 3. Scheduled Research Worker
+  let worker: { start: () => void | Promise<unknown>; stop: () => Promise<void> } | null = null;
   if (!noResearch && !daemon?.signal.aborted) {
     if (!deps.makeWorker && !isGatewayConfigured()) {
       logger.warn(`[research] LLM gateway belum dikonfigurasi — research worker dilewati. Jalankan 'tahansoe setup'.`);
     } else {
-      const makeWorker = deps.makeWorker ?? defaultMakeWorker;
-      worker = await makeWorker({
+      const makeW = deps.makeWorker ?? defaultMakeWorker;
+      worker = await makeW({
+        ...deps,
         logger,
-        onRunCompleted: (r) => {
-          if (fusionTicker && r && r.report) void fusionTicker.tick();
+        onRunCompleted: async (report) => {
+          // Kegagalan fusion/broadcaster tidak boleh mematikan proses (I4).
+          try {
+            if (fusionTicker && report && (report as any).report) {
+              void fusionTicker.tick();
+            }
+            if (broadcastWorkerInstance?.onRunCompleted) {
+              broadcastWorkerInstance.onRunCompleted(report).catch((err) =>
+                logger.warn(`[broadcast] onRunCompleted gagal: ${err instanceof Error ? err.message : String(err)}`),
+              );
+            }
+          } catch (err) {
+            logger.warn(`[start] onRunCompleted gagal: ${err instanceof Error ? err.message : String(err)}`);
+          }
         },
       });
+      daemon?.signal.addEventListener("abort", () => void worker?.stop(), { once: true });
       await worker.start();
     }
   }
 
-  // 5. Channel Gateway (Telegram) — Terisolasi (I6)
-  let gatewayInstance: { stop: () => Promise<void>; pairing?: PairingApi } | null = null;
-  let gatewayRunning = false;
-  if (!noGateway && gwStatus.configured) {
+  // 4a. Price worker (Aave price + rates)
+  let stopPrice: (() => Promise<void>) | null = null;
+  if (deps.startPriceWorker) {
+    stopPrice = await deps.startPriceWorker({ logger, envOverrides: env });
+  } else {
     try {
-      const startGw = deps.startGateway ?? defaultStartGateway;
-      gatewayInstance = await startGw({ logger });
-      const gwStatusStr =
-        typeof (gatewayInstance as any)?.status === "string"
-          ? (gatewayInstance as any).status
-          : (gatewayInstance as any)?.status?.telegram;
-
-      if (gwStatusStr === "webhook_active") {
-        const host =
-          (gatewayInstance as any)?.webhookHost ??
-          (gatewayInstance as any)?.status?.webhookHost ??
-          "external host";
-        logger.warn(
-          `This bot uses a webhook to ${host}. Messages go there, not to Tahansoe. Use a dedicated bot, or run: tahansoe gateway pair --delete-webhook`,
-        );
-      } else {
-        gatewayRunning = true;
-        logger.info("[gateway] telegram bot gateway berjalan.");
-      }
-    } catch (err: any) {
-      const msg = String(err?.message || "");
-      if (
-        err?.status === "webhook_active" ||
-        msg.includes("webhook is active") ||
-        msg.includes("webhook_active") ||
-        msg.includes("webhook")
-      ) {
-        const host = err?.webhookHost ?? err?.host ?? "external host";
-        logger.warn(
-          `This bot uses a webhook to ${host}. Messages go there, not to Tahansoe. Use a dedicated bot, or run: tahansoe gateway pair --delete-webhook`,
-        );
-      } else {
-        // Isolasi I6: kegagalan gateway TIDAK menghentikan riset / fusi
-        logger.error(`[gateway] gagal start: ${err instanceof Error ? err.message : String(err)} (riset & fusi tetap berjalan)`);
-      }
+      const { startPriceWorker } = await import("../../worker/price-worker.ts");
+      stopPrice = await startPriceWorker({ logger, envOverrides: env });
+    } catch (err) {
+      logger.warn(`[price-worker] gagal start: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
-  // 6. TTY Dashboard lines awal
+  // 4b. Broadcaster (Telegram Outbound & Digest) — Independen (I4)
+  if (!noBroadcast && env.BROADCAST_ENABLED !== "false") {
+    try {
+      if (deps.broadcastWorker) {
+        broadcastWorkerInstance = deps.broadcastWorker;
+        await deps.broadcastWorker.start();
+      } else if (deps.startBroadcastWorker) {
+        broadcastWorkerInstance = await deps.startBroadcastWorker();
+      } else {
+        const { BroadcastWorker } = await import("../../broadcast/worker.ts");
+        const bw = new BroadcastWorker({ env, logger });
+        await bw.start();
+        broadcastWorkerInstance = bw;
+      }
+    } catch (err) {
+      logger.warn(`[broadcast] worker gagal dimulai: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  // 5. TTY Dashboard lines awal
   if (isTTY) {
     if (settleTicker) logger.info(settleTicker.dashboardLine());
     if (fusionTicker) logger.info(fusionTicker.dashboardLine());
-    logger.info(formatGatewayDashboardLine(gwStatus, { noGateway, isRunning: gatewayRunning }));
   }
 
-  // 7. Tunggu shutdown bersih (SIGINT / SIGTERM / deps.shutdownSignal / file stop daemon)
+  // 6. Tunggu shutdown bersih (SIGINT / SIGTERM / deps.shutdownSignal / file stop daemon)
   await new Promise<void>((resolve) => {
     let resolved = false;
     const shutdown = async () => {
@@ -461,11 +377,11 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
       resolved = true;
       writeErr("\n[start] menghentikan seluruh layanan… melepas lock.\n");
       try {
-        if (gatewayInstance) {
+        if (broadcastWorkerInstance) {
           try {
-            await gatewayInstance.stop();
+            await broadcastWorkerInstance.stop();
           } catch (e) {
-            writeErr(`[start] error stop gateway: ${String(e)}\n`);
+            writeErr(`[start] error stop broadcaster: ${String(e)}\n`);
           }
         }
         if (fusionTicker) {
@@ -507,17 +423,30 @@ export async function startCommand(argv: string[], deps: StartDeps = {}): Promis
     if (daemon) {
       // Stop bisa sudah diminta selama startup (listener abort tidak terpicu ulang).
       if (daemon.signal.aborted) void shutdown();
-      else daemon.signal.addEventListener("abort", () => void shutdown(), { once: true });
+      else daemon.signal.addEventListener("abort", () => void shutdown());
     }
-    process.once("SIGINT", shutdown);
-    process.once("SIGTERM", shutdown);
+
+    const onSigint = () => {
+      process.off("SIGINT", onSigint);
+      process.off("SIGTERM", onSigterm);
+      void shutdown();
+    };
+    const onSigterm = () => {
+      process.off("SIGINT", onSigint);
+      process.off("SIGTERM", onSigterm);
+      void shutdown();
+    };
+    process.on("SIGINT", onSigint);
+    process.on("SIGTERM", onSigterm);
   });
 
+  // Bersihkan file runtime daemon bila ada
   if (daemon) {
     daemon.cleanup();
-    // Handle sisa (socket/timer pihak ketiga) tidak boleh menahan daemon setelah shutdown.
     const exit = deps.exitFn ?? ((code: number) => process.exit(code));
     setTimeout(() => exit(0), 3000).unref();
   }
+
+  writeErr("[start] selesai.\n");
   return EXIT_OK;
 }
