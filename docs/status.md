@@ -1,6 +1,6 @@
 # Status Proyek
 
-**Last updated:** 14 Oktober 2026
+**Last updated:** 23 Oktober 2026
 **Milestone aktif:** M2 (Core Risk Engine v1 / Research Layer) dan M1 (Integrasi on-chain web) — lihat [PRD §10](prd.md#10-roadmap-eksekusi)
 
 > Perbarui file ini di akhir setiap pekerjaan: pindahkan item yang selesai, tambahkan gap baru, dan tulis next step.
@@ -8,6 +8,13 @@
 ---
 
 ## Sudah jalan
+
+### Satu DB + broadcast riset ke bot Telegram web — 23 Okt 2026 ([ADR 0012](decisions/0012-unified-db-outbound-research-broadcast.md), [spec](specs/m3-research-broadcast.md), [plan](plans/research-broadcast.md))
+- **Satu database:** engine kini memakai `DATABASE_URL` yang sama dengan web (Neon `custos`). Migrasi idempoten dijalankan; data riset historis dari DB engine lama disalin sekali, insert-only (`npm run db:copy-engine`, 1009 baris: 15 `research_reports`, 163 `signals`, 70 `risk_assessments`, 408 `price_samples`, 352 `rate_samples`, 1 `llm_usage_daily`). Tabel user-level tidak disalin. `npm run db:check` menampilkan host DB tersamar.
+- **Engine hanya kirim (outbound-only):** `BroadcastWorker` (`apps/engine/src/broadcast/`) mengirim ke semua `telegram_accounts` aktif lewat bot web. Isinya digest terjadwal (`BROADCAST_DIGEST_TIMES`, default 08:00 & 20:00 `Asia/Jakarta`) dan alert segera saat regime naik atau ada sinyal kritis (T10/T4/T7/T8 berat). Dedupe 6 jam dan hysteresis turun 1 jam, dengan dedupe & log di tabel `broadcasts`. Advisory lock `42161006`. Rate limit ≤ 25 msg/s dengan `retry_after` pada 429; 403 menonaktifkan akun. Tersedia `tahansoe broadcast digest|once [--dry]` dan `start --no-broadcast`. Sentinel kini memakai `TelegramSender`.
+- **Gateway inbound engine dihapus:** pairing, polling `getUpdates`, router/Q&A chat, bot lock, dan `gateway pair` tidak ada lagi. Q&A chat lewat Telegram ikut hilang.
+- **Web:** webhook menangani `/start` (sambutan), `/start <code>` (link/re-link), dan `/stop` (berhenti langganan). Halaman Telegram menjelaskan isi notifikasi. `npm test -w apps/web` kini menjalankan test route.
+- Dikerjakan paralel lewat Orca orchestration (worker Antigravity); konteks worker diambil dari index codebase-memory.
 
 ### Web, Dashboard & Kontrak
 - Landing page + dashboard (positions, history, bot, chat placeholder, settings)
@@ -112,6 +119,13 @@
 ---
 
 ## Gap yang diketahui
+
+### Broadcast riset (ADR 0012, review alignment 23 Okt 2026)
+- [ ] `broadcast/worker.ts` masih hardcode `chainId = 42161` (I6) → ambil dari chain registry / opsi config.
+- [ ] Severity alert sinyal (`alertSeverities`) hanya tersimpan di memori → setelah restart, alert kritis dalam jendela 6 jam bisa terkirim ulang. Simpan severity di tabel `broadcasts`.
+- [ ] `packages/db/scripts/copy-engine-data.ts` fallback ke path `.env` lokal developer → wajibkan `SOURCE_DATABASE_URL`.
+- [ ] Belum ada test regresi untuk `onRunCompleted` di `tahansoe start` yang terpanggil sebelum broadcaster dibuat (bug TDZ sudah diperbaiki 23 Okt).
+- [ ] Preferensi per user (bahasa, matikan digest, filter aset) belum ada; semua akun aktif menerima broadcast yang sama.
 
 ### Evaluasi & Model LLM
 - [ ] Batasan skema 800 karakter untuk `hawkCase`/`doveCase` terkadang ketat pada model selain `gpt-6-luna`; pertimbangkan relaksasi ke 1200 karakter bila diperlukan saat evaluasi model alternatif.

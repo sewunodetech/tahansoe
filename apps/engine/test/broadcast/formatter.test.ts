@@ -1,10 +1,10 @@
 /**
- * Unit test message formatter (plain text aman & MarkdownV2 escaping).
+ * Unit test message formatter outbound (plain text aman & MarkdownV2/HTML escaping).
  *
  * Menguji:
  *  - Sanitasi karakter ANSI escape sequences & kontrol
  *  - Redaksi instruksi tersisip (prompt injection redaction)
- *  - Escaping karakter khusus MarkdownV2 Telegram
+ *  - Escaping karakter khusus MarkdownV2 & HTML Telegram
  *  - Pemotongan pesan panjang (chunking)
  */
 
@@ -13,10 +13,12 @@ import assert from "node:assert/strict";
 
 import {
   escapeMarkdownV2,
+  escapeHtml,
+  stripAnsiAndControl,
   formatSafePlainText,
   formatSafeMarkdownV2,
   chunkMessage,
-} from "../../src/gateway/core/formatter.ts";
+} from "../../src/telegram/formatter.ts";
 
 test("formatter: escapeMarkdownV2 meng-escape semua karakter khusus Telegram", () => {
   const hostile = "Alert: ETH _down_ *urgent* [link](http://evil.com) ~strike~ `code` >quote #tag +1 -2 =0 |pipe| {json} .dot !warn \\slash";
@@ -42,6 +44,12 @@ test("formatter: escapeMarkdownV2 meng-escape semua karakter khusus Telegram", (
   assert.ok(escaped.includes("\\."));
   assert.ok(escaped.includes("\\!"));
   assert.ok(escaped.includes("\\\\"));
+});
+
+test("formatter: escapeHtml meng-escape karakter &, <, >", () => {
+  const hostile = "AT&T <script>alert('xss')</script> a > b";
+  const escaped = escapeHtml(hostile);
+  assert.equal(escaped, "AT&amp;T &lt;script&gt;alert('xss')&lt;/script&gt; a &gt; b");
 });
 
 test("formatter: formatSafePlainText membuang escape ANSI dan kontrol karakter berbahaya", () => {

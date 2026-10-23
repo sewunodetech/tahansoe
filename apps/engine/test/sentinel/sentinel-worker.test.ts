@@ -4,19 +4,18 @@ import { hfToWad } from "@tahansoe/domain";
 import { SentinelWorker } from "../../src/sentinel/sentinel-worker.ts";
 import { InMemorySentinelDatabase } from "../../src/sentinel/db-adapter.ts";
 import { Keeper } from "../../src/sentinel/keeper.ts";
-import type { ChannelAdapter, InboundMessage } from "../../src/gateway/core/adapter.ts";
+import type { TelegramSender } from "../../src/telegram/index.ts";
 import type { AdvisoryLockClient } from "../../src/worker/lock.ts";
 
-class FakeChannelAdapter implements ChannelAdapter {
+class FakeChannelAdapter implements TelegramSender {
   readonly channelName = "telegram";
   public sentMessages: Array<{ chatId: string; message: string; options?: any }> = [];
 
   async start(): Promise<void> {}
   async stop(): Promise<void> {}
-  async send(chatId: string, message: string, options?: any): Promise<void> {
-    this.sentMessages.push({ chatId, message, options });
+  async send(chatId: string | number | bigint, message: string, options?: any): Promise<void> {
+    this.sentMessages.push({ chatId: String(chatId), message, options });
   }
-  onMessage(_handler: (msg: InboundMessage) => Promise<void>): void {}
 }
 
 test("sentinel-worker: mendeteksi transisi zona risiko dan mengirim alert hanya saat transisi (dedupe)", async () => {

@@ -10,7 +10,8 @@
     "abi": "node scripts/export-guardian-abi.mjs",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"app/**/*.test.ts\""
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

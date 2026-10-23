@@ -7,7 +7,7 @@ export async function GET() {
   const session = await getSession();
 
   if (!session.userId) {
-    return NextResponse.json({ linked: false }, { status: 401 });
+    return NextResponse.json({ linked: false, isActive: false }, { status: 401 });
   }
 
   const [account] = await db
@@ -22,7 +22,7 @@ export async function GET() {
     .limit(1);
 
   if (!account) {
-    return NextResponse.json({ linked: false });
+    return NextResponse.json({ linked: false, isActive: false });
   }
 
   return NextResponse.json({

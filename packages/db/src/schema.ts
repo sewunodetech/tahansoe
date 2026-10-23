@@ -320,3 +320,26 @@ export const notificationLogs = pgTable(
     userIdx: index("notification_logs_user_idx").on(t.userId),
   })
 );
+
+
+export const broadcasts = pgTable(
+  "broadcasts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    kind: text("kind").notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    message: text("message").notNull(),
+    recipientsCount: integer("recipients_count").notNull(),
+    sentCount: integer("sent_count").notNull(),
+    failedCount: integer("failed_count").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    dedupeKeyUnique: uniqueIndex("broadcasts_dedupe_key_unique").on(t.dedupeKey),
+  })
+);
+
+export type Broadcast = typeof broadcasts.$inferSelect;
+export type NewBroadcast = typeof broadcasts.$inferInsert;

@@ -35,7 +35,7 @@ import { syncGuardianEvents } from "./event-sync.ts";
 import { Keeper } from "./keeper.ts";
 import { hfWarningAlert, hfCriticalAlert, reserveLowAlert } from "./views.ts";
 import type { SentinelDatabase } from "./db-adapter.ts";
-import type { ChannelAdapter } from "../gateway/core/adapter.ts";
+import type { TelegramSender } from "../telegram/index.ts";
 import type { KeeperExecutionResult, SentinelTickResult, UserPositionSnapshot } from "./types.ts";
 
 export const DEFAULT_SENTINEL_INTERVAL_SEC = 60;
@@ -72,7 +72,7 @@ export interface SentinelWorkerOptions {
   client?: PublicClient;
   db?: SentinelDatabase;
   lockClient?: AdvisoryLockClient | null;
-  channelAdapter?: ChannelAdapter;
+  channelAdapter?: TelegramSender;
   keeper?: Keeper;
   clock?: SentinelWorkerClock;
   logger?: SentinelWorkerLogger;
@@ -93,7 +93,7 @@ export class SentinelWorker {
   private readonly intervalSec: number;
   private readonly client?: PublicClient;
   private readonly db: SentinelDatabase;
-  private readonly channelAdapter?: ChannelAdapter;
+  private readonly channelAdapter?: TelegramSender;
   private readonly keeper: Keeper;
   private readonly clock: SentinelWorkerClock;
   private readonly logger: SentinelWorkerLogger;

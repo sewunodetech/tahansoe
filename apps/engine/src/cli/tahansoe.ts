@@ -1,7 +1,7 @@
 /**
  * Entry CLI `tahansoe` (spec m3-cli, ADR 0011). Alat operator: start/stop/status/
  * logs, analyze, schedule, history, report, models, settings, eval, doctor, dst.
- * Tanya-jawab (chat) hanya lewat channel gateway (Telegram), bukan CLI.
+ * Broadcaster mengirimkan digest dan alert risiko outbound ke Telegram.
  *
  * Exit code: 0 ok · 1 error · 2 config salah (mis. LLM_API_URL/KEY hilang).
  * Tanpa aksi on-chain; tidak pernah mencetak secret.
@@ -12,13 +12,12 @@ import { detectTheme, banner, dim, bold, maskHost, regimeColor } from "./render.
 import { EXIT_OK, EXIT_ERROR, EXIT_CONFIG } from "./commands/args.ts";
 
 const COMMANDS = [
-  ["start", "Run the risk agent (research + fusion + gateway); --detach for background"],
+  ["start", "Run the standalone risk agent (research + fusion + broadcaster); --detach for background"],
   ["stop", "Stop the background agent"],
   ["status", "Background agent status + latest research run"],
   ["logs", "Show background agent log (-f to follow)"],
   ["analyze", "Run one risk-research pass + report card"],
-  ["schedule", "Run the scheduler (foreground) or show status"],
-  ["gateway", "Channel gateway operations (run, pair, status)"],
+  ["schedule", "Run the scheduler (foreground) or show status"],
   ["history", "Recent research reports (table + sparkline)"],
   ["report", "Show a full report by <id|latest>"],
   ["models", "List gateway models + prices + cost estimate"],
@@ -31,6 +30,7 @@ const COMMANDS = [
   ["setup", "First-time setup wizard (gateway, models, DB)"],
   ["doctor", "Check env & connectivity"],
   ["sentinel", "Health Factor Sentinel & Keeper (run, once, sync)"],
+  ["broadcast", "Broadcast risk digest and proactive alerts (digest, once)"],
 ] as const;
 
 const TOP_HELP = `Usage: tahansoe <command> [options]
@@ -151,32 +151,6 @@ export async function main(argv: string[]): Promise<number> {
       const { logsCommand } = await import("./commands/daemon.ts");
       return logsCommand(rest);
     }
-    case "gateway": {
-      const sub = rest[0];
-      const subRest = rest.slice(1);
-      if (sub === "run") {
-        try {
-          const { gatewayRunCommand } = await import("../gateway/cli.ts");
-          const res = await gatewayRunCommand(subRest);
-          return typeof res === "number" ? res : EXIT_OK;
-        } catch (err) {
-          process.stderr.write(`[gateway] gagal memuat gateway: ${err instanceof Error ? err.message : String(err)}\n`);
-          return EXIT_ERROR;
-        }
-      }
-      if (sub === "pair") {
-        const { gatewayPairCommand } = await import("./commands/gateway-pair.ts");
-        return gatewayPairCommand(subRest);
-      }
-      if (sub === "status") {
-        const { gatewayStatusCommand } = await import("./commands/gateway-pair.ts");
-        return gatewayStatusCommand(subRest);
-      }
-      process.stderr.write(
-        `subcommand gateway tidak dikenal: ${sub ?? "(kosong)"} (pakai: tahansoe gateway [run|pair|status])\n`,
-      );
-      return EXIT_ERROR;
-    }
     case "analyze": {
       const { analyzeCommand } = await import("./commands/analyze.ts");
       return analyzeCommand(rest);
@@ -232,6 +206,10 @@ export async function main(argv: string[]): Promise<number> {
     case "sentinel": {
       const { sentinelCommand } = await import("./commands/sentinel.ts");
       return sentinelCommand(rest);
+    }
+    case "broadcast": {
+      const { broadcastCommand } = await import("./commands/broadcast.ts");
+      return broadcastCommand(rest);
     }
     default:
       process.stderr.write(`perintah tidak dikenal: ${cmd}\n\n${TOP_HELP}\n`);

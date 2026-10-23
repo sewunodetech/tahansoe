@@ -1,5 +1,5 @@
-import type { Lang } from "../gateway/views.ts";
-import { escapeHtml, footer } from "../gateway/views.ts";
+import type { Lang } from "../telegram/views.ts";
+import { escapeHtml, footer } from "../telegram/views.ts";
 
 const L = (lang: Lang, id: string, en: string): string => (lang === "id" ? id : en);
 

@@ -59,13 +59,6 @@ export interface SetupDeps {
   runDoctorImpl?: (deps?: Record<string, unknown>) => Promise<CheckResult[]>;
   env?: NodeJS.ProcessEnv;
   telegramGetMe?: (token: string) => Promise<{ ok: boolean; username?: string; error?: string }>;
-  startGateway?: (opts?: unknown) => Promise<{
-    stop: () => Promise<void>;
-    pairing?: {
-      createPairingCode: (channel: string) => { code: string; expiresAt: Date | number };
-      pairingStatus: (code: string) => { status: "pending" | "paired" | "expired"; chatId?: string | number };
-    };
-  }>;
   sleepImpl?: (ms: number) => Promise<void>;
 }
 
@@ -81,7 +74,7 @@ export async function defaultTelegramGetMe(
 ): Promise<{ ok: boolean; username?: string; error?: string }> {
   try {
     // @ts-ignore - concurrently built by Antigravity #1
-    const { telegramGetMe } = await import("../../gateway/telegram/api.ts");
+    const { telegramGetMe } = await import("../../telegram/api.ts");
     return await telegramGetMe(token);
   } catch {
     try {
@@ -389,7 +382,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
         const meRes = await getMe(telegramToken);
         if (meRes.ok && meRes.username) {
           writeOut(pc.green(`✔ Bot Telegram terverifikasi: @${meRes.username}\n`));
-          writeOut("Next: run 'tahansoe gateway pair' to connect your chat.\n\n");
+          writeOut("Link akun Telegram dilakukan pengguna dari dashboard web.\n\n");
         } else {
           writeErr(pc.yellow(`Perhatian: Token Telegram tidak valid: ${meRes.error ?? "gagal verifikasi"}\n`));
         }
@@ -523,7 +516,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
     const skipTelegram = Boolean(f["skip-telegram"]);
     if (!skipTelegram) {
       writeOut(pc.cyan("4. Kanal & Notifikasi Telegram (Opsional)\n"));
-      writeOut("  Hubungkan bot Telegram untuk menerima alert risiko & perintah chat.\n");
+      writeOut("  Hubungkan bot Telegram untuk menerima broadcast riset & alert risiko.\n");
       writeOut("  Buat bot baru di @BotFather di Telegram untuk mendapatkan bot token.\n");
 
       const tgPrompt = existingTgToken
@@ -549,7 +542,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
         const meRes = await getMe(telegramToken);
         if (meRes.ok && meRes.username) {
           writeOut(pc.green(`  ✔ Bot terhubung: @${meRes.username}\n`));
-          writeOut("  Next: run 'tahansoe gateway pair' to connect your chat.\n\n");
+          writeOut("  User web dapat menghubungkan akun Telegram dari dashboard.\n\n");
           tgReady = true;
         } else {
           writeOut(pc.yellow(`  ✖ Token Telegram tidak valid: ${meRes.error ?? "HTTP error"}\n`));
@@ -564,7 +557,7 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
             tgReady = true;
             writeOut("\n");
           } else if (act !== "r") {
-            writeOut("  Next: run 'tahansoe gateway pair' to connect your chat.\n\n");
+            writeOut("  User web dapat menghubungkan akun Telegram dari dashboard.\n\n");
             tgReady = true;
             writeOut("\n");
           }
@@ -730,11 +723,10 @@ export async function setupCommand(argv: string[], deps: SetupDeps = {}): Promis
   }
 
   writeOut(pc.bold("Setup selesai! Langkah selanjutnya:\n"));
-  writeOut("  tahansoe gateway pair          — hubungkan chat Telegram Anda (opsional)\n");
-  writeOut("  tahansoe start                 — jalankan agent mandiri penuh (riset + fusi + gateway Telegram)\n");
+  writeOut("  tahansoe start                 — jalankan agent mandiri penuh (riset + fusi + broadcaster Telegram)\n");
   writeOut("  tahansoe start --detach        — jalankan agent di background (stop/status/logs)\n");
   writeOut("  tahansoe analyze               — jalankan satu putaran riset & kartu laporan\n");
-  writeOut("  Tanya-jawab risiko: kirim pesan ke bot Telegram setelah 'gateway pair'.\n\n");
+  writeOut("  tahansoe broadcast digest --dry — uji coba format digest risiko Telegram\n\n");
 
   return EXIT_OK;
 }

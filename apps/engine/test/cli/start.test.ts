@@ -1,13 +1,12 @@
 /**
- * Unit test orchestrator `tahansoe start` (spec m3-channel-gateway-telegram §1–§4, §7).
+ * Unit test orchestrator `tahansoe start` (spec m3-research-broadcast).
  *
  * Menguji:
- *  - start orchestrator dengan fakes: seluruh bagian dimulai (worker, price, settle, fusion, gateway).
- *  - Isolasi I6: kegagalan start gateway tidak menghentikan worker / fusi / settle.
- *  - Flag --no-gateway: gateway tidak dimulai, status line disabled.
+ *  - start orchestrator dengan fakes: seluruh bagian dimulai (worker, price, settle, fusion, broadcaster).
+ *  - Isolasi I4: kegagalan start broadcaster tidak menghentikan worker / fusi / settle.
+ *  - Flag --no-broadcast: broadcaster tidak dimulai, status line disabled.
  *  - Flag --no-research: research worker tidak dijalankan.
- *  - Flag --once: menjalankan satu siklus sampler, research, fusion, settle lalu keluar exit 0.
- *  - formatGatewayDashboardLine: formatting baris status TTY dengan berbagai kondisi.
+ *  - Flag --once: menjalankan satu siklus sampler, research, fusion, settle, broadcast lalu keluar exit 0.
  *  - Startup banner mencantumkan status seluruh komponen.
  */
 
@@ -15,9 +14,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   startCommand,
-  formatGatewayDashboardLine,
   type StartDeps,
-  type GatewayStatusResult,
 } from "../../src/cli/commands/start.ts";
 import { EXIT_OK } from "../../src/cli/commands/args.ts";
 
@@ -29,43 +26,6 @@ const fakeFusionResult = {
   activeSignals: [],
 };
 
-test("formatGatewayDashboardLine: memformat berbagai kondisi gateway secara benar", () => {
-  // 1. noGateway = true
-  const lineDisabled = formatGatewayDashboardLine(null, { noGateway: true });
-  assert.equal(lineDisabled, "Gateway: (disabled)");
-
-  // 2. status not configured
-  const lineNotConf = formatGatewayDashboardLine({ configured: false, channels: [] });
-  assert.equal(lineNotConf, "Gateway: (not configured)");
-
-  // 3. gateway failed to start
-  const lineFailed = formatGatewayDashboardLine(
-    { configured: true, channels: ["telegram"] },
-    { isRunning: false },
-  );
-  assert.equal(lineFailed, "Gateway: (failed to start)");
-
-  // 4. normal running dengan bot name, chats, dan last alert
-  const lineActive = formatGatewayDashboardLine({
-    configured: true,
-    channels: ["telegram"],
-    botUsername: "tahansoe_risk_bot",
-    allowedChatsCount: 3,
-    lastAlertAt: new Date("2026-10-09T14:30:00Z"),
-  });
-  assert.equal(lineActive, "Gateway: telegram @tahansoe_risk_bot, 3 chats, last alert 14:30");
-
-  // 5. normal running tanpa alert sebelumnya
-  const lineNoAlert = formatGatewayDashboardLine({
-    configured: true,
-    channels: ["telegram"],
-    botName: "mybot",
-    allowedChatsCount: 0,
-    lastAlertAt: null,
-  });
-  assert.equal(lineNoAlert, "Gateway: telegram @mybot, 0 chats, last alert —");
-});
-
 test("startCommand: seluruh bagian berjalan (fakes) dan shutdown bersih melepas lock", async () => {
   let workerStarted = false;
   let workerStopped = false;
@@ -73,8 +33,8 @@ test("startCommand: seluruh bagian berjalan (fakes) dan shutdown bersih melepas 
   let priceStopped = false;
   let settleJobCalled = false;
   let fusionRunCalled = false;
-  let gatewayStarted = false;
-  let gatewayStopped = false;
+  let broadcastStarted = false;
+  let broadcastStopped = false;
 
   const stdoutLines: string[] = [];
   const stderrLines: string[] = [];
@@ -86,18 +46,11 @@ test("startCommand: seluruh bagian berjalan (fakes) dan shutdown bersih melepas 
     stderr: (m) => stderrLines.push(m),
     isTTY: true,
     shutdownSignal: ctrl.signal,
-    gatewayStatus: () => ({
-      configured: true,
-      channels: ["telegram"],
-      botUsername: "tahansoe_agent_bot",
-      allowedChatsCount: 2,
-      lastAlertAt: null,
-    }),
-    startGateway: async () => {
-      gatewayStarted = true;
+    startBroadcastWorker: async () => {
+      broadcastStarted = true;
       return {
         stop: async () => {
-          gatewayStopped = true;
+          broadcastStopped = true;
         },
       };
     },
@@ -137,7 +90,6 @@ test("startCommand: seluruh bagian berjalan (fakes) dan shutdown bersih melepas 
   // Jalankan startCommand dan picu shutdown setelah beberapa saat
   const runPromise = startCommand(["--no-color"], fakeDeps);
 
-  // Tunggu sejenak agar seluruh inisialisasi berjalan, lalu abort
   await new Promise((r) => setTimeout(r, 20));
   ctrl.abort();
 
@@ -149,8 +101,8 @@ test("startCommand: seluruh bagian berjalan (fakes) dan shutdown bersih melepas 
   assert.ok(workerStopped, "research worker harus dihentikan saat shutdown");
   assert.ok(priceStarted, "price worker harus dimulai");
   assert.ok(priceStopped, "price worker harus dihentikan saat shutdown");
-  assert.ok(gatewayStarted, "gateway harus dimulai");
-  assert.ok(gatewayStopped, "gateway harus dihentikan saat shutdown");
+  assert.ok(broadcastStarted, "broadcaster harus dimulai");
+  assert.ok(broadcastStopped, "broadcaster harus dihentikan saat shutdown");
   assert.ok(settleJobCalled, "settle ticker tick pertama harus berjalan");
   assert.ok(fusionRunCalled, "fusion ticker tick pertama harus berjalan");
 
@@ -160,11 +112,10 @@ test("startCommand: seluruh bagian berjalan (fakes) dan shutdown bersih melepas 
   assert.match(output, /research worker/i);
   assert.match(output, /price sampler/i);
   assert.match(output, /risk fusion/i);
-  assert.match(output, /channel gateway/i);
-  assert.match(output, /Gateway: telegram @tahansoe_agent_bot, 2 chats/);
+  assert.match(output, /broadcaster/i);
 });
 
-test("startCommand: isolasi kegagalan gateway (I6) — worker dan fusi tetap berjalan normal", async () => {
+test("startCommand: isolasi kegagalan broadcaster (I4) — worker dan fusi tetap berjalan normal", async () => {
   let workerStarted = false;
   let workerStopped = false;
   let fusionRunCalled = false;
@@ -178,13 +129,8 @@ test("startCommand: isolasi kegagalan gateway (I6) — worker dan fusi tetap ber
     stderr: (m) => stderrLines.push(m),
     isTTY: true,
     shutdownSignal: ctrl.signal,
-    gatewayStatus: () => ({
-      configured: true,
-      channels: ["telegram"],
-      botUsername: "test_bot",
-    }),
-    startGateway: async () => {
-      throw new Error("Telegram Bot API network timeout 504");
+    startBroadcastWorker: async () => {
+      throw new Error("Broadcaster start failed");
     },
     startPriceWorker: async () => async () => {},
     makeWorker: () => ({
@@ -211,18 +157,18 @@ test("startCommand: isolasi kegagalan gateway (I6) — worker dan fusi tetap ber
   ctrl.abort();
 
   const exitCode = await runPromise;
-  assert.equal(exitCode, EXIT_OK, "proses tidak boleh crash karena gateway gagal");
+  assert.equal(exitCode, EXIT_OK, "proses tidak boleh crash karena broadcaster gagal");
 
-  assert.ok(workerStarted, "worker harus tetap berjalan walau gateway error");
+  assert.ok(workerStarted, "worker harus tetap berjalan walau broadcaster error");
   assert.ok(workerStopped, "worker harus stop bersih");
   assert.ok(fusionRunCalled, "fusion tetap berjalan");
 
   const errOutput = stderrLines.join("");
-  assert.match(errOutput, /gagal start.*riset & fusi tetap berjalan/i);
+  assert.match(errOutput, /\[broadcast\] worker gagal dimulai/i);
 });
 
-test("startCommand: flag --no-gateway melewati gateway dan menampilkan status disabled", async () => {
-  let gatewayCalled = false;
+test("startCommand: flag --no-broadcast melewati broadcaster dan menampilkan status disabled", async () => {
+  let broadcastCalled = false;
   const stdoutLines: string[] = [];
   const ctrl = new AbortController();
 
@@ -231,9 +177,8 @@ test("startCommand: flag --no-gateway melewati gateway dan menampilkan status di
     stderr: () => {},
     isTTY: true,
     shutdownSignal: ctrl.signal,
-    gatewayStatus: () => ({ configured: true, channels: ["telegram"] }),
-    startGateway: async () => {
-      gatewayCalled = true;
+    startBroadcastWorker: async () => {
+      broadcastCalled = true;
       return { stop: async () => {} };
     },
     startPriceWorker: async () => async () => {},
@@ -247,18 +192,17 @@ test("startCommand: flag --no-gateway melewati gateway dan menampilkan status di
     makeFusionLock: async () => ({ acquired: true, release: async () => {} }),
   };
 
-  const runPromise = startCommand(["--no-gateway", "--no-color"], fakeDeps);
+  const runPromise = startCommand(["--no-broadcast", "--no-color"], fakeDeps);
 
   await new Promise((r) => setTimeout(r, 20));
   ctrl.abort();
 
   const exitCode = await runPromise;
   assert.equal(exitCode, EXIT_OK);
-  assert.equal(gatewayCalled, false, "gateway tidak boleh dipanggil saat --no-gateway");
+  assert.equal(broadcastCalled, false, "broadcaster tidak boleh dipanggil saat --no-broadcast");
 
   const output = stdoutLines.join("");
-  assert.match(output, /Gateway: \(disabled\)/);
-  assert.match(output, /OFF: --no-gateway/);
+  assert.match(output, /OFF: --no-broadcast/);
 });
 
 test("startCommand: flag --no-research melewati research worker", async () => {
@@ -270,7 +214,6 @@ test("startCommand: flag --no-research melewati research worker", async () => {
     stdout: (m) => stdoutLines.push(m),
     stderr: () => {},
     shutdownSignal: ctrl.signal,
-    gatewayStatus: () => ({ configured: false, channels: [] }),
     startPriceWorker: async () => async () => {},
     makeWorker: () => ({
       start: async () => {
@@ -285,7 +228,7 @@ test("startCommand: flag --no-research melewati research worker", async () => {
     makeFusionLock: async () => ({ acquired: true, release: async () => {} }),
   };
 
-  const runPromise = startCommand(["--no-research", "--no-color"], fakeDeps);
+  const runPromise = startCommand(["--no-research", "--no-color", "--no-broadcast"], fakeDeps);
 
   await new Promise((r) => setTimeout(r, 20));
   ctrl.abort();
@@ -320,7 +263,6 @@ test("startCommand: flag --once menjalankan satu siklus penuh lalu keluar dengan
     makeWorker: (opts) => ({
       start: async () => {
         workerStarted = true;
-        // Simulasikan penghasilan report
         opts?.onRunCompleted?.({
           report: { id: "rep-123" },
         } as any);
@@ -348,7 +290,7 @@ test("startCommand: flag --once menjalankan satu siklus penuh lalu keluar dengan
     }),
   };
 
-  const exitCode = await startCommand(["--once", "--no-color"], fakeDeps);
+  const exitCode = await startCommand(["--once", "--no-color", "--no-broadcast"], fakeDeps);
   assert.equal(exitCode, EXIT_OK);
 
   assert.ok(samplePriceCalled, "sampleOnce harus dipanggil");
@@ -359,46 +301,8 @@ test("startCommand: flag --once menjalankan satu siklus penuh lalu keluar dengan
   assert.ok(settleCalled, "settle dipanggil");
 
   const out = stdoutLines.join("");
-  assert.match(out, /running single cycle/);
-  assert.match(out, /single cycle completed/);
-});
-
-test("startCommand: gateway mendeteksi webhook_active mencetak pesan instruktif tanpa mematikan riset", async () => {
-  const stdoutLines: string[] = [];
-  const stderrLines: string[] = [];
-  const shutdownController = new AbortController();
-
-  const fakeDeps: StartDeps = {
-    stdout: (m) => stdoutLines.push(m),
-    stderr: (m) => stderrLines.push(m),
-    env: { TELEGRAM_BOT_TOKEN: "fake_token_wh" },
-    gatewayStatus: async () => ({
-      configured: true,
-      channels: ["telegram"],
-      botUsername: "WebhookBot",
-    }),
-    startGateway: async () => {
-      // Simulasikan status webhook_active
-      return {
-        stop: async () => {},
-        status: "webhook_active",
-        webhookHost: "n8n.workflow.io",
-      } as any;
-    },
-    startPriceWorker: async () => async () => {},
-    shutdownSignal: shutdownController.signal,
-  };
-
-  setTimeout(() => shutdownController.abort(), 20);
-
-  const exitCode = await startCommand(["--no-research", "--no-fusion", "--no-settle", "--no-color"], fakeDeps);
-  assert.equal(exitCode, EXIT_OK);
-
-  const combined = stdoutLines.concat(stderrLines).join("");
-  assert.match(
-    combined,
-    /This bot uses a webhook to n8n\.workflow\.io\. Messages go there, not to Tahansoe\. Use a dedicated bot, or run: tahansoe gateway pair --delete-webhook/,
-  );
+  assert.match(out, /Running single cycle/i);
+  assert.match(out, /Single cycle finished/i);
 });
 
 test("startCommand (daemon): pid file ditulis SEBELUM run riset pertama selesai; stop membatalkan startup", async () => {
@@ -413,15 +317,13 @@ test("startCommand (daemon): pid file ditulis SEBELUM run riset pertama selesai;
   let releaseFirstRun: (() => void) | null = null;
   let workerStopped = false;
   try {
-    const runPromise = startCommand(["--no-color", "--no-gateway"], {
+    const runPromise = startCommand(["--no-color", "--no-broadcast"], {
       env: { TAHANSOE_DAEMON: "1", DATABASE_URL: "postgres://fake" },
       daemonPaths: paths,
       exitFn: () => {},
       stdout: () => {},
       stderr: () => {},
-      gatewayStatus: () => ({ configured: false, channels: [] }),
       startPriceWorker: async () => async () => {},
-      // Run riset pertama "lama": baru selesai saat worker dihentikan.
       makeWorker: () => ({
         start: () =>
           new Promise<boolean>((resolve) => {

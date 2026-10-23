@@ -26,8 +26,6 @@ export interface TranslationCatalog {
   "repl.freshAll": string;
   "repl.staleSummary": string;
   "repl.noData": string;
-  "repl.gatewayTelegramActive": string;
-  "repl.gatewayTelegramOff": string;
 
   "repl.suggested": string;
   "repl.suggestedAnalyze": string;
@@ -43,7 +41,6 @@ export interface TranslationCatalog {
   "repl.langSwitched": string;
   "repl.langInvalid": string;
   "repl.langCurrent": string;
-  "repl.gatewayMissingSub": string;
   "repl.noResearchYet": string;
   "repl.activeSignalSingle": string;
   "repl.activeSignalPlural": string;
@@ -54,7 +51,6 @@ export interface TranslationCatalog {
   "help.title": string;
   "help.sectionAnalysis": string;
   "help.sectionRisk": string;
-  "help.sectionGateway": string;
   "help.sectionConfig": string;
   "help.sectionSystem": string;
   "help.descAnalyze": string;
@@ -65,8 +61,6 @@ export interface TranslationCatalog {
   "help.descScorecard": string;
   "help.descCarry": string;
   "help.descSimulate": string;
-  "help.descGateway": string;
-  "help.descPair": string;
   "help.descStatus": string;
   "help.descSettings": string;
   "help.descLang": string;

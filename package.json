@@ -17,7 +17,8 @@
     "db:migrate": "tsx packages/db/scripts/migrate.ts",
     "db:check": "tsx packages/db/scripts/check-db.ts",
     "db:reset": "tsx packages/db/scripts/reset-db.ts",
-    "db:fix-telegram": "tsx packages/db/scripts/fix-telegram.ts"
+    "db:fix-telegram": "tsx packages/db/scripts/fix-telegram.ts",
+    "db:copy-engine": "tsx packages/db/scripts/copy-engine-data.ts"
   },
   "devDependencies": {
     "dotenv": "^17.4.2",
