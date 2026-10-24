@@ -107,6 +107,7 @@ export interface SimStatus {
   scenarioProgress?: number;
   expiresAt: string | null;
   events: SimEvent[];
+  keeperCheckedAt?: string | null;
 }
 
 export interface SimHealth {

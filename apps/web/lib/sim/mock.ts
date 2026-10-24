@@ -139,6 +139,7 @@ export function mockStatus(id: string, mode: SimMode): SimStatus {
     scenarioProgress: progress,
     expiresAt: s.mode === "live" ? null : new Date(s.createdAt + PRIVATE_TTL_MS).toISOString(),
     events: eventsAt(s, price, now),
+    keeperCheckedAt: new Date(now - 1_500).toISOString(),
   };
 }
 

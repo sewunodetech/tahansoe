@@ -54,6 +54,22 @@ export function decodeGuardianLogs(guardian: Address, logs: readonly Log[]): Sim
 
 export interface KeeperHandle {
   stop(): void;
+  readonly lastCheckedAt?: number | null;
+}
+
+const keeperCheckedAtByUrl = new Map<string, number>();
+
+export function getKeeperCheckedAt(url: string): number | null {
+  return keeperCheckedAtByUrl.get(url) ?? null;
+}
+
+export function recordKeeperChecked(url: string, at = Date.now()): void {
+  keeperCheckedAtByUrl.set(url, at);
+}
+
+export function clearKeeperChecked(url?: string): void {
+  if (url) keeperCheckedAtByUrl.delete(url);
+  else keeperCheckedAtByUrl.clear();
 }
 
 const PAGE = 100n;
@@ -64,9 +80,11 @@ export function startKeeper(
   onEvents: (events: SimEvent[]) => void,
   intervalMs: number,
   onError: (e: unknown) => void,
+  onCheck?: (timestamp: number) => void,
 ): KeeperHandle {
   let busy = false;
   let stopped = false;
+  let lastCheckedAt: number | null = null;
   const tick = async () => {
     if (busy || stopped) return;
     busy = true;
@@ -90,6 +108,13 @@ export function startKeeper(
         }
         if (BigInt(users.length) < PAGE) break;
       }
+      if (!stopped) {
+        const now = Date.now();
+        lastCheckedAt = now;
+        (fork as unknown as { keeperCheckedAt?: number }).keeperCheckedAt = now;
+        recordKeeperChecked(fork.url, now);
+        onCheck?.(now);
+      }
     } catch (e) {
       onError(e);
     } finally {
@@ -102,6 +127,9 @@ export function startKeeper(
     stop: () => {
       stopped = true;
       clearInterval(timer);
+    },
+    get lastCheckedAt() {
+      return lastCheckedAt;
     },
   };
 }

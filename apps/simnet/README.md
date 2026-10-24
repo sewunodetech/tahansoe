@@ -81,7 +81,7 @@ Semua `/v1/*` wajib header `x-simnet-key`. Body JSON, divalidasi Zod.
 | `POST /v1/sessions` | `{address, mode:"live"\|"replay"\|"stress", scenario?}` | `201 {sessionId, forkId, rpcPath, chainId, contracts:{guardian, simPriceFeed, testVault?, pool, weth, usdc}, expiresAt}`; faucet awal 10 ETH + 5.000 USDC; `409 {error:"capacity", retryAfterSec}` bila fork pribadi penuh |
 | `POST /v1/sessions/:id/faucet` | `{asset:"ETH"\|"WETH"\|"USDC", amount}` | `{balances}` (unit terkecil, string); `429 {error:"faucet_limit"}` di atas 100 ETH (ETH+WETH) / 50.000 USDC kumulatif |
 | `POST /v1/sessions/:id/scenario` | `{kind:"replay", scenario}` \| `{kind:"crash", pct:10\|30\|50}` | `{ok:true}`; `409` di fork Live bersama |
-| `GET /v1/sessions/:id/status` | — | `{mode, price, priceSource, scenarioProgress?, expiresAt, events:[…]}` |
+| `GET /v1/sessions/:id/status` | — | `{mode, price, priceSource, scenarioProgress?, expiresAt, events:[…], keeperCheckedAt?}` |
 | `POST /v1/sessions/:id/extend` | — | `{expiresAt}`; `409` bila sudah pernah diperpanjang |
 | `DELETE /v1/sessions/:id` | — | `{ok:true}`; fork pribadi langsung dimatikan |
 

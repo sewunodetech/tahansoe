@@ -9,6 +9,7 @@ import { FORK_SOURCE, LIMITS } from "./config.ts";
 import { FaucetLedger, FaucetLimitError, type FaucetAsset } from "./faucet.ts";
 import { CapacityError, ExtendError, forkContracts, type ForkManager, type ForkRecord } from "./forks.ts";
 import type { CrashPct, Scenario } from "./scenario.ts";
+import { getKeeperCheckedAt } from "./keeper.ts";
 
 export type SimMode = "live" | "replay" | "stress";
 
@@ -120,6 +121,7 @@ export class SessionService {
     const events = fork.runtime.events
       .filter((e) => e.user === session.address)
       .map(({ user: _user, ...rest }) => rest);
+    const keeperCheckedAt = fork.runtime.keeperCheckedAt ?? getKeeperCheckedAt(fork.runtime.url);
     return {
       mode: session.mode,
       price: snap.price,
@@ -127,6 +129,7 @@ export class SessionService {
       ...(snap.scenarioProgress !== undefined ? { scenarioProgress: snap.scenarioProgress } : {}),
       expiresAt: toIso(fork.expiresAt),
       events,
+      keeperCheckedAt: toIso(keeperCheckedAt ?? null),
     };
   }
 
@@ -185,6 +188,6 @@ export class SessionService {
   }
 }
 
-function toIso(ms: number | null): string | null {
-  return ms === null ? null : new Date(ms).toISOString();
+function toIso(ms: number | null | undefined): string | null {
+  return ms == null ? null : new Date(ms).toISOString();
 }

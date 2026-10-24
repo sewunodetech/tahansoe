@@ -7,6 +7,7 @@ import { createSimnetServer, keysMatch } from "../src/http.ts";
 import type { JsonRpcRequest } from "../src/rpc.ts";
 import { loadScenarios } from "../src/scenario.ts";
 import { SessionService } from "../src/sessions.ts";
+import { recordKeeperChecked } from "../src/keeper.ts";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fakeRuntime, GUARDIAN } from "./helpers.ts";
@@ -104,6 +105,10 @@ describe("simnet HTTP API", () => {
     assert.equal(st.priceSource, "mainnet");
     assert.equal(st.price, 2000);
     assert.deepEqual(st.events, []);
+    assert.equal(st.keeperCheckedAt, null);
+    recordKeeperChecked("http://127.0.0.1:1", 1729780000000);
+    const stChecked = (await (await api(`/v1/sessions/${s.sessionId}/status`)).json()) as Record<string, any>;
+    assert.equal(stChecked.keeperCheckedAt, "2024-10-24T14:26:40.000Z");
 
     // Scenarios are refused on the shared fork.
     assert.equal((await api(`/v1/sessions/${s.sessionId}/scenario`, { body: { kind: "crash", pct: 30 } })).status, 409);
