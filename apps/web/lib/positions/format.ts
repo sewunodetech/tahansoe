@@ -1,5 +1,13 @@
 /** Display helpers shared by the Positions page and the Guardian view. */
 
+import type { AssetAmount } from "@tahansoe/domain";
+
+/** Oracle price of one whole token, derived from its display value. */
+export function unitPrice(asset: AssetAmount): number {
+  const units = Number(asset.amount) / 10 ** asset.decimals;
+  return units > 0 ? asset.valueUsd / units : 0;
+}
+
 export type HfTone = "safe" | "warning" | "danger";
 
 /** DESIGN.md §2 "Pemetaan status HF": safe above trigger + 0.25, critical at or below the trigger. */

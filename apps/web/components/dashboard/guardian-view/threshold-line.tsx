@@ -2,9 +2,8 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { dropPct, price } from "@/lib/positions/format";
-import { unitPrice } from "@/lib/positions/price-at-hf";
-import type { PositionDetail } from "@/lib/positions/types";
+import type { PositionDetail } from "@tahansoe/domain";
+import { dropPct, price, unitPrice } from "@/lib/positions/format";
 import { displaySymbol } from "./capacity";
 
 /**

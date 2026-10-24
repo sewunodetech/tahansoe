@@ -1,9 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { Address } from "@tahansoe/domain";
-import { positionStatus, type GuardianContext } from "./status";
-import { priceForHealthFactor } from "./price-at-hf";
-import type { AssetAmount, PositionDetail } from "./types";
+import type { Address, AssetAmount, PositionDetail } from "@tahansoe/domain";
+import { hasDebt, positionStatus, type GuardianContext } from "./status";
+import { healthFactorOf, visibleAssets } from "./source";
 
 const USER = "0x00000000000000000000000000000000000000aa" as Address;
 const USDC = "0x00000000000000000000000000000000000000c1" as Address;
@@ -81,25 +80,24 @@ test("Morpho → Monitor only even with a policy", () => {
   assert.equal(s.kind, "monitor-only");
 });
 
-test("priceForHealthFactor: single collateral scales linearly with HF", () => {
-  // 4 ETH at $2,500, $5,000 debt, LT 0.825 → HF 1.65. HF 1.0 at $1,515.15; HF 1.3 at $1,969.70.
-  const weth = asset("WETH", WETH, 18, 4, 10_000);
-  const input = { collateral: [weth], debt: [asset("USDC", USDC, 6, 5_000, 5_000)], lt: 0.825, mainCollateral: weth };
-  assert.ok(Math.abs(priceForHealthFactor({ ...input, hf: 1 })! - 1515.1515) < 0.01);
-  assert.ok(Math.abs(priceForHealthFactor({ ...input, hf: 1.3 })! - 1969.697) < 0.01);
+// priceForHealthFactor vectors live with the reader in packages/domain (positions-math.test.ts).
+
+test("visibleAssets hides Aave dust but keeps unpriced Morpho rows", () => {
+  const dust = asset("USDC", USDC, 6, 0.001, 0.001);
+  const aave = position();
+  assert.deepEqual(visibleAssets(aave, [...aave.debt, dust]), aave.debt);
+  const unpriced = asset("USDC", USDC, 6, 2_900, 0);
+  assert.deepEqual(visibleAssets(position({ protocol: "morpho-blue" }), [unpriced]), [unpriced]);
 });
 
-test("priceForHealthFactor: other collateral is held constant", () => {
-  const weth = asset("WETH", WETH, 18, 4, 10_000);
-  const dai = asset("DAI", DAI, 18, 2_000, 2_000);
-  const input = { collateral: [weth, dai], debt: [asset("USDC", USDC, 6, 5_000, 5_000)], lt: 0.8, mainCollateral: weth };
-  // main needed = 1.0 × 5000 / 0.8 − 2000 = 4250 → $1,062.50 per ETH.
-  assert.ok(Math.abs(priceForHealthFactor({ ...input, hf: 1 })! - 1062.5) < 0.01);
-  // DAI alone keeps HF at 0.32, so no ETH price takes the position down to HF 0.3.
-  assert.equal(priceForHealthFactor({ ...input, hf: 0.3 }), null);
+test("unpriced Morpho debt still counts as debt with an HF", () => {
+  const p = position({ protocol: "morpho-blue", debtValueUsd: 0n, debt: [asset("COLt", DAI, 18, 10, 0)] });
+  assert.equal(hasDebt(p), true);
+  assert.equal(healthFactorOf(p), 1.5);
 });
 
-test("priceForHealthFactor: no debt → null", () => {
-  const weth = asset("WETH", WETH, 18, 4, 10_000);
-  assert.equal(priceForHealthFactor({ collateral: [weth], debt: [], lt: 0.8, mainCollateral: weth, hf: 1 }), null);
+test("no debt → HF null (maxUint256 or empty debt)", () => {
+  assert.equal(healthFactorOf(position({ debtValueUsd: 0n, debt: [] })), null);
+  assert.equal(healthFactorOf(position({ healthFactor: 2n ** 256n - 1n })), null);
+  assert.equal(hasDebt(position({ debtValueUsd: 0n, debt: [] })), false);
 });

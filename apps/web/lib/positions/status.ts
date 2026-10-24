@@ -3,8 +3,7 @@
  * Pure: no React, no I/O, so it is unit tested on its own.
  */
 
-import type { Address } from "@tahansoe/domain";
-import type { PositionDetail } from "./types";
+import type { Address, PositionDetail } from "@tahansoe/domain";
 
 /** The Guardian a position's chain has, and the wallet's policy on it. */
 export interface GuardianContext {
@@ -60,9 +59,12 @@ export function positionStatus(position: PositionDetail, guardian: GuardianConte
   return { kind: "not-protected", note: null };
 }
 
-/** Borrow positions first, by debt; supplied-only positions are split out by the page. */
+/**
+ * Borrow positions first, by debt; supplied-only positions are split out by the page.
+ * Token amounts decide, not USD: a Morpho loan token without an Aave price reports $0 debt.
+ */
 export function hasDebt(position: PositionDetail): boolean {
-  return position.debtValueUsd > 0n;
+  return position.debtValueUsd > 0n || position.debt.some((d) => d.amount > 0n);
 }
 
 export function byDebtDesc(a: PositionDetail, b: PositionDetail): number {

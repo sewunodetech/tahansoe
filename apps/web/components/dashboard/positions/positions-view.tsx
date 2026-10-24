@@ -102,10 +102,10 @@ export function PositionsList({ positions, chains, isLoading, isSimulation, show
 
       {chains.map((c) =>
         c.error ? (
-          <Card key={c.chainId} className="p-4 flex items-start gap-2.5">
+          <Card key={`${c.chainId}:${c.protocol}`} className="p-4 flex items-start gap-2.5">
             <AlertTriangle className="size-4 text-[var(--warning)] shrink-0 mt-0.5" />
             <p className="text-xs text-[var(--text-secondary)] break-words">
-              Could not read {c.chainName}: <span className="font-mono text-[var(--text-tertiary)]">{c.error}</span>
+              Could not read {PROTOCOL_LABEL[c.protocol]} on {c.chainName}: <span className="font-mono text-[var(--text-tertiary)]">{c.error}</span>
             </p>
           </Card>
         ) : null
@@ -126,7 +126,7 @@ export function PositionsList({ positions, chains, isLoading, isSimulation, show
 
       {chains.some((c) => c.isLoading) && !isLoading && (
         <p className="text-[11px] font-mono text-[var(--text-tertiary)]">
-          Reading {chains.filter((c) => c.isLoading).map((c) => c.chainName).join(", ")}…
+          Reading {chains.filter((c) => c.isLoading).map((c) => `${PROTOCOL_LABEL[c.protocol]} on ${c.chainName}`).join(", ")}…
         </p>
       )}
 

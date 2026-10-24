@@ -9,7 +9,7 @@ import { useGuardian } from "@/hooks/useGuardian";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
 import { usePositions, type PositionWithStatus } from "@/hooks/usePositions";
 import { byDebtDesc, hasDebt } from "@/lib/positions/status";
-import { unitPrice } from "@/lib/positions/price-at-hf";
+import { unitPrice } from "@/lib/positions/format";
 import { healthFactorOf } from "@/lib/positions/source";
 import { LiveMigrationBanner } from "@/components/dashboard/live/live-migration-banner";
 import { EmptyBorrows, PositionSkeleton } from "@/components/dashboard/positions/positions-view";

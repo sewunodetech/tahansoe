@@ -16,13 +16,12 @@ import { useQueries } from "@tanstack/react-query";
 import type { PublicClient } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import { arbitrum } from "wagmi/chains";
-import { ARBITRUM_ONE, type ChainConfig } from "@tahansoe/domain";
+import { ARBITRUM_ONE, type ChainConfig, type PositionDetail } from "@tahansoe/domain";
 import { LIVE_CHAIN_CONFIG } from "@/lib/contracts";
 import { useLiveTarget } from "@/lib/live-target";
 import { SIM_CHAIN_CONFIG } from "@/lib/sim/chain";
-import { readersFor } from "@/lib/positions/source";
+import { protocolsOn, readerFor, type Protocol } from "@/lib/positions/source";
 import { positionStatus, type GuardianContext, type PositionStatus } from "@/lib/positions/status";
-import type { PositionDetail } from "@/lib/positions/types";
 import { useGuardian } from "./useGuardian";
 
 const STALE_MS = 60_000;
@@ -37,6 +36,7 @@ export interface PositionWithStatus {
 
 export interface ChainRead {
   chainId: number;
+  protocol: Protocol;
   chainName: string;
   isLoading: boolean;
   error: string | null;
@@ -46,6 +46,11 @@ interface ChainPlan {
   config: ChainConfig;
   client: PublicClient | undefined;
   canProtect: boolean;
+}
+
+/** One query per protocol per chain, so a slow Morpho scan never holds back Aave. */
+interface ReadPlan extends ChainPlan {
+  protocol: Protocol;
 }
 
 export function usePositions({ includeArbitrumOne = false }: { includeArbitrumOne?: boolean } = {}) {
@@ -62,6 +67,8 @@ export function usePositions({ includeArbitrumOne = false }: { includeArbitrumOn
       const config: ChainConfig = {
         ...SIM_CHAIN_CONFIG,
         aave: { ...SIM_CHAIN_CONFIG.aave!, pool: target.pool, oracle: target.oracle },
+        // Morpho on the fork would mean scanning logs over the session RPC; the simulation is Aave only.
+        morpho: undefined,
         tokens: Object.fromEntries(target.debtAssets.map((a) => [a.symbol, a.address])),
       };
       return [{ config, client: liveClient, canProtect: true }];
@@ -71,18 +78,19 @@ export function usePositions({ includeArbitrumOne = false }: { includeArbitrumOn
     return list;
   }, [target.isSimulation, target.pool, target.oracle, target.debtAssets, liveClient, oneClient, includeArbitrumOne]);
 
+  const reads: ReadPlan[] = useMemo(
+    () => plans.flatMap((plan) => protocolsOn(plan.config).map((protocol) => ({ ...plan, protocol }))),
+    [plans]
+  );
+
   const queries = useQueries({
-    queries: plans.map((plan) => ({
-      queryKey: ["positions", plan.config.chainId, plan.config.aave?.pool ?? "", user ?? ""],
+    queries: reads.map((plan) => ({
+      queryKey: ["positions", plan.config.chainId, plan.protocol, plan.config.aave?.pool ?? "", user ?? ""],
       enabled: Boolean(user && plan.client) && (!target.isSimulation || target.ready),
       staleTime: STALE_MS,
       refetchInterval: target.isSimulation ? SIM_REFRESH_MS : false,
       retry: 1,
-      queryFn: async () => {
-        const readers = readersFor(plan.client!, plan.config, plan.canProtect);
-        const results = await Promise.all(readers.map((r) => r.read(user!)));
-        return results.flat();
-      },
+      queryFn: () => readerFor(plan.client!, plan.config, plan.protocol, plan.canProtect).read(user!),
     })),
   });
 
@@ -107,17 +115,18 @@ export function usePositions({ includeArbitrumOne = false }: { includeArbitrumOn
       queries.flatMap((q, i) =>
         (q.data ?? []).map((position) => ({
           position,
-          status: positionStatus(position, plans[i].canProtect ? guardian : null),
-          chainName: plans[i].config.chainId === target.chain.id ? target.chainName : plans[i].config.name,
+          status: positionStatus(position, reads[i].canProtect ? guardian : null),
+          chainName: reads[i].config.chainId === target.chain.id ? target.chainName : reads[i].config.name,
         }))
       ),
     // queries is a new array every render; dataKey tracks the data that matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dataKey, plans, guardian, target.chain.id, target.chainName]
+    [dataKey, reads, guardian, target.chain.id, target.chainName]
   );
 
-  const chains: ChainRead[] = plans.map((plan, i) => ({
+  const chains: ChainRead[] = reads.map((plan, i) => ({
     chainId: plan.config.chainId,
+    protocol: plan.protocol,
     chainName: plan.config.chainId === target.chain.id ? target.chainName : plan.config.name,
     isLoading: queries[i].isLoading,
     error: queries[i].error ? (queries[i].error as Error).message.split("\n")[0] : null,

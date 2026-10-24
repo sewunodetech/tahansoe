@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { PositionWithStatus } from "@/hooks/usePositions";
 import { hfLabel, hfTone, price, TONE_VAR, tokenAmount, usd } from "@/lib/positions/format";
-import { healthFactorOf, isPlaceholderAsset } from "@/lib/positions/source";
-import type { AssetAmount } from "@/lib/positions/types";
+import type { AssetAmount, PositionDetail } from "@tahansoe/domain";
+import { healthFactorOf, visibleAssets } from "@/lib/positions/source";
 import { displaySymbol } from "@/components/dashboard/guardian-view/capacity";
 import { StatusBadge } from "./status-badge";
 
@@ -37,8 +37,8 @@ export function PositionCard({ item, hfOverride }: { item: PositionWithStatus; h
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <AssetList title="Collateral" assets={position.collateral} total={Number(position.collateralValueUsd) / 1e8} />
-        <AssetList title="Debt" assets={position.debt} total={Number(position.debtValueUsd) / 1e8} />
+        <AssetList title="Collateral" position={position} assets={position.collateral} total={Number(position.collateralValueUsd) / 1e8} />
+        <AssetList title="Debt" position={position} assets={position.debt} total={Number(position.debtValueUsd) / 1e8} />
       </div>
 
       {main && (
@@ -54,12 +54,13 @@ export function PositionCard({ item, hfOverride }: { item: PositionWithStatus; h
   );
 }
 
-function AssetList({ title, assets, total }: { title: string; assets: AssetAmount[]; total: number }) {
+function AssetList({ title, position, assets: all, total }: { title: string; position: PositionDetail; assets: AssetAmount[]; total: number }) {
+  const assets = visibleAssets(position, all);
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5">
       <div className="flex items-baseline justify-between">
         <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">{title}</p>
-        <p className="text-[12px] font-mono tabular-nums text-[var(--text-primary)]">{usd(total)}</p>
+        <p className="text-[12px] font-mono tabular-nums text-[var(--text-primary)]">{total > 0 ? usd(total) : "—"}</p>
       </div>
       {assets.length === 0 ? (
         <p className="mt-1.5 text-[11px] text-[var(--text-tertiary)]">None</p>
@@ -68,9 +69,9 @@ function AssetList({ title, assets, total }: { title: string; assets: AssetAmoun
           {assets.map((a) => (
             <li key={`${a.address}:${a.symbol}`} className="flex items-baseline justify-between gap-2 text-[12px] font-mono">
               <span className="text-[var(--text-secondary)] truncate">
-                {isPlaceholderAsset(a) ? a.symbol : `${tokenAmount(a.amount, a.decimals)} ${a.symbol}`}
+                {tokenAmount(a.amount, a.decimals)} {a.symbol}
               </span>
-              <span className="text-[var(--text-tertiary)] tabular-nums shrink-0">{usd(a.valueUsd)}</span>
+              <span className="text-[var(--text-tertiary)] tabular-nums shrink-0">{a.valueUsd > 0 ? usd(a.valueUsd) : "—"}</span>
             </li>
           ))}
         </ul>
