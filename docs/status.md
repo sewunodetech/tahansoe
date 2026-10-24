@@ -9,6 +9,28 @@
 
 ## Sudah jalan
 
+### Guardian v4: Kebijakan per-posisi & proteksi Morpho Blue — 24 Okt 2026 ([spec](specs/m4-guardian-v4-per-position.md), [ADR 0015](decisions/0015-guardian-v4-per-position-policies.md), branch `feat/user-proof-sim-fee`)
+
+Dikerjakan lima worker paralel Antigravity (Orca run `run_49048ccfe5bf`), digabung dan diverifikasi penuh.
+
+- **Kontrak (`contracts/`):**
+  - `TahansoeGuardianAaveV4`: kebijakan per-`(user, debtAsset)` untuk multi-debt Aave V3, urutan prioritas utang (`setDebtPriority`), isolasi penyelamatan hanya pada aset utang yang ditargetkan, enumerasi posisi (`positionsPage`).
+  - `TahansoeGuardianMorpho`: proteksi pasar Morpho Blue independen (`marketId`), formula HF LLTV 10^36 desimal, L1 (wallet) + L2 (ERC-4626 vault), proteksi invariant selektor Morpho terlarang.
+  - `GuardianCore`: shared library untuk layer ordering, fee sukses 15 bps (ADR 0013), dynamic trigger clamping.
+  - Script deployment Arbitrum Sepolia `contracts/script/DeployAaveV4.s.sol`.
+  - 88 test lulus (unit, fuzz, invariant 128k transisi per handler).
+- **Domain & Database (`packages/domain`, `packages/db`):**
+  - `@tahansoe/domain`: helper canonical `positionKey` (`aave-v3:chainId:guardian:debtAsset` & `morpho-blue:chainId:guardian:marketId`), `parsePositionKey`, ABI v4 terkunci.
+  - `@tahansoe/db`: kolom nullable `position_key` pada `policies` dan `intents` dengan index dan migrasi idempotent.
+- **Engine Sentinel & Keeper (`apps/engine`):**
+  - Sentinel worker multi-guardian (v2/v3, AaveV4, Morpho) dengan discovery otomatis dan debt priority sorting.
+  - Keeper loop non-custodial per-position dengan deduplikasi tick dan FeeCharged receipts decorator.
+  - 498 test engine lulus.
+- **Simnet Fork & Web UI (`apps/simnet`, `apps/web`):**
+  - `apps/simnet`: deploy otomatis v4 di Anvil fork Arbitrum One, loop eksekusi keeper simulasi multi-posisi.
+  - `apps/web`: hook `useGuardianV4`, dialog proteksi per-posisi (Aave & Morpho), daftar posisi terproteksi dengan reorder prioritas, integrasi simulation dashboard.
+- **Verifikasi:** Monorepo typecheck bersih, 88 forge tests + 684 unit tests monorepo lulus.
+
 ### Positions, Holdings, Reserves, dan Overview "Guardian view" — 24 Okt 2026 ([spec](specs/m1-positions-holdings-guardian-view.md), branch `feat/user-proof-sim-fee`)
 
 Dikerjakan empat worker paralel (2 Claude, 2 Antigravity), lalu digabung dan diverifikasi.
@@ -31,7 +53,6 @@ Dikerjakan empat worker paralel (2 Claude, 2 Antigravity), lalu digabung dan div
 - **Verifikasi:** typecheck dan lint bersih; test engine 486, simnet 61, web 46, db 5, domain 75; Playwright di fork sungguhan untuk Positions, Holdings, Reserves, dan deep link.
 
 **Gap:**
-- Policy per posisi/protokol dan proteksi Morpho butuh Guardian v4: [ADR 0015](decisions/0015-guardian-v4-per-position-policies.md) (Proposed) dan [spec](specs/m4-guardian-v4-per-position.md) (Draft) menunggu review owner.
 - Simnet produksi butuh RPC arsip (Alchemy/Infura gratis).
 - Nilai USD Morpho hanya tersedia bila loan token juga reserve Aave.
 

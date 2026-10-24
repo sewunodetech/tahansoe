@@ -132,6 +132,11 @@ Invariant tests in `TahansoeGuardianV2.invariant.t.sol` run 100,000+ state trans
    forge script script/DeployV2.s.sol --rpc-url arbitrum_sepolia \
      --account tahansoe-deployer --broadcast --verify
    ```
+5. Deploy V4 (TahansoeGuardianAaveV4 for Aave V3 per-position protection):
+   ```bash
+   forge script script/DeployAaveV4.s.sol --rpc-url arbitrum_sepolia \
+     --account tahansoe-deployer --broadcast --verify
+   ```
 
 ## Simulation fork (anvil, Arbitrum One)
 
