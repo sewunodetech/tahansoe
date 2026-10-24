@@ -35,6 +35,8 @@ Setiap fitur yang tidak bisa memenuhi semua invariant di atas **tidak boleh di-m
 | (v2) Agent jahat menggeser trigger ekstrem | Clamp ke band user, batas perubahan per update, `validUntil`, user bisa cabut agent |
 | (v2) Swap/deleverage di-sandwich | Router allowlist, batas slippage, simulasi sebelum kirim |
 | Bug | Unit + fuzz + fork test; audit sebelum mainnet |
+| (v4) Guardian Morpho memakai dana di luar market posisi | Policy per `(user, marketId)`; `repay(onBehalf=user)` hanya untuk market itu; aset L1/L2 wajib = loan token market; invariant test |
+| (v4.1) Otorisasi Morpho (`setAuthorization`) tanpa cap untuk L3 | Ditunda dari v4 (ADR 0015). Saat dibuka: mati secara default, peringatan eksplisit di UI, Guardian tidak pernah memanggil `borrow`/`withdraw`, `withdrawCollateral` hanya di L3 dan ≤ cap, audit khusus |
 
 ### 2.2 Keeper
 

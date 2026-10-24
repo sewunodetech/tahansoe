@@ -22,4 +22,4 @@ Aturan:
 | 0012 | [Satu database web & engine, broadcast riset outbound via bot Telegram web](0012-unified-db-outbound-research-broadcast.md) | Accepted |
 | 0013 | [Model bisnis: fee sukses 0,15% hanya saat posisi diselamatkan](0013-success-fee-on-protection.md) | Proposed |
 | 0014 | [Jaringan simulasi: fork anvil di VPS, layanan `apps/simnet`](0014-simulation-network-anvil-fork.md) | Proposed |
-| 0015 | [Guardian v4: policy per posisi, Aave multi-utang, dan Morpho Blue](0015-guardian-v4-per-position-policies.md) | Proposed |
+| 0015 | [Guardian v4: policy per posisi, Aave multi-utang, dan Morpho Blue](0015-guardian-v4-per-position-policies.md) | Accepted |

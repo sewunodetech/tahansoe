@@ -1,6 +1,6 @@
 # 0015 — Guardian v4: policy per posisi, Aave multi-utang, dan Morpho Blue
 
-- **Status:** Proposed
+- **Status:** Accepted (arahan owner 24 Okt 2026: "lanjut kerjaan ke-2"; pertanyaan terbuka dijawab dengan usulan di bawah)
 - **Tanggal:** 2026-10-24
 - **Pengusul:** Owner (masukan setelah review UI Positions), ditulis oleh Claude Code
 - **Terkait:** [ADR 0003](0003-guardian-v1-eoa-approve.md), [ADR 0013](0013-success-fee-on-protection.md), [spec Positions](../specs/m1-positions-holdings-guardian-view.md), [spec Guardian v4](../specs/m4-guardian-v4-per-position.md)
@@ -67,7 +67,13 @@ Fakta Morpho Blue (dari `morpho-org/morpho-blue` `src/Morpho.sol`, dibaca 24 Okt
   - spec Positions §7;
   - status.md.
 
-## Pertanyaan terbuka
+## Jawaban pertanyaan terbuka (diterapkan)
+
+- Aave multi-utang: **satu aset utang per panggilan `protect(user, debtAsset)`**; keeper memanggil sesuai urutan prioritas user.
+- **L3 Morpho ditunda ke v4.1**; v4 hanya L1/L2 untuk Morpho (tanpa `setAuthorization`).
+- Fee sukses berlaku di kedua kontrak dengan aturan ADR 0013 (trigger statis per posisi, plafon HF 1,50). Deploy ke chain nyata tetap menunggu ADR 0013 Accepted dan audit (S5).
+
+## Pertanyaan terbuka (arsip, sebelum diterima)
 
 - Untuk Aave dengan beberapa aset utang: apakah satu panggilan `protect` cukup menangani satu aset utang (keeper memanggil per prioritas), atau satu panggilan menangani semua sesuai urutan prioritas? Usulan: satu aset per panggilan, karena lebih sederhana dan gas lebih terprediksi.
 - Apakah L3 Morpho dikirim di v4, atau ditunda ke v4.1 setelah audit dengan hanya L1/L2 Morpho di v4? Usulan: L1/L2 dulu.

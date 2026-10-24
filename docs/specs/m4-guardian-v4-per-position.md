@@ -1,7 +1,7 @@
 # Spec: Guardian v4 — policy per posisi (Aave multi-utang + Morpho Blue)
 
 - **Milestone:** M4 Guardian v2 (lanjutan) dan M5 `MorphoAdapter` ([PRD §10](../prd.md#10-roadmap-eksekusi))
-- **Status:** Draft. Implementasi baru dimulai setelah [ADR 0015](../decisions/0015-guardian-v4-per-position-policies.md) Accepted. Fee mengikuti [ADR 0013](../decisions/0013-success-fee-on-protection.md); bila ADR 0013 belum Accepted, v4 dibangun tanpa fee.
+- **Status:** In progress. [ADR 0015](../decisions/0015-guardian-v4-per-position-policies.md) Accepted 24 Okt 2026 (v4 = Aave multi-utang + Morpho L1/L2; L3 Morpho ke v4.1). Fee mengikuti [ADR 0013](../decisions/0013-success-fee-on-protection.md); bila ADR 0013 belum Accepted, v4 dibangun tanpa fee.
 - **Pemilik:** Tim Kontrak + Tim Engine + Tim Web
 - **Terkait:** [spec Guardian v3 fee](m4-guardian-success-fee.md), [spec Positions](m1-positions-holdings-guardian-view.md), [guardian-v2-execution.md](../plans/guardian-v2-execution.md), [security.md](../security.md)
 
@@ -81,6 +81,71 @@ hf = maxBorrow * 1e18 / borrowed
 - Form policy menerima `{ protocol, key }` dari Positions.
 - Halaman Protection menampilkan daftar policy per posisi, bukan satu policy global.
 - Banner migrasi v2/v3 → v4 per posisi.
+
+### 3.6 ABI terkunci (kontrak, engine, dan web dikerjakan paralel terhadap ini)
+
+`TahansoeGuardianAaveV4` (turunan logika v3; per `(user, debtAsset)`):
+
+```solidity
+constructor(IPoolAddressesProvider provider, address swapRouter, uint24 swapFee, address treasury)
+function setPolicy(address debtAsset, uint256 triggerHF, uint256 targetHF, uint256 maxRepayPerAction) external
+function disablePolicy(address debtAsset) external
+function setLayer2(address debtAsset, uint8 kind, address source, uint256 maxAssetsPerAction) external   // kind: 0 none, 1 ERC4626, 2 aToken
+function setLayer3(address debtAsset, bool enabled, address collateralAsset, uint256 maxCollateralPerAction, uint16 maxSlippageBps) external
+function setTriggerBand(address debtAsset, uint256 minTriggerHF, uint256 maxTriggerHF, address riskAgent) external
+function setDynamicTrigger(address user, address debtAsset, uint256 triggerHF, uint64 validUntil) external
+function setDebtPriority(address[] calldata debtAssets) external      // only assets with a policy; order = keeper order
+function policyOf(address user, address debtAsset) external view returns (bool enabled, uint256 triggerHF, uint256 targetHF, uint256 maxRepayPerAction)
+function layer2Of(address user, address debtAsset) external view returns (uint8 kind, address source, uint256 maxAssetsPerAction)
+function layer3Of(address user, address debtAsset) external view returns (bool enabled, address collateralAsset, uint256 maxCollateralPerAction, uint16 maxSlippageBps)
+function debtAssetsOf(address user) external view returns (address[] memory)   // priority order
+function healthFactor(address user) external view returns (uint256)
+function effectiveTrigger(address user, address debtAsset) external view returns (uint256)
+function needsProtection(address user, address debtAsset) external view returns (bool)
+function quoteProtect(address user, address debtAsset) external view returns (uint256 l1Repay, uint256 l2Repay, uint256 l3Repay, uint256 expectedHf)
+function quoteFee(address user, address debtAsset) external view returns (bool eligible, uint256 fee)
+function positionCount() external view returns (uint256)
+function positionsPage(uint256 offset, uint256 limit) external view returns (address[] memory users, address[] memory debtAssets)
+function protect(address user, address debtAsset) external returns (uint256 repaid)
+
+event PolicySet(address indexed user, address indexed debtAsset, uint256 triggerHF, uint256 targetHF, uint256 maxRepayPerAction);
+event PolicyDisabled(address indexed user, address indexed debtAsset);
+event LayerUsed(address indexed user, address indexed debtAsset, uint8 indexed layer, uint256 amountIn, uint256 debtRepaid);
+event Protected(address indexed user, address indexed debtAsset, address indexed caller, uint256 repaid, uint256 healthFactorBefore, uint256 healthFactorAfter);
+event FeeCharged(address indexed user, address indexed debtAsset, uint256 amount, uint256 waived);
+event DynamicTriggerSet(address indexed user, address indexed debtAsset, address agent, uint256 triggerHF, uint64 validUntil);
+```
+
+`TahansoeGuardianMorpho` (per `(user, marketId)`; v4 hanya L1/L2):
+
+```solidity
+constructor(IMorpho morpho, address treasury)
+function setPolicy(bytes32 marketId, uint256 triggerHF, uint256 targetHF, uint256 maxRepayPerAction) external   // loan token from idToMarketParams
+function disablePolicy(bytes32 marketId) external
+function setLayer2(bytes32 marketId, address vault, uint256 maxAssetsPerAction) external   // ERC-4626 (incl. MetaMorpho); vault.asset() must equal loan token
+function setTriggerBand(bytes32 marketId, uint256 minTriggerHF, uint256 maxTriggerHF, address riskAgent) external
+function setDynamicTrigger(address user, bytes32 marketId, uint256 triggerHF, uint64 validUntil) external
+function policyOf(address user, bytes32 marketId) external view returns (bool enabled, uint256 triggerHF, uint256 targetHF, uint256 maxRepayPerAction)
+function layer2Of(address user, bytes32 marketId) external view returns (address vault, uint256 maxAssetsPerAction)
+function marketsOf(address user) external view returns (bytes32[] memory)
+function healthFactor(address user, bytes32 marketId) external view returns (uint256)   // type(uint256).max when no debt
+function effectiveTrigger(address user, bytes32 marketId) external view returns (uint256)
+function needsProtection(address user, bytes32 marketId) external view returns (bool)
+function quoteProtect(address user, bytes32 marketId) external view returns (uint256 l1Repay, uint256 l2Repay, uint256 expectedHf)
+function quoteFee(address user, bytes32 marketId) external view returns (bool eligible, uint256 fee)
+function positionCount() external view returns (uint256)
+function positionsPage(uint256 offset, uint256 limit) external view returns (address[] memory users, bytes32[] memory marketIds)
+function protect(address user, bytes32 marketId) external returns (uint256 repaid)
+
+event PolicySet(address indexed user, bytes32 indexed marketId, uint256 triggerHF, uint256 targetHF, uint256 maxRepayPerAction);
+event PolicyDisabled(address indexed user, bytes32 indexed marketId);
+event LayerUsed(address indexed user, bytes32 indexed marketId, uint8 indexed layer, uint256 amountIn, uint256 debtRepaid);
+event Protected(address indexed user, bytes32 indexed marketId, address indexed caller, uint256 repaid, uint256 healthFactorBefore, uint256 healthFactorAfter);
+event FeeCharged(address indexed user, bytes32 indexed marketId, uint256 amount, uint256 waived);
+event DynamicTriggerSet(address indexed user, bytes32 indexed marketId, address agent, uint256 triggerHF, uint64 validUntil);
+```
+
+`positionKey` (off-chain, `packages/domain`): `aave-v3:<chainId>:<guardian>:<debtAsset>` dan `morpho-blue:<chainId>:<guardian>:<marketId>` (string, lowercase). Registry: `ChainConfig.guardians[]` mendapat field `protocol: "aave-v3" | "morpho-blue"`.
 
 ## 4. Dampak keamanan
 
