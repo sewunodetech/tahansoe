@@ -81,6 +81,8 @@ export interface PositionReader {
 }
 ```
 
+Reader menerima `PublicClient` viem. Karena itu `packages/domain` menambahkan `viem` sebagai dependensi, dengan versi yang sama seperti `apps/web` (sebelumnya domain tanpa dependensi runtime). Logika murni (`priceForHealthFactor`, rumus HF Morpho) tetap tanpa I/O dan dites terpisah.
+
 `priceAtHf` dihitung dengan helper murni `priceForHealthFactor({ collateral, debt, lt, mainCollateral, hf })` yang dites terpisah. Asumsinya hanya harga collateral utama yang bergerak; aset lain dan utang konstan.
 
 ### 3.2 `AaveV3Reader`
