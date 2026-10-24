@@ -9,6 +9,7 @@ import { aaveOracleAbi } from "@/lib/contracts";
 import { useLiveTarget } from "@/lib/live-target";
 import { useGuardian } from "@/hooks/useGuardian";
 import { getGuardianV4Address } from "@/lib/guardian-v4";
+import { useSimSession } from "@/lib/sim/hooks";
 import {
   type HoldingRow,
   buildHoldingRow,
@@ -45,14 +46,16 @@ export function useHoldings(): {
   const publicClient = usePublicClient({ chainId: chain.id });
   const { policy, isLoading: isGuardianLoading, readError: guardianError } = useGuardian();
 
+  const { data: simSession } = useSimSession(target.isSimulation);
   const aaveV4Address = useMemo(
     () =>
       getGuardianV4Address({
         chainId: chain.id,
         protocol: "aave-v3",
         isSimulation: target.isSimulation,
+        simContracts: simSession?.contracts,
       }),
-    [chain.id, target.isSimulation]
+    [chain.id, target.isSimulation, simSession?.contracts]
   );
   const activeGuardianAddress = aaveV4Address ?? guardian.address;
 
