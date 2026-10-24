@@ -42,7 +42,11 @@ export function createForkFactory(deps: RuntimeDeps): ForkFactory {
       const events: SimEvent[] = [];
       const keeper = startKeeper(
         fork,
-        deployment.guardian,
+        {
+          guardian: deployment.guardian,
+          guardianAaveV4: deployment.guardianAaveV4,
+          guardianMorpho: deployment.guardianMorpho,
+        },
         (evs) => {
           events.push(...evs);
           if (events.length > MAX_EVENTS_PER_FORK) events.splice(0, events.length - MAX_EVENTS_PER_FORK);

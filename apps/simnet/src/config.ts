@@ -56,6 +56,7 @@ export const FORK_SOURCE = {
   ethUsdFeed: required(ARBITRUM_ONE.priceFeeds["ETH/USD"], 'priceFeeds["ETH/USD"]') as Address,
   weth: required(ARBITRUM_ONE.tokens?.WETH, "tokens.WETH") as Address,
   usdc: required(ARBITRUM_ONE.tokens?.USDC, "tokens.USDC") as Address,
+  morpho: (ARBITRUM_ONE.morpho?.blue ?? "0x6c247b1F6182318877311737BaC0844bAa518F5e") as Address,
 };
 
 /**

@@ -62,6 +62,9 @@ export const simnetSessionSchema = z.object({
     guardian: addressSchema,
     simPriceFeed: addressSchema,
     testVault: addressSchema.optional(),
+    guardianAaveV4: addressSchema.optional(),
+    guardianMorpho: addressSchema.optional(),
+    morpho: addressSchema.optional(),
     pool: addressSchema,
     weth: addressSchema,
     usdc: addressSchema,
@@ -73,6 +76,9 @@ export interface SimContracts {
   guardian: Address;
   simPriceFeed: Address;
   testVault?: Address;
+  guardianAaveV4?: Address;
+  guardianMorpho?: Address;
+  morpho?: Address;
   pool: Address;
   weth: Address;
   usdc: Address;
@@ -97,6 +103,7 @@ export interface SimEvent {
   hfBefore?: number;
   hfAfter?: number;
   waived?: boolean;
+  positionKey?: string;
 }
 
 /** GET /v1/sessions/:id/status response. */

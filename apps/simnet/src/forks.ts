@@ -197,12 +197,17 @@ export class ForkManager {
 }
 
 /** Contract addresses returned to the web for a fork. */
-export function forkContracts(rec: ForkRecord, registry: { pool: Address; weth: Address; usdc: Address }) {
+export const MORPHO_BLUE_ARBITRUM_ONE: Address = "0x6c247b1F6182318877311737BaC0844bAa518F5e";
+
+export function forkContracts(rec: ForkRecord, registry: { pool: Address; weth: Address; usdc: Address; morpho?: Address }) {
   const d = rec.runtime.deployment;
   return {
     guardian: d.guardian,
     simPriceFeed: d.simPriceFeed,
     ...(d.testVault ? { testVault: d.testVault } : {}),
+    ...(d.guardianAaveV4 ? { guardianAaveV4: d.guardianAaveV4 } : {}),
+    ...(d.guardianMorpho ? { guardianMorpho: d.guardianMorpho } : {}),
+    ...(d.guardianAaveV4 || d.guardianMorpho ? { morpho: registry.morpho ?? MORPHO_BLUE_ARBITRUM_ONE } : {}),
     pool: registry.pool,
     weth: registry.weth,
     usdc: registry.usdc,
