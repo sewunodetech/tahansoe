@@ -28,6 +28,9 @@ interface SimDashboardValue {
   addTx: (tx: SimUserTx) => void;
   baseline: SimBaseline | null;
   setBaseline: (b: SimBaseline | null) => void;
+  /** The visitor confirmed a market (step 1). Survives `reset`, which runs on every new fork. */
+  marketChosen: boolean;
+  setMarketChosen: (v: boolean) => void;
   reset: () => void;
 }
 
@@ -36,6 +39,7 @@ const SimDashboardContext = createContext<SimDashboardValue | null>(null);
 export function SimDashboardProvider({ children }: { children: React.ReactNode }) {
   const [txs, setTxs] = useState<SimUserTx[]>([]);
   const [baseline, setBaseline] = useState<SimBaseline | null>(null);
+  const [marketChosen, setMarketChosen] = useState(false);
 
   const addTx = useCallback((tx: SimUserTx) => setTxs((prev) => [tx, ...prev.filter((t) => t.hash !== tx.hash)]), []);
   const reset = useCallback(() => {
@@ -44,7 +48,7 @@ export function SimDashboardProvider({ children }: { children: React.ReactNode }
   }, []);
 
   return (
-    <SimDashboardContext.Provider value={{ txs, addTx, baseline, setBaseline, reset }}>
+    <SimDashboardContext.Provider value={{ txs, addTx, baseline, setBaseline, marketChosen, setMarketChosen, reset }}>
       {children}
     </SimDashboardContext.Provider>
   );

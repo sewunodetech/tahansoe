@@ -11,7 +11,33 @@ import { simnetFetch } from "@/lib/sim/simnet.server";
 import { mockStatus } from "@/lib/sim/mock";
 import { recordProtection } from "@/lib/sim/db.server";
 import { clientIp, rateLimit } from "@/lib/sim/rate-limit";
-import type { SimStatus } from "@/lib/sim/types";
+import type { SimEvent, SimStatus } from "@/lib/sim/types";
+
+/** USDC is the only debt asset on the fork; every event amount is in its 6-decimal units. */
+const DEBT_DECIMALS = 6;
+
+/** Raw on-chain value (base-unit string) → number with `decimals`; numbers pass through. */
+function fromUnits(v: unknown, decimals: number): number | undefined {
+  if (typeof v === "number") return v;
+  if (typeof v !== "string" || !/^\d+$/.test(v)) return undefined;
+  return Number(BigInt(v)) / 10 ** decimals;
+}
+
+/**
+ * simnet reports event values as raw on-chain integers (token units, HF in WAD, `waived` as an
+ * amount). The UI reads dollars, plain HF numbers and a waived flag.
+ */
+function normalizeEvent(e: SimEvent): SimEvent {
+  const raw = e as unknown as Record<string, unknown>;
+  const waived = typeof raw.waived === "boolean" ? raw.waived : (fromUnits(raw.waived, DEBT_DECIMALS) ?? 0) > 0;
+  return {
+    ...e,
+    amount: fromUnits(raw.amount, DEBT_DECIMALS) ?? e.amount,
+    hfBefore: fromUnits(raw.hfBefore, 18),
+    hfAfter: fromUnits(raw.hfAfter, 18),
+    waived,
+  };
+}
 
 export async function GET(req: NextRequest) {
   // The dashboard polls every few seconds; allow that with headroom.
@@ -31,7 +57,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Simulation session expired", expired: true }, { status: 410 });
     }
     if (res.status !== 200) return NextResponse.json({ error: "Simulation is not available right now" }, { status: 503 });
-    status = res.body;
+    status = { ...res.body, events: res.body.events.map(normalizeEvent) };
   }
 
   const layers = status.events

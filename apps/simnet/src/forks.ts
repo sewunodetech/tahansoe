@@ -133,6 +133,15 @@ export class ForkManager {
     }
   }
 
+  /**
+   * Marks a private fork as in use: its expiry slides to one idle period from now. A visitor who
+   * keeps the tab open never runs out of time; an abandoned fork is reclaimed after `ttlMs` idle.
+   */
+  touch(forkId: string): void {
+    const rec = this.privates.get(forkId);
+    if (rec && rec.expiresAt !== null) rec.expiresAt = Math.max(rec.expiresAt, this.clock() + this.opts.ttlMs);
+  }
+
   /** Extends a private fork's TTL by one more period, once. Returns the new expiry. */
   extend(forkId: string): number {
     const rec = this.privates.get(forkId);

@@ -9,7 +9,7 @@ Simnet hanya mengimpor `packages/*` (ADR 0007); tidak mengimpor `apps/web` atau 
 | Modul | Isi |
 |---|---|
 | `src/anvil.ts` | Spawn/kill `anvil --fork-url … --chain-id … --host 127.0.0.1 --port <bebas>` |
-| `src/forks.ts` | Fork manager: 1 fork Live bersama (reset harian 04:00 WIB) + maks. `SIM_MAX_PRIVATE_FORKS` fork pribadi, TTL `SIM_PRIVATE_TTL_MIN`, bisa diperpanjang sekali |
+| `src/forks.ts` | Fork manager: 1 fork Live bersama (reset harian 04:00 WIB) + maks. `SIM_MAX_PRIVATE_FORKS` fork pribadi. Fork pribadi hidup selama dipakai; setelah `SIM_PRIVATE_TTL_MIN` menit tanpa aktivitas (API atau RPC) baru dibersihkan |
 | `src/deploy.ts` | Deploy kontrak ke fork (lihat "Deploy kontrak" di bawah) |
 | `src/oracle.ts` | Impersonate ACL admin Aave → `AaveOracle.setAssetSources([WETH],[SimPriceFeed])`; tulis harga lewat `setAnswer` |
 | `src/relay.ts` | Baca Chainlink ETH/USD Arbitrum One (`priceFeeds["ETH/USD"]`) tiap 5 detik |
@@ -64,7 +64,7 @@ Test: `npm test -w @tahansoe/simnet`. Test integrasi anvil sungguhan (`test/inte
 | `SIMNET_API_KEY` | — (wajib, ≥ 16 karakter) | Header `x-simnet-key`; dibandingkan constant-time |
 | `SIM_CHAIN_ID` | `4216199` | Chain ID fork (beda dari mainnet → tx tidak bisa di-replay) |
 | `SIM_MAX_PRIVATE_FORKS` | `4` | Batas fork Replay/Stress bersamaan |
-| `SIM_PRIVATE_TTL_MIN` | `15` | Umur fork pribadi; `POST /v1/sessions/:id/extend` menambah satu periode, sekali |
+| `SIM_PRIVATE_TTL_MIN` | `30` | Batas idle fork pribadi: setiap panggilan API atau RPC memperpanjangnya, jadi sesi aktif tidak pernah habis. `POST /v1/sessions/:id/extend` masih ada untuk kompatibilitas |
 | `SIM_PORT` | `8787` | Port HTTP |
 | `SIM_ANVIL_BIN`, `SIM_FORGE_BIN` | `anvil`, `forge` | Path binary Foundry |
 | `SIM_CONTRACTS_DIR` | `../../contracts` | Folder Foundry |

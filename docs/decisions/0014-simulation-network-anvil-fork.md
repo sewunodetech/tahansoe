@@ -36,7 +36,7 @@ Fakta yang relevan:
 3. **Engine produksi tidak pernah menyentuh fork.** Keeper simulasi hidup di simnet. Dengan begitu bug atau beban simulasi tidak bisa memengaruhi sentinel dan broadcaster asli.
 4. **Topologi fork:**
    - satu fork bersama untuk mode Live (harga sama untuk semua, wallet per sesi), di-reset harian;
-   - fork pribadi berumur pendek (TTL 15 menit, maksimal 4 di awal) untuk Replay dan Stress.
+   - fork pribadi yang hidup selama dipakai dan dibersihkan setelah 30 menit idle (maksimal 4 di awal) untuk Replay dan Stress.
 5. **Harga mengikuti mainnet lewat relay**, bukan sinkron state penuh. Simnet mengganti sumber harga WETH di AaveOracle fork ke `SimPriceFeed` (impersonate admin ACL Aave di fork), lalu relay menulis harga Chainlink ETH/USD Arbitrum One setiap beberapa detik. Eksekusi tetap membaca AaveOracle (I5).
 6. **Chain ID simulasi berbeda** (`4216199`, bisa dikonfigurasi) agar transaksi tidak bisa di-replay di mainnet dan data tidak tercampur.
 7. **Antarmuka standar JSON-RPC.** Web hanya mengenal "URL RPC + chain ID simulasi". Pindah ke Tenderly atau penyedia lain nanti hanya mengganti simnet, tidak menyentuh web.

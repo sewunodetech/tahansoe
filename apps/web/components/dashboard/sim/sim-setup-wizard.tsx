@@ -16,8 +16,8 @@ import { aavePoolWriteAbi, wethAbi } from "@/lib/sim/abis";
 import { useSimActions } from "@/lib/sim/hooks";
 import { useSimDashboard } from "./sim-context";
 
-/** Sample position for Auto-fill (spec m1-simulation-mode §3.5): 2 ETH collateral, HF about 1.8. */
-const SAMPLE = { supplyEth: "2", borrowHf: 1.8, triggerHf: 1.45, targetHf: 1.7, l3MaxEth: "0.5", l3SlippageBps: 50 };
+/** Sample position for Auto-fill (spec m1-simulation-mode §3.5): 2 ETH collateral, HF about 1.4, so a 30% drop liquidates it without protection. */
+const SAMPLE = { supplyEth: "2", borrowHf: 1.4, triggerHf: 1.25, targetHf: 1.55, l3MaxEth: "0.5", l3SlippageBps: 50 };
 /** Cap per action × this = allowance, leaving room for a few actions plus the 0.15% success fee. */
 const ALLOWANCE_ACTIONS = 3n;
 const BASE_UNIT = 100_000_000;
@@ -68,11 +68,16 @@ export function SimSetupWizard() {
     return { collateralBase, debtBase, lt, hf: debtBase === 0n ? null : wadToNumber(hf) };
   };
 
-  /** Sends one tx with the burner, waits for it, and logs HF before → after. */
+  /**
+   * Sends one tx with the burner, waits for it, and logs HF before → after. Gas gets a 30% margin:
+   * the price relay writes between estimate and execution, and a bare estimate ran Aave's borrow out of gas.
+   */
   const send = async (action: string, request: Parameters<typeof writeContract>[0]) => {
     setCurrent(action);
     const before = (await readAccount()).hf;
-    const hash = await writeContract(request);
+    const pc = client!;
+    const estimate = await pc.estimateContractGas({ ...(request as Parameters<typeof pc.estimateContractGas>[0]), account: user! });
+    const hash = await writeContract({ ...request, gas: (estimate * 13n) / 10n });
     const receipt = await client!.waitForTransactionReceipt({ hash });
     if (receipt.status !== "success") throw new Error(`${action} reverted`);
     const after = (await readAccount()).hf;
@@ -210,9 +215,9 @@ export function SimSetupWizard() {
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-sm">Set up a position</CardTitle>
-            <CardDescription className="text-xs mt-1">
-              Real transactions on the fork, signed by your simulation wallet. Auto-fill opens 2 ETH of collateral at HF ≈ 1.8 and protects it.
+            <CardTitle className="text-sm">Open a sample position</CardTitle>
+            <CardDescription className="text-xs mt-1 max-w-[460px]">
+              One click supplies 2 ETH, borrows USDC down to HF ≈ 1.4, and turns on protection. These are real transactions on the fork, signed by your simulation wallet.
             </CardDescription>
           </div>
           <Button size="sm" onClick={autoFill} disabled={disabled}>
@@ -221,6 +226,25 @@ export function SimSetupWizard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {STEPS.map((step) => (
+            <span
+              key={step.id}
+              className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full border text-[11px] ${
+                done[step.id] ? "border-[var(--safe-border)] text-[var(--safe)] bg-[var(--safe-bg)]" : "border-[var(--border)] text-[var(--text-tertiary)]"
+              }`}
+            >
+              {done[step.id] ? <CheckCircle2 className="size-3" /> : <Circle className="size-3" />} {step.title}
+            </span>
+          ))}
+        </div>
+
+        <details className="group rounded-[14px] border border-[var(--border)]">
+          <summary className="cursor-pointer list-none px-3.5 py-2.5 text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] select-none">
+            <span className="group-open:hidden">Prefer to do it step by step? Choose your own amounts and HF</span>
+            <span className="hidden group-open:inline">Step by step</span>
+          </summary>
+          <div className="space-y-3 p-3 pt-0">
         {STEPS.map((step, i) => (
           <div key={step.id} className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-subtle)] p-3.5 space-y-3">
             <div className="flex items-start gap-2.5">
@@ -248,9 +272,9 @@ export function SimSetupWizard() {
 
             {step.id === "borrow" && (
               <div className="flex flex-col sm:flex-row gap-2">
-                <Input value={borrowUsdc} onChange={(e) => setBorrowUsdc(e.target.value)} inputMode="decimal" placeholder="Auto: HF 1.8" aria-label="USDC to borrow" className="sm:max-w-[160px]" />
+                <Input value={borrowUsdc} onChange={(e) => setBorrowUsdc(e.target.value)} inputMode="decimal" placeholder="Auto: HF 1.4" aria-label="USDC to borrow" className="sm:max-w-[160px]" />
                 <Button size="sm" variant="secondary" disabled={disabled} onClick={() => run("borrow", () => borrow(borrowUsdc, SAMPLE.borrowHf), ["borrow"])}>
-                  Borrow {borrowUsdc ? `${borrowUsdc} USDC` : "to HF 1.8"}
+                  Borrow {borrowUsdc ? `${borrowUsdc} USDC` : "to HF 1.4"}
                 </Button>
               </div>
             )}
@@ -294,6 +318,8 @@ export function SimSetupWizard() {
             )}
           </div>
         ))}
+          </div>
+        </details>
 
         {running && (
           <p className="text-[11px] font-mono text-[var(--text-tertiary)] flex items-center gap-1.5">

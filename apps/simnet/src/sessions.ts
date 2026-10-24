@@ -156,6 +156,8 @@ export class SessionService {
       if (session) this.sessions.delete(id);
       throw new HttpError(404, { error: "session not found" });
     }
+    // Any API call (the dashboard polls status every few seconds) keeps the fork alive.
+    this.forks.touch(fork.id);
     return { session, fork };
   }
 

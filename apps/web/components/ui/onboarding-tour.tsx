@@ -413,9 +413,12 @@ function TourCard({
 export function OnboardingTourProvider({
   children,
   onNavigate,
+  autoOpen = true,
 }: {
   children:    React.ReactNode;
   onNavigate?: (path: string) => void;
+  /** False skips the first-visit auto-open (e.g. Simulation Mode has its own guided flow). */
+  autoOpen?:   boolean;
 }) {
   const [isOpen,  setIsOpen]  = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
@@ -424,13 +427,14 @@ export function OnboardingTourProvider({
 
   /* Auto-open for first-time visitors */
   useEffect(() => {
+    if (!autoOpen) return;
     const done = localStorage.getItem(STORAGE_KEY);
     if (!done) {
       /* Small delay so the dashboard has rendered */
       const t = setTimeout(() => setIsOpen(true), 900);
       return () => clearTimeout(t);
     }
-  }, []);
+  }, [autoOpen]);
 
   /* Update spotlight rect each animation frame while open */
   useEffect(() => {

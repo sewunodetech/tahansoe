@@ -1,30 +1,115 @@
 "use client";
 
 import React, { useState } from "react";
-import { Activity, Clock, TrendingDown } from "lucide-react";
+import { Activity, Clock, Loader2, Radio, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SimApiError, useSimActions, useSimSession, useSimStatus } from "@/lib/sim/hooks";
-import { CRASH_PCTS, SIM_MODES, SIM_SCENARIOS, type SimMode, type SimScenarioId } from "@/lib/sim/types";
+import { CRASH_PCTS, SIM_SCENARIOS, type SimMode, type SimScenarioId } from "@/lib/sim/types";
 import { useSimDashboard } from "./sim-context";
 
-const MODE_COPY: Record<SimMode, { label: string; hint: string }> = {
-  live: { label: "Live", hint: "Shared fork, ETH follows Arbitrum One in real time." },
-  replay: { label: "Replay", hint: "Private fork, replays a historical crash in about 3 minutes." },
-  stress: { label: "Stress", hint: "Private fork, live price until you press a crash button." },
-};
+const MARKETS: { mode: SimMode; title: string; body: string; icon: React.ElementType }[] = [
+  { mode: "replay", title: "Replay a real crash", body: "Relive a historical ETH crash in about 3 minutes.", icon: Clock },
+  { mode: "stress", title: "Stress test", body: "Live price, then you drop it by 10, 30 or 50%.", icon: TrendingDown },
+  { mode: "live", title: "Live market", body: "ETH follows Arbitrum One in real time. Usually calm.", icon: Radio },
+];
 
-/** Price mode switch, replay picker and crash buttons (spec m1-simulation-mode §2, §3.3). */
-export function SimScenarioPanel() {
+/** Turns a 409 from simnet into a sentence; other errors pass through. */
+function describe(err: unknown): string {
+  if (err instanceof SimApiError && err.status === 409) {
+    const wait = Number(err.body.retryAfterSec ?? 60);
+    return `All private forks are in use. Try again in about ${Math.ceil(wait / 60)} min, or pick Live market.`;
+  }
+  return err instanceof Error ? err.message : "Request failed";
+}
+
+/**
+ * Step 1: pick the market before opening a position. Each choice runs on its own fork, so picking
+ * it first means the position is never lost to a later switch.
+ */
+export function SimChooseMarket() {
+  const { data: session } = useSimSession();
+  const { switchMode } = useSimActions();
+  const { reset, setMarketChosen } = useSimDashboard();
+  const [scenario, setScenario] = useState<SimScenarioId>(session?.scenario ?? SIM_SCENARIOS[0].id);
+  const [busy, setBusy] = useState<SimMode | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const choose = async (mode: SimMode) => {
+    if (!session) return;
+    setBusy(mode);
+    setError(null);
+    try {
+      const same = mode === session.mode && (mode !== "replay" || scenario === session.scenario);
+      if (!same) {
+        await switchMode(session.address, mode, mode === "replay" ? scenario : undefined);
+        reset();
+      }
+      setMarketChosen(true);
+    } catch (err) {
+      setError(describe(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Activity className="size-4 text-[var(--brand)]" /> What should the market do?
+        </CardTitle>
+        <CardDescription className="text-xs">Pick one. You can come back and try another later.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2.5">
+        {MARKETS.map(({ mode, title, body, icon: Icon }) => (
+          <div key={mode} className="rounded-[14px] border border-[var(--border)] p-3.5 flex flex-col sm:flex-row sm:items-center gap-3">
+            <Icon className="size-4 text-[var(--text-secondary)] shrink-0 hidden sm:block" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-[var(--text-primary)]">{title}</p>
+              <p className="text-[11px] text-[var(--text-tertiary)]">{body}</p>
+              {mode === "replay" && (
+                <select
+                  aria-label="Historical crash"
+                  value={scenario}
+                  onChange={(e) => setScenario(e.target.value as SimScenarioId)}
+                  className="mt-2 w-full sm:max-w-[300px] h-8 px-2.5 rounded-[10px] border border-[var(--border)] bg-[var(--bg-subtle)] text-xs text-[var(--text-primary)]"
+                >
+                  {SIM_SCENARIOS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <Button size="sm" variant={mode === "live" ? "secondary" : "primary"} disabled={busy !== null} onClick={() => choose(mode)} className="shrink-0 self-start sm:self-center">
+              {busy === mode ? <Loader2 className="animate-spin" /> : null} Choose
+            </Button>
+          </div>
+        ))}
+        {busy && busy !== "live" && <p className="text-[11px] text-[var(--text-tertiary)]">Starting a private fork of Arbitrum One, about 20 seconds…</p>}
+        {error && (
+          <p role="alert" className="text-[11px] text-[var(--danger)]">
+            {error}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Step 3: run the market the visitor picked and watch the Guardian react. */
+export function SimRunMarket() {
   const { data: session } = useSimSession();
   const { data: status } = useSimStatus(Boolean(session));
-  const { switchMode, runScenario } = useSimActions();
-  const { reset } = useSimDashboard();
-  const [scenario, setScenario] = useState<SimScenarioId>(session?.scenario ?? SIM_SCENARIOS[0].id);
+  const { runScenario } = useSimActions();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const mode = session?.mode ?? "live";
+  const scenario = SIM_SCENARIOS.find((s) => s.id === session?.scenario) ?? SIM_SCENARIOS[0];
+  const progress = status?.scenarioProgress;
 
   const run = async (key: string, fn: () => Promise<unknown>) => {
     setBusy(key);
@@ -32,127 +117,57 @@ export function SimScenarioPanel() {
     try {
       await fn();
     } catch (err) {
-      if (err instanceof SimApiError && err.status === 409) {
-        const wait = Number(err.body.retryAfterSec ?? 60);
-        setError(`All private forks are in use. Try again in about ${Math.ceil(wait / 60)} min, or stay in Live mode.`);
-      } else {
-        setError(err instanceof Error ? err.message : "Request failed");
-      }
+      setError(describe(err));
     } finally {
       setBusy(null);
     }
   };
 
-  const handleMode = (next: SimMode) => {
-    if (!session || next === mode) return;
-    run(`mode:${next}`, async () => {
-      await switchMode(session.address, next, next === "replay" ? scenario : undefined);
-      reset();
-    });
-  };
-
-  const handleReplay = () => {
-    if (!session) return;
-    run("replay", async () => {
-      if (mode !== "replay") {
-        await switchMode(session.address, "replay", scenario);
-        reset();
-      } else {
-        await runScenario({ kind: "replay", scenario });
-      }
-    });
-  };
-
-  const selected = SIM_SCENARIOS.find((s) => s.id === scenario);
-  const progress = status?.scenarioProgress;
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm flex items-center gap-2">
-          <Activity className="size-4 text-[var(--brand)]" /> Market scenario
+        <CardTitle className="text-sm">
+          {mode === "replay" ? `Replay: ${scenario.label}` : mode === "stress" ? "Drop the ETH price" : "Watching the live market"}
         </CardTitle>
-        <CardDescription className="text-xs">{MODE_COPY[mode].hint}</CardDescription>
+        <CardDescription className="text-xs">
+          {mode === "live"
+            ? "The price follows Arbitrum One. The Guardian acts only if the real market falls to your trigger."
+            : "Keep an eye on the Health Factor above: when it reaches your trigger, the Guardian repays debt on its own."}
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div role="radiogroup" aria-label="Price mode" className="grid grid-cols-3 gap-1 p-1 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)]">
-          {SIM_MODES.map((m) => (
-            <button
-              key={m}
-              type="button"
-              role="radio"
-              aria-checked={mode === m}
-              disabled={busy !== null}
-              onClick={() => handleMode(m)}
-              className={`h-8 rounded-full text-xs font-mono transition-colors cursor-pointer disabled:cursor-wait ${
-                mode === m
-                  ? "bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-sm"
-                  : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-              }`}
-            >
-              {busy === `mode:${m}` ? "…" : MODE_COPY[m].label}
-            </button>
-          ))}
-        </div>
-        {mode !== "live" && (
-          <p className="text-[11px] text-[var(--text-tertiary)]">
-            Switching mode opens a new fork, so set up the position again (Auto-fill takes a few seconds).
-          </p>
+      <CardContent className="space-y-3">
+        {mode === "replay" && (
+          <>
+            <Button size="sm" disabled={busy !== null} onClick={() => run("replay", () => runScenario({ kind: "replay", scenario: scenario.id }))}>
+              {busy === "replay" ? <Loader2 className="animate-spin" /> : <Clock />} {typeof progress === "number" ? "Restart replay" : "Start replay"}
+            </Button>
+            {typeof progress === "number" && (
+              <div className="h-1.5 rounded-full bg-[var(--bg-overlay)] overflow-hidden" aria-label="Replay progress">
+                <div className="h-full bg-[var(--brand)] transition-[width] duration-700" style={{ width: `${Math.round(progress * 100)}%` }} />
+              </div>
+            )}
+            {scenario.normalized && <p className="text-[11px] text-[var(--text-tertiary)]">Prices are scaled to today&apos;s ETH price (no Arbitrum data for 2020).</p>}
+          </>
         )}
 
-        <div className="space-y-2">
-          <label htmlFor="sim-scenario" className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
-            Historical replay
-          </label>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <select
-              id="sim-scenario"
-              value={scenario}
-              onChange={(e) => setScenario(e.target.value as SimScenarioId)}
-              className="flex-1 h-9 px-3 rounded-[10px] border border-[var(--border)] bg-[var(--bg-subtle)] text-xs text-[var(--text-primary)]"
-            >
-              {SIM_SCENARIOS.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
+        {mode === "stress" && (
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              {CRASH_PCTS.map((pct) => (
+                <Button key={pct} size="sm" variant="danger" disabled={busy !== null} onClick={() => run(`crash:${pct}`, () => runScenario({ kind: "crash", pct }))}>
+                  <TrendingDown /> −{pct}%
+                </Button>
               ))}
-            </select>
-            <Button size="sm" variant="secondary" onClick={handleReplay} disabled={busy !== null}>
-              <Clock /> {mode === "replay" ? "Restart replay" : "Replay"}
-            </Button>
-          </div>
-          {selected?.normalized && (
-            <p className="text-[11px] text-[var(--text-tertiary)]">Prices normalized to the fork&apos;s starting ETH price (no Arbitrum data for 2020).</p>
-          )}
-          {mode === "replay" && typeof progress === "number" && (
-            <div className="h-1.5 rounded-full bg-[var(--bg-overlay)] overflow-hidden" aria-label="Replay progress">
-              <div className="h-full bg-[var(--brand)] transition-[width] duration-700" style={{ width: `${Math.round(progress * 100)}%` }} />
             </div>
-          )}
-        </div>
+            <p className="text-[11px] text-[var(--text-tertiary)]">The price slides down over about 20 seconds.</p>
+          </>
+        )}
 
-        <div className="space-y-2">
-          <p className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">Crash the price</p>
-          <div className="grid grid-cols-3 gap-2">
-            {CRASH_PCTS.map((pct) => (
-              <Button
-                key={pct}
-                size="sm"
-                variant="danger"
-                disabled={mode !== "stress" || busy !== null}
-                onClick={() => run(`crash:${pct}`, () => runScenario({ kind: "crash", pct }))}
-              >
-                <TrendingDown /> −{pct}%
-              </Button>
-            ))}
-          </div>
-          <p className="text-[11px] text-[var(--text-tertiary)]">
-            {mode === "stress"
-              ? "The price ramps down over about 20 seconds so the keeper and the dashboard can follow."
-              : "Available in Stress mode."}
+        {status && (
+          <p className="text-[11px] font-mono text-[var(--text-secondary)]">
+            ETH ${status.price.toLocaleString("en-US", { maximumFractionDigits: 2 })} · source {status.priceSource}
           </p>
-        </div>
-
+        )}
         {error && (
           <p role="alert" className="text-[11px] text-[var(--danger)]">
             {error}

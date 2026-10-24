@@ -116,6 +116,7 @@ export function createSimnetServer(deps: ServerDeps): Server {
     if (req.method !== "POST") return send(res, 405, { error: "method not allowed" }, CORS);
     const fork = deps.forks.get(forkId);
     if (!fork) return send(res, 404, { jsonrpc: "2.0", id: null, error: { code: -32001, message: "unknown fork" } }, CORS);
+    deps.forks.touch(forkId);
 
     const body = await readJson(req);
     const cost = Array.isArray(body) ? Math.min(MAX_BATCH, Math.max(1, body.length)) : 1;

@@ -17,7 +17,7 @@ export const EnvSchema = z.object({
   SIMNET_API_KEY: z.string().min(16, "SIMNET_API_KEY must be at least 16 characters"),
   SIM_CHAIN_ID: intFromEnv(4216199, 1, 2 ** 31),
   SIM_MAX_PRIVATE_FORKS: intFromEnv(4, 0, 32),
-  SIM_PRIVATE_TTL_MIN: intFromEnv(15, 1, 24 * 60),
+  SIM_PRIVATE_TTL_MIN: intFromEnv(30, 1, 24 * 60),
   SIM_PORT: intFromEnv(8787, 1, 65535),
   /** Optional: path to the anvil binary (default: `anvil` on PATH). */
   SIM_ANVIL_BIN: z.string().default("anvil"),

@@ -7,8 +7,8 @@ import { unprotectedOutcome, WETH_LIQUIDATION_BONUS } from "@/lib/sim/fee";
 import { useSimSession, useSimStatus } from "@/lib/sim/hooks";
 import { useSimDashboard, type SimBaseline } from "./sim-context";
 
-/** Mock simnet starts ETH at $3,000; the sample is 2 ETH at HF 1.8 with WETH's LT of 0.83. */
-const SAMPLE_BASELINE: SimBaseline = { collateralEth: 2, debtUsd: (2 * 3_000 * 0.83) / 1.8, liquidationThreshold: 0.83 };
+/** Mock simnet starts ETH at $3,000; the sample is 2 ETH at HF 1.4 with WETH's LT of 0.83. */
+const SAMPLE_BASELINE: SimBaseline = { collateralEth: 2, debtUsd: (2 * 3_000 * 0.83) / 1.4, liquidationThreshold: 0.83 };
 
 const usd = (v: number) => `$${v.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`;
 
@@ -30,7 +30,7 @@ export function SimWithoutPanel() {
           <ShieldOff className="size-4 text-[var(--danger)]" /> Without Tahansoe
         </CardTitle>
         <CardDescription className="text-xs">
-          {baseline ? "Your position as you opened it, never protected." : "The sample position (2 ETH, HF 1.8), never protected."}
+          {baseline ? "Your position as you opened it, never protected." : "The sample position (2 ETH, HF 1.4), never protected."}
         </CardDescription>
       </CardHeader>
       <CardContent>

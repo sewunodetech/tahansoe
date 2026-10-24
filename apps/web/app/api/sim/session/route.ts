@@ -18,6 +18,10 @@ import { clientIp, rateLimit } from "@/lib/sim/rate-limit";
 import { SIM_CHAIN_ID } from "@/lib/sim/chain";
 import { createSessionSchema, sessionEventSchema, simnetSessionSchema, type SimSessionInfo, type SimnetSession } from "@/lib/sim/types";
 
+/** Creating a fork outlasts the default simnet timeout; the platform limit must cover it too. */
+export const maxDuration = 60;
+const SESSION_CREATE_TIMEOUT_MS = 55_000;
+
 function publicInfo(sim: SimCookieData): SimSessionInfo {
   return {
     sessionId: sim.sessionId,
@@ -70,6 +74,8 @@ export async function POST(req: NextRequest) {
     const { status, body } = await simnetFetch<SimnetSession & { error?: string; retryAfterSec?: number }>("/v1/sessions", {
       method: "POST",
       body: { address, mode, ...(scenario ? { scenario } : {}) },
+      // A private fork boots anvil and deploys the contracts: about 15–20 s, slower on a cold RPC.
+      timeoutMs: SESSION_CREATE_TIMEOUT_MS,
     });
     if (status === 409) {
       return NextResponse.json(

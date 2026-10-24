@@ -162,7 +162,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <OnboardingTourProvider onNavigate={handleTourNavigate}>
+    <OnboardingTourProvider onNavigate={handleTourNavigate} autoOpen={!isSimulation}>
       <div className="flex h-screen overflow-hidden bg-[var(--bg)] text-[var(--text-primary)]">
         {/* Sidebar */}
         <div

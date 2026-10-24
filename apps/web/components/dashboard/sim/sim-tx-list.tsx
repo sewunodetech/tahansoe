@@ -22,15 +22,14 @@ interface Row {
 
 const hf = (v: number | null) => (v === null || !Number.isFinite(v) ? "—" : v.toFixed(2));
 
-/** Repaid value of one layer event in USD: L1/L2 amounts are USDC, L3 is WETH sold. */
-function layerRepaidUsd(e: SimEvent, price: number): number {
+/** Debt repaid by one layer event in USD: `LayerUsed.debtRepaid` is in the debt asset (USDC) for every layer. */
+function layerRepaidUsd(e: SimEvent): number {
   const amount = Number(e.amount ?? 0);
-  if (!Number.isFinite(amount)) return 0;
-  return e.layer === 3 ? amount * price : amount;
+  return Number.isFinite(amount) ? amount : 0;
 }
 
 /** Keeper protections grouped per transaction, with the actual fee or the v3 estimate. */
-function guardianRows(events: SimEvent[], price: number, triggerHf: number | undefined): Row[] {
+function guardianRows(events: SimEvent[], triggerHf: number | undefined): Row[] {
   const byTx = new Map<string, SimEvent[]>();
   for (const e of events) byTx.set(e.txHash, [...(byTx.get(e.txHash) ?? []), e]);
 
@@ -43,7 +42,7 @@ function guardianRows(events: SimEvent[], price: number, triggerHf: number | und
     if (feeEvent) {
       fee = { amount: Number(feeEvent.amount ?? 0), estimated: false, waived: feeEvent.waived };
     } else if (prot && hfBefore !== null) {
-      const repaid = list.filter((e) => e.type === "layer").reduce((sum, e) => sum + layerRepaidUsd(e, price), 0);
+      const repaid = list.filter((e) => e.type === "layer").reduce((sum, e) => sum + layerRepaidUsd(e), 0);
       const est = estimateSuccessFee({ totalRepaidUsd: repaid, hfBefore, staticTriggerHf: triggerHf ?? Infinity });
       fee = { amount: est.fee, estimated: true };
     }
@@ -67,7 +66,7 @@ export function SimTxList() {
   const { txs, baseline } = useSimDashboard();
 
   const rows = useMemo(() => {
-    const keeper = status ? guardianRows(status.events, status.price, baseline?.triggerHf) : [];
+    const keeper = status ? guardianRows(status.events, baseline?.triggerHf) : [];
     const mine: Row[] = txs.map((t) => ({
       hash: t.hash,
       action: t.action,

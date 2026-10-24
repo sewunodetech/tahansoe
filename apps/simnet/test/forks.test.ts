@@ -87,6 +87,32 @@ describe("ForkManager TTL", () => {
     assert.deepEqual(await fm.sweep(), [rec.id]);
   });
 
+  it("keeps a fork in use alive: touch slides the expiry to one idle period from now", async () => {
+    const { fm, advance } = manager(1, 30 * 60_000);
+    const rec = await fm.acquirePrivate();
+    for (let i = 0; i < 6; i++) {
+      advance(20 * 60_000);
+      fm.touch(rec.id);
+    }
+    assert.deepEqual(await fm.sweep(), []); // two hours of use, never idle for 30 min
+    advance(30 * 60_000 - 1);
+    assert.deepEqual(await fm.sweep(), []);
+    advance(1);
+    assert.deepEqual(await fm.sweep(), [rec.id]);
+  });
+
+  it("touch never shortens an expiry and ignores the live fork", async () => {
+    const { fm } = manager(1, 30 * 60_000);
+    const rec = await fm.acquirePrivate();
+    fm.extend(rec.id);
+    const extended = rec.expiresAt!;
+    fm.touch(rec.id);
+    assert.equal(rec.expiresAt, extended);
+    const live = await fm.live();
+    fm.touch(live.id);
+    assert.equal(live.expiresAt, null);
+  });
+
   it("does not expire or extend the live fork", async () => {
     const { fm, advance } = manager();
     const live = await fm.live();

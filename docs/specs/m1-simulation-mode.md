@@ -105,7 +105,7 @@ Mode harga:
 | | Live (bersama) | Replay / Stress (pribadi) |
 |---|---|---|
 | Jumlah | 1 | Maksimal `SIM_MAX_PRIVATE_FORKS` (awal 4) |
-| Umur | Di-reset harian pukul 04:00 WIB ke blok terbaru mainnet | 15 menit sejak dibuat, bisa diperpanjang sekali |
+| Umur | Di-reset harian pukul 04:00 WIB ke blok terbaru mainnet | Hidup selama dipakai; dibersihkan setelah 30 menit tanpa aktivitas. Bila sudah dibersihkan, web otomatis membuat fork baru di mode yang sama |
 | Isolasi | Wallet per sesi; harga sama untuk semua | Satu sesi per fork |
 | Bila penuh | — | Antrean, atau tawarkan mode Live |
 

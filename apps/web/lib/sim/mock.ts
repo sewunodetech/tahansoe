@@ -120,7 +120,7 @@ function eventsAt(s: MockSession, price: number, now: number): SimEvent[] {
   ];
   if (drop >= 0.3) {
     events.push(
-      { type: "layer", txHash: tx(2), blockNumber: block + 40, layer: 3, amount: "0.42", hfBefore: 1.33, hfAfter: 1.7 },
+      { type: "layer", txHash: tx(2), blockNumber: block + 40, layer: 3, amount: "1150", hfBefore: 1.33, hfAfter: 1.7 },
       { type: "protected", txHash: tx(2), blockNumber: block + 40, hfBefore: 1.33, hfAfter: 1.7 },
       { type: "fee", txHash: tx(2), blockNumber: block + 40, amount: "5.10", waived: false }
     );
