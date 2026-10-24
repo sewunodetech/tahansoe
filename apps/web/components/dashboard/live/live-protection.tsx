@@ -6,6 +6,8 @@ import { Lock } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { LayerBadge } from "@/components/ui/layer-badge";
 import { useGuardian } from "@/hooks/useGuardian";
+import { useGuardianV4 } from "@/hooks/useGuardianV4";
+import { ProtectedPositionsList } from "@/components/dashboard/guardian-v4/protected-positions-list";
 import { LiveGate } from "./live-shared";
 import { LivePositionCard } from "./live-position-card";
 import { LivePolicyForm } from "./live-policy-form";
@@ -31,12 +33,24 @@ const UPCOMING_LAYERS = [
 
 /** Protection page on live mode: real position, Layer 1 policy on the Guardian, emergency stop. */
 export function LiveProtection() {
+  const g4 = useGuardianV4();
   const [asset, setAsset] = useState<Address | undefined>(undefined);
   const g = useGuardian(asset);
   const activeAsset = asset ?? g.policy?.debtAsset ?? g.token?.address;
   const p = g.policy;
   // Reset the form whenever the on-chain policy or the selected asset changes.
   const formKey = `${activeAsset}:${p?.enabled}:${p?.triggerHf}:${p?.targetHf}:${p?.maxRepayPerAction}`;
+
+  if (g4.available) {
+    return (
+      <LiveGate g={g}>
+        <div className="space-y-6">
+          <LiveMigrationBanner g={g} />
+          <ProtectedPositionsList />
+        </div>
+      </LiveGate>
+    );
+  }
 
   return (
     <LiveGate g={g}>

@@ -11,9 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { LayerBadge } from "@/components/ui/layer-badge";
 import { aaveOracleAbi, aavePoolAbi, guardianV2Abi } from "@/lib/contracts";
+import { guardianAaveV4Abi } from "@/lib/guardian-v4";
 import { useLiveTarget } from "@/lib/live-target";
 import { aavePoolWriteAbi, wethAbi } from "@/lib/sim/abis";
-import { useSimActions } from "@/lib/sim/hooks";
+import { useSimActions, useSimSession } from "@/lib/sim/hooks";
 import { useSimDashboard } from "./sim-context";
 
 /** Sample position for Auto-fill (spec m1-simulation-mode §3.5): 2 ETH collateral, HF about 1.4, so a 30% drop liquidates it without protection. */
@@ -38,6 +39,7 @@ function errorMessage(err: unknown): string {
 /** Opens a position on the fork and protects it, step by step or all at once. */
 export function SimSetupWizard() {
   const target = useLiveTarget();
+  const { data: session } = useSimSession();
   const { address: user } = useAccount();
   const client = usePublicClient({ chainId: target.chain.id });
   const { mutateAsync: writeContract } = useWriteContract();
@@ -135,20 +137,35 @@ export function SimSetupWizard() {
     if (maxRepay <= 0n) throw new Error("Open a borrow first so the Guardian has something to protect.");
     const allowance = maxRepay * ALLOWANCE_ACTIONS + (maxRepay * ALLOWANCE_ACTIONS * 15n) / 10_000n;
 
+    const v4Aave = session?.contracts.guardianAaveV4;
+    const isV4 = Boolean(v4Aave);
+    const guardianAddress = (isV4 ? v4Aave : target.guardian.address)!;
+
     await send("Approve USDC → Guardian", {
       chainId: target.chain.id,
       address: usdc.address,
       abi: erc20Abi,
       functionName: "approve",
-      args: [target.guardian.address, allowance],
+      args: [guardianAddress, allowance],
     });
-    await send("setPolicy", {
-      chainId: target.chain.id,
-      address: target.guardian.address,
-      abi: guardianV2Abi,
-      functionName: "setPolicy",
-      args: [usdc.address, hfToWad(trigger), hfToWad(targetH), maxRepay],
-    });
+
+    if (isV4) {
+      await send("setPolicy", {
+        chainId: target.chain.id,
+        address: guardianAddress,
+        abi: guardianAaveV4Abi,
+        functionName: "setPolicy",
+        args: [usdc.address, hfToWad(trigger), hfToWad(targetH), maxRepay],
+      });
+    } else {
+      await send("setPolicy", {
+        chainId: target.chain.id,
+        address: guardianAddress,
+        abi: guardianV2Abi,
+        functionName: "setPolicy",
+        args: [usdc.address, hfToWad(trigger), hfToWad(targetH), maxRepay],
+      });
+    }
 
     if (withL3) {
       const reserve = await client!.readContract({ address: target.pool, abi: aavePoolAbi, functionName: "getReserveData", args: [target.weth] });
@@ -158,15 +175,26 @@ export function SimSetupWizard() {
         address: reserve.aTokenAddress as Address,
         abi: erc20Abi,
         functionName: "approve",
-        args: [target.guardian.address, maxCollateral * ALLOWANCE_ACTIONS],
+        args: [guardianAddress, maxCollateral * ALLOWANCE_ACTIONS],
       });
-      await send("setLayer3", {
-        chainId: target.chain.id,
-        address: target.guardian.address,
-        abi: guardianV2Abi,
-        functionName: "setLayer3",
-        args: [true, target.weth, maxCollateral, SAMPLE.l3SlippageBps],
-      });
+
+      if (isV4) {
+        await send("setLayer3", {
+          chainId: target.chain.id,
+          address: guardianAddress,
+          abi: guardianAaveV4Abi,
+          functionName: "setLayer3",
+          args: [usdc.address, true, target.weth, maxCollateral, SAMPLE.l3SlippageBps],
+        });
+      } else {
+        await send("setLayer3", {
+          chainId: target.chain.id,
+          address: guardianAddress,
+          abi: guardianV2Abi,
+          functionName: "setLayer3",
+          args: [true, target.weth, maxCollateral, SAMPLE.l3SlippageBps],
+        });
+      }
     }
 
     const after = await readAccount();

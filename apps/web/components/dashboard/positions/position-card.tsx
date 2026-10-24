@@ -15,8 +15,14 @@ import { StatusBadge } from "./status-badge";
 /** Trigger used to colour HF when the position has no policy of its own. */
 const DEFAULT_TRIGGER = 1.3;
 
+export interface PositionCardProps {
+  item: PositionWithStatus;
+  hfOverride?: number | null;
+  onProtect?: (position: PositionDetail) => void;
+}
+
 /** One position: per-asset collateral and debt, HF, liquidation price, status and next step. */
-export function PositionCard({ item, hfOverride }: { item: PositionWithStatus; hfOverride?: number | null }) {
+export function PositionCard({ item, hfOverride, onProtect }: PositionCardProps) {
   const { position, status } = item;
   const hf = hfOverride !== undefined ? hfOverride : healthFactorOf(position);
   const trigger = status.kind === "protected" ? status.triggerHf : DEFAULT_TRIGGER;
@@ -49,7 +55,7 @@ export function PositionCard({ item, hfOverride }: { item: PositionWithStatus; h
         </p>
       )}
 
-      <StatusFooter item={item} />
+      <StatusFooter item={item} onProtect={onProtect} />
     </Card>
   );
 }
@@ -80,8 +86,8 @@ function AssetList({ title, position, assets: all, total }: { title: string; pos
   );
 }
 
-function StatusFooter({ item }: { item: PositionWithStatus }) {
-  const { status } = item;
+function StatusFooter({ item, onProtect }: { item: PositionWithStatus; onProtect?: (position: PositionDetail) => void }) {
+  const { status, position } = item;
   if (status.kind === "protected") {
     return (
       <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[var(--border)]">
@@ -99,13 +105,19 @@ function StatusFooter({ item }: { item: PositionWithStatus }) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[var(--border)]">
         <p className="text-[11px] text-[var(--text-tertiary)] max-w-[420px]">
-          {status.note ?? "Nothing repays this debt automatically yet. One policy per wallet, one debt asset."}
+          {status.note ?? "Nothing repays this debt automatically yet. Protect this position against liquidation."}
         </p>
-        <Button size="sm" asChild>
-          <Link href="/dashboard/protection">
-            Protect this position <ArrowRight className="size-3.5" />
-          </Link>
-        </Button>
+        {onProtect ? (
+          <Button size="sm" onClick={() => onProtect(position)}>
+            Protect this position <ArrowRight className="size-3.5 ml-1" />
+          </Button>
+        ) : (
+          <Button size="sm" asChild>
+            <Link href="/dashboard/protection">
+              Protect this position <ArrowRight className="size-3.5 ml-1" />
+            </Link>
+          </Button>
+        )}
       </div>
     );
   }

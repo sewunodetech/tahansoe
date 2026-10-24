@@ -9,6 +9,7 @@ import { LivePositionCard } from "@/components/dashboard/live/live-position-card
 import { LivePolicyStatus } from "@/components/dashboard/live/live-policy-status";
 import { LivePage } from "@/components/dashboard/live/live-page";
 import { useGuardian } from "@/hooks/useGuardian";
+import { useGuardianV4 } from "@/hooks/useGuardianV4";
 import { useSimSession, useSimStatus } from "@/lib/sim/hooks";
 import { SimChooseMarket, SimRunMarket } from "./sim-scenario-panel";
 import { SimSetupWizard } from "./sim-setup-wizard";
@@ -32,12 +33,20 @@ const usd = (v: number) => `$${v.toLocaleString("en-US", { maximumFractionDigits
  */
 export function SimDashboard() {
   const g = useGuardian();
+  const g4 = useGuardianV4();
   const { data: session } = useSimSession();
   const { data: status } = useSimStatus(Boolean(session));
   const { marketChosen } = useSimDashboard();
 
   const hasPosition = (g.account?.debtUsd ?? 0) > 0;
-  const protectionOn = Boolean(g.policy?.enabled);
+  const isV4 = Boolean(session?.contracts.guardianAaveV4 || session?.contracts.guardianMorpho);
+  const usdcAddress = g.token?.address.toLowerCase();
+  const v4Policy = usdcAddress ? g4.aavePolicies.get(usdcAddress) : undefined;
+  const v4PolicyActive = Boolean(v4Policy?.enabled);
+  const protectionOn = isV4
+    ? (g4.protectedPositions.length > 0 || v4PolicyActive)
+    : Boolean(g.policy?.enabled);
+
   const protections = status?.events.filter((e) => e.type === "protected").length ?? 0;
   // After a reload the in-memory choice is gone, but an open position proves the market was picked.
   const auto = !(marketChosen || hasPosition) ? 0 : !hasPosition || !protectionOn ? 1 : 2;
@@ -45,6 +54,10 @@ export function SimDashboard() {
   // A manual pick only holds while the fork stays at the step it was made on.
   const [picked, setPicked] = useState<{ step: number; at: number } | null>(null);
   const step = picked && picked.at === auto ? picked.step : auto;
+
+  const activeTrigger = isV4
+    ? (v4Policy?.enabled ? v4Policy.triggerHf : null)
+    : (g.policy?.enabled ? g.policy.triggerHf : null);
 
   return (
     <LivePage
@@ -56,7 +69,7 @@ export function SimDashboard() {
         collateralUsd={g.account?.collateralUsd ?? 0}
         debtUsd={g.account?.debtUsd ?? 0}
         hf={g.account?.hf ?? null}
-        trigger={g.policy?.enabled ? g.policy.triggerHf : null}
+        trigger={activeTrigger}
       />
 
       <ol className="grid grid-cols-3 gap-2" aria-label="Simulation steps">
