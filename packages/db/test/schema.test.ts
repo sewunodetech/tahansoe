@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { getTableName } from "drizzle-orm";
 import {
   simSessions,
+  policies,
   intents,
   runMigrations,
   type SqlExecutor,
@@ -43,6 +44,18 @@ describe("packages/db simulation and success fee schema (specs m1 §3.9 & m4 §3
     assert.equal(cols.feeWaived.notNull, false, "fee_waived should be nullable");
   });
 
+  it("policies and intents tables have nullable position_key per spec m4 §3.6", () => {
+    assert.ok(policies);
+    assert.ok(policies.positionKey, "policies.positionKey column exists");
+    assert.equal(policies.positionKey.getSQLType(), "text");
+    assert.equal(policies.positionKey.notNull, false, "policies.position_key should be nullable");
+
+    assert.ok(intents);
+    assert.ok(intents.positionKey, "intents.positionKey column exists");
+    assert.equal(intents.positionKey.getSQLType(), "text");
+    assert.equal(intents.positionKey.notNull, false, "intents.position_key should be nullable");
+  });
+
   it("runMigrations produces idempotent DDL for sim_sessions and intent fee columns", async () => {
     const executedSql: string[] = [];
     const mockExecutor: SqlExecutor = {
@@ -78,6 +91,20 @@ describe("packages/db simulation and success fee schema (specs m1 §3.9 & m4 §3
     assert.ok(
       allSql.includes("ALTER TABLE intents ADD COLUMN IF NOT EXISTS fee_waived"),
       "Should alter intents for fee_waived"
+    );
+
+    // Guardian v4 position_key idempotent DDL
+    assert.ok(
+      allSql.includes("ALTER TABLE policies ADD COLUMN IF NOT EXISTS position_key TEXT"),
+      "Should alter policies for position_key"
+    );
+    assert.ok(
+      allSql.includes("CREATE INDEX IF NOT EXISTS policies_position_key_idx ON policies (position_key)"),
+      "Should create index on policies(position_key)"
+    );
+    assert.ok(
+      allSql.includes("ALTER TABLE intents ADD COLUMN IF NOT EXISTS position_key TEXT"),
+      "Should alter intents for position_key"
     );
   });
 });

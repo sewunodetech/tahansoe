@@ -11,3 +11,4 @@ export * from "./protection";
 export * from "./zone";
 export * from "./cascade";
 export * from "./positions";
+export * from "./guardian";
