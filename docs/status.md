@@ -31,7 +31,7 @@ Dikerjakan empat worker paralel (2 Claude, 2 Antigravity), lalu digabung dan div
 - **Verifikasi:** typecheck dan lint bersih; test engine 486, simnet 61, web 46, db 5, domain 75; Playwright di fork sungguhan untuk Positions, Holdings, Reserves, dan deep link.
 
 **Gap:**
-- Policy per posisi/protokol dan proteksi Morpho butuh Guardian v4 (ADR baru).
+- Policy per posisi/protokol dan proteksi Morpho butuh Guardian v4: [ADR 0015](decisions/0015-guardian-v4-per-position-policies.md) (Proposed) dan [spec](specs/m4-guardian-v4-per-position.md) (Draft) menunggu review owner.
 - Simnet produksi butuh RPC arsip (Alchemy/Infura gratis).
 - Nilai USD Morpho hanya tersedia bila loan token juga reserve Aave.
 

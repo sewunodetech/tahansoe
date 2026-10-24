@@ -18,3 +18,4 @@ Spec boleh berubah selama implementasi; perbedaan dengan PRD/architecture harus 
 | M1 | [m1-simulation-mode.md](m1-simulation-mode.md) | Simulation Mode — wallet simulasi di fork Arbitrum One | In progress |
 | M4 | [m4-guardian-success-fee.md](m4-guardian-success-fee.md) | Guardian v3 — fee sukses 0,15% | In progress |
 | M1 | [m1-positions-holdings-guardian-view.md](m1-positions-holdings-guardian-view.md) | Positions, Holdings, Reserves, dan Overview "Guardian view" | In progress |
+| M4/M5 | [m4-guardian-v4-per-position.md](m4-guardian-v4-per-position.md) | Guardian v4 — policy per posisi (Aave multi-utang + Morpho Blue) | Draft |
