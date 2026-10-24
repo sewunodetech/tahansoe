@@ -12,6 +12,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface ScenarioPoint {
   t: number;     // unix seconds
@@ -413,10 +414,17 @@ export async function buildScenarios(): Promise<void> {
   console.log("\n[build-scenarios] All scenario fixtures successfully built and verified.");
 }
 
-// Execute when run
-buildScenarios()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error("[build-scenarios] Fatal error:", err);
-    process.exit(1);
-  });
+// Execute when run as main entry point
+const isDirectRun =
+  Boolean(process.argv[1]) &&
+  path.resolve(process.argv[1]).toLowerCase() ===
+    fileURLToPath(import.meta.url).toLowerCase();
+
+if (isDirectRun) {
+  buildScenarios()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error("[build-scenarios] Fatal error:", err);
+      process.exit(1);
+    });
+}
