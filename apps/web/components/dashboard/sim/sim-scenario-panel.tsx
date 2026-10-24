@@ -61,19 +61,24 @@ export function SimChooseMarket() {
         </CardTitle>
         <CardDescription className="text-xs">Pick one. You can come back and try another later.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-2.5">
-        {MARKETS.map(({ mode, title, body, icon: Icon }) => (
-          <div key={mode} className="rounded-md border border-[var(--border)] p-3.5 flex flex-col sm:flex-row sm:items-center gap-3">
-            <Icon className="size-4 text-[var(--text-secondary)] shrink-0 hidden sm:block" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-[var(--text-primary)]">{title}</p>
-              <p className="text-[11px] text-[var(--text-tertiary)]">{body}</p>
+      <CardContent className="space-y-3">
+        {/* One tile per market, side by side from md up so the step fills the same width as the stepper. */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {MARKETS.map(({ mode, title, body, icon: Icon }) => (
+            <div key={mode} className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-4 flex flex-col gap-3">
+              <div className="flex items-start gap-2.5">
+                <Icon className="size-4 text-[var(--brand)] shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{title}</p>
+                  <p className="text-xs text-[var(--text-tertiary)] mt-0.5">{body}</p>
+                </div>
+              </div>
               {mode === "replay" && (
                 <select
                   aria-label="Historical crash"
                   value={scenario}
                   onChange={(e) => setScenario(e.target.value as SimScenarioId)}
-                  className="mt-2 w-full sm:max-w-[300px] h-8 px-2.5 rounded-md border border-[var(--border)] bg-[var(--bg-subtle)] text-xs text-[var(--text-primary)]"
+                  className="w-full h-8 px-2.5 rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] text-xs text-[var(--text-primary)]"
                 >
                   {SIM_SCENARIOS.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -82,12 +87,18 @@ export function SimChooseMarket() {
                   ))}
                 </select>
               )}
+              <Button
+                size="sm"
+                variant={mode === "live" ? "secondary" : "primary"}
+                disabled={busy !== null}
+                onClick={() => choose(mode)}
+                className="mt-auto self-start"
+              >
+                {busy === mode ? <Loader2 className="animate-spin" /> : null} Choose
+              </Button>
             </div>
-            <Button size="sm" variant={mode === "live" ? "secondary" : "primary"} disabled={busy !== null} onClick={() => choose(mode)} className="shrink-0 self-start sm:self-center">
-              {busy === mode ? <Loader2 className="animate-spin" /> : null} Choose
-            </Button>
-          </div>
-        ))}
+          ))}
+        </div>
         {busy && busy !== "live" && <p className="text-[11px] text-[var(--text-tertiary)]">Starting a private fork of Arbitrum One, about 20 seconds…</p>}
         {error && (
           <p role="alert" className="text-[11px] text-[var(--danger)]">

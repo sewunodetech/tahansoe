@@ -10,9 +10,9 @@ export const SIM_MODES = ["live", "replay", "stress"] as const;
 export type SimMode = (typeof SIM_MODES)[number];
 
 export const SIM_SCENARIOS = [
-  { id: "aug-2024-yen-carry", label: "Aug 2024 — yen carry unwind", normalized: false },
-  { id: "oct-2025-tariff-crash", label: "Oct 2025 — US–China tariff crash", normalized: false },
-  { id: "mar-2020-black-thursday", label: "Mar 2020 — Black Thursday", normalized: true },
+  { id: "aug-2024-yen-carry", label: "Aug 2024: yen carry unwind", normalized: false },
+  { id: "oct-2025-tariff-crash", label: "Oct 2025: US-China tariff crash", normalized: false },
+  { id: "mar-2020-black-thursday", label: "Mar 2020: Black Thursday", normalized: true },
 ] as const;
 export type SimScenarioId = (typeof SIM_SCENARIOS)[number]["id"];
 const SCENARIO_IDS = SIM_SCENARIOS.map((s) => s.id) as [SimScenarioId, ...SimScenarioId[]];

@@ -96,19 +96,22 @@ export function SimDashboard() {
         })}
       </ol>
 
-      <div className="max-w-[760px]">
-        {step === 0 && <SimChooseMarket />}
-        {step === 1 && <SimSetupWizard />}
-        {step === 2 && (
-          <div className="space-y-5">
-            <SimRunMarket />
+      {/* Same width as the strip and the stepper above; step 3 puts the controls in the shared 360px rail. */}
+      {step === 0 && <SimChooseMarket />}
+      {step === 1 && <SimSetupWizard />}
+      {step === 2 && (
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
+          <div className="space-y-5 min-w-0 order-2 xl:order-1">
             <GuardianView showMigration={false} />
             {protections > 0 && <ResultStep hf={g.account?.hf ?? null} protections={protections} />}
           </div>
-        )}
-      </div>
+          <div className="order-1 xl:order-2 xl:sticky xl:top-16">
+            <SimRunMarket />
+          </div>
+        </div>
+      )}
 
-      <details className="group max-w-[760px]">
+      <details className="group">
         <summary className="cursor-pointer list-none inline-flex items-center gap-1.5 text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] select-none">
           <ChevronDown className="size-3.5 transition-transform group-open:rotate-180" /> Advanced: transactions, top-up, full position details
         </summary>

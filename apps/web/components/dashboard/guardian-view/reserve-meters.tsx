@@ -58,7 +58,7 @@ export function ReserveMeters({ capacity, rescueUsd }: { capacity: Capacity; res
                   transition={reduce ? { duration: 0 } : { duration: 0.6, ease: "easeOut" }}
                 />
               </div>
-              <p className="mt-1.5 text-[10.5px] text-[var(--text-tertiary)] truncate">
+              <p className="mt-1.5 text-[11px] leading-snug text-[var(--text-tertiary)]">
                 {l.name} · {l.hint}
               </p>
             </div>
