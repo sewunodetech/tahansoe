@@ -52,6 +52,8 @@ curl -X POST -H "content-type: application/json" \
   http://localhost:8787/rpc/<forkId>
 ```
 
+**Windows:** Foundry di mesin dev terpasang di WSL, bukan di PATH Windows. Jalankan simnet di dalam WSL (Node + `~/.foundry/bin` di PATH), atau set `SIM_ANVIL_BIN`/`SIM_FORGE_BIN` ke binary Linux saat simnet berjalan di WSL/Docker. Simnet yang berjalan di Node Windows tidak bisa memanggil binary WSL secara langsung.
+
 Test: `npm test -w @tahansoe/simnet`. Test integrasi anvil sungguhan (`test/integration.test.ts`) otomatis di-skip bila `anvil` tidak ada di PATH atau `ARB_ONE_RPC_URL` kosong.
 
 ## Environment
@@ -89,7 +91,7 @@ Semua `/v1/*` wajib header `x-simnet-key`. Body JSON, divalidasi Zod.
 
 `src/deploy.ts` adalah satu-satunya titik deploy, dengan interface `Deployer.deploy(fork) → {guardian, simPriceFeed, testVault?, updater}`:
 
-1. **`contracts/script/DeploySim.s.sol`** (utama, dikerjakan paralel oleh Task A). Dijalankan dengan `forge script … --rpc-url <fork> --private-key <deployer simnet> --broadcast`. Script mencetak `SIM_DEPLOYMENT {json}` yang diparse simnet.
+1. **`contracts/script/DeploySim.s.sol`** (utama, dikerjakan paralel oleh Task A). Simnet meng-impersonate deployer simnet dan admin oracle Aave, lalu menjalankan `forge script script/DeploySim.s.sol:DeploySim --rpc-url <fork> --unlocked --sender <deployer> --broadcast` dengan env `SIM_CHAIN_ID`, `SIM_ORACLE_ADMIN`, dan `SIM_PRICE_UPDATER`. Script mencetak `SIM_DEPLOYMENT {json}` yang diparse simnet. Key `guardian` diterima, begitu juga alias `guardianV3`. Alur ini sudah dicoba di fork Arbitrum One sungguhan (24 Okt 2026).
 2. **Fallback artefak**, selama DeploySim belum ada: deploy `TahansoeGuardianV2` (provider Aave, SwapRouter02 Uniswap, fee 500), `SimPriceFeed`, dan `TestVault` bila ada, langsung dari bytecode `contracts/out`. Butuh `forge build` yang sudah menghasilkan artefak tersebut. Argumen constructor SimPriceFeed/TestVault ditebak dari ABI-nya.
 
 Deployer adalah key publik khusus simnet (`keccak256("tahansoe.simnet.deployer.v1")`) yang nonce-nya di-reset ke 0 di tiap fork. Hasilnya, alamat kontrak deterministik di semua fork. Key ini tidak bernilai di chain mana pun, dan juga menjadi `updater` SimPriceFeed.

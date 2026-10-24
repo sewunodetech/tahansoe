@@ -1,15 +1,18 @@
 /**
  * Contract deployment onto a fresh fork. One interface, two strategies:
  *
- * 1. `contracts/script/DeploySim.s.sol` (preferred). Run with forge against the fork;
- *    the script prints `SIM_DEPLOYMENT {"guardian":"0x…","simPriceFeed":"0x…","testVault":"0x…"}`.
+ * 1. `contracts/script/DeploySim.s.sol` (preferred). Run with
+ *    `forge script --unlocked --sender <deployer>` against the fork, with the deployer and
+ *    the Aave oracle admin impersonated (the script also switches the WETH oracle source).
+ *    It prints `SIM_DEPLOYMENT {"guardian":"0x…","simPriceFeed":"0x…","testVault":"0x…"}`.
  * 2. Artifact fallback, used while DeploySim has not landed: deploy TahansoeGuardianV2
  *    and SimPriceFeed (and TestVault, if built) straight from `contracts/out` bytecode.
  *    Requires `forge build` to have produced those artifacts.
  *
  * Both deploy from one fixed simnet deployer (nonce reset to 0 on every fork), so
- * addresses are deterministic across forks (spec §3.2). The deployer key is a public,
- * simnet-only key with no value on any real chain; it is also the SimPriceFeed updater.
+ * addresses are deterministic across forks (spec §3.2). The deployer is impersonated;
+ * its address comes from a public, simnet-only key with no value on any real chain.
+ * It is also the SimPriceFeed updater.
  */
 
 import { execFile } from "node:child_process";
@@ -33,6 +36,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { SIM_FEED_DECIMALS } from "./abis.ts";
 import { FORK_SOURCE, GUARDIAN_SWAP_FEE, UNISWAP_SWAP_ROUTER_02 } from "./config.ts";
 import type { ForkClient } from "./fork-client.ts";
+import { ensureOracleAdmin } from "./oracle.ts";
 import { toHex } from "./rpc.ts";
 
 const execFileAsync = promisify(execFile);
@@ -74,8 +78,10 @@ export function parseDeploymentOutput(stdout: string): Omit<SimDeployment, "upda
   } catch {
     return null;
   }
-  const addr = (v: unknown) => (typeof v === "string" && isAddress(v, { strict: false }) ? getAddress(v) : undefined);
-  const guardian = addr(raw.guardian);
+  const addr = (v: unknown) =>
+    typeof v === "string" && isAddress(v, { strict: false }) && BigInt(v) !== 0n ? getAddress(v) : undefined;
+  // `guardianV3` is accepted as an alias for `guardian`.
+  const guardian = addr(raw.guardian) ?? addr(raw.guardianV3);
   const simPriceFeed = addr(raw.simPriceFeed);
   if (!guardian || !simPriceFeed) return null;
   const testVault = addr(raw.testVault);
@@ -101,24 +107,39 @@ export function createDeployer(opts: DeployerOptions): Deployer {
 }
 
 async function deployWithScript(fork: ForkClient, contractsDir: string, opts: DeployerOptions): Promise<SimDeployment> {
-  const { stdout } = await execFileAsync(
-    opts.forgeBin,
-    [
-      "script", "script/DeploySim.s.sol:DeploySim",
-      "--rpc-url", fork.url,
-      "--private-key", SIM_DEPLOYER_KEY,
-      "--broadcast",
-    ],
-    {
-      cwd: contractsDir,
-      env: { ...process.env, SIM_CHAIN_ID: String(opts.simChainId) },
-      maxBuffer: 16 * 1024 * 1024,
-      timeout: 180_000,
-    },
-  );
-  const parsed = parseDeploymentOutput(stdout);
-  if (!parsed) throw new Error("DeploySim.s.sol ran but printed no valid SIM_DEPLOYMENT line");
-  return { ...parsed, updater: SIM_DEPLOYER, method: "deploy-sim-script" };
+  const { admin } = await ensureOracleAdmin(fork);
+  await fork.setBalance(admin, parseEther("100"));
+  await fork.rpc("anvil_impersonateAccount", [SIM_DEPLOYER]);
+  await fork.rpc("anvil_impersonateAccount", [admin]);
+  try {
+    const { stdout } = await execFileAsync(
+      opts.forgeBin,
+      [
+        "script", "script/DeploySim.s.sol:DeploySim",
+        "--rpc-url", fork.url,
+        "--unlocked",
+        "--sender", SIM_DEPLOYER,
+        "--broadcast",
+      ],
+      {
+        cwd: contractsDir,
+        env: {
+          ...process.env,
+          SIM_CHAIN_ID: String(opts.simChainId),
+          SIM_ORACLE_ADMIN: admin,
+          SIM_PRICE_UPDATER: SIM_DEPLOYER,
+        },
+        maxBuffer: 16 * 1024 * 1024,
+        timeout: 180_000,
+      },
+    );
+    const parsed = parseDeploymentOutput(stdout);
+    if (!parsed) throw new Error("DeploySim.s.sol ran but printed no valid SIM_DEPLOYMENT line");
+    return { ...parsed, updater: SIM_DEPLOYER, method: "deploy-sim-script" };
+  } finally {
+    await fork.rpc("anvil_stopImpersonatingAccount", [admin]).catch(() => undefined);
+    await fork.rpc("anvil_stopImpersonatingAccount", [SIM_DEPLOYER]).catch(() => undefined);
+  }
 }
 
 interface Artifact {
@@ -153,7 +174,7 @@ async function deployRaw(fork: ForkClient, data: Hex): Promise<Address> {
   await fork.rpc("anvil_impersonateAccount", [SIM_DEPLOYER]);
   try {
     const hash = await fork.rpc<Hex>("eth_sendTransaction", [{ from: SIM_DEPLOYER, data, gas: toHex(30_000_000) }]);
-    const receipt = await fork.client.waitForTransactionReceipt({ hash, pollingInterval: 100 });
+    const receipt = await fork.waitReceipt(hash);
     if (receipt.status !== "success" || !receipt.contractAddress) throw new Error(`deploy tx ${hash} failed`);
     return getAddress(receipt.contractAddress);
   } finally {

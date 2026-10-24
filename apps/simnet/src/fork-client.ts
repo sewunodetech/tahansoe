@@ -13,6 +13,7 @@ import {
   type Hex,
   type PublicClient,
   type TransactionReceipt,
+  TransactionReceiptNotFoundError,
 } from "viem";
 import { createRpc, toHex, type RpcCall } from "./rpc.ts";
 
@@ -42,6 +43,23 @@ export class ForkClient {
     await this.rpc("anvil_setBalance", [addr, toHex(wei)]);
   }
 
+  /**
+   * Polls eth_getTransactionReceipt directly. viem's waitForTransactionReceipt watches
+   * for new blocks, and anvil automine has usually mined the tx before watching starts,
+   * so it can wait for a block that never comes.
+   */
+  async waitReceipt(hash: Hex, timeoutMs = 30_000): Promise<TransactionReceipt> {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      try {
+        return await this.client.getTransactionReceipt({ hash });
+      } catch (e) {
+        if (!(e instanceof TransactionReceiptNotFoundError) || Date.now() > deadline) throw e;
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+
   /** Sends a tx from `from` using anvil impersonation; throws if it reverts. */
   async sendAs(from: Address, to: Address, data: Hex): Promise<TransactionReceipt> {
     const balance = await this.client.getBalance({ address: from });
@@ -49,7 +67,7 @@ export class ForkClient {
     await this.rpc("anvil_impersonateAccount", [from]);
     try {
       const hash = await this.rpc<Hex>("eth_sendTransaction", [{ from, to, data }]);
-      const receipt = await this.client.waitForTransactionReceipt({ hash, pollingInterval: 100, timeout: 30_000 });
+      const receipt = await this.waitReceipt(hash);
       if (receipt.status !== "success") throw new Error(`tx ${hash} reverted`);
       return receipt;
     } finally {

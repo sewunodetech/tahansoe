@@ -22,6 +22,16 @@ describe("DeploySim output", () => {
     });
   });
 
+  it("accepts guardianV3 as an alias and drops zero addresses", () => {
+    const out = parseDeploymentOutput(
+      'SIM_DEPLOYMENT {"chainId":4216199,"guardianV3":"0x1111111111111111111111111111111111111111","simPriceFeed":"0x2222222222222222222222222222222222222222","testVault":"0x0000000000000000000000000000000000000000"}',
+    );
+    assert.deepEqual(out, {
+      guardian: "0x1111111111111111111111111111111111111111",
+      simPriceFeed: "0x2222222222222222222222222222222222222222",
+    });
+  });
+
   it("treats testVault as optional and rejects bad output", () => {
     const ok = parseDeploymentOutput(
       'SIM_DEPLOYMENT {"guardian":"0x1111111111111111111111111111111111111111","simPriceFeed":"0x2222222222222222222222222222222222222222"}',
@@ -33,8 +43,9 @@ describe("DeploySim output", () => {
   });
 
   it("guesses fallback constructor args from the ABI", () => {
-    const abi = parseAbi(["constructor(int256 initialAnswer, address updater)"]);
-    assert.deepEqual(guessConstructorArgs(abi, { initialAnswer: 5n, updater: SIM_DEPLOYER }), [5n, SIM_DEPLOYER]);
+    // SimPriceFeed(address updater_, int256 initialAnswer, string description_)
+    const abi = parseAbi(["constructor(address updater_, int256 initialAnswer, string description_)"]);
+    assert.deepEqual(guessConstructorArgs(abi, { initialAnswer: 5n, updater: SIM_DEPLOYER }), [SIM_DEPLOYER, 5n, "Tahansoe Sim"]);
     const vault = parseAbi(["constructor(address asset_, string name_, string symbol_)"]);
     const usdc = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831" as const;
     assert.deepEqual(guessConstructorArgs(vault, { initialAnswer: 0n, updater: SIM_DEPLOYER, asset: usdc }), [usdc, "Tahansoe Sim", "vSIM"]);

@@ -21,10 +21,13 @@ export async function writeFeedPrice(fork: ForkClient, feed: Address, updater: A
   await fork.sendAs(updater, feed, data);
 }
 
-/** Impersonates the Aave ACL admin and calls AaveOracle.setAssetSources([WETH], [feed]). */
-export async function switchWethOracle(fork: ForkClient, feed: Address): Promise<void> {
+/**
+ * Returns an account that may call AaveOracle.setAssetSources on the fork: the Aave ACL
+ * admin, granted POOL_ADMIN via impersonation if it does not already hold it.
+ */
+export async function ensureOracleAdmin(fork: ForkClient): Promise<{ admin: Address; oracle: Address }> {
   const provider = FORK_SOURCE.poolAddressesProvider;
-  const [aclManager, aclAdmin, oracle] = await Promise.all([
+  const [aclManager, admin, oracle] = await Promise.all([
     fork.read<Address>(provider, poolAddressesProviderAbi, "getACLManager"),
     fork.read<Address>(provider, poolAddressesProviderAbi, "getACLAdmin"),
     fork.read<Address>(provider, poolAddressesProviderAbi, "getPriceOracle"),
@@ -32,18 +35,22 @@ export async function switchWethOracle(fork: ForkClient, feed: Address): Promise
   if (getAddress(oracle) !== getAddress(FORK_SOURCE.aaveOracle)) {
     throw new Error(`AaveOracle mismatch: provider says ${oracle}, registry says ${FORK_SOURCE.aaveOracle}`);
   }
-
   // The ACL admin holds DEFAULT_ADMIN_ROLE, so it can grant itself POOL_ADMIN if needed.
   const [isPoolAdmin, isListingAdmin] = await Promise.all([
-    fork.read<boolean>(aclManager, aclManagerAbi, "isPoolAdmin", [aclAdmin]),
-    fork.read<boolean>(aclManager, aclManagerAbi, "isAssetListingAdmin", [aclAdmin]),
+    fork.read<boolean>(aclManager, aclManagerAbi, "isPoolAdmin", [admin]),
+    fork.read<boolean>(aclManager, aclManagerAbi, "isAssetListingAdmin", [admin]),
   ]);
   if (!isPoolAdmin && !isListingAdmin) {
-    await fork.sendAs(aclAdmin, aclManager, encodeFunctionData({ abi: aclManagerAbi, functionName: "addPoolAdmin", args: [aclAdmin] }));
+    await fork.sendAs(admin, aclManager, encodeFunctionData({ abi: aclManagerAbi, functionName: "addPoolAdmin", args: [admin] }));
   }
+  return { admin: getAddress(admin), oracle: getAddress(oracle) };
+}
 
+/** Impersonates the Aave ACL admin and calls AaveOracle.setAssetSources([WETH], [feed]). */
+export async function switchWethOracle(fork: ForkClient, feed: Address): Promise<void> {
+  const { admin, oracle } = await ensureOracleAdmin(fork);
   await fork.sendAs(
-    aclAdmin,
+    admin,
     oracle,
     encodeFunctionData({ abi: aaveOracleAbi, functionName: "setAssetSources", args: [[FORK_SOURCE.weth], [feed]] }),
   );
