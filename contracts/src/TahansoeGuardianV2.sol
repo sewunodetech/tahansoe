@@ -621,6 +621,8 @@ contract TahansoeGuardianV2 is ReentrancyGuard, IFlashLoanSimpleReceiver {
             }
         }
 
+        _afterLayers(user, p.debtAsset, hfBefore, totalRepaid);
+
         // Return any remaining debt tokens to user
         uint256 remDebt = IERC20(p.debtAsset).balanceOf(address(this));
         if (remDebt > 0) {
@@ -640,6 +642,15 @@ contract TahansoeGuardianV2 is ReentrancyGuard, IFlashLoanSimpleReceiver {
         if (hfAfter <= hfBefore) revert HealthFactorNotImproved(hfBefore, hfAfter);
 
         emit Protected(user, p.debtAsset, msg.sender, totalRepaid, hfBefore, hfAfter);
+    }
+
+    /// @dev Extension point run after the layers and before the final refund. No-op in V2.
+    ///      Args: user, debtAsset, hfBefore, totalRepaid.
+    function _afterLayers(address, address, uint256, uint256) internal virtual {}
+
+    /// @dev Returns unused debt tokens to the user after a layer. V2 refunds immediately.
+    function _refundLeftover(IERC20 token, address user, uint256 amount) internal virtual {
+        token.safeTransfer(user, amount);
     }
 
     function _computeLayer1Amount(address user, Policy storage p, uint256 debtBase, uint256 targetDebtBase)
@@ -671,7 +682,7 @@ contract TahansoeGuardianV2 is ReentrancyGuard, IFlashLoanSimpleReceiver {
         token.forceApprove(address(aave), 0);
 
         uint256 leftover = token.balanceOf(address(this));
-        if (leftover > 0) token.safeTransfer(user, leftover);
+        if (leftover > 0) _refundLeftover(token, user, leftover);
 
         emit LayerUsed(user, 1, amount, repaid);
     }
@@ -728,7 +739,7 @@ contract TahansoeGuardianV2 is ReentrancyGuard, IFlashLoanSimpleReceiver {
         debtToken.forceApprove(address(aave), 0);
 
         uint256 leftover = debtToken.balanceOf(address(this));
-        if (leftover > 0) debtToken.safeTransfer(user, leftover);
+        if (leftover > 0) _refundLeftover(debtToken, user, leftover);
 
         emit LayerUsed(user, 2, amount, repaid);
     }
@@ -829,7 +840,7 @@ contract TahansoeGuardianV2 is ReentrancyGuard, IFlashLoanSimpleReceiver {
         // Return leftover debt tokens above totalOwed to user
         uint256 currentBal = debtToken.balanceOf(address(this));
         if (currentBal > totalOwed) {
-            debtToken.safeTransfer(fp.user, currentBal - totalOwed);
+            _refundLeftover(debtToken, fp.user, currentBal - totalOwed);
         }
 
         // Return leftover collateral tokens to user

@@ -3,3 +3,5 @@ cache/
 lib/
 .env
 # keep broadcast/ so deployment receipts (addresses, tx hashes) are committed
+# simulation forks are ephemeral: never commit their receipts
+broadcast/DeploySim.s.sol/
