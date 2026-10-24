@@ -1,5 +1,10 @@
 import type { Address } from "viem";
-import { getChainConfig } from "@tahansoe/domain";
+import {
+  getChainConfig,
+  latestGuardian,
+  isPerPositionGuardian,
+  type GuardianDeployment,
+} from "@tahansoe/domain";
 import type { ProtocolType } from "./types";
 
 export interface SimContractsV4Like {
@@ -11,11 +16,46 @@ export interface SimContractsV4Like {
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 
 /**
+ * Gets the v4 Guardian deployment for a given protocol on the target chain.
+ * Uses official domain helpers `latestGuardian` and `isPerPositionGuardian`.
+ */
+export function getGuardianV4Deployment({
+  chainId,
+  protocol,
+  isSimulation,
+  simContracts,
+}: {
+  chainId: number;
+  protocol: ProtocolType;
+  isSimulation?: boolean;
+  simContracts?: SimContractsV4Like | null;
+}): GuardianDeployment | null {
+  if (isSimulation) {
+    const address = getGuardianV4Address({ chainId, protocol, isSimulation, simContracts });
+    if (!address) return null;
+    return {
+      version: 4,
+      address,
+      deployedBlock: 0,
+      protocol,
+      features: { layer2: true, layer3: true, triggerBand: true },
+    };
+  }
+
+  const chainConfig = getChainConfig(chainId);
+  if (!chainConfig) return null;
+
+  const deployment = latestGuardian(chainConfig, protocol);
+  if (deployment && isPerPositionGuardian(deployment)) {
+    return deployment;
+  }
+
+  return null;
+}
+
+/**
  * Gets the v4 Guardian address for a given protocol on the target chain.
- *
- * TODO: When Task B lands with `protocol` and v4 in `@tahansoe/domain`,
- * and Task E lands with `guardianAaveV4` / `guardianMorpho` in simnet contracts,
- * update this lookup to use the official domain helpers.
+ * Uses domain helpers `latestGuardian` and `isPerPositionGuardian`.
  */
 export function getGuardianV4Address({
   chainId,
@@ -43,15 +83,14 @@ export function getGuardianV4Address({
   }
 
   const chainConfig = getChainConfig(chainId);
-  if (!chainConfig || !chainConfig.guardians) return null;
+  if (!chainConfig) return null;
 
-  // Look for a v4 deployment matching the protocol
-  const found = chainConfig.guardians.find((g) => {
-    const deploymentProtocol = (g as { protocol?: string }).protocol;
-    return g.version === 4 && (deploymentProtocol ? deploymentProtocol === protocol : protocol === "aave-v3");
-  });
+  const deployment = latestGuardian(chainConfig, protocol);
+  if (deployment && isPerPositionGuardian(deployment)) {
+    return deployment.address;
+  }
 
-  return found ? found.address : null;
+  return null;
 }
 
 /**

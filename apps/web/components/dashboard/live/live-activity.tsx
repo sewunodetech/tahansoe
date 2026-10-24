@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
+import { formatUnits } from "viem";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import { ArrowUpRight, Loader2 } from "lucide-react";
@@ -8,8 +9,10 @@ import { Card } from "@/components/ui/card";
 import { guardianAbi, guardianV2Abi } from "@/lib/contracts";
 import { assetSymbol, useLiveTarget } from "@/lib/live-target";
 import { isGuardianV2, wadToNumber } from "@tahansoe/domain";
+import { getGuardianV4Deployment, guardianAaveV4Abi, guardianMorphoAbi } from "@/lib/guardian-v4";
+import { useSimSession } from "@/lib/sim/hooks";
 
-interface ActivityRow {
+export interface ActivityRow {
   key: string;
   block: bigint;
   hash: string;
@@ -18,25 +21,65 @@ interface ActivityRow {
   detail: string;
 }
 
-/** Guardian events for the connected wallet across every Guardian version, newest first. */
+/** Pure helper to merge and sort activity rows by block descending. */
+export function mergeActivityRows(...groups: ActivityRow[][]): ActivityRow[] {
+  const all = groups.flat();
+  return all.sort((a, b) => (a.block === b.block ? 0 : a.block > b.block ? -1 : 1));
+}
+
+/** Guardian events for the connected wallet across every Guardian version (v1, v2, v4), newest first. */
 export function LiveActivity() {
   const { address: user } = useAccount();
   const target = useLiveTarget();
   const client = usePublicClient({ chainId: target.chain.id });
+  const { data: simSession } = useSimSession(target.isSimulation);
+
+  const aaveV4Deployment = useMemo(
+    () =>
+      getGuardianV4Deployment({
+        chainId: target.chain.id,
+        protocol: "aave-v3",
+        isSimulation: target.isSimulation,
+        simContracts: simSession?.contracts,
+      }),
+    [target.chain.id, target.isSimulation, simSession?.contracts]
+  );
+
+  const morphoV4Deployment = useMemo(
+    () =>
+      getGuardianV4Deployment({
+        chainId: target.chain.id,
+        protocol: "morpho-blue",
+        isSimulation: target.isSimulation,
+        simContracts: simSession?.contracts,
+      }),
+    [target.chain.id, target.isSimulation, simSession?.contracts]
+  );
+
   const debtAssetSymbol = (address: string | undefined) => assetSymbol(target, address);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["guardian-activity", user, target.chain.id, target.guardian.address],
+    queryKey: [
+      "guardian-activity",
+      user,
+      target.chain.id,
+      target.guardian.address,
+      aaveV4Deployment?.address,
+      morphoV4Deployment?.address,
+    ],
     enabled: Boolean(user && client && target.ready),
     refetchInterval: 30_000,
     queryFn: async (): Promise<ActivityRow[]> => {
       const rows: ActivityRow[] = [];
       // The simulation RPC proxy caps eth_getLogs at 10,000 blocks (spec m1-simulation-mode §3.7).
       const simFloor = target.isSimulation ? (await client!.getBlockNumber()) - 9_000n : 0n;
+
+      /* ── 1. Classic v1–v3 Guardian deployments ────────────────────────── */
       for (const g of [target.guardian, ...target.legacyGuardians]) {
         const isV2 = isGuardianV2(g);
         const abi = isV2 ? guardianV2Abi : guardianAbi;
-        const base = { address: g.address, abi, fromBlock: BigInt(g.deployedBlock) > simFloor ? BigInt(g.deployedBlock) : simFloor > 0n ? simFloor : 0n, args: { user: user! } };
+        const fromBlock = BigInt(g.deployedBlock) > simFloor ? BigInt(g.deployedBlock) : simFloor > 0n ? simFloor : 0n;
+        const base = { address: g.address, abi, fromBlock, args: { user: user! } };
 
         if (isV2) {
           const [set, disabled, protectedLogs, l2Set, l3Set, tbSet, dynSet, layerUsed] = await Promise.all([
@@ -172,7 +215,142 @@ export function LiveActivity() {
           }
         }
       }
-      return rows.sort((a, b) => (a.block === b.block ? 0 : a.block > b.block ? -1 : 1));
+
+      /* ── 2. Guardian Aave v4 Deployment ────────────────────────────────── */
+      if (aaveV4Deployment) {
+        const g4 = aaveV4Deployment;
+        const fromBlock = BigInt(g4.deployedBlock) > simFloor ? BigInt(g4.deployedBlock) : simFloor > 0n ? simFloor : 0n;
+        const base = {
+          address: g4.address,
+          abi: guardianAaveV4Abi,
+          fromBlock,
+          args: { user: user! },
+        };
+
+        const [set, disabled, protectedLogs, layerUsed, feeCharged, dynSet] = await Promise.all([
+          client!.getContractEvents({ ...base, eventName: "PolicySet" as const }),
+          client!.getContractEvents({ ...base, eventName: "PolicyDisabled" as const }),
+          client!.getContractEvents({ ...base, eventName: "Protected" as const }),
+          client!.getContractEvents({ ...base, eventName: "LayerUsed" as const }),
+          client!.getContractEvents({ ...base, eventName: "FeeCharged" as const }),
+          client!.getContractEvents({ ...base, eventName: "DynamicTriggerSet" as const }),
+        ]);
+
+        for (const log of set) {
+          rows.push({
+            key: `${log.transactionHash}-${log.logIndex}`,
+            block: log.blockNumber,
+            hash: log.transactionHash,
+            version: g4.version,
+            label: "Policy saved",
+            detail: `${debtAssetSymbol(log.args.debtAsset)} · trigger ${wadToNumber(log.args.triggerHF!).toFixed(2)} → target ${wadToNumber(log.args.targetHF!).toFixed(2)}`,
+          });
+        }
+        for (const log of disabled) {
+          rows.push({
+            key: `${log.transactionHash}-${log.logIndex}`,
+            block: log.blockNumber,
+            hash: log.transactionHash,
+            version: g4.version,
+            label: "Policy disabled",
+            detail: `${debtAssetSymbol(log.args.debtAsset)} · Tahansoe stopped acting on this position`,
+          });
+        }
+        for (const log of protectedLogs) {
+          rows.push({
+            key: `${log.transactionHash}-${log.logIndex}`,
+            block: log.blockNumber,
+            hash: log.transactionHash,
+            version: g4.version,
+            label: "Debt repaid",
+            detail: `HF ${wadToNumber(log.args.healthFactorBefore!).toFixed(2)} → ${wadToNumber(log.args.healthFactorAfter!).toFixed(2)} · ${debtAssetSymbol(log.args.debtAsset)}`,
+          });
+        }
+        for (const log of layerUsed) {
+          rows.push({
+            key: `${log.transactionHash}-${log.logIndex}`,
+            block: log.blockNumber,
+            hash: log.transactionHash,
+            version: g4.version,
+            label: `Layer ${log.args.layer} executed`,
+            detail: `Repaid ${debtAssetSymbol(log.args.debtAsset)} via Layer ${log.args.layer}`,
+          });
+        }
+        for (const log of feeCharged) {
+          const decimals = target.debtAssets.find((a) => a.address.toLowerCase() === log.args.debtAsset?.toLowerCase())?.decimals ?? 18;
+          const feeStr = formatUnits(log.args.amount ?? 0n, decimals);
+          const waivedStr = log.args.waived && log.args.waived > 0n ? ` (waived ${formatUnits(log.args.waived, decimals)})` : "";
+          rows.push({
+            key: `${log.transactionHash}-${log.logIndex}`,
+            block: log.blockNumber,
+            hash: log.transactionHash,
+            version: g4.version,
+            label: "Fee charged",
+            detail: `${debtAssetSymbol(log.args.debtAsset)} · fee ${feeStr}${waivedStr}`,
+          });
+        }
+        for (const log of dynSet) {
+          rows.push({
+            key: `${log.transactionHash}-${log.logIndex}`,
+            block: log.blockNumber,
+            hash: log.transactionHash,
+            version: g4.version,
+            label: "Dynamic trigger updated",
+            detail: `${debtAssetSymbol(log.args.debtAsset)} · Trigger set to ${wadToNumber(log.args.triggerHF!).toFixed(2)} by AI agent`,
+          });
+        }
+      }
+
+      /* ── 3. Guardian Morpho v4 Deployment (if active on chain) ─────────── */
+      if (morphoV4Deployment) {
+        const gm = morphoV4Deployment;
+        const fromBlock = BigInt(gm.deployedBlock) > simFloor ? BigInt(gm.deployedBlock) : simFloor > 0n ? simFloor : 0n;
+        const base = {
+          address: gm.address,
+          abi: guardianMorphoAbi,
+          fromBlock,
+          args: { user: user! },
+        };
+
+        const [set, disabled, protectedLogs] = await Promise.all([
+          client!.getContractEvents({ ...base, eventName: "PolicySet" as const }),
+          client!.getContractEvents({ ...base, eventName: "PolicyDisabled" as const }),
+          client!.getContractEvents({ ...base, eventName: "Protected" as const }),
+        ]);
+
+        for (const log of set) {
+          rows.push({
+            key: `${log.transactionHash}-${log.logIndex}`,
+            block: log.blockNumber,
+            hash: log.transactionHash,
+            version: gm.version,
+            label: "Policy saved",
+            detail: `Morpho market ${log.args.marketId?.slice(0, 10)}… · trigger ${wadToNumber(log.args.triggerHF!).toFixed(2)} → target ${wadToNumber(log.args.targetHF!).toFixed(2)}`,
+          });
+        }
+        for (const log of disabled) {
+          rows.push({
+            key: `${log.transactionHash}-${log.logIndex}`,
+            block: log.blockNumber,
+            hash: log.transactionHash,
+            version: gm.version,
+            label: "Policy disabled",
+            detail: `Morpho market ${log.args.marketId?.slice(0, 10)}… · protection stopped`,
+          });
+        }
+        for (const log of protectedLogs) {
+          rows.push({
+            key: `${log.transactionHash}-${log.logIndex}`,
+            block: log.blockNumber,
+            hash: log.transactionHash,
+            version: gm.version,
+            label: "Debt repaid",
+            detail: `HF ${wadToNumber(log.args.healthFactorBefore!).toFixed(2)} → ${wadToNumber(log.args.healthFactorAfter!).toFixed(2)} · Morpho market ${log.args.marketId?.slice(0, 10)}…`,
+          });
+        }
+      }
+
+      return mergeActivityRows(rows);
     },
   });
 
