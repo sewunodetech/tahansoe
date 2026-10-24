@@ -1,7 +1,7 @@
 # Spec: Guardian v3 — fee sukses 0,15%
 
 - **Milestone:** M4 Guardian v2 (lanjutan) — lihat [PRD §10](../prd.md#10-roadmap-eksekusi)
-- **Status:** Draft
+- **Status:** In progress (diimplementasikan di branch feat/user-proof-sim-fee, 24 Okt 2026)
 - **Pemilik:** Tim Kontrak
 - **Terkait:** [ADR 0013](../decisions/0013-success-fee-on-protection.md), [ADR 0006](../decisions/0006-business-model-free-info-paid-automation.md), [security.md](../security.md), [guardian-v2-execution.md](../plans/guardian-v2-execution.md)
 

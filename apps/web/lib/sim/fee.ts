@@ -3,17 +3,12 @@
  * (spec m1-simulation-mode §2, §3.2; spec m4-guardian-success-fee §3).
  *
  * While the fork runs Guardian v2 (no FeeCharged event), the UI shows the fee v3 would charge,
- * labelled as an estimate.
- * TODO: switch to `feeEligible` / `fee` / `feeWaived` from simulateCascade in @tahansoe/domain
- * once the domain worker lands them; the rules below mirror that spec.
+ * labelled as an estimate. Constants come from @tahansoe/domain so they match simulateCascade.
  */
 
-import { simulateCascade } from "@tahansoe/domain";
+import { FEE_HF_CEILING, SUCCESS_FEE_BPS, simulateCascade } from "@tahansoe/domain";
 
-/** 0.15% of the debt repaid (m4 spec: SUCCESS_FEE_BPS = 15). */
-export const SUCCESS_FEE_BPS = 15;
-/** No fee when the position was protected above this HF (m4 spec: FEE_HF_CEILING). */
-export const FEE_HF_CEILING = 1.5;
+export { FEE_HF_CEILING, SUCCESS_FEE_BPS };
 
 export function estimateSuccessFee(input: { totalRepaidUsd: number; hfBefore: number; staticTriggerHf: number }): {
   feeEligible: boolean;

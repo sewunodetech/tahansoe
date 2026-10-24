@@ -9,6 +9,39 @@
 
 ## Sudah jalan
 
+### User proof: Simulation Mode + Guardian v3 fee sukses — 24 Okt 2026 (branch `feat/user-proof-sim-fee`; [ADR 0013](decisions/0013-success-fee-on-protection.md) & [ADR 0014](decisions/0014-simulation-network-anvil-fork.md) masih **Proposed**)
+
+Dikerjakan enam worker paralel (Orca), lalu digabung dan diverifikasi.
+
+- **Kontrak:**
+  - `TahansoeGuardianV3`: turunan V2 dengan fee sukses 15 bps, hanya bila HF < trigger statis dan < 1,50. Proteksi selalu didahulukan; sisa fee yang tak terbayar dihapus (waived); treasury `immutable`; event `FeeCharged`; view `quoteFee`.
+  - V2 hanya mendapat dua hook internal no-op (`_afterLayers`, `_refundLeftover`); perilakunya tidak berubah.
+  - `SimPriceFeed`: aggregator mock 8 desimal, `setAnswer` hanya oleh updater.
+  - `DeploySim.s.sol`: dijaga `SIM_CHAIN_ID`; mengganti sumber WETH AaveOracle lewat Aave executor yang di-impersonate; mencetak satu baris `SIM_DEPLOYMENT {json}`.
+  - `forge test`: 53 lulus, 3 fork test di-skip tanpa RPC. Fork suite di Arbitrum One 5/5 (dijalankan worker).
+- **`apps/simnet`** (baru):
+  - Fork manager anvil: satu fork bersama untuk mode live, plus fork pribadi (maks 4, TTL 15 menit).
+  - Deploy module, relay Chainlink 5 detik, replay/crash, faucet (slot storage WETH=51, USDC=9), keeper simulasi.
+  - RPC proxy dengan allowlist dan session API ber-`x-simnet-key`.
+  - Dockerfile dan compose (mem_limit 2g). 56 test.
+  - Sudah dicek manual di fork Arbitrum One via WSL. Image Docker belum di-build.
+- **Skenario replay** (`apps/simnet/scenarios`, data Binance ETHUSDT): Agu 2024 (577 titik), Okt 2025 (289), Mar 2020 ternormalisasi (433).
+- **`packages/domain`:** `simulateCascade` menghitung `feeEligible`/`fee`/`feeWaived`; ada `ARBITRUM_ONE_SIM` (chainId 4216199, tidak masuk `SUPPORTED_CHAINS`).
+- **`packages/db`:** tabel `sim_sessions` dan kolom `intents.fee_amount`/`fee_waived` (migrasi idempoten, belum dijalankan ke DB prod).
+- **Web:**
+  - `/connect` punya pilihan simulasi; wallet burner di browser dengan `simConnector`.
+  - `/api/sim/*` dengan validasi Zod dan `session.sim` yang terpisah dari SIWE.
+  - Dashboard punya mode `simulation`: banner, panel skenario, wizard + Auto-fill, daftar tx dengan fee, panel "Tanpa Tahansoe", CTA konversi. `SIMNET_MOCK=1` untuk demo tanpa layanan.
+  - Landing punya section perbandingan (`#compare`). FAQ/PRD dikoreksi: DeFi Saver kini mendukung EOA untuk Aave v3.
+- **Verifikasi gabungan:** `npm run typecheck` bersih, `npm run lint` 0 error, `npm test` 618 lulus (engine 486, simnet 56, web 18, db 5, domain 53).
+
+**Gap:**
+- ADR 0013/0014 belum Accepted. security.md I1/I4 dan ADR 0006 belum direvisi, sehingga V3 belum boleh di-deploy ke chain nyata.
+- Simnet belum di-deploy ke VPS, dan Cloudflare Tunnel untuk RPC proxy publik belum ada.
+- Wizard di fork sungguhan baru diuji dengan mock, belum end-to-end.
+- Image Docker simnet belum di-build.
+- Bonus likuidasi WETH 5% masih di-hardcode di `apps/web/lib/sim/fee.ts`.
+
 ### Satu DB + broadcast riset ke bot Telegram web — 23 Okt 2026 ([ADR 0012](decisions/0012-unified-db-outbound-research-broadcast.md), [spec](specs/m3-research-broadcast.md), [plan](plans/research-broadcast.md))
 - **Satu database:** engine kini memakai `DATABASE_URL` yang sama dengan web (Neon `custos`). Migrasi idempoten dijalankan; data riset historis dari DB engine lama disalin sekali, insert-only (`npm run db:copy-engine`, 1009 baris: 15 `research_reports`, 163 `signals`, 70 `risk_assessments`, 408 `price_samples`, 352 `rate_samples`, 1 `llm_usage_daily`). Tabel user-level tidak disalin. `npm run db:check` menampilkan host DB tersamar.
 - **Engine hanya kirim (outbound-only):** `BroadcastWorker` (`apps/engine/src/broadcast/`) mengirim ke semua `telegram_accounts` aktif lewat bot web. Isinya digest terjadwal (`BROADCAST_DIGEST_TIMES`, default 08:00 & 20:00 `Asia/Jakarta`) dan alert segera saat regime naik atau ada sinyal kritis (T10/T4/T7/T8 berat). Dedupe 6 jam dan hysteresis turun 1 jam, dengan dedupe & log di tabel `broadcasts`. Advisory lock `42161006`. Rate limit ≤ 25 msg/s dengan `retry_after` pada 429; 403 menonaktifkan akun. Tersedia `tahansoe broadcast digest|once [--dry]` dan `start --no-broadcast`. Sentinel kini memakai `TelegramSender`.

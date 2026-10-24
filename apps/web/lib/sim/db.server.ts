@@ -3,7 +3,8 @@
  * configured or the table does not exist yet, the write is skipped and the simulation still runs.
  * No raw IP is stored; the user agent is hashed.
  *
- * TODO: switch to the typed `simSessions` table from @tahansoe/db once the schema lands there.
+ * Raw SQL on purpose: it lets a missing table (42P01, migration not run yet) be skipped quietly.
+ * Columns match `simSessions` in @tahansoe/db.
  */
 
 import crypto from "crypto";

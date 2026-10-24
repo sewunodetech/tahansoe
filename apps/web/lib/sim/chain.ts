@@ -4,7 +4,7 @@
  */
 
 import { defineChain } from "viem";
-import { ARBITRUM_ONE, type ChainConfig } from "@tahansoe/domain";
+import { ARBITRUM_ONE_SIM, type ChainConfig } from "@tahansoe/domain";
 
 export const SIM_CHAIN_ID = Number(process.env.NEXT_PUBLIC_SIM_CHAIN_ID ?? 4216199) || 4216199;
 
@@ -21,16 +21,11 @@ export const simChain = defineChain({
 
 /**
  * Registry entry for the fork. Aave and token addresses are the Arbitrum One ones; the Guardian
- * address comes from the simnet session.
- * TODO: switch to ARBITRUM_ONE_SIM from @tahansoe/domain once the domain worker lands it.
+ * address comes from the simnet session. The chain id and RPC base can be overridden per deploy.
  */
 export const SIM_CHAIN_CONFIG: ChainConfig & { isSimulation: true } = {
-  ...ARBITRUM_ONE,
+  ...ARBITRUM_ONE_SIM,
   chainId: SIM_CHAIN_ID,
-  name: "Arbitrum One (simulation fork)",
   rpcUrls: SIM_RPC_BASE ? [SIM_RPC_BASE] : [],
-  guardian: undefined,
-  guardians: [],
-  explorer: "",
   isSimulation: true,
 };

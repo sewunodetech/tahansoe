@@ -136,6 +136,7 @@ contract DeploySim is Script {
         vm.serializeUint(k, "swapFee", SWAP_FEE);
         vm.serializeAddress(k, "weth", WETH_ARB_ONE);
         vm.serializeAddress(k, "usdc", USDC_ARB_ONE);
+        vm.serializeAddress(k, "guardian", d.guardianV3);
         vm.serializeAddress(k, "guardianV3", d.guardianV3);
         vm.serializeAddress(k, "simPriceFeed", d.simPriceFeed);
         vm.serializeAddress(k, "testVault", d.testVault);

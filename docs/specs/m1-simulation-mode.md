@@ -1,7 +1,7 @@
 # Spec: Simulation Mode — coba Tahansoe dengan wallet simulasi di fork Arbitrum One
 
 - **Milestone:** M1 integrasi end-to-end ([PRD §10](../prd.md#10-roadmap-eksekusi)); memenuhi [BRD §8](../brd.md) poin 1 "demo end-to-end (posisi → crash simulasi → proteksi → alert Telegram)"
-- **Status:** Draft
+- **Status:** In progress (diimplementasikan di branch feat/user-proof-sim-fee, 24 Okt 2026)
 - **Pemilik:** Tim Web + Tim Engine
 - **Terkait:** [ADR 0014](../decisions/0014-simulation-network-anvil-fork.md), [ADR 0013](../decisions/0013-success-fee-on-protection.md), [ADR 0001](../decisions/0001-arbitrum-first-chain-agnostic.md), [ADR 0007](../decisions/0007-monorepo-structure-and-runtime.md), [spec M1 web on-chain](m1-web-onchain-integration.md), [risk-transmission.md §3](../knowledge/risk-transmission.md), [security.md](../security.md)
 
