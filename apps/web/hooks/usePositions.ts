@@ -4,9 +4,9 @@
  * usePositions
  *
  * Every borrow position of the connected wallet on the chains the dashboard reads
- * (spec m1-positions-holdings-guardian-view §2, §3.4):
+ * (spec m1-positions-holdings-guardian-view §2, §3.4; spec m4-guardian-v4-per-position §3.5):
  * - Live: the Live chain (Aave, where the Guardian is), plus Arbitrum One read-only (Aave and
- *   later Morpho) when `includeArbitrumOne` is on, since the public RPC can be slow.
+ *   Morpho) when `includeArbitrumOne` is on, since the public RPC can be slow.
  * - Simulation: the session's fork only.
  * Read-only: nothing here signs or sends a transaction.
  */
@@ -22,7 +22,9 @@ import { useLiveTarget } from "@/lib/live-target";
 import { SIM_CHAIN_CONFIG } from "@/lib/sim/chain";
 import { protocolsOn, readerFor, type Protocol } from "@/lib/positions/source";
 import { positionStatus, type GuardianContext, type PositionStatus } from "@/lib/positions/status";
+import { positionStatusV4 } from "@/lib/guardian-v4";
 import { useGuardian } from "./useGuardian";
+import { useGuardianV4 } from "./useGuardianV4";
 
 const STALE_MS = 60_000;
 /** The fork's prices move every few seconds; refresh so cards follow the scenario. */
@@ -57,6 +59,7 @@ export function usePositions({ includeArbitrumOne = false }: { includeArbitrumOn
   const { address: user } = useAccount();
   const target = useLiveTarget();
   const g = useGuardian();
+  const g4 = useGuardianV4();
 
   const liveClient = usePublicClient({ chainId: target.chain.id });
   const oneClient = usePublicClient({ chainId: arbitrum.id });
@@ -74,9 +77,9 @@ export function usePositions({ includeArbitrumOne = false }: { includeArbitrumOn
       return [{ config, client: liveClient, canProtect: true }];
     }
     const list: ChainPlan[] = [{ config: LIVE_CHAIN_CONFIG, client: liveClient, canProtect: true }];
-    if (includeArbitrumOne) list.push({ config: ARBITRUM_ONE, client: oneClient, canProtect: false });
+    if (includeArbitrumOne) list.push({ config: ARBITRUM_ONE, client: oneClient, canProtect: Boolean(g4.morphoGuardianAddress) });
     return list;
-  }, [target.isSimulation, target.pool, target.oracle, target.debtAssets, liveClient, oneClient, includeArbitrumOne]);
+  }, [target.isSimulation, target.pool, target.oracle, target.debtAssets, liveClient, oneClient, includeArbitrumOne, g4.morphoGuardianAddress]);
 
   const reads: ReadPlan[] = useMemo(
     () => plans.flatMap((plan) => protocolsOn(plan.config).map((protocol) => ({ ...plan, protocol }))),
@@ -113,15 +116,43 @@ export function usePositions({ includeArbitrumOne = false }: { includeArbitrumOn
   const positions: PositionWithStatus[] = useMemo(
     () =>
       queries.flatMap((q, i) =>
-        (q.data ?? []).map((position) => ({
-          position,
-          status: positionStatus(position, reads[i].canProtect ? guardian : null),
-          chainName: reads[i].config.chainId === target.chain.id ? target.chainName : reads[i].config.name,
-        }))
+        (q.data ?? []).map((position) => {
+          const isTargetChain = reads[i].config.chainId === target.chain.id;
+          let status: PositionStatus;
+
+          if (g4.available) {
+            status = positionStatusV4({
+              position,
+              aaveGuardianAddress: g4.aaveGuardianAddress,
+              morphoGuardianAddress: g4.morphoGuardianAddress,
+              aavePolicies: g4.aavePolicies,
+              morphoPolicies: g4.morphoPolicies,
+            });
+          } else {
+            status = positionStatus(position, reads[i].canProtect ? guardian : null);
+          }
+
+          return {
+            position,
+            status,
+            chainName: isTargetChain ? target.chainName : reads[i].config.name,
+          };
+        })
       ),
     // queries is a new array every render; dataKey tracks the data that matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dataKey, reads, guardian, target.chain.id, target.chainName]
+    [
+      dataKey,
+      reads,
+      guardian,
+      g4.available,
+      g4.aaveGuardianAddress,
+      g4.morphoGuardianAddress,
+      g4.aavePolicies,
+      g4.morphoPolicies,
+      target.chain.id,
+      target.chainName,
+    ]
   );
 
   const chains: ChainRead[] = reads.map((plan, i) => ({

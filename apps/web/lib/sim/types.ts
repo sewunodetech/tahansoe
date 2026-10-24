@@ -60,6 +60,8 @@ export const simnetSessionSchema = z.object({
   chainId: z.number().int(),
   contracts: z.object({
     guardian: addressSchema,
+    guardianAaveV4: addressSchema.optional(),
+    guardianMorpho: addressSchema.optional(),
     simPriceFeed: addressSchema,
     testVault: addressSchema.optional(),
     pool: addressSchema,
@@ -71,6 +73,8 @@ export const simnetSessionSchema = z.object({
 
 export interface SimContracts {
   guardian: Address;
+  guardianAaveV4?: Address;
+  guardianMorpho?: Address;
   simPriceFeed: Address;
   testVault?: Address;
   pool: Address;

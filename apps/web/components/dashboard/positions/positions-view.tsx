@@ -3,12 +3,14 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ArrowUpRight, Layers, Network } from "lucide-react";
+import type { PositionDetail } from "@tahansoe/domain";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { usePositions, type ChainRead, type PositionWithStatus } from "@/hooks/usePositions";
 import { useLiveTarget } from "@/lib/live-target";
 import { byDebtDesc, hasDebt } from "@/lib/positions/status";
 import { usd } from "@/lib/positions/format";
+import { PositionProtectionDialog } from "@/components/dashboard/guardian-v4/position-protection-dialog";
 import { PositionCard } from "./position-card";
 import { PROTOCOL_LABEL, StatusBadge } from "./status-badge";
 
@@ -40,7 +42,7 @@ function groupKey(item: PositionWithStatus) {
 export function PositionsView() {
   const target = useLiveTarget();
   const [showOne, setShowOne] = useShowArbitrumOne();
-  const { positions, chains, isLoading, unavailable } = usePositions({ includeArbitrumOne: !target.isSimulation && showOne });
+  const { positions, chains, isLoading, unavailable, refetch } = usePositions({ includeArbitrumOne: !target.isSimulation && showOne });
 
   if (unavailable) {
     return (
@@ -62,6 +64,7 @@ export function PositionsView() {
       isSimulation={target.isSimulation}
       showArbitrumOne={showOne}
       onShowArbitrumOne={setShowOne}
+      onRefresh={refetch}
     />
   );
 }
@@ -73,10 +76,20 @@ export interface PositionsListProps {
   isSimulation: boolean;
   showArbitrumOne: boolean;
   onShowArbitrumOne: (v: boolean) => void;
+  onRefresh?: () => void;
 }
 
 /** Presentational half of the Positions page. */
-export function PositionsList({ positions, chains, isLoading, isSimulation, showArbitrumOne, onShowArbitrumOne }: PositionsListProps) {
+export function PositionsList({
+  positions,
+  chains,
+  isLoading,
+  isSimulation,
+  showArbitrumOne,
+  onShowArbitrumOne,
+  onRefresh,
+}: PositionsListProps) {
+  const [protectPosition, setProtectPosition] = useState<PositionDetail | null>(null);
   const borrows = positions.filter((p) => hasDebt(p.position)).sort((a, b) => byDebtDesc(a.position, b.position));
   const supplied = positions.filter((p) => !hasDebt(p.position));
 
@@ -118,7 +131,11 @@ export function PositionsList({ positions, chains, isLoading, isSimulation, show
           <GroupHeading item={items[0]} count={items.length} />
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {items.map((item) => (
-              <PositionCard key={item.position.id} item={item} />
+              <PositionCard
+                key={item.position.id}
+                item={item}
+                onProtect={setProtectPosition}
+              />
             ))}
           </div>
         </section>
@@ -154,6 +171,19 @@ export function PositionsList({ positions, chains, isLoading, isSimulation, show
             ))}
           </Card>
         </section>
+      )}
+
+      {/* Position Protection Dialog */}
+      {protectPosition && (
+        <PositionProtectionDialog
+          open={Boolean(protectPosition)}
+          onOpenChange={(open) => !open && setProtectPosition(null)}
+          position={protectPosition}
+          onSuccess={() => {
+            setProtectPosition(null);
+            onRefresh?.();
+          }}
+        />
       )}
     </div>
   );

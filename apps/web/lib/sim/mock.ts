@@ -54,6 +54,8 @@ export function mockCreateSession(input: { mode: SimMode; scenario?: SimScenario
     chainId: 4216199,
     contracts: {
       guardian: fakeAddress(0x9a4d1),
+      guardianAaveV4: fakeAddress(0x9a4d4),
+      guardianMorpho: fakeAddress(0x904f0),
       simPriceFeed: fakeAddress(0x5f33d),
       testVault: fakeAddress(0x7e57),
       pool: ARBITRUM_ONE.aave!.pool!,
