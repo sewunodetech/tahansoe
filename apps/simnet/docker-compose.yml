@@ -1,0 +1,27 @@
+# Simnet on the engine VPS, in its own container with its own memory limit so the
+# production engine is never starved (ADR 0014 §Keputusan 1). Run from this folder:
+#   docker compose up -d --build
+# Needs .env next to this file (secret, gitignored). See .env.example.
+services:
+  simnet:
+    build:
+      context: ../..
+      dockerfile: apps/simnet/Dockerfile
+    image: tahansoe-simnet:latest
+    container_name: tahansoe-simnet
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    # Only the host (Cloudflare Tunnel) reaches the API/proxy; anvil stays on the container's 127.0.0.1.
+    ports:
+      - "127.0.0.1:8787:8787"
+    # 1 live fork + SIM_MAX_PRIVATE_FORKS (4) private forks. Measure RSS per fork and tune both.
+    mem_limit: 2g
+    memswap_limit: 2g
+    cpus: 1.5
+    stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
