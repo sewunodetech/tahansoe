@@ -44,6 +44,32 @@ owner, no admin functions and holds no funds between calls.
 
 V2 gained two internal no-op hooks (`_afterLayers`, `_refundLeftover`); its behavior and ABI are unchanged.
 
+## Guardian V4 (Per-Position Policies & Morpho Blue, ADR 0015)
+
+Guardian V4 extends risk protection to independent positions and protocols (spec `docs/specs/m4-guardian-v4-per-position.md`, ADR 0015):
+
+### 1. `TahansoeGuardianAaveV4` (Per-Debt-Asset Policies for Aave V3)
+- Multi-debt positions on Aave V3 can configure independent policies per `(user, debtAsset)`.
+- Configurable debt asset priority list (`setDebtPriority(address[] calldata debtAssets)`) determines rescue order when multiple debt assets are at risk.
+- Each debt asset has its own Layer 1 cap, Layer 2 reserve (ERC-4626 or aToken), Layer 3 deleverage settings (collateral token & max slippage), and dynamic trigger band.
+- Calling `protect(user, debtAsset)` rescues the specified debt asset while strictly leaving all other borrowed positions untouched.
+- Enumerable user positions through `positionsPage(uint256 offset, uint256 limit)` and `positionCount()`.
+
+### 2. `TahansoeGuardianMorpho` (Morpho Blue Protection)
+- Dedicated guardian for isolated Morpho Blue markets identified by `marketId = keccak256(abi.encode(MarketParams))`.
+- Policies are configured per `(user, marketId)`.
+- Independent Health Factor calculation:
+  $$\text{HF} = \frac{\text{collateral} \times \text{oraclePrice} \times \text{lltv}}{10^{36} \times 10^{18} \times \text{borrowedAssets}}$$
+- Supports Layer 1 (direct loan token pull from user wallet) and Layer 2 (ERC-4626 vault shares where `asset() == loanToken`).
+- Computes exact repayment needed to reach `targetHF` without overspending or relying on flash loans.
+- **Strict Morpho Invariant:** Forbidden selectors (`borrow`, `withdraw`, `withdrawCollateral`, `setAuthorization`) are never called by the Guardian under any circumstances.
+
+### 3. Shared `GuardianCore` Library & Fee Model
+- Reuses uniform layer ordering, dynamic trigger clamping, and fee accounting across protocol guardians.
+- Implements ADR 0013 success fee (15 bps on repaid debt, eligible only if $HF_{\text{before}} < \text{staticTrigger}$ and $HF_{\text{before}} < 1.50\text{e}18$).
+- Fee is collected via Source A (leftovers) and Source B (wallet allowance) and waived if insufficient without reverting the rescue.
+- Zero-token balance invariant: Guardian never retains debt, collateral, or vault tokens between calls.
+
 ## Setup
 
 ```bash
@@ -60,12 +86,15 @@ ARB_SEPOLIA_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc \
   forge test --match-contract Fork -vv       # end-to-end on real Aave V3 (Arbitrum Sepolia fork)
 ARB_ONE_RPC_URL=https://arb1.arbitrum.io/rpc \
   forge test --match-contract TahansoeGuardianV3ForkTest -vv  # V3 + DeploySim on an Arbitrum One fork
+ARB_ONE_RPC_URL=https://arb1.arbitrum.io/rpc \
+  forge test --match-contract TahansoeGuardianV4ForkTest -vv  # V4 (Aave multi-debt + Morpho Blue) on Arbitrum One fork
 ```
 
-The fork test suites cover v1, v2 and v3:
+The fork test suites cover v1, v2, v3, and v4:
 - `TahansoeGuardianForkTest`: opens a real position (1 WETH supplied, USDC borrowed) and verifies v1 L1 repayment.
 - `TahansoeGuardianV2ForkTest`: verifies v2 Layer 1 (wallet), Layer 2 (ERC-4626 vault), and Layer 3 (flash-loan deleverage) on Arbitrum Sepolia.
 - `TahansoeGuardianV3ForkTest`: deploys through `DeploySim` on Arbitrum One, drives the price via `SimPriceFeed`, and checks the V3 fee and V2 parity for L1 and L3 (real Uniswap `SwapRouter02`).
+- `TahansoeGuardianV4ForkTest`: verifies Aave V3 multi-debt isolation (USDC and USDT) and live Morpho Blue position protection on Arbitrum One fork.
 
 Fee acceptance criteria (spec §5) map to named tests in `TahansoeGuardianV3.t.sol` (see the header comment there).
 
@@ -80,6 +109,11 @@ Invariant tests in `TahansoeGuardianV2.invariant.t.sol` run 100,000+ state trans
 - the Guardian still holds zero tokens after every call;
 - the treasury never exceeds the sum of `floor(repaid * 15 / 10_000)` over eligible actions;
 - non-eligible actions (dynamic-trigger-only, HF >= 1.50) never move tokens to the treasury.
+
+`TahansoeGuardianAaveV4.invariant.t.sol` and `TahansoeGuardianMorpho.invariant.t.sol` verify:
+- Guardian balance of debt/loan/collateral tokens and vault shares is strictly zero after every call;
+- Morpho Blue never receives calls to forbidden selectors (`borrow`, `withdraw`, `withdrawCollateral`, `setAuthorization`);
+- Protocol treasury balance is strictly bounded by cumulative 15 bps success fees on eligible rescues.
 
 ## Deploy to Arbitrum Sepolia
 
@@ -161,4 +195,6 @@ GUARDIAN_V2=<deployed_v2_address> TEST_VAULT=<deployed_vault_address> \
 | TahansoeGuardian (V1) | [`0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E`](https://sepolia.arbiscan.io/address/0x1a5d249a8e711e2288add7c01e31eb7ffb05d97e) |
 | TahansoeGuardianV2 | *(Deployed per release)* |
 | TahansoeGuardianV3 | *(Not deployed; simulation fork only until audit)* |
+| TahansoeGuardianAaveV4 | *(Not deployed; simulation fork only until audit)* |
+| TahansoeGuardianMorpho | *(Not deployed; simulation fork only until audit)* |
 

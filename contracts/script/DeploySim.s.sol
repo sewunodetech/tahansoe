@@ -4,6 +4,9 @@ pragma solidity ^0.8.24;
 import {Script, console} from "forge-std/Script.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TahansoeGuardianV3} from "../src/TahansoeGuardianV3.sol";
+import {TahansoeGuardianAaveV4} from "../src/TahansoeGuardianAaveV4.sol";
+import {TahansoeGuardianMorpho} from "../src/TahansoeGuardianMorpho.sol";
+import {IMorpho} from "../src/interfaces/IMorpho.sol";
 import {SimPriceFeed} from "../src/testnet/SimPriceFeed.sol";
 import {TestVault} from "../src/testnet/TestVault.sol";
 import {IPoolAddressesProvider, IAaveOracle} from "../src/interfaces/IAave.sol";
@@ -29,7 +32,9 @@ interface IPoolAddressesProviderACL {
 /// Deploys, from the deployer (nonce 0 -> deterministic addresses):
 ///   nonce 0  SimPriceFeed  (initial answer = current AaveOracle WETH price, updater = SIM_PRICE_UPDATER)
 ///   nonce 1  TahansoeGuardianV3 (real PoolAddressesProvider, Uniswap SwapRouter02, fee tier 500, SIM_TREASURY)
-///   nonce 2  TestVault over native USDC (unless SIM_DEPLOY_TEST_VAULT=false)
+///   nonce 2  TahansoeGuardianAaveV4 (real PoolAddressesProvider, Uniswap SwapRouter02, fee tier 500, SIM_TREASURY)
+///   nonce 3  TahansoeGuardianMorpho (Morpho Blue Arbitrum One, SIM_TREASURY)
+///   nonce 4  TestVault over native USDC (unless SIM_DEPLOY_TEST_VAULT=false)
 /// Then, from SIM_ORACLE_ADMIN (POOL_ADMIN or ASSET_LISTING_ADMIN on Aave's ACLManager), calls
 /// AaveOracle.setAssetSources([WETH], [SimPriceFeed]). Aave and the Guardian keep reading the AaveOracle (I5).
 ///
@@ -50,6 +55,7 @@ contract DeploySim is Script {
     address constant SWAP_ROUTER02_ARB_ONE = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
     address constant WETH_ARB_ONE = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
     address constant USDC_ARB_ONE = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
+    address constant MORPHO_BLUE_ARB_ONE = 0x6c247b1F6182318877311737BaC0844bAa518F5e;
     /// Aave governance executor on Arbitrum One; holds POOL_ADMIN (checked on-chain 2026-10-24).
     address constant AAVE_EXECUTOR_ARB_ONE = 0xFF1137243698CaA18EE364Cc966CF0e02A4e6327;
     uint24 constant SWAP_FEE = 500; // 0.05%
@@ -66,6 +72,8 @@ contract DeploySim is Script {
 
     struct Deployment {
         address guardianV3;
+        address guardianAaveV4;
+        address guardianMorpho;
         address simPriceFeed;
         address testVault;
         address treasury;
@@ -110,6 +118,8 @@ contract DeploySim is Script {
         vm.startBroadcast(cfg.deployer);
         d.simPriceFeed = address(new SimPriceFeed(cfg.priceUpdater, int256(d.initialPrice), "WETH / USD (sim)"));
         d.guardianV3 = address(new TahansoeGuardianV3(provider, SWAP_ROUTER02_ARB_ONE, SWAP_FEE, cfg.treasury));
+        d.guardianAaveV4 = address(new TahansoeGuardianAaveV4(provider, SWAP_ROUTER02_ARB_ONE, SWAP_FEE, cfg.treasury));
+        d.guardianMorpho = address(new TahansoeGuardianMorpho(IMorpho(MORPHO_BLUE_ARB_ONE), cfg.treasury));
         if (cfg.deployTestVault) {
             d.testVault = address(new TestVault(IERC20(USDC_ARB_ONE), "Tahansoe Sim USDC Vault", "vUSDC"));
         }
@@ -138,6 +148,8 @@ contract DeploySim is Script {
         vm.serializeAddress(k, "usdc", USDC_ARB_ONE);
         vm.serializeAddress(k, "guardian", d.guardianV3);
         vm.serializeAddress(k, "guardianV3", d.guardianV3);
+        vm.serializeAddress(k, "guardianAaveV4", d.guardianAaveV4);
+        vm.serializeAddress(k, "guardianMorpho", d.guardianMorpho);
         vm.serializeAddress(k, "simPriceFeed", d.simPriceFeed);
         vm.serializeAddress(k, "testVault", d.testVault);
         vm.serializeAddress(k, "treasury", d.treasury);
