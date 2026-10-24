@@ -15,8 +15,12 @@ import {
   X,
   Command,
   MoreHorizontal,
+  Layers,
+  Wallet,
+  Vault,
 } from "lucide-react";
 import { BrandMark } from "@/components/ui/brand-mark";
+import { useGuardian } from "@/hooks/useGuardian";
 
 /* ══════════════════════════════════════════════════════════════════════════
    TYPES
@@ -31,8 +35,13 @@ export type NavItem = {
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
-   NAV DATA (Phase 3: Overview · Protection · Activity · Agents · Telegram · Settings)
+   NAV DATA: Overview · Positions · Protection · Holdings · Reserves (only with Layer 2)
+   · Activity · Agents · Telegram, then Settings
    ══════════════════════════════════════════════════════════════════════════ */
+/** Shown only when Layer 2 is set up; the page itself stays reachable by URL (spec §2). */
+const RESERVES_HREF = "/dashboard/reserves";
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 export const MAIN_NAV_ITEMS: NavItem[] = [
   {
     href: "/dashboard",
@@ -41,11 +50,29 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
     tourId: "tour-nav-home",
   },
   {
+    href: "/dashboard/positions",
+    label: "Positions",
+    icon: Layers,
+    tourId: "tour-nav-positions",
+  },
+  {
     href: "/dashboard/protection",
     label: "Protection",
     icon: ShieldCheck,
     tourId: "tour-nav-protection",
     badge: "3 Layers",
+  },
+  {
+    href: "/dashboard/holdings",
+    label: "Holdings",
+    icon: Wallet,
+    tourId: "tour-nav-holdings",
+  },
+  {
+    href: RESERVES_HREF,
+    label: "Reserves",
+    icon: Vault,
+    tourId: "tour-nav-reserves",
   },
   {
     href: "/dashboard/activity",
@@ -162,6 +189,9 @@ export function SidebarNav({
   networkLabel = "Arbitrum Sepolia",
 }: SidebarNavProps) {
   const pathname = usePathname();
+  const { layer2 } = useGuardian();
+  const hasLayer2 = Boolean(layer2 && layer2.source !== ZERO_ADDRESS);
+  const navItems = MAIN_NAV_ITEMS.filter((item) => item.href !== RESERVES_HREF || hasLayer2);
 
   const short = address
     ? `${address.slice(0, 6)}…${address.slice(-4)}`
@@ -219,7 +249,7 @@ export function SidebarNav({
           </div>
         )}
 
-        {MAIN_NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <NavLinkRow
             key={item.href}
             item={item}
