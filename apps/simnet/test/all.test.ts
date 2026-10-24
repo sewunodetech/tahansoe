@@ -10,3 +10,4 @@ import "./faucet.test.ts";
 import "./http.test.ts";
 import "./deploy-keeper.test.ts";
 import "./integration.test.ts";
+import "./stale-fork.test.ts";

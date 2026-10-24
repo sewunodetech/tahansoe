@@ -22,6 +22,21 @@ export interface Session {
   ledger: FaucetLedger;
 }
 
+/** Upstream RPC no longer serves the fork block's state (non-archive node pruned it). */
+export function isStaleForkError(e: unknown): boolean {
+  const msg = e instanceof Error ? `${e.message} ${String((e as { details?: unknown }).details ?? "")}` : String(e);
+  return /historical state .* is not available|missing trie node|state .* not available|header not found/i.test(msg);
+}
+
+export interface CreatedSession {
+  sessionId: string;
+  forkId: string;
+  rpcPath: string;
+  chainId: number;
+  contracts: ReturnType<typeof forkContracts>;
+  expiresAt: string | null;
+}
+
 export class HttpError extends Error {
   constructor(
     readonly status: number,
@@ -51,7 +66,7 @@ export class SessionService {
     for (const [id, s] of this.sessions) if (s.forkId === forkId) this.sessions.delete(id);
   }
 
-  async create(input: { address: string; mode: SimMode; scenario?: string }) {
+  async create(input: { address: string; mode: SimMode; scenario?: string; retried?: boolean }): Promise<CreatedSession> {
     const address = getAddress(input.address);
     if (input.scenario !== undefined && input.mode !== "replay") {
       throw new HttpError(400, { error: "scenario is only valid with mode=replay" });
@@ -80,6 +95,12 @@ export class SessionService {
       if (scenario) fork.runtime.price.startReplay(scenario);
     } catch (e) {
       if (fork.kind === "private") await this.forks.release(fork.id);
+      // A non-archive upstream RPC drops old state, so a long-lived live fork can no longer load
+      // accounts it has not touched yet. Re-fork at the latest block once and retry.
+      if (fork.kind === "live" && isStaleForkError(e) && !input.retried) {
+        await this.forks.resetLive();
+        return this.create({ ...input, retried: true });
+      }
       throw e;
     }
     this.sessions.set(session.id, session);

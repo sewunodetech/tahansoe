@@ -60,7 +60,7 @@ Test: `npm test -w @tahansoe/simnet`. Test integrasi anvil sungguhan (`test/inte
 
 | Variabel | Default | Keterangan |
 |---|---|---|
-| `ARB_ONE_RPC_URL` | — (wajib) | Sumber fork dan relay harga |
+| `ARB_ONE_RPC_URL` | — (wajib) | Sumber fork dan relay harga. **Gunakan RPC arsip untuk produksi** (paket gratis Alchemy/Infura sudah arsip). RPC publik `arb1.arbitrum.io` membuang state lama, sehingga fork yang berumur lebih dari sekitar satu jam tidak bisa memuat akun baru; simnet lalu membuat ulang fork live dari blok terbaru (sesi live yang ada ikut hilang) |
 | `SIMNET_API_KEY` | — (wajib, ≥ 16 karakter) | Header `x-simnet-key`; dibandingkan constant-time |
 | `SIM_CHAIN_ID` | `4216199` | Chain ID fork (beda dari mainnet → tx tidak bisa di-replay) |
 | `SIM_MAX_PRIVATE_FORKS` | `4` | Batas fork Replay/Stress bersamaan |
