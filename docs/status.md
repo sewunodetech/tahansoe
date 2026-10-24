@@ -180,6 +180,12 @@
 3. **Implementasi Notifikasi Telegram Server:** Memindahkan trigger alert Telegram dari frontend browser ke engine worker agar alert tetap terkirim saat user tidak membuka web.
 4. **Implementasi Integrasi Web On-chain (Spec M1):** Menghubungkan settings web ke `TahansoeGuardian` v1 (`approve` + `setPolicy`), membaca posisi Aave nyata via wagmi/viem, dan menyelesaikan transisi dashboard demo.
 5. **Modul Teknikal Lanjutan M2:** Volatilitas realized (EWMA), funding rate ekstrem, dan open interest pada perp DEX Arbitrum.
+6. **User proof (masukan mentor, 24 Okt 2026), masih Proposed/Draft dan menunggu review owner:**
+   - [ADR 0013](decisions/0013-success-fee-on-protection.md): fee sukses 0,15%, hanya saat HF di bawah trigger statis dan di bawah 1,50. Menggantikan butir 2–4 ADR 0006 dan merevisi I1/I4 saat Accepted.
+   - [ADR 0014](decisions/0014-simulation-network-anvil-fork.md): fork anvil di VPS dan workspace `apps/simnet`.
+   - Spec [simulation mode](specs/m1-simulation-mode.md) dan [Guardian v3 fee](specs/m4-guardian-success-fee.md).
+   - Section perbandingan dengan DeFi Saver di landing.
+   - Koreksi FAQ/PRD: DeFi Saver kini mendukung EOA untuk Aave v3.
 
 ---
 

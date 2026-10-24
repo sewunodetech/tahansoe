@@ -15,3 +15,5 @@ Spec boleh berubah selama implementasi; perbedaan dengan PRD/architecture harus 
 | M3 | [m3-cli.md](m3-cli.md) | Tahansoe CLI (`tahansoe`) | Approved |
 | M3 | [m3-research-agents.md](m3-research-agents.md) | Research agents (multi-agent) & reflection loop | Draft |
 | M1/M2/M3 | [m3-research-broadcast.md](m3-research-broadcast.md) | Outbound Research Broadcast — Notifikasi & Digest Telegram Terjadwal | Approved |
+| M1 | [m1-simulation-mode.md](m1-simulation-mode.md) | Simulation Mode — wallet simulasi di fork Arbitrum One | Draft |
+| M4 | [m4-guardian-success-fee.md](m4-guardian-success-fee.md) | Guardian v3 — fee sukses 0,15% | Draft |

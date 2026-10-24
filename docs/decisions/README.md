@@ -20,4 +20,5 @@ Aturan:
 | 0010 | [Pilihan database lokal: PGlite (embedded Postgres) di samping Neon](0010-local-pglite-database-option.md) | Superseded oleh [0011](0011-postgres-only-gateway-only-chat.md) |
 | 0011 | [Database server saja, chat hanya lewat channel gateway, `start` sebagai daemon](0011-postgres-only-gateway-only-chat.md) | Sebagian di-supersede oleh [0012](0012-unified-db-outbound-research-broadcast.md) |
 | 0012 | [Satu database web & engine, broadcast riset outbound via bot Telegram web](0012-unified-db-outbound-research-broadcast.md) | Accepted |
-
+| 0013 | [Model bisnis: fee sukses 0,15% hanya saat posisi diselamatkan](0013-success-fee-on-protection.md) | Proposed |
+| 0014 | [Jaringan simulasi: fork anvil di VPS, layanan `apps/simnet`](0014-simulation-network-anvil-fork.md) | Proposed |
