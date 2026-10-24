@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { SIM_CONNECTOR_ID } from "@/lib/sim/connector";
 
@@ -11,17 +11,20 @@ import { SIM_CONNECTOR_ID } from "@/lib/sim/connector";
  * those routes check the SIWE `userId` on the server.
  */
 export function useAuthGuard() {
-  const { isConnected, isConnecting, address, connector } = useAccount();
+  const { isConnected, isConnecting, isReconnecting, address, connector } = useAccount();
   const router = useRouter();
+  const pathname = usePathname();
   const [sessionChecked, setSessionChecked] = useState(false);
   const [sessionValid, setSessionValid] = useState(false);
   const isSimulation = connector?.id === SIM_CONNECTOR_ID;
 
   useEffect(() => {
-    if (isConnecting) return;
+    // On a hard load wagmi restores the wallet asynchronously; wait instead of bouncing to /connect.
+    if (isConnecting || isReconnecting) return;
 
     if (!isConnected) {
-      router.replace("/connect");
+      // Keep the page the visitor asked for, so a deep link survives the trip through /connect.
+      router.replace(pathname && pathname !== "/dashboard" ? `/connect?next=${encodeURIComponent(pathname)}` : "/connect");
       return;
     }
 
@@ -51,7 +54,7 @@ export function useAuthGuard() {
       });
 
     return () => { cancelled = true; };
-  }, [isConnected, isConnecting, isSimulation, address, router]);
+  }, [isConnected, isConnecting, isReconnecting, isSimulation, address, router, pathname]);
 
   return { isConnected: isConnected && sessionValid, address, sessionChecked, isSimulation };
 }

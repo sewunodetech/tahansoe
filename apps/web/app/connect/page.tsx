@@ -48,6 +48,12 @@ const WALLETS = [
   },
 ];
 
+/** Where to land after connecting: the dashboard page the visitor was sent here from, if any. */
+function nextPath(): string {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/dashboard") ? next : "/dashboard";
+}
+
 export default function ConnectPage() {
   const router = useRouter();
   const { isConnected, address, connector: activeConnector } = useAccount();
@@ -82,7 +88,7 @@ export default function ConnectPage() {
       setSimEnded(true);
       return;
     }
-    router.replace("/dashboard");
+    router.replace(nextPath());
   }, [isConnected, isSimConnected, simStarting, disconnect, router]);
 
   useEffect(() => {
@@ -91,7 +97,7 @@ export default function ConnectPage() {
       fetch("/api/auth/me")
         .then((res) => {
           if (res.ok) {
-            router.replace("/dashboard");
+            router.replace(nextPath());
           } else {
             setStep("sign");
           }
@@ -108,7 +114,7 @@ export default function ConnectPage() {
 
   useEffect(() => {
     if (authStatus === "authenticated") {
-      router.replace("/dashboard");
+      router.replace(nextPath());
     }
   }, [authStatus, router]);
 
@@ -137,7 +143,7 @@ export default function ConnectPage() {
       const burner = getOrCreateBurner();
       await startSimSession({ address: burner.address, mode: "live" });
       await connectAsync({ connector: simConnector });
-      router.replace("/dashboard");
+      router.replace(nextPath());
     } catch (err) {
       setSimError(
         err instanceof SimApiError && err.status === 409

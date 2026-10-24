@@ -16,6 +16,8 @@ export const simChain = defineChain({
   name: "Tahansoe Simulation (Arbitrum One fork)",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [SIM_RPC_BASE || "http://localhost:8546"] } },
+  // Multicall3 exists on the forked Arbitrum One state; without it every contract read is its own RPC call.
+  contracts: { multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11", blockCreated: 7654707 } },
   testnet: true,
 });
 
