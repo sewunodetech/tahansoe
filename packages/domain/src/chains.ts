@@ -31,6 +31,8 @@ export interface GuardianDeployment {
   /** Block deploy; batas bawah pencarian event. */
   deployedBlock: number;
   features?: GuardianFeatures;
+  /** Protokol lending target (default: "aave-v3"). */
+  protocol?: "aave-v3" | "morpho-blue";
 }
 
 export interface ChainMorphoConfig {
@@ -178,19 +180,39 @@ export function getChainConfig(
   };
 }
 
-/** Guardian versi tertinggi di chain, atau undefined jika belum ada deployment. */
-export function currentGuardian(chain: ChainConfig): GuardianDeployment | undefined {
-  const list = chain.guardians ?? [];
+/** Semua deployment Guardian untuk protokol tertentu pada chain. */
+export function guardiansFor(
+  chain: ChainConfig,
+  protocol: "aave-v3" | "morpho-blue"
+): GuardianDeployment[] {
+  return (chain.guardians ?? []).filter(
+    (g) => (g.protocol ?? "aave-v3") === protocol
+  );
+}
+
+/**
+ * Guardian versi tertinggi untuk protokol tertentu pada suatu chain, atau undefined jika belum ada deployment.
+ */
+export function latestGuardian(
+  chain: ChainConfig,
+  protocol: "aave-v3" | "morpho-blue"
+): GuardianDeployment | undefined {
+  const list = guardiansFor(chain, protocol);
   return list.reduce<GuardianDeployment | undefined>(
     (best, g) => (best === undefined || g.version > best.version ? g : best),
     undefined
   );
 }
 
-/** Semua Guardian selain versi terbaru (kandidat migrasi), dari versi terbaru ke terlama. */
+/** Guardian versi tertinggi di chain (Aave V3), atau undefined jika belum ada deployment. */
+export function currentGuardian(chain: ChainConfig): GuardianDeployment | undefined {
+  return latestGuardian(chain, "aave-v3");
+}
+
+/** Semua Guardian selain versi terbaru untuk Aave (kandidat migrasi), dari versi terbaru ke terlama. */
 export function legacyGuardians(chain: ChainConfig): GuardianDeployment[] {
   const current = currentGuardian(chain);
-  return (chain.guardians ?? [])
+  return guardiansFor(chain, "aave-v3")
     .filter((g) => g !== current)
     .sort((a, b) => b.version - a.version);
 }

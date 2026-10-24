@@ -10,7 +10,7 @@ import {
   recommendedRepayBase,
   remainingActions,
 } from "../src/protection";
-import { ARBITRUM_ONE, ARBITRUM_SEPOLIA, currentGuardian, legacyGuardians, type ChainConfig } from "../src/chains";
+import { ARBITRUM_ONE, ARBITRUM_SEPOLIA, currentGuardian, legacyGuardians, guardiansFor, latestGuardian, type ChainConfig } from "../src/chains";
 
 const USD = (n: number) => BigInt(Math.round(n * 1e8));
 
@@ -101,5 +101,22 @@ describe("versi Guardian", () => {
   });
   it("chain tanpa deployment: tidak ada current", () => {
     assert.equal(currentGuardian(ARBITRUM_ONE), undefined);
+  });
+  it("guardiansFor dan latestGuardian membedakan protocol", () => {
+    const chain: ChainConfig = {
+      ...ARBITRUM_SEPOLIA,
+      guardians: [
+        { version: 1, address: "0x0000000000000000000000000000000000000001", deployedBlock: 1 },
+        { version: 4, address: "0x0000000000000000000000000000000000000004", deployedBlock: 4, protocol: "aave-v3" },
+        { version: 1, address: "0x0000000000000000000000000000000000000010", deployedBlock: 10, protocol: "morpho-blue" },
+        { version: 2, address: "0x0000000000000000000000000000000000000020", deployedBlock: 20, protocol: "morpho-blue" },
+      ],
+    };
+    assert.equal(guardiansFor(chain, "aave-v3").length, 2);
+    assert.equal(guardiansFor(chain, "morpho-blue").length, 2);
+    assert.equal(latestGuardian(chain, "aave-v3")?.version, 4);
+    assert.equal(latestGuardian(chain, "morpho-blue")?.version, 2);
+    assert.equal(currentGuardian(chain)?.version, 4);
+    assert.deepEqual(legacyGuardians(chain).map((g) => g.version), [1]);
   });
 });
