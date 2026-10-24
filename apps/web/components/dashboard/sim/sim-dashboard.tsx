@@ -3,7 +3,10 @@
 import React, { useState } from "react";
 import { Check, ChevronDown, MessageCircleOff, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LiveOverview } from "@/components/dashboard/live/live-overview";
+import { GuardianView } from "@/components/dashboard/guardian-view/guardian-view";
+import { LiveGate } from "@/components/dashboard/live/live-shared";
+import { LivePositionCard } from "@/components/dashboard/live/live-position-card";
+import { LivePolicyStatus } from "@/components/dashboard/live/live-policy-status";
 import { LivePage } from "@/components/dashboard/live/live-page";
 import { useGuardian } from "@/hooks/useGuardian";
 import { useSimSession, useSimStatus } from "@/lib/sim/hooks";
@@ -99,6 +102,7 @@ export function SimDashboard() {
         {step === 2 && (
           <div className="space-y-5">
             <SimRunMarket />
+            <GuardianView showMigration={false} />
             {protections > 0 && <ResultStep hf={g.account?.hf ?? null} protections={protections} />}
           </div>
         )}
@@ -111,7 +115,12 @@ export function SimDashboard() {
         <div className="mt-4 space-y-5">
           {protections === 0 && <SimTxList />}
           <SimTopUp />
-          <LiveOverview />
+          <LiveGate g={g}>
+            <div className="space-y-5">
+              <LivePositionCard g={g} />
+              <LivePolicyStatus g={g} />
+            </div>
+          </LiveGate>
         </div>
       </details>
     </LivePage>

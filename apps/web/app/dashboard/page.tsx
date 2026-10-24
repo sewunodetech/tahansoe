@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { useDashboardMode } from "@/lib/dashboard-mode";
 import { SimDashboard } from "@/components/dashboard/sim/sim-dashboard";
 import { LivePage } from "@/components/dashboard/live/live-page";
-import { LiveOverview } from "@/components/dashboard/live/live-overview";
+import { GuardianView } from "@/components/dashboard/guardian-view/guardian-view";
 
 function DemoDashboardPage() {
   const router = useRouter();
@@ -626,8 +626,8 @@ export default function DashboardPage() {
   if (!isLive) return <DemoDashboardPage />;
   if (isSimulation) return <SimDashboard />;
   return (
-    <LivePage eyebrow="Overview" title="Position Health & Protection" subtitle="Your Aave V3 position and what the Guardian holds for it.">
-      <LiveOverview />
+    <LivePage eyebrow="Overview" title="Guardian view" subtitle="What is guarded, how far it is from the trigger and from liquidation, and what is ready to repay.">
+      <GuardianView />
     </LivePage>
   );
 }
