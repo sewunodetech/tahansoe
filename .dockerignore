@@ -1,0 +1,14 @@
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+**/.data
+**/.cache
+**/out
+**/.next
+**/settings.json
+.git
+contracts
+docs
+apps/web/*
+!apps/web/package.json

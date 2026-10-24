@@ -16,6 +16,13 @@
 - **Web:** webhook menangani `/start` (sambutan), `/start <code>` (link/re-link), dan `/stop` (berhenti langganan). Halaman Telegram menjelaskan isi notifikasi. `npm test -w apps/web` kini menjalankan test route.
 - Dikerjakan paralel lewat Orca orchestration (worker Antigravity); konteks worker diambil dari index codebase-memory.
 
+### Engine di VPS (Docker) — 24 Okt 2026
+- `tahansoe start` jalan 24/7 di VPS Ubuntu 24.04 (2 vCPU, 3,6 GB) sebagai container `tahansoe-engine` (`apps/engine/Dockerfile`, `apps/engine/docker-compose.yml`), `restart: unless-stopped`, bertahan setelah reboot (sudah diuji). Kode di `/opt/tahansoe`, firewall `ufw` hanya SSH, tidak ada port terbuka.
+- **Bug yang ketemu saat deploy:**
+  - `undici` dipakai engine (`gdelt.ts`, `settle-job.ts`, `scorecard.ts`) tapi tidak dideklarasikan. Selama ini ikut ter-hoist dari dependensi web. Kini jadi dependensi `@tahansoe/engine`.
+  - Advisory lock price worker (`42161002`) bertabrakan dengan settlement. Di `start`, settle mengambil lock duluan, lalu price worker `exit(0)` dan seluruh agent mati (restart loop di Docker, tiap restart memicu satu run riset). Price worker kini memakai `42161004`; ada test keunikan key.
+  - **Spam alert "Pool ETH liquidity constrained"** (15 pesan sekaligus ke 1 user, 06:04 UTC): broadcaster memperlakukan sinyal `RESEARCH` (AI) yang menyebut path T7 sebagai alert pool kritis. Dedupe-nya memakai id sinyal, dan tiap run riset di restart loop membuat id baru. Isinya juga keliru: utilization asli WETH 81%, USDC 78%. Kini alert kritis hanya dari modul `ORACLE`/`ONCHAIN`. Heuristik angka "98" di teks evidence dihapus (APR "4.98%" ikut terdeteksi). Setelah restart, alert yang sudah tercatat < 6 jam tidak dikirim ulang (severity yang tidak diketahui dianggap sama). Test 9 & 10 di `broadcast.test.ts`.
+
 ### Landing interaktif: Position Lab — 24 Okt 2026
 - Section `#lab` tepat setelah hero (`components/landing/lab/`): scene isometrik collateral, debt, dan reserve L1/L2/L3. Pengunjung bisa menggeser harga ETH atau menjalankan "3 a.m. crash"; layer menyala berurutan dengan animasi aliran dana, dan di sampingnya ada perbandingan posisi yang sama tanpa proteksi (likuidasi + penalti).
 - Setiap objek bisa di-inspect (hover, klik, atau keyboard). Inspector menjelaskan apa objek itu, kenapa penting, dan angka live-nya (termasuk harga likuidasi). Layer bisa dimatikan atau dinyalakan dari inspector atau panel.
@@ -129,7 +136,7 @@
 
 ### Broadcast riset (ADR 0012, review alignment 23 Okt 2026)
 - [ ] `broadcast/worker.ts` masih hardcode `chainId = 42161` (I6) → ambil dari chain registry / opsi config.
-- [ ] Severity alert sinyal (`alertSeverities`) hanya tersimpan di memori → setelah restart, alert kritis dalam jendela 6 jam bisa terkirim ulang. Simpan severity di tabel `broadcasts`.
+- [ ] Severity alert sinyal (`alertSeverities`) hanya tersimpan di memori. Sejak 24 Okt, restart tidak lagi mengirim ulang alert, tapi kenaikan severity pertama setelah restart (dalam 6 jam) tidak terdeteksi. Simpan severity di tabel `broadcasts`.
 - [ ] `packages/db/scripts/copy-engine-data.ts` fallback ke path `.env` lokal developer → wajibkan `SOURCE_DATABASE_URL`.
 - [ ] Belum ada test regresi untuk `onRunCompleted` di `tahansoe start` yang terpanggil sebelum broadcaster dibuat (bug TDZ sudah diperbaiki 23 Okt).
 - [ ] Preferensi per user (bahasa, matikan digest, filter aset) belum ada; semua akun aktif menerima broadcast yang sama.
@@ -146,7 +153,10 @@
 - [ ] Scorecard belum direkap otomatis mingguan (settlement sendiri sudah berjalan tiap 60 menit di `tahansoe schedule run`, lock terpisah; data scorecard baru bermakna setelah scheduler jalan beberapa hari).
 - [ ] Modul teknikal lanjutan M2 (volatilitas realized EWMA/GARCH, funding rate ekstrem, open interest perp DEX) belum diimplementasikan.
 - [x] Pengiriman notifikasi alert Telegram langsung dari server engine sudah selesai via Sentinel Worker (Workstream C).
-- [ ] Host deployment untuk long-running engine worker di lingkungan cloud/VPS belum dipilih.
+- [x] Host deployment engine worker: VPS Ubuntu 24.04 + Docker (24 Okt 2026), lihat entri "Engine di VPS".
+- [ ] Deploy VPS masih salin manual (tar + scp ke `/opt/tahansoe`); belum ada skrip/CI deploy. Cloudflare Tunnel belum dipasang (belum perlu, worker outbound-only).
+- [ ] Sentinel & keeper (`tahansoe sentinel run`) belum dijalankan di VPS.
+- [ ] Price worker memanggil `process.exit(0)` saat lock dipegang instance lain, sehingga ikut mematikan seluruh `tahansoe start`. Sebaiknya lewati sampler saja, seperti job settle/fusion.
 
 ### Produk Web & Kontrak (M1)
 - [ ] Web app belum terhubung ke kontrak Guardian v1 (belum ada read/write on-chain langsung).

@@ -203,7 +203,7 @@ Kolom `chainId` wajib ada di setiap tabel yang menyimpan data on-chain (position
 - `packages/db` hanya memakai `@neondatabase/serverless` (HTTP untuk query, WebSocket direct session untuk advisory lock worker). `DATABASE_URL` wajib; `getDb()` melempar error jelas bila kosong.
 - Engine berjalan multi-proses (`tahansoe start` sebagai daemon + perintah CLI lain), jadi DB harus server. PGlite (ADR 0010) dihapus karena hanya aman untuk satu proses.
 - **Satu DB untuk web & engine** ([ADR 0012](decisions/0012-unified-db-outbound-research-broadcast.md)): `apps/web/.env` dan `apps/engine/.env` memakai `DATABASE_URL` yang sama, sehingga engine membaca `telegram_accounts` hasil link dari web. `npm run db:check` menampilkan host DB tersamar untuk verifikasi; `npm run db:copy-engine` adalah skrip satu kali (insert-only) untuk menyalin data riset dari DB engine lama.
-- Single-instance job dijamin session-level advisory lock Postgres: research `42161001`, settlement `42161002`, fusion `42161003`, sentinel `42161005`, broadcaster `42161006`.
+- Single-instance job dijamin session-level advisory lock Postgres: research `42161001`, settlement `42161002`, fusion `42161003`, price sampler `42161004`, sentinel `42161005`, broadcaster `42161006`. Key wajib unik (dijaga test `worker/lock.test.ts`).
 - `llm_usage_daily` menyimpan total biaya LLM per hari UTC agar `LLM_DAILY_BUDGET_USD` berlaku lintas proses dan tidak reset saat restart.
 
 ---

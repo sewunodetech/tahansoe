@@ -231,3 +231,19 @@ test("ResearchWorker: client error event -> lock lost -> reacquire on next tick"
 
   await worker.stop();
 });
+
+test("advisory lock key setiap worker unik (tabrakan settle vs price mematikan `start`)", async () => {
+  const { RESEARCH_WORKER_ADVISORY_LOCK_KEY, SENTINEL_WORKER_ADVISORY_LOCK_KEY } = await import("../../src/worker/lock.ts");
+  const { SETTLE_ADVISORY_LOCK_KEY, FUSION_ADVISORY_LOCK_KEY } = await import("../../src/cli/commands/schedule.ts");
+  const { PRICE_WORKER_ADVISORY_LOCK_KEY } = await import("../../src/worker/price-worker.ts");
+  const { BROADCAST_WORKER_ADVISORY_LOCK_KEY } = await import("../../src/broadcast/types.ts");
+  const keys = [
+    RESEARCH_WORKER_ADVISORY_LOCK_KEY,
+    SETTLE_ADVISORY_LOCK_KEY,
+    FUSION_ADVISORY_LOCK_KEY,
+    PRICE_WORKER_ADVISORY_LOCK_KEY,
+    SENTINEL_WORKER_ADVISORY_LOCK_KEY,
+    BROADCAST_WORKER_ADVISORY_LOCK_KEY,
+  ];
+  assert.equal(new Set(keys).size, keys.length, `key duplikat: ${keys.join(", ")}`);
+});

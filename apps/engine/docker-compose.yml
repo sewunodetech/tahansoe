@@ -1,0 +1,30 @@
+# Deploy engine di VPS: satu container `tahansoe start` (research, sampler, fusion,
+# settle, broadcaster). Jalankan dari folder ini:
+#   docker compose up -d --build
+# Butuh di samping file ini: .env (secret, di-gitignore) dan config/settings.json.
+services:
+  engine:
+    build:
+      context: ../..
+      dockerfile: apps/engine/Dockerfile
+    image: tahansoe-engine:latest
+    container_name: tahansoe-engine
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      TAHANSOE_SETTINGS: /app/config/settings.json
+    volumes:
+      - ./config:/app/config
+      - engine-data:/app/apps/engine/.data
+      - engine-out:/app/apps/engine/out
+    stop_grace_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+volumes:
+  engine-data:
+  engine-out:
