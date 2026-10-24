@@ -10,7 +10,7 @@ import {
   recommendedRepayBase,
   remainingActions,
 } from "../src/protection";
-import { ARBITRUM_ONE, ARBITRUM_SEPOLIA, currentGuardian, legacyGuardians, guardiansFor, latestGuardian, type ChainConfig } from "../src/chains";
+import { ARBITRUM_ONE, ARBITRUM_SEPOLIA, currentGuardian, legacyGuardians, guardiansFor, latestGuardian, isPerPositionGuardian, type ChainConfig } from "../src/chains";
 
 const USD = (n: number) => BigInt(Math.round(n * 1e8));
 
@@ -83,9 +83,15 @@ describe("remainingActions", () => {
 });
 
 describe("versi Guardian", () => {
-  it("Arbitrum Sepolia: v1 adalah versi terbaru dan sama dengan field guardian", () => {
+  it("Arbitrum Sepolia: v1 adalah Guardian klasik terbaru dan sama dengan field guardian", () => {
     assert.equal(currentGuardian(ARBITRUM_SEPOLIA)?.address, ARBITRUM_SEPOLIA.guardian);
     assert.deepEqual(legacyGuardians(ARBITRUM_SEPOLIA), []);
+  });
+  it("Arbitrum Sepolia: Guardian v4 Aave terdaftar dan ditemukan lewat latestGuardian", () => {
+    const v4 = latestGuardian(ARBITRUM_SEPOLIA, "aave-v3");
+    assert.equal(v4?.version, 4);
+    assert.equal(v4?.address, "0xa7Bbab6366a723e17cd2f220D708757e449571b4");
+    assert.equal(isPerPositionGuardian(v4), true);
   });
   it("versi tertinggi menjadi current, sisanya legacy terurut menurun", () => {
     const chain: ChainConfig = {
@@ -116,7 +122,8 @@ describe("versi Guardian", () => {
     assert.equal(guardiansFor(chain, "morpho-blue").length, 2);
     assert.equal(latestGuardian(chain, "aave-v3")?.version, 4);
     assert.equal(latestGuardian(chain, "morpho-blue")?.version, 2);
-    assert.equal(currentGuardian(chain)?.version, 4);
-    assert.deepEqual(legacyGuardians(chain).map((g) => g.version), [1]);
+    // currentGuardian/legacyGuardians hanya Guardian klasik (ABI v1–v3); v4 tidak ikut.
+    assert.equal(currentGuardian(chain)?.version, 1);
+    assert.deepEqual(legacyGuardians(chain).map((g) => g.version), []);
   });
 });
