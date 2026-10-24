@@ -1,7 +1,7 @@
 # Spec: Positions, Holdings, Reserves, dan Overview "Guardian view"
 
 - **Milestone:** M1. Memenuhi "`ProtocolAdapter` interface + `AaveAdapter` (read posisi asli)" di [PRD §10](../prd.md#10-roadmap-eksekusi), dan menyiapkan `MorphoAdapter` (M5) dalam mode baca saja.
-- **Status:** Draft (arahan owner, 24 Okt 2026)
+- **Status:** In progress (diimplementasikan di branch `feat/user-proof-sim-fee`, 24 Okt 2026)
 - **Pemilik:** Tim Web + Tim Domain
 - **Terkait:** [PRD §6, §7.1](../prd.md), [architecture.md §6](../architecture.md), [spec M1 web on-chain](m1-web-onchain-integration.md), [spec simulation mode](m1-simulation-mode.md), [ADR 0001](../decisions/0001-arbitrum-first-chain-agnostic.md), [security.md](../security.md)
 

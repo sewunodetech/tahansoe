@@ -433,7 +433,7 @@ User menyatakan niat ("jaga posisiku konservatif, tahan drop 30%"). LLM menerjem
 
 ### Milestone 1 — Integrasi end-to-end (Arbitrum Sepolia)
 - [ ] Chain registry + `arbitrumSepolia` di wagmi
-- [ ] `ProtocolAdapter` interface + `AaveAdapter` (read posisi asli)
+- [x] `ProtocolAdapter` interface + `AaveAdapter` (read posisi asli) — baca saja lewat `PositionReader` (`createAaveV3Reader`, plus `createMorphoBlueReader` read-only), [spec](specs/m1-positions-holdings-guardian-view.md); `buildRepay`/`buildSupply` belum
 - [ ] Settings → `approve` + `setPolicy` on-chain
 - [ ] Keeper cron + viem: `needsProtection` → `protect`, catat ke tabel `intents`
 - [x] Notifikasi Telegram dari server (bukan dari browser) — sentinel (alert posisi per user) + broadcaster riset ([ADR 0012](decisions/0012-unified-db-outbound-research-broadcast.md)); `app/api/alerts/notify` simulasi browser masih ada

@@ -9,6 +9,32 @@
 
 ## Sudah jalan
 
+### Positions, Holdings, Reserves, dan Overview "Guardian view" — 24 Okt 2026 ([spec](specs/m1-positions-holdings-guardian-view.md), branch `feat/user-proof-sim-fee`)
+
+Dikerjakan empat worker paralel (2 Claude, 2 Antigravity), lalu digabung dan diverifikasi.
+
+- **`packages/domain`:**
+  - `PositionDetail`, `createAaveV3Reader` (breakdown per reserve on-chain), `createMorphoBlueReader` (read-only), `priceForHealthFactor`.
+  - Domain kini bergantung pada `viem` dan `zod`.
+  - Morpho Blue Arbitrum One `0x6c247b1F…8F5e` terverifikasi via `eth_getCode`. Penemuan market lewat API GraphQL Morpho (tervalidasi Zod), dengan cadangan `getLogs`. Nilai posisi selalu dibaca on-chain.
+  - Tes baca nyata di Arbitrum One lulus.
+- **Web:**
+  - Menu **Positions**: Aave dan Morpho per chain, badge Protected / Not protected / Monitor only, harga likuidasi.
+  - Menu **Holdings**: saldo, allowance, dan kapasitas L1.
+  - Menu **Reserves**: sumber L2; menu hanya muncul bila L2 aktif.
+  - **Overview "Guardian view"**: gauge HF (likuidasi/trigger/target), harga ETH saat trigger dan saat likuidasi, detak Sentinel/keeper, meter cadangan L1/L2/L3.
+- **Detak pengecekan:** `GET /api/positions/heartbeat` (SIWE saja) dari `positions.last_checked_at`; simnet menambah `keeperCheckedAt`.
+- **Perbaikan saat integrasi:**
+  - deep link `/dashboard/*` tetap bertahan setelah reload (guard menunggu reconnect wagmi, `?next=`);
+  - chain simulasi memakai Multicall3;
+  - fork live simnet dibuat ulang otomatis bila RPC non-arsip sudah membuang state-nya.
+- **Verifikasi:** typecheck dan lint bersih; test engine 486, simnet 61, web 46, db 5, domain 75; Playwright di fork sungguhan untuk Positions, Holdings, Reserves, dan deep link.
+
+**Gap:**
+- Policy per posisi/protokol dan proteksi Morpho butuh Guardian v4 (ADR baru).
+- Simnet produksi butuh RPC arsip (Alchemy/Infura gratis).
+- Nilai USD Morpho hanya tersedia bila loan token juga reserve Aave.
+
 ### User proof: Simulation Mode + Guardian v3 fee sukses — 24 Okt 2026 (branch `feat/user-proof-sim-fee`; [ADR 0013](decisions/0013-success-fee-on-protection.md) & [ADR 0014](decisions/0014-simulation-network-anvil-fork.md) masih **Proposed**)
 
 Dikerjakan enam worker paralel (Orca), lalu digabung dan diverifikasi.
