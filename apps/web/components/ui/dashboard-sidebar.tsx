@@ -151,12 +151,15 @@ export interface SidebarNavProps {
   address?: string;
   onDisconnect?: () => void;
   collapsed?: boolean;
+  /** Network shown under the address (e.g. the simulation fork). */
+  networkLabel?: string;
 }
 
 export function SidebarNav({
   address,
   onDisconnect,
   collapsed = false,
+  networkLabel = "Arbitrum Sepolia",
 }: SidebarNavProps) {
   const pathname = usePathname();
 
@@ -266,7 +269,7 @@ export function SidebarNav({
                 {short}
               </span>
               <span className="text-[11px] font-mono text-[var(--text-tertiary)] mt-1">
-                Arbitrum Sepolia
+                {networkLabel}
               </span>
             </div>
             <button

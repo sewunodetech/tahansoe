@@ -24,6 +24,7 @@ import { ZoneBar } from "@/components/ui/zone-bar";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useDashboardMode } from "@/lib/dashboard-mode";
+import { SimDashboard } from "@/components/dashboard/sim/sim-dashboard";
 import { LivePage } from "@/components/dashboard/live/live-page";
 import { LiveOverview } from "@/components/dashboard/live/live-overview";
 
@@ -621,8 +622,9 @@ function DemoDashboardPage() {
 }
 
 export default function DashboardPage() {
-  const { isLive } = useDashboardMode();
+  const { isLive, isSimulation } = useDashboardMode();
   if (!isLive) return <DemoDashboardPage />;
+  if (isSimulation) return <SimDashboard />;
   return (
     <LivePage eyebrow="Overview" title="Position Health & Protection" subtitle="Your Aave V3 position and what the Guardian holds for it.">
       <LiveOverview />

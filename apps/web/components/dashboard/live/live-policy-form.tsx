@@ -9,7 +9,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { LayerBadge } from "@/components/ui/layer-badge";
 import { NumberInput } from "@/components/ui/number-input";
 import { AmountPresets, type AmountPreset } from "@/components/ui/amount-presets";
-import { DEBT_ASSETS } from "@/lib/contracts";
 import type { UseGuardianReturn } from "@/hooks/useGuardian";
 import { TxStatus, formatToken } from "./live-shared";
 
@@ -113,7 +112,7 @@ export function LivePolicyForm({ g, asset, onAssetChange }: LivePolicyFormProps)
         <div className="space-y-1.5">
           <label className="text-[11px] font-mono uppercase text-[var(--text-tertiary)] block">Repay with</label>
           <div className="flex gap-2">
-            {DEBT_ASSETS.map((a) => (
+            {g.target.debtAssets.map((a) => (
               <button
                 key={a.address}
                 type="button"

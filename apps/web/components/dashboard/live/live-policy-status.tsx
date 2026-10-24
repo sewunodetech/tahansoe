@@ -4,7 +4,7 @@ import React from "react";
 import { AlertTriangle, ArrowUpRight, Power, RotateCcw, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { explorerAddress, debtAssetSymbol } from "@/lib/contracts";
+import { assetSymbol } from "@/lib/live-target";
 import type { UseGuardianReturn } from "@/hooks/useGuardian";
 import { formatToken, TxStatus } from "./live-shared";
 
@@ -20,6 +20,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 /** What the Guardian holds for this wallet right now, capacity left, and the emergency stop. */
 export function LivePolicyStatus({ g }: { g: UseGuardianReturn }) {
   const { policy, token, guardian } = g;
+  const guardianHref = g.target.explorerAddress(guardian.address);
   const t = token!;
   const busy = g.tx.step !== null;
   const lowCapacity = policy?.enabled === true && g.actionsLeft < 1;
@@ -35,15 +36,19 @@ export function LivePolicyStatus({ g }: { g: UseGuardianReturn }) {
       <CardContent className="space-y-4">
         <div className="p-3 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border)] text-[11px] font-mono space-y-1.5">
           <Row label="Guardian">
-            <a
-              href={explorerAddress(guardian.address)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-0.5 text-[var(--brand)] hover:underline"
-            >
-              v{guardian.version} · {guardian.address.slice(0, 6)}…{guardian.address.slice(-4)}
-              <ArrowUpRight className="size-3" />
-            </a>
+            {guardianHref ? (
+              <a
+                href={guardianHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 text-[var(--brand)] hover:underline"
+              >
+                v{guardian.version} · {guardian.address.slice(0, 6)}…{guardian.address.slice(-4)}
+                <ArrowUpRight className="size-3" />
+              </a>
+            ) : (
+              <span>v{guardian.version} · {guardian.address.slice(0, 6)}…{guardian.address.slice(-4)}</span>
+            )}
           </Row>
           <Row label="Policy">
             {policy === null ? "None" : policy.enabled ? (
@@ -63,7 +68,7 @@ export function LivePolicyStatus({ g }: { g: UseGuardianReturn }) {
                 </Row>
               )}
               <Row label="Max per action">
-                {formatToken(policy.maxRepayPerAction, t.decimals)} {debtAssetSymbol(policy.debtAsset)}
+                {formatToken(policy.maxRepayPerAction, t.decimals)} {assetSymbol(g.target, policy.debtAsset)}
               </Row>
             </>
           )}

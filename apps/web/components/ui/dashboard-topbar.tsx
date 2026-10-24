@@ -7,7 +7,7 @@ import { PanelLeft, Search, Wallet, ChevronRight, Pause, Play } from "lucide-rea
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useTour } from "@/components/ui/onboarding-tour";
 import { useProtection } from "@/hooks/useProtection";
-import { useDashboardMode, type DashboardMode } from "@/lib/dashboard-mode";
+import { useDashboardMode } from "@/lib/dashboard-mode";
 
 export interface DashboardTopbarProps {
   collapsed?: boolean;
@@ -37,7 +37,7 @@ export function DashboardTopbar({
   const pathname = usePathname();
   const { isPaused, actions, ethPrice } = useProtection();
   const { restart: restartTour } = useTour();
-  const { mode, setMode, isLive } = useDashboardMode();
+  const { mode, setMode, isLive, isSimulation } = useDashboardMode();
 
   const currentLabel = ROUTE_LABELS[pathname] ?? "Dashboard";
   const shortAddress = address
@@ -84,35 +84,45 @@ export function DashboardTopbar({
 
       {/* ── Right: Live/Demo switch, simulation controls, Theme, Tour, Wallet ── */}
       <div className="flex items-center gap-2">
-        {/* Live / Demo switch */}
-        <div
-          role="radiogroup"
-          aria-label="Data source"
-          className="flex items-center h-7 p-0.5 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] text-[11px] font-mono"
-        >
-          {(["live", "demo"] as DashboardMode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              role="radio"
-              aria-checked={mode === m}
-              onClick={() => setMode(m)}
-              title={m === "live" ? "Your real Aave position on Arbitrum Sepolia" : "Simulated position and market"}
-              className={`flex items-center gap-1.5 h-6 px-2.5 rounded-full transition-colors cursor-pointer ${
-                mode === m
-                  ? "bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-sm"
-                  : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-              }`}
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  m === "live" ? "bg-[var(--safe)]" : "bg-[var(--warning)]"
+        {isSimulation ? (
+          <span
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-[var(--warning-border)] bg-[var(--warning-bg)] text-[11px] font-mono text-[var(--warning)]"
+            title="Fake funds on a fork of Arbitrum One"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning)] animate-pulse" />
+            Simulation
+          </span>
+        ) : (
+          /* Live / Demo switch */
+          <div
+            role="radiogroup"
+            aria-label="Data source"
+            className="flex items-center h-7 p-0.5 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] text-[11px] font-mono"
+          >
+            {(["live", "demo"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={mode === m}
+                onClick={() => setMode(m)}
+                title={m === "live" ? "Your real Aave position on Arbitrum Sepolia" : "Simulated position and market"}
+                className={`flex items-center gap-1.5 h-6 px-2.5 rounded-full transition-colors cursor-pointer ${
+                  mode === m
+                    ? "bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-sm"
+                    : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
                 }`}
-              />
-              {m === "live" ? "Live" : "Demo"}
-            </button>
-          ))}
-        </div>
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    m === "live" ? "bg-[var(--safe)]" : "bg-[var(--warning)]"
+                  }`}
+                />
+                {m === "live" ? "Live" : "Demo"}
+              </button>
+            ))}
+          </div>
+        )}
 
         {!isLive && (
           <>

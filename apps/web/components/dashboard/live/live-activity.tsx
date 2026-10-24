@@ -5,7 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { GUARDIAN, LEGACY_GUARDIANS, LIVE_CHAIN, debtAssetSymbol, explorerTx, guardianAbi, guardianV2Abi } from "@/lib/contracts";
+import { guardianAbi, guardianV2Abi } from "@/lib/contracts";
+import { assetSymbol, useLiveTarget } from "@/lib/live-target";
 import { isGuardianV2, wadToNumber } from "@tahansoe/domain";
 
 interface ActivityRow {
@@ -20,18 +21,22 @@ interface ActivityRow {
 /** Guardian events for the connected wallet across every Guardian version, newest first. */
 export function LiveActivity() {
   const { address: user } = useAccount();
-  const client = usePublicClient({ chainId: LIVE_CHAIN.id });
+  const target = useLiveTarget();
+  const client = usePublicClient({ chainId: target.chain.id });
+  const debtAssetSymbol = (address: string | undefined) => assetSymbol(target, address);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["guardian-activity", user],
-    enabled: Boolean(user && client),
+    queryKey: ["guardian-activity", user, target.chain.id, target.guardian.address],
+    enabled: Boolean(user && client && target.ready),
     refetchInterval: 30_000,
     queryFn: async (): Promise<ActivityRow[]> => {
       const rows: ActivityRow[] = [];
-      for (const g of [GUARDIAN, ...LEGACY_GUARDIANS]) {
+      // The simulation RPC proxy caps eth_getLogs at 10,000 blocks (spec m1-simulation-mode §3.7).
+      const simFloor = target.isSimulation ? (await client!.getBlockNumber()) - 9_000n : 0n;
+      for (const g of [target.guardian, ...target.legacyGuardians]) {
         const isV2 = isGuardianV2(g);
         const abi = isV2 ? guardianV2Abi : guardianAbi;
-        const base = { address: g.address, abi, fromBlock: BigInt(g.deployedBlock), args: { user: user! } };
+        const base = { address: g.address, abi, fromBlock: BigInt(g.deployedBlock) > simFloor ? BigInt(g.deployedBlock) : simFloor > 0n ? simFloor : 0n, args: { user: user! } };
 
         if (isV2) {
           const [set, disabled, protectedLogs, l2Set, l3Set, tbSet, dynSet, layerUsed] = await Promise.all([
@@ -199,14 +204,18 @@ export function LiveActivity() {
               {row.detail} · Guardian v{row.version} · block {row.block.toString()}
             </p>
           </div>
-          <a
-            href={explorerTx(row.hash)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-0.5 text-[11px] font-mono text-[var(--brand)] hover:underline shrink-0"
-          >
-            {row.hash.slice(0, 8)}… <ArrowUpRight className="size-3" />
-          </a>
+          {target.explorerTx(row.hash) ? (
+            <a
+              href={target.explorerTx(row.hash)!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-0.5 text-[11px] font-mono text-[var(--brand)] hover:underline shrink-0"
+            >
+              {row.hash.slice(0, 8)}… <ArrowUpRight className="size-3" />
+            </a>
+          ) : (
+            <span className="text-[11px] font-mono text-[var(--text-tertiary)] shrink-0">{row.hash.slice(0, 8)}…</span>
+          )}
         </div>
       ))}
     </Card>

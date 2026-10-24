@@ -16,18 +16,8 @@ import { erc20Abi, type Address, type Hash } from "viem";
 import { useAccount, usePublicClient, useReadContracts, useSwitchChain, useWriteContract } from "wagmi";
 import type { GuardianDeployment } from "@tahansoe/domain";
 import { recommendedRepayBase, baseToToken, remainingActions, hfToWad, wadToNumber, isGuardianV2 } from "@tahansoe/domain";
-import {
-  AAVE_ORACLE,
-  AAVE_POOL,
-  DEBT_ASSETS,
-  GUARDIAN,
-  LEGACY_GUARDIANS,
-  LIVE_CHAIN,
-  aaveOracleAbi,
-  aavePoolAbi,
-  guardianAbi,
-  guardianV2Abi,
-} from "@/lib/contracts";
+import { aaveOracleAbi, aavePoolAbi, guardianAbi, guardianV2Abi } from "@/lib/contracts";
+import { useLiveTarget } from "@/lib/live-target";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const REFRESH_MS = 15_000;
@@ -140,30 +130,32 @@ function errorMessage(err: unknown): string {
  */
 export function useGuardian(selectedAsset?: Address) {
   const { address: user, chainId } = useAccount();
-  const publicClient = usePublicClient({ chainId: LIVE_CHAIN.id });
+  const target = useLiveTarget();
+  const { chain, pool, oracle, guardian, legacyGuardians, debtAssets } = target;
+  const publicClient = usePublicClient({ chainId: chain.id });
   const { mutateAsync: writeContract } = useWriteContract();
   const { mutateAsync: switchChain } = useSwitchChain();
   const [tx, setTx] = useState<TxState>({ step: null, last: null, hash: null, error: null });
 
-  const isV2 = isGuardianV2(GUARDIAN);
-  const enabled = Boolean(user);
+  const isV2 = isGuardianV2(guardian);
+  const enabled = Boolean(user) && target.ready;
   const query = { enabled, refetchInterval: REFRESH_MS };
 
   /* ── Position + policy on the current Guardian ─────────────────────────── */
   const v1Contracts = [
-    { chainId: LIVE_CHAIN.id, address: AAVE_POOL, abi: aavePoolAbi, functionName: "getUserAccountData" as const, args: [user!] as const },
-    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianAbi, functionName: "policies" as const, args: [user!] as const },
-    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianAbi, functionName: "quoteRepay" as const, args: [user!] as const },
+    { chainId: chain.id, address: pool, abi: aavePoolAbi, functionName: "getUserAccountData" as const, args: [user!] as const },
+    { chainId: chain.id, address: guardian.address, abi: guardianAbi, functionName: "policies" as const, args: [user!] as const },
+    { chainId: chain.id, address: guardian.address, abi: guardianAbi, functionName: "quoteRepay" as const, args: [user!] as const },
   ];
 
   const v2Contracts = [
-    { chainId: LIVE_CHAIN.id, address: AAVE_POOL, abi: aavePoolAbi, functionName: "getUserAccountData" as const, args: [user!] as const },
-    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianV2Abi, functionName: "policies" as const, args: [user!] as const },
-    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianV2Abi, functionName: "layer2" as const, args: [user!] as const },
-    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianV2Abi, functionName: "layer3" as const, args: [user!] as const },
-    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianV2Abi, functionName: "triggerBands" as const, args: [user!] as const },
-    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianV2Abi, functionName: "effectiveTrigger" as const, args: [user!] as const },
-    { chainId: LIVE_CHAIN.id, address: GUARDIAN.address, abi: guardianV2Abi, functionName: "quoteProtect" as const, args: [user!] as const },
+    { chainId: chain.id, address: pool, abi: aavePoolAbi, functionName: "getUserAccountData" as const, args: [user!] as const },
+    { chainId: chain.id, address: guardian.address, abi: guardianV2Abi, functionName: "policies" as const, args: [user!] as const },
+    { chainId: chain.id, address: guardian.address, abi: guardianV2Abi, functionName: "layer2" as const, args: [user!] as const },
+    { chainId: chain.id, address: guardian.address, abi: guardianV2Abi, functionName: "layer3" as const, args: [user!] as const },
+    { chainId: chain.id, address: guardian.address, abi: guardianV2Abi, functionName: "triggerBands" as const, args: [user!] as const },
+    { chainId: chain.id, address: guardian.address, abi: guardianV2Abi, functionName: "effectiveTrigger" as const, args: [user!] as const },
+    { chainId: chain.id, address: guardian.address, abi: guardianV2Abi, functionName: "quoteProtect" as const, args: [user!] as const },
   ];
 
   const core = useReadContracts({
@@ -174,26 +166,26 @@ export function useGuardian(selectedAsset?: Address) {
   });
 
   const policy = toPolicy(core.data?.[1] as readonly [boolean, Address, bigint, bigint, bigint] | undefined);
-  const debtAsset: Address = selectedAsset ?? policy?.debtAsset ?? DEBT_ASSETS[0].address;
+  const debtAsset: Address = selectedAsset ?? policy?.debtAsset ?? debtAssets[0].address;
 
   /* ── Debt token: wallet balance, allowance to the Guardian, price ──────── */
   const token = useReadContracts({
     contracts: [
-      { chainId: LIVE_CHAIN.id, address: debtAsset, abi: erc20Abi, functionName: "balanceOf", args: [user!] },
-      { chainId: LIVE_CHAIN.id, address: debtAsset, abi: erc20Abi, functionName: "allowance", args: [user!, GUARDIAN.address] },
-      { chainId: LIVE_CHAIN.id, address: debtAsset, abi: erc20Abi, functionName: "decimals" },
-      { chainId: LIVE_CHAIN.id, address: debtAsset, abi: erc20Abi, functionName: "symbol" },
-      { chainId: LIVE_CHAIN.id, address: AAVE_ORACLE, abi: aaveOracleAbi, functionName: "getAssetPrice", args: [debtAsset] },
+      { chainId: chain.id, address: debtAsset, abi: erc20Abi, functionName: "balanceOf", args: [user!] },
+      { chainId: chain.id, address: debtAsset, abi: erc20Abi, functionName: "allowance", args: [user!, guardian.address] },
+      { chainId: chain.id, address: debtAsset, abi: erc20Abi, functionName: "decimals" },
+      { chainId: chain.id, address: debtAsset, abi: erc20Abi, functionName: "symbol" },
+      { chainId: chain.id, address: oracle, abi: aaveOracleAbi, functionName: "getAssetPrice", args: [debtAsset] },
     ],
     allowFailure: false,
     query,
   });
 
   /* ── Older Guardian versions (migration) ───────────────────────────────── */
-  const legacyContracts = LEGACY_GUARDIANS.flatMap((g) => [
-    { chainId: LIVE_CHAIN.id, address: g.address, abi: guardianAbi, functionName: "policies" as const, args: [user!] as const },
-    ...DEBT_ASSETS.map((asset) => ({
-      chainId: LIVE_CHAIN.id,
+  const legacyContracts = legacyGuardians.flatMap((g) => [
+    { chainId: chain.id, address: g.address, abi: guardianAbi, functionName: "policies" as const, args: [user!] as const },
+    ...debtAssets.map((asset) => ({
+      chainId: chain.id,
       address: asset.address,
       abi: erc20Abi,
       functionName: "allowance" as const,
@@ -203,7 +195,7 @@ export function useGuardian(selectedAsset?: Address) {
   const legacy = useReadContracts({
     contracts: legacyContracts,
     allowFailure: false,
-    query: { ...query, enabled: enabled && LEGACY_GUARDIANS.length > 0 },
+    query: { ...query, enabled: enabled && legacyGuardians.length > 0 },
   });
 
   /* ── Derived values ────────────────────────────────────────────────────── */
@@ -282,11 +274,11 @@ export function useGuardian(selectedAsset?: Address) {
 
   const legacyExposure: LegacyExposure[] = useMemo(() => {
     if (!legacy.data) return [];
-    const perGuardian = 1 + DEBT_ASSETS.length;
-    return LEGACY_GUARDIANS.map((deployment, i) => {
+    const perGuardian = 1 + debtAssets.length;
+    return legacyGuardians.map((deployment, i) => {
       const slice = legacy.data.slice(i * perGuardian, (i + 1) * perGuardian);
       const legacyPolicy = toPolicy(slice[0] as readonly [boolean, Address, bigint, bigint, bigint]);
-      const allowances = DEBT_ASSETS.map((asset, j) => ({
+      const allowances = debtAssets.map((asset, j) => ({
         asset: asset.address,
         symbol: asset.symbol,
         decimals: asset.decimals,
@@ -294,7 +286,7 @@ export function useGuardian(selectedAsset?: Address) {
       })).filter((a) => a.amount > 0n);
       return { deployment, policy: legacyPolicy, allowances };
     }).filter((x) => x.policy?.enabled || x.allowances.length > 0);
-  }, [legacy.data]);
+  }, [legacy.data, legacyGuardians, debtAssets]);
 
   /** Recommended per-action cap in token units: repay needed when HF hits the trigger. */
   const recommendedMaxRepay = useCallback(
@@ -332,13 +324,13 @@ export function useGuardian(selectedAsset?: Address) {
     await Promise.all([core.refetch(), token.refetch(), legacy.refetch()]);
   }, [core, token, legacy]);
 
-  const wrongChain = chainId !== LIVE_CHAIN.id;
+  const wrongChain = chainId !== chain.id;
 
   const send = useCallback(
     async (step: TxStep, request: Parameters<typeof writeContract>[0]) => {
       setTx({ step, last: step, hash: null, error: null });
       try {
-        if (wrongChain) await switchChain({ chainId: LIVE_CHAIN.id });
+        if (wrongChain) await switchChain({ chainId: chain.id });
         const hash = await writeContract(request);
         setTx({ step, last: step, hash, error: null });
         await publicClient!.waitForTransactionReceipt({ hash });
@@ -350,102 +342,102 @@ export function useGuardian(selectedAsset?: Address) {
         return false;
       }
     },
-    [wrongChain, switchChain, writeContract, publicClient, refetch]
+    [wrongChain, switchChain, writeContract, publicClient, refetch, chain.id]
   );
 
   const approve = useCallback(
     (amount: bigint, spender?: Address, tokenAddress?: Address) =>
       send("approve", {
-        chainId: LIVE_CHAIN.id,
+        chainId: chain.id,
         address: tokenAddress ?? debtAsset,
         abi: erc20Abi,
         functionName: "approve",
-        args: [spender ?? GUARDIAN.address, amount],
+        args: [spender ?? guardian.address, amount],
       }),
-    [send, debtAsset]
+    [send, debtAsset, chain.id, guardian.address]
   );
 
   const setPolicy = useCallback(
     (triggerHf: number, targetHf: number, maxRepayPerAction: bigint) =>
       send("setPolicy", {
-        chainId: LIVE_CHAIN.id,
-        address: GUARDIAN.address,
+        chainId: chain.id,
+        address: guardian.address,
         abi: isV2 ? guardianV2Abi : guardianAbi,
         functionName: "setPolicy",
         args: [debtAsset, hfToWad(triggerHf), hfToWad(targetHf), maxRepayPerAction],
       }),
-    [send, isV2, debtAsset]
+    [send, isV2, debtAsset, chain.id, guardian.address]
   );
 
   const disablePolicy = useCallback(
     () =>
       send("disable", {
-        chainId: LIVE_CHAIN.id,
-        address: GUARDIAN.address,
+        chainId: chain.id,
+        address: guardian.address,
         abi: isV2 ? guardianV2Abi : guardianAbi,
         functionName: "disablePolicy",
       }),
-    [send, isV2]
+    [send, isV2, chain.id, guardian.address]
   );
 
   const setLayer2 = useCallback(
     (kind: number, source: Address, maxAssetsPerAction: bigint) =>
       send("setLayer2", {
-        chainId: LIVE_CHAIN.id,
-        address: GUARDIAN.address,
+        chainId: chain.id,
+        address: guardian.address,
         abi: guardianV2Abi,
         functionName: "setLayer2",
         args: [kind, source, maxAssetsPerAction],
       }),
-    [send]
+    [send, chain.id, guardian.address]
   );
 
   const setLayer3 = useCallback(
     (enabled: boolean, collateralAsset: Address, maxCollateralPerAction: bigint, maxSlippageBps: number) =>
       send("setLayer3", {
-        chainId: LIVE_CHAIN.id,
-        address: GUARDIAN.address,
+        chainId: chain.id,
+        address: guardian.address,
         abi: guardianV2Abi,
         functionName: "setLayer3",
         args: [enabled, collateralAsset, maxCollateralPerAction, maxSlippageBps],
       }),
-    [send]
+    [send, chain.id, guardian.address]
   );
 
   const setTriggerBand = useCallback(
     (minTriggerHf: number, maxTriggerHf: number, riskAgent: Address) =>
       send("setTriggerBand", {
-        chainId: LIVE_CHAIN.id,
-        address: GUARDIAN.address,
+        chainId: chain.id,
+        address: guardian.address,
         abi: guardianV2Abi,
         functionName: "setTriggerBand",
         args: [hfToWad(minTriggerHf), hfToWad(maxTriggerHf), riskAgent],
       }),
-    [send]
+    [send, chain.id, guardian.address]
   );
 
   const protect = useCallback(
     () =>
       send("protect", {
-        chainId: LIVE_CHAIN.id,
-        address: GUARDIAN.address,
+        chainId: chain.id,
+        address: guardian.address,
         abi: isV2 ? guardianV2Abi : guardianAbi,
         functionName: "protect",
         args: [user!],
       }),
-    [send, isV2, user]
+    [send, isV2, user, chain.id, guardian.address]
   );
 
   const revoke = useCallback(
     () =>
       send("revoke", {
-        chainId: LIVE_CHAIN.id,
+        chainId: chain.id,
         address: debtAsset,
         abi: erc20Abi,
         functionName: "approve",
-        args: [GUARDIAN.address, 0n],
+        args: [guardian.address, 0n],
       }),
-    [send, debtAsset]
+    [send, debtAsset, chain.id, guardian.address]
   );
 
   /** Turn off an old Guardian: disable its policy, then zero every allowance it still has. */
@@ -453,7 +445,7 @@ export function useGuardian(selectedAsset?: Address) {
     async (exposure: LegacyExposure) => {
       if (exposure.policy?.enabled) {
         const ok = await send("migrate", {
-          chainId: LIVE_CHAIN.id,
+          chainId: chain.id,
           address: exposure.deployment.address,
           abi: guardianAbi,
           functionName: "disablePolicy",
@@ -462,7 +454,7 @@ export function useGuardian(selectedAsset?: Address) {
       }
       for (const a of exposure.allowances) {
         const ok = await send("migrate", {
-          chainId: LIVE_CHAIN.id,
+          chainId: chain.id,
           address: a.asset,
           abi: erc20Abi,
           functionName: "approve",
@@ -472,22 +464,23 @@ export function useGuardian(selectedAsset?: Address) {
       }
       return true;
     },
-    [send]
+    [send, chain.id]
   );
 
   const switchToLiveChain = useCallback(async () => {
     setTx({ step: "switch", last: "switch", hash: null, error: null });
     try {
-      await switchChain({ chainId: LIVE_CHAIN.id });
+      await switchChain({ chainId: chain.id });
       setTx({ step: null, last: "switch", hash: null, error: null });
     } catch (err) {
       setTx({ step: null, last: "switch", hash: null, error: errorMessage(err) });
     }
-  }, [switchChain]);
+  }, [switchChain, chain.id]);
 
   return {
     user,
-    guardian: GUARDIAN,
+    guardian,
+    target,
     isV2,
     wrongChain,
     isLoading: core.isLoading || token.isLoading,
