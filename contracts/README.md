@@ -200,6 +200,7 @@ GUARDIAN_V2=<deployed_v2_address> TEST_VAULT=<deployed_vault_address> \
 | TahansoeGuardian (V1) | [`0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E`](https://sepolia.arbiscan.io/address/0x1a5d249a8e711e2288add7c01e31eb7ffb05d97e) |
 | TahansoeGuardianV2 | *(Deployed per release)* |
 | TahansoeGuardianV3 | *(Not deployed; simulation fork only until audit)* |
-| TahansoeGuardianAaveV4 | *(Not deployed; simulation fork only until audit)* |
+| TahansoeGuardianAaveV4 | [`0xa7Bbab6366a723e17cd2f220D708757e449571b4`](https://sepolia.arbiscan.io/address/0xa7bbab6366a723e17cd2f220d708757e449571b4) (verified, block 322451784; testnet only, unaudited; not yet in the chain registry) |
+| MockSwapRouter (for AaveV4) | [`0x3A4440473141DAB3822bAb065a4d16fc18255F6C`](https://sepolia.arbiscan.io/address/0x3a4440473141dab3822bab065a4d16fc18255f6c) (verified) |
 | TahansoeGuardianMorpho | *(Not deployed; simulation fork only until audit)* |
 
