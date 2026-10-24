@@ -123,6 +123,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
         guardianAddress: gAddr,
         guardianVersion: data.guardianVersion,
         debtAsset: dAsset,
+        positionKey: data.positionKey,
         maxRepayPerAction: data.maxRepayPerAction.toString(),
         triggerThreshold: data.triggerThreshold.toFixed(4),
         targetHealthFactor: data.targetHealthFactor.toFixed(4),
@@ -135,6 +136,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
           isActive: true,
           guardianVersion: data.guardianVersion,
           debtAsset: dAsset,
+          positionKey: data.positionKey,
           maxRepayPerAction: data.maxRepayPerAction.toString(),
           triggerThreshold: data.triggerThreshold.toFixed(4),
           targetHealthFactor: data.targetHealthFactor.toFixed(4),
@@ -185,6 +187,14 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
     maxAssets: bigint;
     positionKey?: string;
   }): Promise<void> {
+    if (data.positionKey) {
+      try {
+        await this.db.execute(
+          sql`UPDATE policies SET layer2_kind = ${data.kind}, layer2_source = ${data.source.toLowerCase()}, layer2_max_assets = ${data.maxAssets.toString()}, updated_at = now() WHERE user_id = ${data.userId} AND guardian_address = ${data.guardianAddress.toLowerCase()} AND position_key = ${data.positionKey}`,
+        );
+        return;
+      } catch {}
+    }
     await this.db
       .update(policies)
       .set({
@@ -210,6 +220,14 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
     maxSlippageBps: number;
     positionKey?: string;
   }): Promise<void> {
+    if (data.positionKey) {
+      try {
+        await this.db.execute(
+          sql`UPDATE policies SET layer3_enabled = ${data.enabled}, layer3_collateral_asset = ${data.collateralAsset.toLowerCase()}, layer3_max_collateral = ${data.maxCollateral.toString()}, layer3_max_slippage_bps = ${data.maxSlippageBps}, updated_at = now() WHERE user_id = ${data.userId} AND guardian_address = ${data.guardianAddress.toLowerCase()} AND position_key = ${data.positionKey}`,
+        );
+        return;
+      } catch {}
+    }
     await this.db
       .update(policies)
       .set({
@@ -235,6 +253,14 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
     riskAgent: Address;
     positionKey?: string;
   }): Promise<void> {
+    if (data.positionKey) {
+      try {
+        await this.db.execute(
+          sql`UPDATE policies SET min_trigger_hf = ${data.minTriggerHf.toFixed(4)}, max_trigger_hf = ${data.maxTriggerHf.toFixed(4)}, risk_agent = ${data.riskAgent.toLowerCase()}, updated_at = now() WHERE user_id = ${data.userId} AND guardian_address = ${data.guardianAddress.toLowerCase()} AND position_key = ${data.positionKey}`,
+        );
+        return;
+      } catch {}
+    }
     await this.db
       .update(policies)
       .set({

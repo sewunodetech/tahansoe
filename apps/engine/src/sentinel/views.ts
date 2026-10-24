@@ -127,18 +127,26 @@ export function reserveLowAlert(opts: {
   decimals?: number;
   symbol?: string;
   protocol?: string;
+  debtAsset?: string;
+  marketId?: string;
   positionKey?: string;
   lang?: Lang;
 }): string {
   const lang = opts.lang ?? "en";
   const userShort = `${opts.user.slice(0, 6)}…${opts.user.slice(-4)}`;
-  const sym = opts.symbol ?? "tokens";
+  const sym = opts.symbol ?? (opts.debtAsset ? `${opts.debtAsset.slice(0, 6)}…${opts.debtAsset.slice(-4)}` : "tokens");
   const dec = opts.decimals ?? 6;
   const unit = 10n ** BigInt(dec);
   const minReserve = opts.allowance < opts.balance ? opts.allowance : opts.balance;
   const reserveFmt = (Number(minReserve) / Number(unit)).toFixed(2);
   const capFmt = (Number(opts.cap) / Number(unit)).toFixed(2);
   const protocolName = formatProtocolName(opts.protocol);
+  const posDisplay = formatPositionDisplay({
+    userShort,
+    symbol: opts.symbol,
+    debtAsset: opts.debtAsset,
+    marketId: opts.marketId,
+  });
 
   const lines = [
     `⚠️ <b>${L(lang, "CADANGAN RESERVOIR RENDAH", "RESERVE CAPACITY LOW")}</b>`,
@@ -149,7 +157,7 @@ export function reserveLowAlert(opts: {
   }
 
   lines.push(
-    `<b>${L(lang, "Posisi", "Position")}:</b> <code>${escapeHtml(userShort)}</code>`,
+    `<b>${L(lang, "Posisi", "Position")}:</b> ${posDisplay}`,
     `<b>${L(lang, "Tersedia", "Available")}:</b> <code>${reserveFmt} ${escapeHtml(sym)}</code> (Cap: <code>${capFmt} ${escapeHtml(sym)}</code>)`,
     L(
       lang,

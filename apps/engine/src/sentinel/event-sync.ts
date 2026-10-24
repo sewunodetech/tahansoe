@@ -329,8 +329,16 @@ export async function syncGuardianEvents(options: SyncOptions): Promise<SyncResu
               const amountIn = BigInt(args.amountIn);
               const debtRepaid = BigInt(args.debtRepaid);
               const key = (args.debtAsset ?? args.marketId ?? "").toLowerCase();
+              const positionKey = key
+                ? buildPositionKey({
+                    protocol: args.marketId ? "morpho-blue" : "aave-v3",
+                    chainId,
+                    guardian: guardianAddress,
+                    key,
+                  })
+                : undefined;
               options.logger?.info?.(
-                `[event-sync] LayerUsed: user=${userAddress} guardian=${guardianAddress} key=${key} layer=${layer} amountIn=${amountIn} debtRepaid=${debtRepaid}`,
+                `[event-sync] LayerUsed: user=${userAddress} guardian=${guardianAddress} key=${key} positionKey=${positionKey} layer=${layer} amountIn=${amountIn} debtRepaid=${debtRepaid}`,
               );
               break;
             }
@@ -385,8 +393,16 @@ export async function syncGuardianEvents(options: SyncOptions): Promise<SyncResu
               const amount = BigInt(args.amount);
               const waived = BigInt(args.waived);
               const key = (args.debtAsset ?? args.marketId ?? "").toLowerCase();
+              const positionKey = key
+                ? buildPositionKey({
+                    protocol: args.marketId ? "morpho-blue" : "aave-v3",
+                    chainId,
+                    guardian: guardianAddress,
+                    key,
+                  })
+                : undefined;
               options.logger?.info?.(
-                `[event-sync] FeeCharged: user=${userAddress} guardian=${guardianAddress} key=${key} amount=${amount} waived=${waived}`,
+                `[event-sync] FeeCharged: user=${userAddress} guardian=${guardianAddress} key=${key} positionKey=${positionKey} amount=${amount} waived=${waived}`,
               );
               break;
             }

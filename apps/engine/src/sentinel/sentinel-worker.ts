@@ -6,7 +6,7 @@
  * Alur per siklus (tick):
  *  1. Sync event Guardian (PolicySet, PolicyDisabled, Protected, Layer*, Band*)
  *  2. Ambil seluruh policy aktif di chain
- *  3. Multicall ke AavePool & ERC20: getUserAccountData, allowance, balance, quoteRepay
+ *  3. Multicall ke AavePool & ERC20: getUserAccountData, allowance, balance, quoteRepay/quoteProtect
  *  4. Upsert `positions` & hitung zona risiko (Critical, Warning, Watch, Safe)
  *  5. Deteksi transisi zona -> kirim alert Telegram & catat ke `notification_logs`
  *  6. Deteksi cadangan rendah (RESERVE_LOW) -> kirim alert Telegram
@@ -31,14 +31,14 @@ import {
   type AdvisoryLockClient,
 } from "../worker/lock.ts";
 import { SENTINEL_WORKER_ADVISORY_LOCK_KEY } from "../worker/lock.ts";
-import { aavePoolAbi, erc20Abi, guardianAbi } from "./abi.ts";
+import { aavePoolAbi, erc20Abi, guardianAbi, guardianAaveV4Abi } from "./abi.ts";
 import { syncGuardianEvents } from "./event-sync.ts";
 import { Keeper } from "./keeper.ts";
-import type { GuardianAdapter } from "./adapters.ts";
+import { createGuardianAdaptersForChain, type GuardianAdapter } from "./adapters.ts";
 import { hfWarningAlert, hfCriticalAlert, reserveLowAlert } from "./views.ts";
 import type { SentinelDatabase } from "./db-adapter.ts";
 import type { TelegramSender } from "../telegram/index.ts";
-import type { KeeperExecutionResult, SentinelTickResult, UserPositionSnapshot } from "./types.ts";
+import type { KeeperExecutionResult, SentinelTickResult, UserPositionSnapshot, PolicyRecord } from "./types.ts";
 
 export const DEFAULT_SENTINEL_INTERVAL_SEC = 60;
 
@@ -82,7 +82,7 @@ export interface SentinelWorkerOptions {
   adapters?: GuardianAdapter[];
   /** Injectable multicall loader for unit testing */
   multicallLoader?: (
-    policies: Array<{ user: Address; guardianAddress: Address; debtAsset: Address }>,
+    policies: Array<{ user: Address; guardianAddress: Address; debtAsset: Address; guardianVersion?: number }>,
   ) => Promise<MulticallBatchResult[]>;
 }
 
@@ -103,7 +103,7 @@ export class SentinelWorker {
   private readonly exitFn: (code: number) => void;
   private readonly adapters?: GuardianAdapter[];
   private readonly multicallLoader?: (
-    policies: Array<{ user: Address; guardianAddress: Address; debtAsset: Address }>,
+    policies: Array<{ user: Address; guardianAddress: Address; debtAsset: Address; guardianVersion?: number }>,
   ) => Promise<MulticallBatchResult[]>;
 
   // Keyed by positionKey (or fallback to guardian:debtAsset:user)
@@ -293,6 +293,7 @@ export class SentinelWorker {
             user: p.userAddress,
             guardianAddress: p.guardianAddress,
             debtAsset: p.debtAsset,
+            guardianVersion: p.guardianVersion,
           })),
         );
       } else if (this.client) {
@@ -408,6 +409,8 @@ export class SentinelWorker {
             balance: data.balance,
             cap: policy.maxRepayPerAction,
             protocol: policy.protocol ?? "aave-v3",
+            debtAsset: policy.debtAsset,
+            marketId: policy.marketId ?? undefined,
             positionKey: policy.positionKey ?? undefined,
           });
 
@@ -423,6 +426,7 @@ export class SentinelWorker {
           const keeperResult = await this.keeper.evaluateAndProtect({
             user: userKey,
             guardianAddress: policy.guardianAddress,
+            guardianVersion: policy.guardianVersion,
             positionKey: policy.positionKey ?? undefined,
             protocol: policy.protocol ?? "aave-v3",
             key: policy.marketId ?? policy.debtAsset,
@@ -447,7 +451,13 @@ export class SentinelWorker {
   }
 
   private async executeViemMulticall(
-    activePolicies: Array<{ userAddress: Address; guardianAddress: Address; debtAsset: Address }>,
+    activePolicies: Array<{
+      userAddress: Address;
+      guardianAddress: Address;
+      debtAsset: Address;
+      guardianVersion?: number;
+      protocol?: string;
+    }>,
     poolAddress: Address,
   ): Promise<MulticallBatchResult[]> {
     if (!this.client) return [];
@@ -472,12 +482,21 @@ export class SentinelWorker {
         functionName: "balanceOf",
         args: [p.userAddress],
       });
-      calls.push({
-        address: p.guardianAddress,
-        abi: guardianAbi,
-        functionName: "quoteRepay",
-        args: [p.userAddress],
-      });
+      if ((p.guardianVersion ?? 1) >= 4) {
+        calls.push({
+          address: p.guardianAddress,
+          abi: guardianAaveV4Abi,
+          functionName: "quoteProtect",
+          args: [p.userAddress, p.debtAsset],
+        });
+      } else {
+        calls.push({
+          address: p.guardianAddress,
+          abi: guardianAbi,
+          functionName: "quoteRepay",
+          args: [p.userAddress],
+        });
+      }
     }
 
     const multicallResults = await this.client.multicall({
@@ -513,9 +532,18 @@ export class SentinelWorker {
         ? (balanceRes.result as bigint)
         : 0n;
 
-      const quoteAmount = quoteRes && quoteRes.status === "success"
-        ? (quoteRes.result as bigint)
-        : 0n;
+      let quoteAmount = 0n;
+      if (quoteRes && quoteRes.status === "success") {
+        if (typeof quoteRes.result === "bigint") {
+          quoteAmount = quoteRes.result;
+        } else if (Array.isArray(quoteRes.result)) {
+          // quoteProtect returns [l1Repay, l2Repay, l3Repay, expectedHf] for AaveV4
+          const l1 = (quoteRes.result[0] as bigint) ?? 0n;
+          const l2 = (quoteRes.result[1] as bigint) ?? 0n;
+          const l3 = (quoteRes.result[2] as bigint) ?? 0n;
+          quoteAmount = l1 + l2 + l3;
+        }
+      }
 
       parsed.push({
         accountData: {
