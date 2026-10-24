@@ -10,7 +10,8 @@
  *  4. Upsert `positions` & hitung zona risiko (Critical, Warning, Watch, Safe)
  *  5. Deteksi transisi zona -> kirim alert Telegram & catat ke `notification_logs`
  *  6. Deteksi cadangan rendah (RESERVE_LOW) -> kirim alert Telegram
- *  7. Evaluasi Keeper -> panggil `protect(user)` jika HF < trigger & quote > 0
+ *  7. Evaluasi Keeper -> panggil `protect(...)` jika HF < trigger & quote > 0
+ *  8. Evaluasi adapter on-chain (jika adapters dikonfigurasi)
  */
 
 import { pathToFileURL } from "node:url";
@@ -33,6 +34,7 @@ import { SENTINEL_WORKER_ADVISORY_LOCK_KEY } from "../worker/lock.ts";
 import { aavePoolAbi, erc20Abi, guardianAbi } from "./abi.ts";
 import { syncGuardianEvents } from "./event-sync.ts";
 import { Keeper } from "./keeper.ts";
+import type { GuardianAdapter } from "./adapters.ts";
 import { hfWarningAlert, hfCriticalAlert, reserveLowAlert } from "./views.ts";
 import type { SentinelDatabase } from "./db-adapter.ts";
 import type { TelegramSender } from "../telegram/index.ts";
@@ -77,6 +79,7 @@ export interface SentinelWorkerOptions {
   clock?: SentinelWorkerClock;
   logger?: SentinelWorkerLogger;
   exitFn?: (code: number) => void;
+  adapters?: GuardianAdapter[];
   /** Injectable multicall loader for unit testing */
   multicallLoader?: (
     policies: Array<{ user: Address; guardianAddress: Address; debtAsset: Address }>,
@@ -98,12 +101,14 @@ export class SentinelWorker {
   private readonly clock: SentinelWorkerClock;
   private readonly logger: SentinelWorkerLogger;
   private readonly exitFn: (code: number) => void;
+  private readonly adapters?: GuardianAdapter[];
   private readonly multicallLoader?: (
     policies: Array<{ user: Address; guardianAddress: Address; debtAsset: Address }>,
   ) => Promise<MulticallBatchResult[]>;
 
-  private readonly userZones = new Map<string, RiskZone>();
-  private readonly userReserveLowAlerted = new Map<string, boolean>();
+  // Keyed by positionKey (or fallback to guardian:debtAsset:user)
+  private readonly positionZones = new Map<string, RiskZone>();
+  private readonly positionReserveLowAlerted = new Map<string, boolean>();
 
   constructor(options: SentinelWorkerOptions = {}) {
     this.chainId = options.chainId ?? ARBITRUM_SEPOLIA.chainId;
@@ -114,6 +119,7 @@ export class SentinelWorker {
     this.keeper = options.keeper ?? new Keeper();
     this.lockClient = options.lockClient;
     this.multicallLoader = options.multicallLoader;
+    this.adapters = options.adapters;
 
     this.clock = options.clock ?? {
       now: () => new Date(),
@@ -220,7 +226,7 @@ export class SentinelWorker {
     this.isExecuting = true;
     const now = this.clock.now();
     let syncedLogs = 0;
-    const transitions: { user: Address; from: RiskZone; to: RiskZone }[] = [];
+    const transitions: { user: Address; from: RiskZone; to: RiskZone; positionKey?: string }[] = [];
     let alertsSent = 0;
     const keeperActions: KeeperExecutionResult[] = [];
 
@@ -253,13 +259,24 @@ export class SentinelWorker {
       }
 
       const activePolicies = await this.db.loadActivePolicies(this.chainId);
+
+      // Jalankan adapter on-chain jika dikonfigurasi
+      if (this.adapters && this.adapters.length > 0) {
+        try {
+          const adapterResults = await this.keeper.runTick(this.adapters);
+          keeperActions.push(...adapterResults);
+        } catch (err) {
+          this.logger.error(`[sentinel] error pada on-chain adapters: ${err}`);
+        }
+      }
+
       if (activePolicies.length === 0) {
         return {
           syncedLogs,
           checkedUsers: 0,
           transitions: [],
-          alertsSent: 0,
-          keeperActions: [],
+          alertsSent,
+          keeperActions,
         };
       }
 
@@ -285,8 +302,8 @@ export class SentinelWorker {
           syncedLogs,
           checkedUsers: activePolicies.length,
           transitions: [],
-          alertsSent: 0,
-          keeperActions: [],
+          alertsSent,
+          keeperActions,
         };
       }
 
@@ -297,6 +314,7 @@ export class SentinelWorker {
         if (!data) continue;
 
         const userKey = policy.userAddress.toLowerCase() as Address;
+        const dedupeKey = policy.positionKey ?? `${policy.guardianAddress.toLowerCase()}:${policy.debtAsset.toLowerCase()}:${userKey}`;
 
         // Hitung HF float aman
         let hfNumber: number;
@@ -320,12 +338,12 @@ export class SentinelWorker {
 
         // Hitung zona risiko
         const currentZone = calculateZone(hfNumber, effectiveTrigger);
-        const previousZone = this.userZones.get(userKey);
+        const previousZone = this.positionZones.get(dedupeKey);
 
         // Upsert posisi ke database
         const positionId = await this.db.upsertPosition({
           userId: policy.userId,
-          protocol: "aave-v3",
+          protocol: policy.protocol ?? "aave-v3",
           chainId: this.chainId,
           healthFactor: hfNumber.toFixed(4),
           liquidationThreshold: (Number(data.accountData.liquidationThresholdBps) / 10000).toFixed(4),
@@ -333,16 +351,18 @@ export class SentinelWorker {
           debtValueUsd: (Number(data.accountData.debtBase) / 1e8).toFixed(2),
           oracleSource: oracleAddress,
           now,
+          marketId: policy.marketId ?? undefined,
         });
 
         await this.db.linkPolicyPosition(policy.id, positionId);
 
-        // 5. Cek Transisi Zona Risiko & Kirim Notifikasi
+        // 5. Cek Transisi Zona Risiko & Kirim Notifikasi (dedupe per position)
         if (previousZone !== undefined && previousZone !== currentZone) {
           transitions.push({
             user: userKey,
             from: previousZone,
             to: currentZone,
+            positionKey: policy.positionKey ?? undefined,
           });
 
           if (currentZone === "Warning") {
@@ -350,6 +370,10 @@ export class SentinelWorker {
               user: userKey,
               hf: hfNumber,
               triggerHf: effectiveTrigger,
+              protocol: policy.protocol ?? "aave-v3",
+              debtAsset: policy.debtAsset,
+              marketId: policy.marketId ?? undefined,
+              positionKey: policy.positionKey ?? undefined,
             });
 
             await this.recordAndDispatchAlert(policy.userId, "HF_WARNING", alertMsg);
@@ -359,19 +383,23 @@ export class SentinelWorker {
               user: userKey,
               hf: hfNumber,
               triggerHf: effectiveTrigger,
+              protocol: policy.protocol ?? "aave-v3",
+              debtAsset: policy.debtAsset,
+              marketId: policy.marketId ?? undefined,
+              positionKey: policy.positionKey ?? undefined,
             });
 
             await this.recordAndDispatchAlert(policy.userId, "HF_CRITICAL", alertMsg);
             alertsSent++;
           }
         }
-        this.userZones.set(userKey, currentZone);
+        this.positionZones.set(dedupeKey, currentZone);
 
-        // 6. Cek Cadangan (RESERVE_LOW)
+        // 6. Cek Cadangan (RESERVE_LOW, dedupe per position)
         const minReserve = data.allowance < data.balance ? data.allowance : data.balance;
         const isReserveLow =
           policy.maxRepayPerAction > 0n && minReserve < policy.maxRepayPerAction;
-        const wasReserveLowAlerted = this.userReserveLowAlerted.get(userKey) ?? false;
+        const wasReserveLowAlerted = this.positionReserveLowAlerted.get(dedupeKey) ?? false;
 
         if (isReserveLow && !wasReserveLowAlerted) {
           const alertMsg = reserveLowAlert({
@@ -379,13 +407,15 @@ export class SentinelWorker {
             allowance: data.allowance,
             balance: data.balance,
             cap: policy.maxRepayPerAction,
+            protocol: policy.protocol ?? "aave-v3",
+            positionKey: policy.positionKey ?? undefined,
           });
 
           await this.recordAndDispatchAlert(policy.userId, "RESERVE_LOW", alertMsg);
-          this.userReserveLowAlerted.set(userKey, true);
+          this.positionReserveLowAlerted.set(dedupeKey, true);
           alertsSent++;
         } else if (!isReserveLow) {
-          this.userReserveLowAlerted.set(userKey, false);
+          this.positionReserveLowAlerted.set(dedupeKey, false);
         }
 
         // 7. Evaluasi Keeper Proteksi
@@ -393,6 +423,9 @@ export class SentinelWorker {
           const keeperResult = await this.keeper.evaluateAndProtect({
             user: userKey,
             guardianAddress: policy.guardianAddress,
+            positionKey: policy.positionKey ?? undefined,
+            protocol: policy.protocol ?? "aave-v3",
+            key: policy.marketId ?? policy.debtAsset,
             hf: hfNumber,
             triggerHf: effectiveTrigger,
             quoteAmount: data.quoteAmount,
@@ -452,25 +485,44 @@ export class SentinelWorker {
       allowFailure: true,
     });
 
-    const results: MulticallBatchResult[] = [];
+    const parsed: MulticallBatchResult[] = [];
     for (let i = 0; i < activePolicies.length; i++) {
-      const idx = i * 4;
-      const accountRes = multicallResults[idx];
-      const allowanceRes = multicallResults[idx + 1];
-      const balanceRes = multicallResults[idx + 2];
-      const quoteRes = multicallResults[idx + 3];
+      const baseIdx = i * 4;
+      const accountDataRes = multicallResults[baseIdx];
+      const allowanceRes = multicallResults[baseIdx + 1];
+      const balanceRes = multicallResults[baseIdx + 2];
+      const quoteRes = multicallResults[baseIdx + 3];
 
-      const acct = (accountRes?.status === "success" ? accountRes.result : null) as any;
-      const allowance = allowanceRes?.status === "success" ? BigInt(allowanceRes.result as any) : 0n;
-      const balance = balanceRes?.status === "success" ? BigInt(balanceRes.result as any) : 0n;
-      const quoteAmount = quoteRes?.status === "success" ? BigInt(quoteRes.result as any) : 0n;
+      let collateralBase = 0n;
+      let debtBase = 0n;
+      let liquidationThresholdBps = 0n;
+      let healthFactor = 999n * 10n ** 18n;
 
-      results.push({
+      if (accountDataRes && accountDataRes.status === "success" && Array.isArray(accountDataRes.result)) {
+        collateralBase = accountDataRes.result[0] as bigint;
+        debtBase = accountDataRes.result[1] as bigint;
+        liquidationThresholdBps = accountDataRes.result[3] as bigint;
+        healthFactor = accountDataRes.result[5] as bigint;
+      }
+
+      const allowance = allowanceRes && allowanceRes.status === "success"
+        ? (allowanceRes.result as bigint)
+        : 0n;
+
+      const balance = balanceRes && balanceRes.status === "success"
+        ? (balanceRes.result as bigint)
+        : 0n;
+
+      const quoteAmount = quoteRes && quoteRes.status === "success"
+        ? (quoteRes.result as bigint)
+        : 0n;
+
+      parsed.push({
         accountData: {
-          collateralBase: acct ? BigInt(acct[0]) : 0n,
-          debtBase: acct ? BigInt(acct[1]) : 0n,
-          liquidationThresholdBps: acct ? BigInt(acct[3]) : 0n,
-          healthFactor: acct ? BigInt(acct[5]) : 0n,
+          collateralBase,
+          debtBase,
+          liquidationThresholdBps,
+          healthFactor,
         },
         allowance,
         balance,
@@ -478,39 +530,40 @@ export class SentinelWorker {
       });
     }
 
-    return results;
+    return parsed;
   }
 
   private async recordAndDispatchAlert(
     userId: string,
     type: "HF_WARNING" | "HF_CRITICAL" | "RESERVE_LOW",
-    message: string,
+    alertMsg: string,
   ): Promise<void> {
-    let delivered = false;
+    if (this.db.recordNotificationLog) {
+      try {
+        await this.db.recordNotificationLog({
+          userId,
+          type,
+          message: alertMsg,
+          deliveredOk: false,
+        });
+      } catch (err) {
+        this.logger.warn(`Gagal mencatat notification_log: ${err}`);
+      }
+    }
 
     if (this.channelAdapter && this.db.getLinkedTelegramAccounts) {
       try {
         const chatIds = await this.db.getLinkedTelegramAccounts(userId);
         for (const chatId of chatIds) {
           try {
-            await this.channelAdapter.send(chatId, message, { parseMode: "HTML" });
-            delivered = true;
+            await this.channelAdapter.send(chatId, alertMsg, { parseMode: "HTML" });
           } catch (err) {
-            this.logger.warn(`Gagal kirim notifikasi ${type} ke chat ${chatId}: ${err}`);
+            this.logger.warn(`Gagal kirim alert ke telegram chat ${chatId}: ${err}`);
           }
         }
       } catch (err) {
-        this.logger.warn(`Gagal memuat akun telegram linked untuk user ${userId}: ${err}`);
+        this.logger.warn(`Gagal mengambil linked telegram accounts: ${err}`);
       }
-    }
-
-    if (this.db.recordNotificationLog) {
-      await this.db.recordNotificationLog({
-        userId,
-        type,
-        message,
-        deliveredOk: delivered,
-      });
     }
   }
 }

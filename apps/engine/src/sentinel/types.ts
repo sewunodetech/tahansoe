@@ -9,6 +9,9 @@ export interface PolicyRecord {
   guardianAddress: Address;
   guardianVersion: number;
   debtAsset: Address;
+  marketId?: string | null;
+  positionKey?: string | null;
+  protocol?: "aave-v3" | "morpho-blue";
   maxRepayPerAction: bigint;
   triggerThreshold: number;
   targetHealthFactor: number;
@@ -34,11 +37,16 @@ export interface UserPositionSnapshot {
   isReserveLow: boolean;
   quoteAmount: bigint;
   policy: PolicyRecord;
+  positionKey?: string;
+  protocol?: "aave-v3" | "morpho-blue";
 }
 
 export interface KeeperExecutionResult {
   user: Address;
   guardianAddress: Address;
+  positionKey?: string;
+  protocol?: "aave-v3" | "morpho-blue";
+  key?: string;
   status:
     | "executed"
     | "dry_run"
@@ -54,7 +62,7 @@ export interface KeeperExecutionResult {
 export interface SentinelTickResult {
   syncedLogs: number;
   checkedUsers: number;
-  transitions: { user: Address; from: RiskZone; to: RiskZone }[];
+  transitions: { user: Address; from: RiskZone; to: RiskZone; positionKey?: string }[];
   alertsSent: number;
   keeperActions: KeeperExecutionResult[];
 }

@@ -202,3 +202,40 @@ test("keeper: back off eksponensial saat revert dan reset saat berhasil", async 
   });
   assert.equal(res5.status, "failed");
 });
+
+
+test("keeper: menyertakan positionKey pada log, pesan dry-run, dan hasil", async () => {
+  const logged: string[] = [];
+  const keeper = new Keeper({
+    logger: {
+      info: (m) => logged.push(m),
+      warn: (m) => logged.push(m),
+      error: (m) => logged.push(m),
+    },
+  });
+
+  const user = "0x5555555555555555555555555555555555555555";
+  const guardian = "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E";
+  const debtAsset = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d";
+  const positionKey = `aave-v3:421614:${guardian.toLowerCase()}:${debtAsset.toLowerCase()}`;
+
+  const res = await keeper.evaluateAndProtect({
+    user,
+    guardianAddress: guardian,
+    positionKey,
+    protocol: "aave-v3",
+    key: debtAsset,
+    hf: 1.15,
+    triggerHf: 1.30,
+    quoteAmount: 500n,
+  });
+
+  assert.equal(res.status, "dry_run");
+  assert.equal(res.positionKey, positionKey);
+  assert.equal(res.protocol, "aave-v3");
+  assert.equal(res.key, debtAsset);
+
+  // Verifikasi log memuat positionKey
+  const hasPositionKeyLog = logged.some((l) => l.includes(positionKey));
+  assert.equal(hasPositionKeyLog, true);
+});
