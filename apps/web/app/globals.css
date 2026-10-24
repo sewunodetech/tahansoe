@@ -425,6 +425,21 @@
   .geo-flow, .geo-flow-slow, .geo-float, .geo-pulse { animation: none; }
 }
 
+/* ── Position lab ──────────────────────────────────────────────────── */
+.lab-hot { transition: filter .2s ease, opacity .3s ease; }
+.lab-hot:hover { filter: brightness(1.15); }
+.lab-hot:focus-visible { filter: drop-shadow(0 0 6px var(--brand)); }
+.inspect-hot[data-active] { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--brand) 45%, transparent)); }
+.inspect-scene:hover .inspect-hot:not([data-active]),
+.inspect-scene:focus-within .inspect-hot:not([data-active]) { opacity: .45; }
+.lab-range { appearance: none; height: 6px; border-radius: 9999px; background: var(--bg-subtle); border: 1px solid var(--border); outline: none; }
+.lab-range::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; border-radius: 9999px; background: var(--iridescent); border: 2px solid var(--bg-elevated); box-shadow: 0 1px 4px rgba(0,0,0,.35); cursor: grab; }
+.lab-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 9999px; background: var(--iridescent); border: 2px solid var(--bg-elevated); cursor: grab; }
+.lab-range:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 40%, transparent); }
+.step-progress { animation: step-progress var(--step-ms, 2600ms) linear forwards; transform-origin: left; }
+@keyframes step-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .step-progress { animation: none; transform: scaleX(1); } }
+
 /* ── Mobile menu entry animations ──────────────────────────────────────── */
 .menu-item  { opacity: 0; animation: menu-item-in 600ms cubic-bezier(0.77, 0, 0.18, 1) forwards; }
 .menu-close { animation: menu-close-in 500ms cubic-bezier(0.77, 0, 0.18, 1) both; }

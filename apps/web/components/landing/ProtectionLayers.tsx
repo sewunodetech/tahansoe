@@ -1,6 +1,7 @@
 import { Tag } from "./Tag";
 import { CascadeScene, L1WalletScene, L2VaultScene, L3FlashScene } from "./illustrations/scenes";
-import { MiniIcon, type MiniKind } from "./illustrations/MiniIcon";
+import { type MiniKind } from "./illustrations/MiniIcon";
+import { StepTrack } from "./StepTrack";
 
 type Layer = {
   id: string;
@@ -107,18 +108,7 @@ function LayerBlock({ layer, flip }: { layer: Layer; flip: boolean }) {
       </div>
 
       {/* How it runs */}
-      <ol className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {layer.steps.map((s, i) => (
-          <li key={s.title} className="glass-surface rounded-[20px] p-5 flex gap-4 items-start">
-            <MiniIcon kind={s.icon} className="size-14 shrink-0" />
-            <div>
-              <p className="text-[11px] font-mono text-[var(--text-tertiary)]">STEP {i + 1}</p>
-              <p className="mt-1 text-[14px] font-medium text-[var(--text-primary)]">{s.title}</p>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--text-secondary)]">{s.body}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
+      <StepTrack steps={layer.steps} />
     </article>
   );
 }

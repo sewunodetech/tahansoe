@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
 import { TheProblem } from "@/components/landing/TheProblem";
+import { PositionLab } from "@/components/landing/lab/PositionLab";
 import { ProtectionLayers } from "@/components/landing/ProtectionLayers";
 import { Agents } from "@/components/landing/Agents";
 import { HowItWorks } from "@/components/landing/HowItWorks";
@@ -16,6 +17,7 @@ export default function Home() {
       <Navbar />
       <main>
         <Hero />
+        <PositionLab />
         <TheProblem />
         <ProtectionLayers />
         <Agents />

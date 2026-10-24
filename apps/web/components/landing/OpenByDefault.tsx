@@ -1,22 +1,23 @@
 import { ArrowUpRight } from "lucide-react";
 import { Tag } from "./Tag";
+import { AnnotatedCode, type CodeLine } from "./AnnotatedCode";
 
 const CONTRACT_ADDRESS = "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E";
 const ARBISCAN_URL = `https://sepolia.arbiscan.io/address/${CONTRACT_ADDRESS}`;
 
-const CODE_LINES = [
-  "function protect(address user) external nonReentrant {",
-  "    Policy memory policy = policies[user];",
-  "    uint256 hf = healthFactor(user);",
-  '    require(hf < policy.triggerHf, "HF above trigger");',
-  "",
-  "    uint256 amount = quoteRepay(user, policy.targetHf);",
-  "    if (amount > policy.maxRepayCap) amount = policy.maxRepayCap;",
-  "",
-  "    debt.transferFrom(user, address(this), amount);",
-  "    AAVE_POOL.repay(address(debt), amount, 2, user);",
-  '    require(healthFactor(user) > hf, "HF did not improve");',
-  "}",
+const CODE_LINES: CodeLine[] = [
+  { code: "function protect(address user) external nonReentrant {", note: "Anyone can call this: you, a keeper bot, or Tahansoe. It can only ever help the user named here." },
+  { code: "    Policy memory policy = policies[user];", note: "Loads the trigger, target, and caps that you set yourself." },
+  { code: "    uint256 hf = healthFactor(user);", note: "Reads your Health Factor straight from Aave, the same oracle Aave uses for liquidations." },
+  { code: '    require(hf < policy.triggerHf, "HF above trigger");', note: "Does nothing unless your HF is below the trigger you chose." },
+  { code: "" },
+  { code: "    uint256 amount = quoteRepay(user, policy.targetHf);", note: "Works out just enough to bring HF back to your target, not a cent more." },
+  { code: "    if (amount > policy.maxRepayCap) amount = policy.maxRepayCap;", note: "Never more than the cap you approved, even if more would help." },
+  { code: "" },
+  { code: "    debt.transferFrom(user, address(this), amount);", note: "Pulls USDC from your wallet, and only up to the allowance you granted." },
+  { code: "    AAVE_POOL.repay(address(debt), amount, 2, user);", note: "Repays your own Aave debt in the same transaction. The funds have nowhere else to go." },
+  { code: '    require(healthFactor(user) > hf, "HF did not improve");', note: "Safety check: if your HF didn't get better, everything is reverted." },
+  { code: "}" },
 ];
 
 const facts = [
@@ -39,7 +40,7 @@ export function OpenByDefault() {
           </p>
         </div>
 
-        <div className="mt-10 max-w-[760px] mx-auto glass-surface rounded-[24px] overflow-hidden">
+        <div className="mt-10 max-w-[1000px] mx-auto glass-surface rounded-[24px] overflow-hidden">
           <div className="flex items-center justify-between h-10 px-4 border-b border-[var(--border)]">
             <span className="font-mono text-[11px] text-[var(--text-secondary)]">TahansoeGuardian.sol</span>
             <a
@@ -51,14 +52,7 @@ export function OpenByDefault() {
               Arbiscan <ArrowUpRight className="size-3" />
             </a>
           </div>
-          <pre className="p-4 sm:p-5 overflow-x-auto font-mono text-[12px] leading-[1.7]">
-            {CODE_LINES.map((line, i) => (
-              <div key={i} className="flex">
-                <span className="w-8 shrink-0 select-none text-[var(--text-placeholder)]">{i + 1}</span>
-                <span className="text-[var(--text-secondary)] whitespace-pre">{line}</span>
-              </div>
-            ))}
-          </pre>
+          <AnnotatedCode lines={CODE_LINES} />
         </div>
 
         <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-10 max-w-[900px] mx-auto text-center">
