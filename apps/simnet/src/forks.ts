@@ -20,6 +20,7 @@ export interface ForkRuntime {
   price: PriceController;
   /** Guardian events seen by the sim keeper on this fork. */
   events: SimEvent[];
+  keeperCheckedAt?: number | null;
   stop(): Promise<void>;
 }
 

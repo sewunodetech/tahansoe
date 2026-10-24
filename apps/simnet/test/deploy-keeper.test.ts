@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { encodeAbiParameters, encodeEventTopics, parseAbi, type Log } from "viem";
 import { guardianAbi } from "../src/abis.ts";
 import { guessConstructorArgs, parseDeploymentOutput, SIM_DEPLOYER } from "../src/deploy.ts";
-import { decodeGuardianLogs } from "../src/keeper.ts";
+import { decodeGuardianLogs, startKeeper, getKeeperCheckedAt } from "../src/keeper.ts";
 import { toFeedAnswer } from "../src/oracle.ts";
 import { GUARDIAN } from "./helpers.ts";
 
@@ -96,5 +96,43 @@ describe("sim keeper log decoding", () => {
     assert.equal(evs[1]!.hfAfter, "1500000000000000000");
     assert.equal(evs[2]!.waived, "0");
     assert.equal(evs[1]!.blockNumber, 42);
+  });
+});
+
+describe("sim keeper check time", () => {
+  it("records keeperCheckedAt on each completed loop", async () => {
+    let usersPageCalls = 0;
+    const fakeFork = {
+      url: "http://127.0.0.1:9999",
+      read: async (_addr: any, _abi: any, fn: string) => {
+        if (fn === "usersPage") {
+          usersPageCalls++;
+          return [];
+        }
+        return false;
+      },
+      sendAs: async () => ({ logs: [] }),
+    };
+
+    let checkedTimestamp: number | null = null;
+    const handle = startKeeper(
+      fakeFork as any,
+      GUARDIAN,
+      () => {},
+      10,
+      (e) => assert.fail(String(e)),
+      (ts) => {
+        checkedTimestamp = ts;
+      },
+    );
+
+    await new Promise((r) => setTimeout(r, 35));
+    handle.stop();
+
+    assert.ok(usersPageCalls > 0, "keeper loop should have executed");
+    assert.ok(typeof handle.lastCheckedAt === "number", "handle.lastCheckedAt should be set");
+    assert.ok(handle.lastCheckedAt! > 0);
+    assert.equal(handle.lastCheckedAt, checkedTimestamp);
+    assert.equal(getKeeperCheckedAt(fakeFork.url), checkedTimestamp);
   });
 });
