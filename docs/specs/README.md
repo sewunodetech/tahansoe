@@ -17,3 +17,4 @@ Spec boleh berubah selama implementasi; perbedaan dengan PRD/architecture harus 
 | M1/M2/M3 | [m3-research-broadcast.md](m3-research-broadcast.md) | Outbound Research Broadcast — Notifikasi & Digest Telegram Terjadwal | Approved |
 | M1 | [m1-simulation-mode.md](m1-simulation-mode.md) | Simulation Mode — wallet simulasi di fork Arbitrum One | In progress |
 | M4 | [m4-guardian-success-fee.md](m4-guardian-success-fee.md) | Guardian v3 — fee sukses 0,15% | In progress |
+| M1 | [m1-positions-holdings-guardian-view.md](m1-positions-holdings-guardian-view.md) | Positions, Holdings, Reserves, dan Overview "Guardian view" | Draft |
