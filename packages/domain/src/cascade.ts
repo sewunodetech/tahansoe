@@ -7,6 +7,9 @@ export const L2_NONE = 0;
 export const L2_ERC4626 = 1;
 export const L2_ATOKEN = 2;
 
+export const SUCCESS_FEE_BPS = 15;
+export const FEE_HF_CEILING = 1.5;
+
 export interface CascadeLayer1Input {
   enabled?: boolean;
   cap?: number;
@@ -38,6 +41,11 @@ export interface CascadeInput {
   collateralAssetLt?: number; // default sama dengan liquidationThreshold
   triggerHf: number;
   targetHf: number;
+  staticTriggerHf?: number; // default sama dengan triggerHf
+  staticTrigger?: number; // alias
+  leftoverDebtUsd?: number; // sisa debt token di Guardian (Sumber A)
+  leftoverDebt?: number; // alias
+  leftover?: number; // alias
   version?: 1 | 2; // default 2
   l1?: CascadeLayer1Input;
   l2?: CascadeLayer2Input;
@@ -64,6 +72,9 @@ export interface CascadeResult {
   neededRepayUsd: number;
   actionsCount: number;
   status: CascadeStatus;
+  feeEligible: boolean;
+  fee: number;
+  feeWaived: number;
 }
 
 /** Buffer 0.01% (0.0001) sama dengan TARGET_BUFFER kontrak agar pembulatan tetap di atas target. */
@@ -92,6 +103,31 @@ export function simulateCascade(input: CascadeInput): CascadeResult {
   const targetDebtUsd = (initialCollateral * lt) / target;
   const neededRepayUsd = Math.max(0, initialDebt - targetDebtUsd);
 
+  const staticTrigger = input.staticTriggerHf ?? input.staticTrigger ?? input.triggerHf;
+  const feeEligible = initialHf < staticTrigger && initialHf < FEE_HF_CEILING;
+
+  function calculateFee(
+    totalRepaid: number,
+    remWalletBal: number,
+    remWalletAllow: number
+  ): { fee: number; feeWaived: number } {
+    if (!feeEligible || totalRepaid <= 0) {
+      return { fee: 0, feeWaived: 0 };
+    }
+    const targetFee = Math.floor((totalRepaid * SUCCESS_FEE_BPS) / 10_000);
+    const leftover = Math.max(0, input.leftoverDebtUsd ?? input.leftoverDebt ?? input.leftover ?? 0);
+    const fromGuardian = Math.min(targetFee, leftover);
+    const feeRemaining = targetFee - fromGuardian;
+    const fromWallet = Math.min(
+      feeRemaining,
+      remWalletBal,
+      remWalletAllow
+    );
+    const fee = fromGuardian + fromWallet;
+    const feeWaived = targetFee - fee;
+    return { fee, feeWaived };
+  }
+
   // Jika tidak dalam risiko (HF >= trigger) atau tidak berutang, tidak ada repay
   if (initialDebt <= 0 || initialHf >= input.triggerHf || neededRepayUsd <= 0) {
     return {
@@ -108,6 +144,9 @@ export function simulateCascade(input: CascadeInput): CascadeResult {
       neededRepayUsd,
       actionsCount: 0,
       status: "not_at_risk",
+      feeEligible,
+      fee: 0,
+      feeWaived: 0,
     };
   }
 
@@ -148,6 +187,12 @@ export function simulateCascade(input: CascadeInput): CascadeResult {
     const status: CascadeStatus =
       totalL1 === 0 ? "no_action" : newHf >= input.targetHf ? "target_reached" : "partial";
 
+    const feeInfo = calculateFee(
+      totalL1,
+      remBalance === Infinity ? Infinity : Math.max(0, remBalance),
+      remAllowance === Infinity ? Infinity : Math.max(0, remAllowance)
+    );
+
     return {
       l1Repay: totalL1,
       l2Repay: 0,
@@ -162,6 +207,9 @@ export function simulateCascade(input: CascadeInput): CascadeResult {
       neededRepayUsd,
       actionsCount,
       status,
+      feeEligible,
+      fee: feeInfo.fee,
+      feeWaived: feeInfo.feeWaived,
     };
   }
 
@@ -172,11 +220,11 @@ export function simulateCascade(input: CascadeInput): CascadeResult {
 
   // 1. Layer 1 (Wallet reserve)
   let l1Repay = 0;
+  const l1Bal = input.l1?.balance ?? Infinity;
+  const l1Allow = input.l1?.allowance ?? Infinity;
   const l1Enabled = input.l1?.enabled ?? true;
   if (l1Enabled && remainingNeed > 0) {
     const l1Cap = input.l1?.cap ?? Infinity;
-    const l1Bal = input.l1?.balance ?? Infinity;
-    const l1Allow = input.l1?.allowance ?? Infinity;
     l1Repay = Math.max(0, Math.min(remainingNeed, l1Cap, l1Bal, l1Allow));
     currentDebt -= l1Repay;
     remainingNeed -= l1Repay;
@@ -228,6 +276,10 @@ export function simulateCascade(input: CascadeInput): CascadeResult {
   const status: CascadeStatus =
     totalRepaid === 0 ? "no_action" : newHf >= input.targetHf ? "target_reached" : "partial";
 
+  const remWalletBal = l1Bal === Infinity ? Infinity : Math.max(0, l1Bal - l1Repay);
+  const remWalletAllow = l1Allow === Infinity ? Infinity : Math.max(0, l1Allow - l1Repay);
+  const feeInfo = calculateFee(totalRepaid, remWalletBal, remWalletAllow);
+
   return {
     l1Repay,
     l2Repay,
@@ -242,5 +294,8 @@ export function simulateCascade(input: CascadeInput): CascadeResult {
     neededRepayUsd,
     actionsCount,
     status,
+    feeEligible,
+    fee: feeInfo.fee,
+    feeWaived: feeInfo.feeWaived,
   };
 }

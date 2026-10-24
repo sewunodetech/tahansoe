@@ -40,6 +40,7 @@ export interface ChainMorphoConfig {
 export interface ChainConfig {
   chainId: number;
   name: string;
+  isSimulation?: boolean;
   rpcUrls: string[];                  // dari env, bukan hardcode di kode
   blockTimeMs: number;
   aave?: ChainAaveConfig;
@@ -116,6 +117,23 @@ export const ARBITRUM_ONE: ChainConfig = {
   explorer: "https://arbiscan.io",
 };
 
+/**
+ * Arbitrum One Simulation (fork anvil lokal/VPS).
+ * Sumber: docs/specs/m1-simulation-mode.md §3.2 & ADR 0014.
+ */
+export const ARBITRUM_ONE_SIM: ChainConfig = {
+  chainId: 4216199,
+  name: "Arbitrum One (Simulation)",
+  rpcUrls: [],
+  blockTimeMs: 250,
+  aave: ARBITRUM_ONE.aave,
+  tokens: ARBITRUM_ONE.tokens,
+  priceFeeds: ARBITRUM_ONE.priceFeeds,
+  guardians: [],
+  explorer: "",
+  isSimulation: true,
+};
+
 export const SUPPORTED_CHAINS: readonly ChainConfig[] = [
   ARBITRUM_SEPOLIA,
   ARBITRUM_ONE,
@@ -124,6 +142,7 @@ export const SUPPORTED_CHAINS: readonly ChainConfig[] = [
 export const CHAINS: Record<number, ChainConfig> = {
   [ARBITRUM_SEPOLIA.chainId]: ARBITRUM_SEPOLIA,
   [ARBITRUM_ONE.chainId]: ARBITRUM_ONE,
+  [ARBITRUM_ONE_SIM.chainId]: ARBITRUM_ONE_SIM,
 };
 
 /**
@@ -170,4 +189,3 @@ export function isGuardianV2(deployment?: GuardianDeployment): boolean {
   if (!deployment) return false;
   return deployment.version >= 2 || Boolean(deployment.features?.layer2 || deployment.features?.layer3);
 }
-
