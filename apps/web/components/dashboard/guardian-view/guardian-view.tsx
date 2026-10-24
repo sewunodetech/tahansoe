@@ -7,6 +7,8 @@ import { hfToWad, recommendedRepayBase } from "@tahansoe/domain";
 import { Card } from "@/components/ui/card";
 import { useGuardian } from "@/hooks/useGuardian";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
+import { useHoldings } from "@/hooks/useHoldings";
+import { useReserves } from "@/hooks/useReserves";
 import { usePositions, type PositionWithStatus } from "@/hooks/usePositions";
 import { byDebtDesc, hasDebt } from "@/lib/positions/status";
 import { unitPrice } from "@/lib/positions/format";
@@ -28,6 +30,8 @@ const isProtected = (p: PositionWithStatus): p is ProtectedItem => p.status.kind
  */
 export function GuardianView({ showMigration = true }: { showMigration?: boolean }) {
   const g = useGuardian();
+  const { l1CapacityUsd } = useHoldings();
+  const { l2CapacityUsd } = useReserves();
   const { positions, isLoading, unavailable, guardianChainId } = usePositions();
   const heartbeat = useHeartbeat();
 
@@ -47,6 +51,8 @@ export function GuardianView({ showMigration = true }: { showMigration?: boolean
     layer2: g.layer2,
     layer3: g.layer3,
     l3Collateral: main ? { address: main.address, symbol: main.symbol, decimals: main.decimals, unitPriceUsd: unitPrice(main) } : undefined,
+    l1CapacityUsd,
+    l2CapacityUsd,
   });
 
   if (unavailable) {

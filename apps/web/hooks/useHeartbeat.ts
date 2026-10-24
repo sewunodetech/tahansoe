@@ -13,7 +13,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useDashboardMode } from "@/lib/dashboard-mode";
 import { useSimStatus } from "@/lib/sim/hooks";
-import type { SimStatus } from "@/lib/sim/types";
 
 const REFRESH_MS = 30_000;
 
@@ -53,8 +52,7 @@ export function useHeartbeat(): Heartbeat {
   });
 
   if (isSimulation) {
-    // TODO(pos-d-heartbeat): drop the cast once SimStatus carries `keeperCheckedAt`.
-    const checkedAt = (sim.data as (SimStatus & { keeperCheckedAt?: string | null }) | undefined)?.keeperCheckedAt ?? null;
+    const checkedAt = sim.data?.keeperCheckedAt ?? null;
     return {
       checkedAt,
       source: "simulation",

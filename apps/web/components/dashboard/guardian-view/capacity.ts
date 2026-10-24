@@ -1,10 +1,9 @@
 /**
  * What each protection layer can put to work right now (spec §3.7 "Cadangan").
  *
- * TODO(pos-c-holdings): L1 and L2 are estimated here from useGuardian() (debt-token balance,
- * allowance and caps). Switch to `useHoldings().l1CapacityUsd` and `useReserves().l2CapacityUsd`
- * once Task C lands; L2 then reflects the vault balance instead of the per-action cap alone.
- * Pure: the hook wrapper lives in the component.
+ * L1 and L2 prefer the measured capacity from useHoldings / useReserves (wallet balance, vault
+ * balance, allowance and caps); without it they fall back to an estimate from useGuardian().
+ * Pure: the hooks live in the component.
  */
 
 import type { Address } from "@tahansoe/domain";
@@ -20,6 +19,10 @@ export interface CapacityInput {
   layer3: { enabled: boolean; collateralAsset: Address; maxCollateralPerAction: bigint } | null;
   /** Collateral the L3 cap is denominated in, when it is one of the position's assets. */
   l3Collateral?: { address: Address; symbol: string; decimals: number; unitPriceUsd: number };
+  /** `useHoldings().l1CapacityUsd`, when loaded. */
+  l1CapacityUsd?: number | null;
+  /** `useReserves().l2CapacityUsd`, when loaded. */
+  l2CapacityUsd?: number | null;
 }
 
 export type LayerCapacity =
@@ -42,11 +45,11 @@ function tokenUsd(amount: bigint, decimals: number, priceBase: bigint): number {
 
 const fmt = (usd: number) => `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
-export function computeCapacity({ policy, token, layer2, layer3, l3Collateral }: CapacityInput): Capacity {
+export function computeCapacity({ policy, token, layer2, layer3, l3Collateral, l1CapacityUsd, l2CapacityUsd }: CapacityInput): Capacity {
   const l1: LayerCapacity =
     policy?.enabled && token
       ? (() => {
-          const usd = tokenUsd(min(token.balance, token.allowance, policy.maxRepayPerAction), token.decimals, token.priceBase);
+          const usd = l1CapacityUsd ?? tokenUsd(min(token.balance, token.allowance, policy.maxRepayPerAction), token.decimals, token.priceBase);
           return { on: true, usd, label: fmt(usd) };
         })()
       : { on: false };
@@ -54,8 +57,8 @@ export function computeCapacity({ policy, token, layer2, layer3, l3Collateral }:
   const l2: LayerCapacity =
     policy?.enabled && layer2 && layer2.source !== ZERO && layer2.maxAssetsPerAction > 0n && token
       ? (() => {
-          const usd = tokenUsd(layer2.maxAssetsPerAction, token.decimals, token.priceBase);
-          return { on: true, usd, label: `up to ${fmt(usd)}` };
+          const usd = l2CapacityUsd ?? tokenUsd(layer2.maxAssetsPerAction, token.decimals, token.priceBase);
+          return { on: true, usd, label: l2CapacityUsd != null ? fmt(usd) : `up to ${fmt(usd)}` };
         })()
       : { on: false };
 
