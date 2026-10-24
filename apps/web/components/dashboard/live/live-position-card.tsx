@@ -19,6 +19,17 @@ export function LivePositionCard({ g }: { g: UseGuardianReturn }) {
   const trigger = g.policy?.triggerHf ?? DEFAULT_TRIGGER;
   const target = g.policy?.targetHf ?? DEFAULT_TARGET;
 
+  if (account.hf === null && g.target.isSimulation) {
+    return (
+      <Card className="p-6">
+        <p className="text-sm text-[var(--text-primary)]">No Aave V3 borrow on your simulation wallet yet</p>
+        <p className="text-xs text-[var(--text-tertiary)] mt-1">
+          Use the setup wizard above to supply WETH and borrow USDC on the fork, or press Auto-fill.
+        </p>
+      </Card>
+    );
+  }
+
   if (account.hf === null) {
     return (
       <Card className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -47,7 +58,7 @@ export function LivePositionCard({ g }: { g: UseGuardianReturn }) {
         <div>
           <p className="text-sm font-medium text-[var(--text-primary)]">Aave V3 Position</p>
           <p className="text-xs font-mono text-[var(--text-tertiary)] mt-1">
-            Arbitrum Sepolia · Collateral {formatUsd(account.collateralUsd)} · Debt {formatUsd(account.debtUsd)} ·
+            {g.target.chainName} · Collateral {formatUsd(account.collateralUsd)} · Debt {formatUsd(account.debtUsd)} ·
             Liquidation threshold {account.liquidationThreshold.toFixed(3)}
           </p>
         </div>

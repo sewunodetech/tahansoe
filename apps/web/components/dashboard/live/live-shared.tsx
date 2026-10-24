@@ -5,7 +5,7 @@ import { formatUnits } from "viem";
 import { AlertTriangle, ArrowUpRight, Loader2, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { explorerTx } from "@/lib/contracts";
+import { useLiveTarget } from "@/lib/live-target";
 import type { TxState, TxStep, UseGuardianReturn } from "@/hooks/useGuardian";
 
 export function formatToken(amount: bigint, decimals: number, maxFractionDigits = 2): string {
@@ -58,9 +58,11 @@ export function TxStatus({ tx, steps }: { tx: TxState; steps?: TxStep[] }) {
 }
 
 function TxLink({ hash }: { hash: string }) {
+  const href = useLiveTarget().explorerTx(hash);
+  if (!href) return <span className="text-[var(--text-secondary)]">{hash.slice(0, 8)}…</span>;
   return (
     <a
-      href={explorerTx(hash)}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="inline-flex items-center gap-0.5 text-[var(--brand)] hover:underline"
@@ -75,15 +77,30 @@ function TxLink({ hash }: { hash: string }) {
  * (wrong network, loading, RPC error).
  */
 export function LiveGate({ g, children }: { g: UseGuardianReturn; children: React.ReactNode }) {
+  if (g.target.isSimulation && !g.target.ready) {
+    return (
+      <Card className="p-6 flex items-start gap-3">
+        <Network className="size-5 text-[var(--warning)] shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm text-[var(--text-primary)]">Simulation chain not connected</p>
+          <p className="text-xs text-[var(--text-tertiary)] mt-1">
+            On-chain reads start once the simulation session is ready. With the mock simnet (SIMNET_MOCK=1) there is
+            no fork to read, so only the simulation panels are live.
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
   if (g.wrongChain) {
     return (
       <Card className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start gap-3">
           <Network className="size-5 text-[var(--brand)] shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm text-[var(--text-primary)]">Switch to Arbitrum Sepolia</p>
+            <p className="text-sm text-[var(--text-primary)]">Switch to {g.target.chainName}</p>
             <p className="text-xs text-[var(--text-tertiary)] mt-1">
-              The live dashboard reads your Aave V3 position and Guardian policy on Arbitrum Sepolia.
+              The live dashboard reads your Aave V3 position and Guardian policy on {g.target.chainName}.
             </p>
           </div>
         </div>
@@ -115,7 +132,7 @@ export function LiveGate({ g, children }: { g: UseGuardianReturn; children: Reac
   if (g.isLoading || !g.account || !g.token) {
     return (
       <Card className="p-6 flex items-center gap-2 text-xs font-mono text-[var(--text-tertiary)]">
-        <Loader2 className="size-4 animate-spin" /> Reading Arbitrum Sepolia…
+        <Loader2 className="size-4 animate-spin" /> Reading {g.target.chainName}…
       </Card>
     );
   }

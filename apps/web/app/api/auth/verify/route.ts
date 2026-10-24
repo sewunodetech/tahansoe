@@ -3,6 +3,7 @@ import { SiweMessage } from "siwe";
 import { eq, and, isNull } from "drizzle-orm";
 import { db, siweNonces, users } from "@tahansoe/db";
 import { getSession } from "@/lib/session";
+import { recordConverted } from "@/lib/sim/db.server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -87,7 +88,13 @@ export async function POST(req: NextRequest) {
     const session = await getSession();
     session.userId = user.id;
     session.walletAddress = user.walletAddress;
+    // Simulation funnel: the user came from the "Protect your real position" CTA.
+    const convertedFrom = session.simConvertedFrom;
+    delete session.simConvertedFrom;
+    // A real sign-in ends any simulation cookie state; the two never coexist.
+    delete session.sim;
     await session.save();
+    if (convertedFrom) await recordConverted(convertedFrom);
 
     return NextResponse.json({ userId: user.id, walletAddress: user.walletAddress });
   } catch (error) {
