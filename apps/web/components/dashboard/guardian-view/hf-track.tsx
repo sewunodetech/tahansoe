@@ -99,7 +99,7 @@ export function HfTrack({ hf, trigger, target, className }: HfTrackProps) {
 
       {/* Marker labels */}
       <div className="relative h-8 mt-1.5 text-[10px] font-mono leading-tight">
-        <Label at={liq} align="start" color="var(--danger)" value="1.00" name="Liquidation" />
+        <Label at={liq} align="start" color="var(--danger)" value="1.00" name="Liquidation" short="Liq." />
         <Label at={trig} align="center" color="var(--warning)" value={trigger.toFixed(2)} name="We act" />
         <Label at={tgt} align="center" color="var(--safe)" value={target.toFixed(2)} name="Target" />
       </div>
@@ -116,7 +116,7 @@ function Tick({ at, className }: { at: number; className: string }) {
   return <span className={cn("absolute inset-y-0 w-[2px] -translate-x-1/2", className)} style={{ left: `${at}%` }} />;
 }
 
-function Label({ at, align, color, value, name }: { at: number; align: "start" | "center"; color: string; value: string; name: string }) {
+function Label({ at, align, color, value, name, short }: { at: number; align: "start" | "center"; color: string; value: string; name: string; short?: string }) {
   return (
     <span
       className={cn("absolute top-0 flex flex-col whitespace-nowrap", align === "center" ? "-translate-x-1/2 items-center" : "items-start")}
@@ -125,7 +125,16 @@ function Label({ at, align, color, value, name }: { at: number; align: "start" |
       <span className="tabular-nums" style={{ color }}>
         {value}
       </span>
-      <span className="text-[var(--text-tertiary)] uppercase tracking-wide text-[9px]">{name}</span>
+      <span className="text-[var(--text-tertiary)] uppercase tracking-wide text-[9px]">
+        {short ? (
+          <>
+            <span className="sm:hidden">{short}</span>
+            <span className="hidden sm:inline">{name}</span>
+          </>
+        ) : (
+          name
+        )}
+      </span>
     </span>
   );
 }

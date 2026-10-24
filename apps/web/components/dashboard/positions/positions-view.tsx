@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowUpRight, Layers, Network } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { usePositions, type PositionWithStatus } from "@/hooks/usePositions";
+import { usePositions, type ChainRead, type PositionWithStatus } from "@/hooks/usePositions";
 import { useLiveTarget } from "@/lib/live-target";
 import { byDebtDesc, hasDebt } from "@/lib/positions/status";
 import { usd } from "@/lib/positions/format";
@@ -42,15 +42,6 @@ export function PositionsView() {
   const [showOne, setShowOne] = useShowArbitrumOne();
   const { positions, chains, isLoading, unavailable } = usePositions({ includeArbitrumOne: !target.isSimulation && showOne });
 
-  const borrows = positions.filter((p) => hasDebt(p.position)).sort((a, b) => byDebtDesc(a.position, b.position));
-  const supplied = positions.filter((p) => !hasDebt(p.position));
-
-  const groups = new Map<string, PositionWithStatus[]>();
-  for (const item of borrows) {
-    const key = groupKey(item);
-    groups.set(key, [...(groups.get(key) ?? []), item]);
-  }
-
   if (unavailable) {
     return (
       <Card className="p-6 flex items-start gap-3">
@@ -64,14 +55,46 @@ export function PositionsView() {
   }
 
   return (
+    <PositionsList
+      positions={positions}
+      chains={chains}
+      isLoading={isLoading}
+      isSimulation={target.isSimulation}
+      showArbitrumOne={showOne}
+      onShowArbitrumOne={setShowOne}
+    />
+  );
+}
+
+export interface PositionsListProps {
+  positions: PositionWithStatus[];
+  chains: ChainRead[];
+  isLoading: boolean;
+  isSimulation: boolean;
+  showArbitrumOne: boolean;
+  onShowArbitrumOne: (v: boolean) => void;
+}
+
+/** Presentational half of the Positions page. */
+export function PositionsList({ positions, chains, isLoading, isSimulation, showArbitrumOne, onShowArbitrumOne }: PositionsListProps) {
+  const borrows = positions.filter((p) => hasDebt(p.position)).sort((a, b) => byDebtDesc(a.position, b.position));
+  const supplied = positions.filter((p) => !hasDebt(p.position));
+
+  const groups = new Map<string, PositionWithStatus[]>();
+  for (const item of borrows) {
+    const key = groupKey(item);
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  }
+
+  return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-[var(--text-tertiary)] max-w-[560px]">
           Read on-chain from each protocol. Health Factor comes from the protocol itself; dollar values are for display.
         </p>
-        {!target.isSimulation && (
+        {!isSimulation && (
           <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)] cursor-pointer select-none">
-            <Switch checked={showOne} onCheckedChange={setShowOne} aria-label="Show Arbitrum One" />
+            <Switch checked={showArbitrumOne} onCheckedChange={onShowArbitrumOne} aria-label="Show Arbitrum One" />
             Show Arbitrum One <span className="font-mono text-[10px] text-[var(--text-tertiary)]">read-only</span>
           </label>
         )}
@@ -107,7 +130,7 @@ export function PositionsView() {
         </p>
       )}
 
-      {!isLoading && borrows.length === 0 && <EmptyBorrows isSimulation={target.isSimulation} />}
+      {!isLoading && borrows.length === 0 && <EmptyBorrows isSimulation={isSimulation} />}
 
       {supplied.length > 0 && (
         <section className="space-y-3" aria-label="Supplied only">
