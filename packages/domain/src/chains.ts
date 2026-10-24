@@ -34,7 +34,10 @@ export interface GuardianDeployment {
 }
 
 export interface ChainMorphoConfig {
-  morpho: Address;
+  /** Singleton Morpho Blue. */
+  blue: Address;
+  /** Block deploy Morpho Blue; batas bawah pemindaian event. */
+  deployedBlock?: number;
 }
 
 export interface ChainConfig {
@@ -95,6 +98,14 @@ export const ARBITRUM_ONE: ChainConfig = {
     poolAddressesProvider: "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb",
     pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
     oracle: "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7",
+  },
+  /**
+   * Sumber: docs.morpho.org/addresses (24 Okt 2026). eth_getCode di arb1.arbitrum.io
+   * tidak kosong (24 Okt 2026); log pertama kontrak ada di block 296446593.
+   */
+  morpho: {
+    blue: "0x6c247b1F6182318877311737BaC0844bAa518F5e",
+    deployedBlock: 296446593,
   },
   sequencerUptimeFeed: "0xFdB631F5EE196F0ed6FAa767959853A9F217697D",
   priceFeeds: {
