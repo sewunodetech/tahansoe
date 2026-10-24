@@ -101,6 +101,7 @@ export class Keeper {
     protocol?: GuardianProtocol;
     key?: string; // debtAsset or marketId
     adapter?: GuardianAdapter;
+    guardianVersion?: number;
   }): Promise<KeeperExecutionResult> {
     const userKey = params.user.toLowerCase() as Address;
     const guardianKey = params.guardianAddress.toLowerCase() as Address;
@@ -195,6 +196,7 @@ export class Keeper {
           guardianAddress: guardianKey,
         });
       } else if (this.walletClient) {
+        const version = params.guardianVersion ?? (key && key !== guardianKey && key.length === 42 ? 4 : 1);
         if (protocol === "morpho-blue" && key) {
           txHash = await this.walletClient.writeContract({
             address: guardianKey,
@@ -202,7 +204,7 @@ export class Keeper {
             functionName: "protect",
             args: [userKey, key as `0x${string}`],
           } as any);
-        } else if (protocol === "aave-v3" && key && key !== guardianKey && key.length === 42) {
+        } else if (protocol === "aave-v3" && version >= 4 && key) {
           txHash = await this.walletClient.writeContract({
             address: guardianKey,
             abi: guardianAaveV4Abi,
@@ -302,6 +304,7 @@ export class Keeper {
     return this.evaluateAndProtect({
       user: position.user,
       guardianAddress: position.guardianAddress,
+      guardianVersion: adapter.version,
       positionKey: position.positionKey,
       protocol: position.protocol,
       key: position.key,

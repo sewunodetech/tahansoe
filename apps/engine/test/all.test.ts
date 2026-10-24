@@ -58,6 +58,7 @@ import "./sentinel/event-sync.test.ts";
 import "./sentinel/keeper.test.ts";
 import "./sentinel/sentinel-worker.test.ts";
 import "./sentinel/sentinel-cli.test.ts";
+import "./sentinel/sepolia-v4.test.ts";
 import "./broadcast/formatter.test.ts";
 import "./broadcast/api.test.ts";
 import "./broadcast/queue.test.ts";
