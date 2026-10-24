@@ -1,0 +1,23 @@
+{
+  "name": "@tahansoe/simnet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Simulation network: anvil forks of Arbitrum One, RPC proxy, faucet, price relay, scenario player, sim keeper. See docs/specs/m1-simulation-mode.md and ADR 0014.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --test test/all.test.ts",
+    "start": "tsx --env-file-if-exists=.env src/main.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/main.ts"
+  },
+  "dependencies": {
+    "@tahansoe/domain": "*",
+    "viem": "^2.55.19",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.20.6",
+    "typescript": "^5"
+  }
+}
