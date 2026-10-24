@@ -7,7 +7,7 @@ import {
   handlePositionsHeartbeatRoute,
   formatPositionsHeartbeat,
   type RawPositionRow,
-} from "./route";
+} from "./heartbeat.server";
 
 function makeReq(ip = "127.0.0.1"): NextRequest {
   return new NextRequest("http://localhost:3000/api/positions/heartbeat", {
