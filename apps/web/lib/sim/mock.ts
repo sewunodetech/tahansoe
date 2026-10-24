@@ -54,6 +54,9 @@ export function mockCreateSession(input: { mode: SimMode; scenario?: SimScenario
     chainId: 4216199,
     contracts: {
       guardian: fakeAddress(0x9a4d1),
+      guardianAaveV4: fakeAddress(0x9a4d4),
+      guardianMorpho: fakeAddress(0x9a4d5),
+      morpho: "0x6c247b1F6182318877311737BaC0844bAa518F5e" as Address,
       simPriceFeed: fakeAddress(0x5f33d),
       testVault: fakeAddress(0x7e57),
       pool: ARBITRUM_ONE.aave!.pool!,
@@ -113,16 +116,17 @@ function eventsAt(s: MockSession, price: number, now: number): SimEvent[] {
   if (since === undefined || drop < 0.12) return [];
   const block = 300_000_000 + Math.floor((now - s.createdAt) / 250);
   const tx = (n: number) => hex(0xabc000 + n, 64);
+  const posKey = `aave-v3:4216199:${fakeAddress(0x9a4d1).toLowerCase()}:${ARBITRUM_ONE.tokens!.USDC.toLowerCase()}`;
   const events: SimEvent[] = [
-    { type: "layer", txHash: tx(1), blockNumber: block, layer: 1, amount: "1200", hfBefore: 1.38, hfAfter: 1.52 },
-    { type: "protected", txHash: tx(1), blockNumber: block, hfBefore: 1.38, hfAfter: 1.72 },
-    { type: "fee", txHash: tx(1), blockNumber: block, amount: "6.40", waived: false },
+    { type: "layer", txHash: tx(1), blockNumber: block, layer: 1, amount: "1200", hfBefore: 1.38, hfAfter: 1.52, positionKey: posKey },
+    { type: "protected", txHash: tx(1), blockNumber: block, hfBefore: 1.38, hfAfter: 1.72, positionKey: posKey },
+    { type: "fee", txHash: tx(1), blockNumber: block, amount: "6.40", waived: false, positionKey: posKey },
   ];
   if (drop >= 0.3) {
     events.push(
-      { type: "layer", txHash: tx(2), blockNumber: block + 40, layer: 3, amount: "1150", hfBefore: 1.33, hfAfter: 1.7 },
-      { type: "protected", txHash: tx(2), blockNumber: block + 40, hfBefore: 1.33, hfAfter: 1.7 },
-      { type: "fee", txHash: tx(2), blockNumber: block + 40, amount: "5.10", waived: false }
+      { type: "layer", txHash: tx(2), blockNumber: block + 40, layer: 3, amount: "1150", hfBefore: 1.33, hfAfter: 1.7, positionKey: posKey },
+      { type: "protected", txHash: tx(2), blockNumber: block + 40, hfBefore: 1.33, hfAfter: 1.7, positionKey: posKey },
+      { type: "fee", txHash: tx(2), blockNumber: block + 40, amount: "5.10", waived: false, positionKey: posKey }
     );
   }
   return events;

@@ -49,6 +49,8 @@ export interface SimDeployment {
   guardian: Address;
   simPriceFeed: Address;
   testVault?: Address;
+  guardianAaveV4?: Address;
+  guardianMorpho?: Address;
   /** Account allowed to call SimPriceFeed.setAnswer. */
   updater: Address;
   method: "deploy-sim-script" | "artifacts";
@@ -85,7 +87,15 @@ export function parseDeploymentOutput(stdout: string): Omit<SimDeployment, "upda
   const simPriceFeed = addr(raw.simPriceFeed);
   if (!guardian || !simPriceFeed) return null;
   const testVault = addr(raw.testVault);
-  return testVault ? { guardian, simPriceFeed, testVault } : { guardian, simPriceFeed };
+  const guardianAaveV4 = addr(raw.guardianAaveV4);
+  const guardianMorpho = addr(raw.guardianMorpho);
+  return {
+    guardian,
+    simPriceFeed,
+    ...(testVault ? { testVault } : {}),
+    ...(guardianAaveV4 ? { guardianAaveV4 } : {}),
+    ...(guardianMorpho ? { guardianMorpho } : {}),
+  };
 }
 
 async function prepareDeployer(fork: ForkClient): Promise<void> {

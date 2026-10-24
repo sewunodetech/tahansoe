@@ -30,6 +30,28 @@ export const guardianAbi = parseAbi([
   "event FeeCharged(address indexed user, address indexed debtAsset, uint256 amount, uint256 waived)",
 ]);
 
+export const guardianAaveV4Abi = parseAbi([
+  "function positionCount() view returns (uint256)",
+  "function positionsPage(uint256 offset, uint256 limit) view returns (address[] users, address[] debtAssets)",
+  "function debtAssetsOf(address user) view returns (address[])",
+  "function needsProtection(address user, address debtAsset) view returns (bool)",
+  "function protect(address user, address debtAsset) returns (uint256 repaid)",
+  "event LayerUsed(address indexed user, address indexed debtAsset, uint8 indexed layer, uint256 amountIn, uint256 debtRepaid)",
+  "event Protected(address indexed user, address indexed debtAsset, address indexed caller, uint256 repaid, uint256 healthFactorBefore, uint256 healthFactorAfter)",
+  "event FeeCharged(address indexed user, address indexed debtAsset, uint256 amount, uint256 waived)",
+]);
+
+export const guardianMorphoAbi = parseAbi([
+  "function positionCount() view returns (uint256)",
+  "function positionsPage(uint256 offset, uint256 limit) view returns (address[] users, bytes32[] marketIds)",
+  "function marketsOf(address user) view returns (bytes32[])",
+  "function needsProtection(address user, bytes32 marketId) view returns (bool)",
+  "function protect(address user, bytes32 marketId) returns (uint256 repaid)",
+  "event LayerUsed(address indexed user, bytes32 indexed marketId, uint8 indexed layer, uint256 amountIn, uint256 debtRepaid)",
+  "event Protected(address indexed user, bytes32 indexed marketId, address indexed caller, uint256 repaid, uint256 healthFactorBefore, uint256 healthFactorAfter)",
+  "event FeeCharged(address indexed user, bytes32 indexed marketId, uint256 amount, uint256 waived)",
+]);
+
 export const poolAddressesProviderAbi = parseAbi([
   "function getACLManager() view returns (address)",
   "function getACLAdmin() view returns (address)",
