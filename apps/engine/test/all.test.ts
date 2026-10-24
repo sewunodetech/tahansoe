@@ -53,6 +53,7 @@ import "./cli/setup.test.ts";
 import "./cli/setup-telegram.test.ts";
 import "./cli/start.test.ts";
 import "./cli/daemon.test.ts";
+import "./sentinel/adapters.test.ts";
 import "./sentinel/event-sync.test.ts";
 import "./sentinel/keeper.test.ts";
 import "./sentinel/sentinel-worker.test.ts";
