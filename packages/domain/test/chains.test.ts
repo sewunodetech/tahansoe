@@ -5,6 +5,7 @@ import {
   CHAINS,
   ARBITRUM_SEPOLIA,
   ARBITRUM_ONE,
+  ARBITRUM_ONE_SIM,
   getChainConfig,
   type ChainConfig,
 } from "../src/chains";
@@ -114,5 +115,38 @@ describe("sanity chains registry", () => {
 
     // Chain yang tidak dikenali mengembalikan undefined
     assert.equal(getChainConfig(123456), undefined);
+  });
+});
+
+describe("simulation chain registry (spec m1 §3.2)", () => {
+  it("ARBITRUM_ONE_SIM memiliki konfigurasi tepat", () => {
+    assert.equal(ARBITRUM_ONE_SIM.chainId, 4216199);
+    assert.equal(ARBITRUM_ONE_SIM.name, "Arbitrum One (Simulation)");
+    assert.equal(ARBITRUM_ONE_SIM.isSimulation, true);
+    assert.equal(ARBITRUM_ONE_SIM.explorer, "");
+    assert.deepEqual(ARBITRUM_ONE_SIM.rpcUrls, []);
+    assert.deepEqual(ARBITRUM_ONE_SIM.guardians, []);
+    assert.equal(ARBITRUM_ONE_SIM.blockTimeMs, 250);
+    assert.equal(ARBITRUM_ONE_SIM.aave, ARBITRUM_ONE.aave);
+    assert.equal(ARBITRUM_ONE_SIM.tokens, ARBITRUM_ONE.tokens);
+    assert.equal(ARBITRUM_ONE_SIM.priceFeeds, ARBITRUM_ONE.priceFeeds);
+  });
+
+  it("ARBITRUM_ONE_SIM terdaftar di CHAINS map", () => {
+    assert.equal(CHAINS[4216199], ARBITRUM_ONE_SIM);
+    const cfg = getChainConfig(4216199, "https://sim.tahansoe.xyz/rpc/fork-1");
+    assert.ok(cfg);
+    assert.equal(cfg.chainId, 4216199);
+    assert.equal(cfg.isSimulation, true);
+    assert.deepEqual(cfg.rpcUrls, ["https://sim.tahansoe.xyz/rpc/fork-1"]);
+  });
+
+  it("ARBITRUM_ONE_SIM TIDAK terdaftar di SUPPORTED_CHAINS (hanya chain riil)", () => {
+    assert.equal(SUPPORTED_CHAINS.length, 2);
+    assert.equal(
+      SUPPORTED_CHAINS.some((c) => c.chainId === 4216199 || c.isSimulation),
+      false,
+      "SUPPORTED_CHAINS tidak boleh memuat chain simulasi"
+    );
   });
 });
