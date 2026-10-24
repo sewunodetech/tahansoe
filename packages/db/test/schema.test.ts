@@ -106,5 +106,21 @@ describe("packages/db simulation and success fee schema (specs m1 §3.9 & m4 §3
       allSql.includes("ALTER TABLE intents ADD COLUMN IF NOT EXISTS position_key TEXT"),
       "Should alter intents for position_key"
     );
+
+    // Policy per posisi: index unik lama diganti dua partial unique index, setelah policy klasik dikosongkan position_key-nya
+    const clearIdx = allSql.indexOf("UPDATE policies SET position_key = NULL");
+    const dropIdx = allSql.indexOf("DROP INDEX IF EXISTS policies_user_guardian_unique");
+    const classicIdx = allSql.indexOf("CREATE UNIQUE INDEX IF NOT EXISTS policies_user_guardian_classic_unique");
+    const positionIdx = allSql.indexOf("CREATE UNIQUE INDEX IF NOT EXISTS policies_user_guardian_position_unique");
+    assert.ok(clearIdx >= 0 && dropIdx > clearIdx, "Should clear classic position_key before dropping the old unique index");
+    assert.ok(classicIdx > dropIdx && positionIdx > dropIdx, "Should create both partial unique indexes after the drop");
+    assert.ok(/policies_user_guardian_classic_unique\s+ON policies \(user_id, guardian_address\) WHERE position_key IS NULL/.test(allSql));
+    assert.ok(
+      /policies_user_guardian_position_unique\s+ON policies \(user_id, guardian_address, position_key\) WHERE position_key IS NOT NULL/.test(allSql)
+    );
+    assert.ok(
+      !/CREATE UNIQUE INDEX IF NOT EXISTS policies_user_guardian_unique/.test(allSql),
+      "Should no longer create the old one-policy-per-guardian index"
+    );
   });
 });

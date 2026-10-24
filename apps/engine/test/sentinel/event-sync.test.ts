@@ -274,7 +274,8 @@ test("event-sync: memproses event v4 Aave (PolicySet, Protected, FeeCharged, Pol
 
   const user = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   const debtAsset = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d";
-  const guardian = "0x1a5d249a8e711e2288add7c01e31eb7ffb05d97e";
+  // TahansoeGuardianAaveV4 di registry Arbitrum Sepolia.
+  const guardian = "0xa7bbab6366a723e17cd2f220d708757e449571b4";
 
   const userId = await db.upsertUser(user as any, 421614);
   db.linkedTelegram.set(userId, ["chat_v4_aave"]);
@@ -328,9 +329,11 @@ test("event-sync: memproses event v4 Aave (PolicySet, Protected, FeeCharged, Pol
 
   const fakeClient: any = {
     async getBlockNumber() {
-      return 313944300n;
+      return 322451900n;
     },
-    async getLogs() {
+    async getLogs(params: { address?: string }) {
+      // Hanya Guardian v4 yang memancarkan event; Guardian v1 di registry tidak punya log.
+      if (params?.address?.toLowerCase() !== guardian) return [];
       return [
         {
           address: guardian,
@@ -362,6 +365,7 @@ test("event-sync: memproses event v4 Aave (PolicySet, Protected, FeeCharged, Pol
     db,
     chainId: 421614,
     channelAdapter: adapter,
+    chunkSize: 100_000_000n,
   });
 
   assert.equal(syncRes.logsProcessed, 3);
@@ -391,15 +395,16 @@ test("event-sync: memproses event v4 Aave (PolicySet, Protected, FeeCharged, Pol
 
   const fakeClientDis: any = {
     async getBlockNumber() {
-      return 313944400n;
+      return 322452000n;
     },
-    async getLogs() {
+    async getLogs(params: { address?: string }) {
+      if (params?.address?.toLowerCase() !== guardian) return [];
       return [
         {
           address: guardian,
           topics: disTopics,
           data: "0x",
-          blockNumber: 313944350n,
+          blockNumber: 322451950n,
         },
       ];
     },
@@ -409,6 +414,7 @@ test("event-sync: memproses event v4 Aave (PolicySet, Protected, FeeCharged, Pol
     client: fakeClientDis,
     db,
     chainId: 421614,
+    chunkSize: 100_000_000n,
   });
 
   const remaining = await db.loadActivePolicies(421614);
@@ -526,4 +532,57 @@ test("event-sync: memproses event v4 Morpho (PolicySet, Protected, FeeCharged, P
   assert.match(msg, /Morpho Blue/);
   assert.match(msg, /Market/);
   assert.match(msg, /Fee:/);
+});
+
+test("event-sync: dua policy v4 untuk aset utang berbeda tersimpan terpisah; policy v2 tetap satu per Guardian", async () => {
+  const db = new InMemorySentinelDatabase();
+  const user = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  const usdc = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d";
+  const weth = "0x1df462e2712496373a347f8ad10802a5e95f053d";
+  const v4 = "0xa7bbab6366a723e17cd2f220d708757e449571b4";
+  const v1 = "0x1a5d249a8e711e2288add7c01e31eb7ffb05d97e";
+
+  const policySetAbi = parseAbiItem(
+    "event PolicySet(address indexed user, address indexed debtAsset, uint256 triggerHF, uint256 targetHF, uint256 maxRepayPerAction)",
+  );
+  const policySetLog = (address: string, debtAsset: string, block: bigint, logIndex: number) => ({
+    address,
+    topics: encodeEventTopics({
+      abi: [policySetAbi],
+      eventName: "PolicySet",
+      args: { user: user as any, debtAsset: debtAsset as any },
+    }),
+    data: encodeAbiParameters(
+      [{ type: "uint256" }, { type: "uint256" }, { type: "uint256" }],
+      [hfToWad(1.3), hfToWad(1.6), 1_000_000n],
+    ),
+    blockNumber: block,
+    transactionHash: `0x${String(logIndex).padStart(64, "0")}`,
+    logIndex,
+  });
+
+  const logsByGuardian: Record<string, any[]> = {
+    // Guardian v1 (klasik): user ganti aset utang dari USDC ke WETH, tetap satu policy.
+    [v1]: [policySetLog(v1, usdc, 313944200n, 1), policySetLog(v1, weth, 313944250n, 2)],
+    // Guardian v4: dua posisi berbeda pada Guardian yang sama.
+    [v4]: [policySetLog(v4, usdc, 322451800n, 3), policySetLog(v4, weth, 322451850n, 4)],
+  };
+  const fakeClient: any = {
+    async getBlockNumber() {
+      return 322451900n;
+    },
+    async getLogs(params: { address?: string }) {
+      return logsByGuardian[params?.address?.toLowerCase() ?? ""] ?? [];
+    },
+  };
+
+  await syncGuardianEvents({ client: fakeClient, db, chainId: 421614, chunkSize: 100_000_000n });
+
+  const active = await db.loadActivePolicies(421614);
+  const onV4 = active.filter((p) => p.guardianAddress === v4);
+  const onV1 = active.filter((p) => p.guardianAddress === v1);
+  assert.equal(onV4.length, 2, "v4 menyimpan satu policy per aset utang");
+  assert.deepEqual(onV4.map((p) => p.debtAsset).sort(), [weth, usdc].sort());
+  assert.equal(onV1.length, 1, "v1 tetap satu policy per user per Guardian");
+  assert.equal(onV1[0]!.debtAsset, weth, "policy v1 terakhir menimpa yang sebelumnya");
 });
