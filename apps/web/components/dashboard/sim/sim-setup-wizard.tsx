@@ -239,14 +239,14 @@ export function SimSetupWizard() {
           ))}
         </div>
 
-        <details className="group rounded-[14px] border border-[var(--border)]">
+        <details className="group rounded-md border border-[var(--border)]">
           <summary className="cursor-pointer list-none px-3.5 py-2.5 text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] select-none">
             <span className="group-open:hidden">Prefer to do it step by step? Choose your own amounts and HF</span>
             <span className="hidden group-open:inline">Step by step</span>
           </summary>
           <div className="space-y-3 p-3 pt-0">
         {STEPS.map((step, i) => (
-          <div key={step.id} className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-subtle)] p-3.5 space-y-3">
+          <div key={step.id} className="rounded-md border border-[var(--border)] bg-[var(--bg-subtle)] p-3.5 space-y-3">
             <div className="flex items-start gap-2.5">
               {done[step.id] ? (
                 <CheckCircle2 className="size-4 text-[var(--safe)] shrink-0 mt-0.5" />

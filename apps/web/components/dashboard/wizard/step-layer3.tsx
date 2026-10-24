@@ -150,7 +150,7 @@ export function StepLayer3({
               <ApprovalExplainer
                 layer={3}
                 tokenSymbol="Flash Loan"
-                amountCap={`Up to $${cap.toLocaleString()}`}
+                amountCap={`Up to $${cap.toLocaleString("en-US")}`}
               />
             </div>
 
@@ -211,7 +211,7 @@ export function StepLayer3({
         onOpenChange={setModalOpen}
         layer={3}
         tokenSymbol="Flash Loan"
-        amountCap={`Up to $${cap.toLocaleString()}`}
+        amountCap={`Up to $${cap.toLocaleString("en-US")}`}
         onConfirm={onApprove}
       />
     </div>

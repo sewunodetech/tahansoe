@@ -126,7 +126,7 @@ export function HoldingsTable({ items, explorerAddress }: HoldingsTableProps) {
                     <td className="py-3.5 px-4 text-right">
                       {isNative ? (
                         <span className="text-[var(--text-tertiary)] text-[11px]">
-                          — (Native)
+                          Native token
                         </span>
                       ) : (
                         <div>

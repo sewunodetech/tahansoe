@@ -3,14 +3,13 @@
 import React, { useState } from "react";
 import {
   CheckCircle,
-  Gauge,
   Info,
   Shield,
   Zap,
   TrendingDown,
 } from "lucide-react";
 import { useSimulation, type PolicySettings } from "@/lib/simulation-context";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { Card } from "@/components/ui/card";
 import { NumberInput } from "@/components/ui/number-input";
 import { ThresholdsSection } from "@/components/dashboard/settings/thresholds-section";
@@ -43,48 +42,20 @@ export default function SettingsPage() {
 
   return (
     <div className="w-full p-5 md:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <Eyebrow dot variant="brand">
-              Configuration
-            </Eyebrow>
-            <span className="text-[11px] font-mono text-[var(--text-tertiary)]">
-              Local Policy & Ticker
+      <PageHeader
+        eyebrow="Settings"
+        title="Settings"
+        subtitle="Demo thresholds, notifications and appearance."
+        actions={
+          flash ? (
+            <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs border bg-[var(--safe-bg)] border-[var(--safe-border)] text-[var(--safe)]">
+              <CheckCircle className="size-3.5" strokeWidth={2} /> Saved
             </span>
-          </div>
-          <h1 className="font-display text-2xl md:text-3xl font-light text-[var(--text-primary)]">
-            Settings & Policy
-          </h1>
-          <p className="text-xs text-[var(--text-secondary)] mt-1 font-mono">
-            Protection thresholds · notifications · appearance · simulation engine
-          </p>
-        </div>
+          ) : null
+        }
+      />
 
-        {/* Live settings indicator badge */}
-        <div
-          className={`flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-mono transition-all border ${
-            flash
-              ? "bg-[var(--safe-bg)] border-[var(--safe-border)] text-[var(--safe)]"
-              : "bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--text-tertiary)]"
-          }`}
-        >
-          {flash ? (
-            <>
-              <CheckCircle className="size-3.5 text-[var(--safe)]" strokeWidth={2} />
-              <span>Policy Applied</span>
-            </>
-          ) : (
-            <>
-              <Gauge className="size-3.5" strokeWidth={1.5} />
-              <span>Live Reactive State</span>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* Left column */}
         <div className="space-y-6">
           {/* Thresholds */}

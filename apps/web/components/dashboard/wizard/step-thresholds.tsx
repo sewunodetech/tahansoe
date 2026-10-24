@@ -126,7 +126,7 @@ export function StepThresholds({
 
           <div className="text-xs text-[var(--text-secondary)] space-y-1.5 font-sans leading-relaxed">
             <p>
-              • We act when ETH drops to <strong className="text-[var(--warning)] font-mono">${triggerEthPrice.toLocaleString()}</strong> (a <strong className="text-[var(--text-primary)]">-{dropPct}% drop</strong> from ${ethPrice.toLocaleString()}).
+              • We act when ETH drops to <strong className="text-[var(--warning)] font-mono">${triggerEthPrice.toLocaleString("en-US")}</strong> (a <strong className="text-[var(--text-primary)]">-{dropPct}% drop</strong> from ${ethPrice.toLocaleString("en-US")}).
             </p>
             <p>
               • Automated remediation repays debt to lift your Health Factor back up to <strong className="text-[var(--safe)] font-mono">{targetHF.toFixed(2)}</strong>.

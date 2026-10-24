@@ -85,7 +85,7 @@ export function GuardianView({ showMigration = true }: { showMigration?: boolean
         </div>
       ) : top ? (
         <div className="space-y-3">
-          <div className="flex items-start gap-3 rounded-[16px] border border-[var(--warning-border)] bg-[var(--warning-bg)] px-4 py-3">
+          <div className="flex items-start gap-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] px-4 py-3">
             <ShieldOff className="size-4 text-[var(--warning)] shrink-0 mt-0.5" />
             <div className="min-w-0">
               <p className="text-sm text-[var(--text-primary)]">Nothing is guarding your positions yet</p>

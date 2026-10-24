@@ -44,7 +44,7 @@ export function LiveProtection() {
         <LiveMigrationBanner g={g} />
         <LivePositionCard g={g} />
 
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-5 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
           <LivePolicyForm key={formKey} g={g} asset={activeAsset!} onAssetChange={setAsset} />
           <LivePolicyStatus g={g} />
         </div>

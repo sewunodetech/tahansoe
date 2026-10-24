@@ -146,8 +146,8 @@ function remediate(
 
   const actionLabel =
     cascade.l3Collateral > 0
-      ? `Deleverage $${Math.round(cascade.l3Collateral).toLocaleString()} + Repay $${Math.round(cascade.totalRepaid).toLocaleString()}`
-      : `Repay ${Math.round(cascade.totalRepaid).toLocaleString()} USDC`;
+      ? `Deleverage $${Math.round(cascade.l3Collateral).toLocaleString("en-US")} + Repay $${Math.round(cascade.totalRepaid).toLocaleString("en-US")}`
+      : `Repay ${Math.round(cascade.totalRepaid).toLocaleString("en-US")} USDC`;
 
   return {
     strategy,

@@ -9,11 +9,11 @@ import { useLiveTarget } from "@/lib/live-target";
 import type { TxState, TxStep, UseGuardianReturn } from "@/hooks/useGuardian";
 
 export function formatToken(amount: bigint, decimals: number, maxFractionDigits = 2): string {
-  return Number(formatUnits(amount, decimals)).toLocaleString(undefined, { maximumFractionDigits: maxFractionDigits });
+  return Number(formatUnits(amount, decimals)).toLocaleString("en-US", { maximumFractionDigits: maxFractionDigits });
 }
 
 export function formatUsd(value: number): string {
-  return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }
 
 const STEP_LABELS: Record<TxStep, string> = {

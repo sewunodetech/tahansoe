@@ -48,7 +48,7 @@ export function SimDashboard() {
 
   return (
     <LivePage
-      eyebrow="Simulation"
+      eyebrow="Overview"
       title="Try the Guardian on a fork"
       subtitle="Three steps, fake funds, real contracts. About two minutes."
     >
@@ -71,7 +71,7 @@ export function SimDashboard() {
                 disabled={locked}
                 aria-current={active ? "step" : undefined}
                 onClick={() => setPicked({ step: i, at: auto })}
-                className={`w-full h-full text-left rounded-[14px] border px-3 py-2.5 transition-colors ${
+                className={`w-full h-full text-left rounded-md border px-3 py-2.5 transition-colors ${
                   active
                     ? "border-[var(--brand)] bg-[var(--brand-bg)]"
                     : locked
@@ -137,7 +137,7 @@ function PositionStrip({ collateralUsd, debtUsd, hf, trigger }: { collateralUsd:
     { label: "Protection", value: trigger !== null ? `On · trigger ${trigger.toFixed(2)}` : "Off" },
   ];
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 rounded-[16px] border border-[var(--border)] divide-x divide-y md:divide-y-0 divide-[var(--border)] overflow-hidden">
+    <div className="grid grid-cols-2 md:grid-cols-4 rounded-lg border border-[var(--border)] divide-x divide-y md:divide-y-0 divide-[var(--border)] overflow-hidden">
       {items.map((it) => (
         <div key={it.label} className="px-4 py-3">
           <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">{it.label}</p>
@@ -162,7 +162,7 @@ function ResultStep({ hf, protections }: { hf: number | null; protections: numbe
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
+            <div className="rounded-md border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
               <p className="text-[10px] font-mono uppercase text-[var(--text-tertiary)]">Health Factor now</p>
               <p className="text-xl font-mono font-light text-[var(--safe)]">{hf === null ? "—" : hf.toFixed(2)}</p>
             </div>

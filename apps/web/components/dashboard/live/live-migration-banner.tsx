@@ -16,7 +16,7 @@ export function LiveMigrationBanner({ g }: { g: UseGuardianReturn }) {
   const busy = g.tx.step !== null;
 
   return (
-    <div className="p-4 rounded-[20px] border border-[var(--warning-border)] bg-[var(--warning-bg)] space-y-3">
+    <div className="p-4 rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] space-y-3">
       <div className="flex items-start gap-3">
         <ArrowRightLeft className="size-5 text-[var(--warning)] shrink-0 mt-0.5" />
         <div className="text-xs text-[var(--text-primary)] space-y-1">

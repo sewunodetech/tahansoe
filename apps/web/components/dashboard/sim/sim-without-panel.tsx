@@ -49,13 +49,13 @@ function WithoutBody({ position, price }: { position: SimBaseline; price: number
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
+        <div className="rounded-md border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
           <p className="text-[10px] font-mono uppercase text-[var(--text-tertiary)]">Health Factor</p>
           <p className={`text-xl font-mono font-light ${out.liquidatable ? "text-[var(--danger)]" : "text-[var(--text-primary)]"}`}>
             {Number.isFinite(out.hf) ? out.hf.toFixed(2) : "—"}
           </p>
         </div>
-        <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
+        <div className="rounded-md border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
           <p className="text-[10px] font-mono uppercase text-[var(--text-tertiary)]">Est. liquidation penalty</p>
           <p className={`text-xl font-mono font-light ${out.liquidatable ? "text-[var(--danger)]" : "text-[var(--text-primary)]"}`}>
             {out.liquidatable ? usd(out.penaltyUsd) : "$0.00"}

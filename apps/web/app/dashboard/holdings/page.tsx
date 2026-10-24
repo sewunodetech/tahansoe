@@ -7,8 +7,8 @@ import { HoldingsView } from "@/components/dashboard/holdings/holdings-view";
 export default function HoldingsPage() {
   return (
     <LivePage
-      eyebrow="Layer 1 Source"
-      title="Wallet Holdings"
+      eyebrow="Holdings"
+      title="Wallet holdings"
       subtitle="Hot wallet assets and Guardian allowances available for automated debt repayment."
     >
       <HoldingsView />

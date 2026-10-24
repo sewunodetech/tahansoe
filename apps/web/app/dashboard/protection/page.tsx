@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/page-header";
 import React, { useState } from "react";
 import Link from "next/link";
 import {
@@ -37,58 +38,33 @@ function DemoProtectionPage() {
   };
 
   const getApprovingCap = () => {
-    if (approvingLayer === 1) return `${layers.l1.capacity.toLocaleString()} USDC`;
-    if (approvingLayer === 2) return `$${layers.l2.capacity.toLocaleString()}`;
-    return `Up to $${layers.l3.capacity.toLocaleString()}`;
+    if (approvingLayer === 1) return `${layers.l1.capacity.toLocaleString("en-US")} USDC`;
+    if (approvingLayer === 2) return `$${layers.l2.capacity.toLocaleString("en-US")}`;
+    return `Up to $${layers.l3.capacity.toLocaleString("en-US")}`;
   };
 
   return (
     <div className="w-full p-5 md:p-8 space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl md:text-3xl font-light text-[var(--text-primary)]">
-            3-Layer Liquidation Protection
-          </h1>
-          <p className="text-xs text-[var(--text-tertiary)] mt-1 font-mono">
-            Self-approved defensive cascade: L1 Wallet → L2 Vault → L3 Flash Deleverage
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-            className="text-xs font-mono"
-            title="Launch step-by-step setup wizard"
-          >
-            <Link href="/dashboard/protection/setup">
-              <Sparkles className="w-3.5 h-3.5 mr-1 text-[var(--brand)]" /> Setup Wizard
-            </Link>
-          </Button>
-
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => actions.revokeAll()}
-            className="text-xs font-mono"
-            title="Set all layer allowances to 0 and disable automatic execution"
-          >
-            <RotateCcw className="w-3.5 h-3.5 mr-1" /> Revoke All
-          </Button>
-
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => actions.simulatePriceDrop(15)}
-            className="text-xs font-mono"
-            title="Simulate a sudden 15% drop in collateral price to test layer cascade"
-          >
-            <TrendingDown className="w-3.5 h-3.5 mr-1 text-[var(--warning)]" /> Test Drop (-15%)
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Protection"
+        title="Liquidation protection"
+        subtitle="Three self-approved layers, always in this order: wallet reserve, vault reserve, flash deleverage."
+        actions={
+          <>
+            <Button variant="outline" size="sm" asChild className="text-xs">
+              <Link href="/dashboard/protection/setup">
+                <Sparkles className="size-3.5 text-[var(--brand)]" /> Setup wizard
+              </Link>
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => actions.simulatePriceDrop(15)} className="text-xs">
+              <TrendingDown className="size-3.5 text-[var(--warning)]" /> Simulate a 15% drop
+            </Button>
+            <Button variant="danger" size="sm" onClick={() => actions.revokeAll()} className="text-xs">
+              <RotateCcw className="size-3.5" /> Revoke all
+            </Button>
+          </>
+        }
+      />
 
       {/* Position Status & Zone Bar */}
       <Card className="p-5">
@@ -99,7 +75,7 @@ function DemoProtectionPage() {
                 {position?.protocol ?? "Aave V3"} Position
               </span>
               <span className="text-xs font-mono text-[var(--text-tertiary)]">
-                Arbitrum · Collateral {position?.collateral ?? "4.2 ETH"} (${position?.collateralUsd?.toLocaleString()}) · Debt {position?.debt ?? "5,400 USDC"}
+                Arbitrum · Collateral {position?.collateral ?? "4.2 ETH"} (${position?.collateralUsd?.toLocaleString("en-US")}) · Debt {position?.debt ?? "5,400 USDC"}
               </span>
             </div>
             <p className="text-xs text-[var(--text-tertiary)] mt-1 font-mono">
@@ -406,7 +382,7 @@ export default function ProtectionPage() {
   const { isLive } = useDashboardMode();
   if (!isLive) return <DemoProtectionPage />;
   return (
-    <LivePage eyebrow="Protection" title="Liquidation Protection" subtitle="Approve a capped reserve and save your policy on-chain. Revoke anytime.">
+    <LivePage eyebrow="Protection" title="Liquidation protection" subtitle="Approve a capped reserve and save your policy on-chain. Revoke anytime.">
       <LiveProtection />
     </LivePage>
   );

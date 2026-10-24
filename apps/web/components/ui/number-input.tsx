@@ -39,7 +39,8 @@ export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
     ref
   ) => {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = e.target.value;
+      // Accept a decimal comma (Indonesian keyboards) but always display a dot.
+      const raw = e.target.value.replace(",", ".");
       onValueChange?.(raw);
       const parsed = parseFloat(raw);
       if (!isNaN(parsed)) {
@@ -62,7 +63,9 @@ export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
       >
         <input
           ref={ref}
-          type="number"
+          // type="text" + inputMode: type="number" renders in the OS locale ("1,3"); the app formats en-US.
+          type="text"
+          inputMode="decimal"
           value={value === 0 && props.placeholder ? "" : value}
           onChange={handleInputChange}
           min={min}

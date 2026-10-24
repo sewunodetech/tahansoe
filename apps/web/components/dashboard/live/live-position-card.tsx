@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -24,7 +25,11 @@ export function LivePositionCard({ g }: { g: UseGuardianReturn }) {
       <Card className="p-6">
         <p className="text-sm text-[var(--text-primary)]">No Aave V3 borrow on your simulation wallet yet</p>
         <p className="text-xs text-[var(--text-tertiary)] mt-1">
-          Use the setup wizard above to supply WETH and borrow USDC on the fork, or press Auto-fill.
+          Open one on the{" "}
+          <Link href="/dashboard" className="text-[var(--brand)] hover:underline">
+            Overview
+          </Link>{" "}
+          with Auto-fill, then come back to adjust its protection.
         </p>
       </Card>
     );

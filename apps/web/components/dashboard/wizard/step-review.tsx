@@ -86,7 +86,7 @@ export function StepReview({
                 HF &lt; {triggerHF.toFixed(2)}
               </span>
               <span className="text-xs text-[var(--text-tertiary)] font-mono">
-                (ETH &lt; ${triggerEthPrice.toLocaleString()} · -{dropPct}%)
+                (ETH &lt; ${triggerEthPrice.toLocaleString("en-US")} · -{dropPct}%)
               </span>
             </div>
           </div>
@@ -105,7 +105,7 @@ export function StepReview({
                 Total Defensive Cap
               </span>
               <span className="text-lg font-mono font-medium text-[var(--text-primary)] mt-1 block">
-                ${totalDefenseCap.toLocaleString()}
+                ${totalDefenseCap.toLocaleString("en-US")}
               </span>
             </div>
           </div>
@@ -126,7 +126,7 @@ export function StepReview({
                   Layer 1: Wallet Reserve
                 </span>
                 <span className="text-[11px] text-[var(--text-tertiary)] font-mono">
-                  Up to {l1Cap.toLocaleString()} USDC from hot wallet
+                  Up to {l1Cap.toLocaleString("en-US")} USDC from hot wallet
                 </span>
               </div>
             </div>
@@ -145,7 +145,7 @@ export function StepReview({
                 </span>
                 <span className="text-[11px] text-[var(--text-tertiary)] font-mono">
                   {l2Enabled
-                    ? `Up to $${l2Cap.toLocaleString()} from ${l2Source}`
+                    ? `Up to $${l2Cap.toLocaleString("en-US")} from ${l2Source}`
                     : "Not enabled (skipped)"}
                 </span>
               </div>
@@ -169,7 +169,7 @@ export function StepReview({
                 </span>
                 <span className="text-[11px] text-[var(--text-tertiary)] font-mono">
                   {l3Enabled
-                    ? `Atomic flash loan deleverage (cap $${l3Cap.toLocaleString()}, max ${slippageBps} bps slippage)`
+                    ? `Atomic flash loan deleverage (cap $${l3Cap.toLocaleString("en-US")}, max ${slippageBps} bps slippage)`
                     : "Not enabled (skipped)"}
                 </span>
               </div>

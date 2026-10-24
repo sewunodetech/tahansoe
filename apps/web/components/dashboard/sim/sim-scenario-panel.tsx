@@ -63,7 +63,7 @@ export function SimChooseMarket() {
       </CardHeader>
       <CardContent className="space-y-2.5">
         {MARKETS.map(({ mode, title, body, icon: Icon }) => (
-          <div key={mode} className="rounded-[14px] border border-[var(--border)] p-3.5 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div key={mode} className="rounded-md border border-[var(--border)] p-3.5 flex flex-col sm:flex-row sm:items-center gap-3">
             <Icon className="size-4 text-[var(--text-secondary)] shrink-0 hidden sm:block" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-[var(--text-primary)]">{title}</p>
@@ -73,7 +73,7 @@ export function SimChooseMarket() {
                   aria-label="Historical crash"
                   value={scenario}
                   onChange={(e) => setScenario(e.target.value as SimScenarioId)}
-                  className="mt-2 w-full sm:max-w-[300px] h-8 px-2.5 rounded-[10px] border border-[var(--border)] bg-[var(--bg-subtle)] text-xs text-[var(--text-primary)]"
+                  className="mt-2 w-full sm:max-w-[300px] h-8 px-2.5 rounded-md border border-[var(--border)] bg-[var(--bg-subtle)] text-xs text-[var(--text-primary)]"
                 >
                   {SIM_SCENARIOS.map((s) => (
                     <option key={s.id} value={s.id}>

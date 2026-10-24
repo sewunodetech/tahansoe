@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/page-header";
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -8,7 +9,6 @@ import {
   AlertTriangle,
   TrendingDown,
   ArrowRight,
-  Sparkles,
   Bot,
   Newspaper,
   CheckCircle2,
@@ -64,7 +64,7 @@ function DemoDashboardPage() {
   if (!hasPolicy) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-[var(--brand-bg)] border border-[var(--border)] flex items-center justify-center">
+        <div className="w-12 h-12 rounded-lg bg-[var(--brand-bg)] border border-[var(--border)] flex items-center justify-center">
           <ShieldCheck className="w-6 h-6 text-[var(--brand)] animate-pulse" />
         </div>
         <div className="space-y-1">
@@ -86,56 +86,22 @@ function DemoDashboardPage() {
 
   return (
     <div className="w-full p-5 md:p-8 space-y-6">
-      {/* ── Top Header ────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
-              Overview · Arbitrum Sepolia
-            </span>
-            <Badge variant="brand" size="sm">Aave V3</Badge>
-          </div>
-          <h1 className="font-display text-2xl md:text-3xl font-light text-[var(--text-primary)]">
-            Position Health & Protection
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-            className="text-xs font-mono"
-            title="Open 3-layer protection management"
-          >
-            <Link href="/dashboard/protection">
-              <SlidersHorizontal className="w-3.5 h-3.5 mr-1" /> Manage Protection
-            </Link>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-            className="text-xs font-mono"
-            title="Launch setup wizard"
-          >
-            <Link href="/dashboard/protection/setup">
-              <Sparkles className="w-3.5 h-3.5 mr-1 text-[var(--brand)]" /> Setup Wizard
-            </Link>
-          </Button>
-
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => actions.simulatePriceDrop(15)}
-            className="text-xs font-mono"
-            title="Simulate a 15% drop in collateral price to test cascade"
-          >
-            <TrendingDown className="w-3.5 h-3.5 mr-1 text-[var(--warning)]" /> Test Drop (-15%)
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Overview"
+        title="Position health and protection"
+        actions={
+          <>
+            <Button variant="outline" size="sm" asChild className="text-xs">
+              <Link href="/dashboard/protection">
+                <SlidersHorizontal className="size-3.5" /> Manage
+              </Link>
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => actions.simulatePriceDrop(15)} className="text-xs">
+              <TrendingDown className="size-3.5 text-[var(--warning)]" /> Simulate a 15% drop
+            </Button>
+          </>
+        }
+      />
 
       {/* ── Warning Banner (if at risk) ───────────────────────────────────────── */}
       {zone !== "Safe" && (
@@ -161,11 +127,11 @@ function DemoDashboardPage() {
                 {position?.protocol ?? "Aave V3"} Position
               </span>
               <span className="text-xs font-mono text-[var(--text-tertiary)]">
-                Arbitrum · Collateral {position?.collateral ?? "4.2 ETH"} (${collateralUsd.toLocaleString()}) · Debt {position?.debt ?? "5,400 USDC"}
+                Arbitrum · Collateral {position?.collateral ?? "4.2 ETH"} (${collateralUsd.toLocaleString("en-US")}) · Debt {position?.debt ?? "5,400 USDC"}
               </span>
             </div>
             <p className="text-xs text-[var(--text-tertiary)] mt-1 font-mono">
-              Liquidation threshold: 0.825 · Oracle: Chainlink ETH/USD (${ethPrice.price.toLocaleString()})
+              Liquidation threshold: 0.825 · Oracle: Chainlink ETH/USD (${ethPrice.price.toLocaleString("en-US")})
             </p>
           </div>
 
@@ -200,7 +166,7 @@ function DemoDashboardPage() {
               Current ETH Spot
             </span>
             <span className="text-sm font-mono font-medium text-[var(--text-primary)] mt-0.5 block">
-              ${ethPrice.price.toLocaleString()}
+              ${ethPrice.price.toLocaleString("en-US")}
             </span>
           </div>
           <div className="p-3 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border)]">
@@ -208,7 +174,7 @@ function DemoDashboardPage() {
               Action Trigger Price
             </span>
             <span className="text-sm font-mono font-medium text-[var(--warning)] mt-0.5 block">
-              ${triggerEthPrice.toLocaleString()} (-{dropPct}%)
+              ${triggerEthPrice.toLocaleString("en-US")} (-{dropPct}%)
             </span>
           </div>
           <div className="p-3 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border)]">
@@ -216,7 +182,7 @@ function DemoDashboardPage() {
               Aave Liq Price
             </span>
             <span className="text-sm font-mono font-medium text-[var(--danger)] mt-0.5 block">
-              ${liquidationPrice.toLocaleString()}
+              ${liquidationPrice.toLocaleString("en-US")}
             </span>
           </div>
           <div className="p-3 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border)]">
@@ -259,11 +225,11 @@ function DemoDashboardPage() {
                 <p className="text-xs text-[var(--text-primary)] leading-snug">
                   {layers.l1.enabled && layers.l1.approved ? (
                     <>
-                      If ETH falls to <strong className="font-mono text-[var(--warning)]">${triggerEthPrice.toLocaleString()}</strong> (-{dropPct}%) → <strong className="text-[var(--text-primary)]">Layer 1</strong> repays up to <strong className="font-mono">{layers.l1.capacity.toLocaleString()} USDC</strong> from your wallet.
+                      If ETH falls to <strong className="font-mono text-[var(--warning)]">${triggerEthPrice.toLocaleString("en-US")}</strong> (-{dropPct}%) → <strong className="text-[var(--text-primary)]">Layer 1</strong> repays up to <strong className="font-mono">{layers.l1.capacity.toLocaleString("en-US")} USDC</strong> from your wallet.
                     </>
                   ) : (
                     <span className="text-[var(--text-tertiary)]">
-                      Layer 1 (Wallet Reserve) — Not set up or allowance revoked.
+                      Layer 1 (Wallet Reserve): not set up, or the allowance was revoked.
                     </span>
                   )}
                 </p>
@@ -294,11 +260,11 @@ function DemoDashboardPage() {
                 <p className="text-xs text-[var(--text-primary)] leading-snug">
                   {layers.l2.enabled && layers.l2.approved ? (
                     <>
-                      If Layer 1 is depleted or insufficient → <strong className="text-[var(--text-primary)]">Layer 2</strong> redeems up to <strong className="font-mono">${layers.l2.capacity.toLocaleString()}</strong> from secondary vault shares.
+                      If Layer 1 is depleted or insufficient → <strong className="text-[var(--text-primary)]">Layer 2</strong> redeems up to <strong className="font-mono">${layers.l2.capacity.toLocaleString("en-US")}</strong> from secondary vault shares.
                     </>
                   ) : (
                     <span className="text-[var(--text-tertiary)]">
-                      Layer 2 (Position Reserve) — Not set up or disabled.
+                      Layer 2 (Position Reserve): not set up or disabled.
                     </span>
                   )}
                 </p>
@@ -329,11 +295,11 @@ function DemoDashboardPage() {
                 <p className="text-xs text-[var(--text-primary)] leading-snug">
                   {layers.l3.enabled && layers.l3.approved ? (
                     <>
-                      If Layers 1 & 2 are exhausted → <strong className="text-[var(--text-primary)]">Layer 3</strong> executes atomic flash loan deleverage (cap <strong className="font-mono">${layers.l3.capacity.toLocaleString()}</strong>).
+                      If Layers 1 & 2 are exhausted → <strong className="text-[var(--text-primary)]">Layer 3</strong> executes atomic flash loan deleverage (cap <strong className="font-mono">${layers.l3.capacity.toLocaleString("en-US")}</strong>).
                     </>
                   ) : (
                     <span className="text-[var(--text-tertiary)]">
-                      Layer 3 (Flash Deleverage) — Not set up or disabled.
+                      Layer 3 (Flash Deleverage): not set up or disabled.
                     </span>
                   )}
                 </p>
@@ -378,7 +344,7 @@ function DemoDashboardPage() {
             <div className="p-2.5 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border)] text-xs font-mono space-y-1">
               <div className="flex justify-between">
                 <span className="text-[var(--text-tertiary)]">Approved Cap</span>
-                <span className="text-[var(--text-primary)]">{layers.l1.capacity.toLocaleString()} USDC</span>
+                <span className="text-[var(--text-primary)]">{layers.l1.capacity.toLocaleString("en-US")} USDC</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--text-tertiary)]">Debt Covered</span>
@@ -416,7 +382,7 @@ function DemoDashboardPage() {
             <div className="p-2.5 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border)] text-xs font-mono space-y-1">
               <div className="flex justify-between">
                 <span className="text-[var(--text-tertiary)]">Redemption Cap</span>
-                <span className="text-[var(--text-primary)]">${layers.l2.capacity.toLocaleString()}</span>
+                <span className="text-[var(--text-primary)]">${layers.l2.capacity.toLocaleString("en-US")}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--text-tertiary)]">Source Position</span>
@@ -454,7 +420,7 @@ function DemoDashboardPage() {
             <div className="p-2.5 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border)] text-xs font-mono space-y-1">
               <div className="flex justify-between">
                 <span className="text-[var(--text-tertiary)]">Collateral Cap</span>
-                <span className="text-[var(--text-primary)]">${layers.l3.capacity.toLocaleString()}</span>
+                <span className="text-[var(--text-primary)]">${layers.l3.capacity.toLocaleString("en-US")}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--text-tertiary)]">Max Slippage</span>

@@ -67,17 +67,17 @@ export function DashboardTopbar({
           </button>
         )}
 
-        <div className="w-px h-4 mx-0.5 bg-[var(--border)]" />
+        <div className="hidden sm:block w-px h-4 mx-0.5 bg-[var(--border)]" />
 
-        {/* Breadcrumbs */}
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs font-medium">
+        {/* Breadcrumbs: the root crumb drops on phones so the right-side controls keep their room. */}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs font-medium min-w-0">
           <Link
             href="/dashboard"
-            className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+            className="hidden sm:inline text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
           >
             Tahansoe
           </Link>
-          <ChevronRight className="w-3 h-3 text-[var(--border-strong)] shrink-0" strokeWidth={1.5} />
+          <ChevronRight className="hidden sm:block w-3 h-3 text-[var(--border-strong)] shrink-0" strokeWidth={1.5} />
           <span className="text-[var(--text-primary)]">{currentLabel}</span>
         </nav>
       </div>
@@ -130,7 +130,7 @@ export function DashboardTopbar({
             <div className="hidden lg:flex items-center gap-1.5 h-7 px-2.5 rounded-md font-mono text-[11px] bg-[var(--bg-subtle)] border border-[var(--border)]">
               <span className="text-[var(--text-tertiary)]">ETH</span>
               <span className="text-[var(--text-secondary)]">
-                ${ethPrice.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                ${ethPrice.price.toLocaleString("en-US", { maximumFractionDigits: 0 })}
               </span>
               <span className={isEthUp ? "text-[var(--safe)]" : "text-[var(--danger)]"}>
                 {isEthUp ? "▲" : "▼"} {Math.abs(ethPrice.change24h).toFixed(2)}%
@@ -178,8 +178,8 @@ export function DashboardTopbar({
         {/* Theme toggle */}
         <ThemeToggle />
 
-        {/* Wallet pill */}
-        <div className="flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border)] text-[11px] font-mono text-[var(--text-primary)]">
+        {/* Wallet pill (on phones the sidebar footer already shows the address) */}
+        <div className="hidden sm:flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border)] text-[11px] font-mono text-[var(--text-primary)]">
           <Wallet className="w-3 h-3 text-[var(--brand)] shrink-0" strokeWidth={1.8} />
           <span>{shortAddress}</span>
           {onDisconnect && (

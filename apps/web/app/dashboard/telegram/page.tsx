@@ -5,7 +5,7 @@ import { Bot, Lock, BellRing, Shield } from "lucide-react";
 import { useTelegramLink } from "@/hooks/useTelegramLink";
 import { useSimulation } from "@/lib/simulation-context";
 import { Card } from "@/components/ui/card";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/dashboard/page-header";
 import {
   TelegramConnectionCard,
   type ConnectionStatus,
@@ -88,25 +88,13 @@ export default function TelegramPage() {
 
   return (
     <div className="w-full p-5 md:p-8 space-y-6">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-1.5">
-          <Eyebrow dot variant="brand">
-            Mobile Push Bridge
-          </Eyebrow>
-          <span className="text-[11px] font-mono text-[var(--text-tertiary)]">
-            Telegram Bot API
-          </span>
-        </div>
-        <h1 className="font-display text-2xl md:text-3xl font-light text-[var(--text-primary)]">
-          Telegram Notifications
-        </h1>
-        <p className="text-xs text-[var(--text-secondary)] mt-1 font-mono">
-          Connect @{TELEGRAM_BOT_USERNAME} for scheduled risk research digests (2x daily) and real-time risk alerts
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Telegram"
+        title="Telegram notifications"
+        subtitle={<>Connect @{TELEGRAM_BOT_USERNAME} for twice-daily risk digests and real-time alerts.</>}
+      />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* Main column */}
         <div className="space-y-6">
           <TelegramConnectionCard

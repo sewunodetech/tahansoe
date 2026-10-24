@@ -34,7 +34,7 @@ export function GuardCard({ item, hf, heartbeat, capacity, rescueUsd }: GuardCar
 
   return (
     <motion.article
-      className="glass-surface relative overflow-hidden rounded-[24px] p-5 md:p-6"
+      className="glass-surface relative overflow-hidden rounded-xl p-5 md:p-6"
       initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
