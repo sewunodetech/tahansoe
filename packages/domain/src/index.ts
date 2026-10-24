@@ -1,7 +1,7 @@
 /**
  * @tahansoe/domain
  * Paket domain murni Tahansoe: tipe kanonik, chain registry, rumus HF.
- * Tanpa I/O, database, network, atau SDK eksternal.
+ * Modul inti tanpa I/O; `positions/` berisi reader baca on-chain (viem) untuk Positions.
  */
 
 export * from "./types";
@@ -10,3 +10,4 @@ export * from "./hf";
 export * from "./protection";
 export * from "./zone";
 export * from "./cascade";
+export * from "./positions";
