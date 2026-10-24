@@ -282,6 +282,8 @@ export const intents = pgTable(
     reason: text("reason").notNull(),
     estimatedGas: numeric("estimated_gas", { precision: 38, scale: 0 }),
     estimatedSlippageBps: integer("estimated_slippage_bps"),
+    feeAmount: numeric("fee_amount", { precision: 38, scale: 18 }),
+    feeWaived: numeric("fee_waived", { precision: 38, scale: 18 }),
     status: intentStatusEnum("status").notNull().default("PENDING"),
     txHash: text("tx_hash"),
     errorMessage: text("error_message"),
@@ -343,3 +345,28 @@ export const broadcasts = pgTable(
 
 export type Broadcast = typeof broadcasts.$inferSelect;
 export type NewBroadcast = typeof broadcasts.$inferInsert;
+
+export const simSessions = pgTable(
+  "sim_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    address: text("address").notNull(),
+    mode: text("mode").notNull(),
+    scenario: text("scenario"),
+    forkId: text("fork_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    positionOpenedAt: timestamp("position_opened_at", { withTimezone: true }),
+    firstProtectAt: timestamp("first_protect_at", { withTimezone: true }),
+    layersUsed: integer("layers_used").array(),
+    convertedAt: timestamp("converted_at", { withTimezone: true }),
+    userAgentHash: text("user_agent_hash"),
+  },
+  (t) => ({
+    createdAtIdx: index("sim_sessions_created_at_idx").on(t.createdAt),
+  })
+);
+
+export type SimSession = typeof simSessions.$inferSelect;
+export type NewSimSession = typeof simSessions.$inferInsert;
