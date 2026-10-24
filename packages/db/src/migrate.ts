@@ -180,6 +180,7 @@ export async function runMigrations(
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       position_id UUID REFERENCES positions (id) ON DELETE CASCADE,
+      position_key TEXT,
       chain_id INTEGER NOT NULL DEFAULT 421614,
       guardian_address TEXT,
       guardian_version INTEGER,
@@ -207,6 +208,7 @@ export async function runMigrations(
     );
   `);
   await runSql(`
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS position_key TEXT;
     ALTER TABLE policies ADD COLUMN IF NOT EXISTS chain_id INTEGER NOT NULL DEFAULT 421614;
     ALTER TABLE policies ADD COLUMN IF NOT EXISTS guardian_address TEXT;
     ALTER TABLE policies ADD COLUMN IF NOT EXISTS guardian_version INTEGER;
@@ -234,6 +236,9 @@ export async function runMigrations(
   await runSql(`
     CREATE INDEX IF NOT EXISTS policies_chain_active_idx ON policies (chain_id, is_active);
   `);
+  await runSql(`
+    CREATE INDEX IF NOT EXISTS policies_position_key_idx ON policies (position_key);
+  `);
   log("  policies");
 
   await runSql(`
@@ -256,6 +261,7 @@ export async function runMigrations(
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       position_id UUID NOT NULL REFERENCES positions (id) ON DELETE CASCADE,
+      position_key TEXT,
       action intent_action NOT NULL,
       amount NUMERIC(38,18) NOT NULL,
       asset TEXT NOT NULL,
@@ -283,6 +289,7 @@ export async function runMigrations(
     CREATE INDEX IF NOT EXISTS intents_status_idx ON intents (status);
   `);
   await runSql(`
+    ALTER TABLE intents ADD COLUMN IF NOT EXISTS position_key TEXT;
     ALTER TABLE intents ADD COLUMN IF NOT EXISTS fee_amount NUMERIC(38,18);
     ALTER TABLE intents ADD COLUMN IF NOT EXISTS fee_waived NUMERIC(38,18);
   `);

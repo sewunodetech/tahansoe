@@ -191,6 +191,7 @@ export const policies = pgTable(
     positionId: uuid("position_id").references(() => positions.id, {
       onDelete: "cascade",
     }),
+    positionKey: text("position_key"),
     chainId: integer("chain_id").notNull().default(421614),
     guardianAddress: text("guardian_address"),
     guardianVersion: integer("guardian_version"),
@@ -237,6 +238,7 @@ export const policies = pgTable(
       t.guardianAddress
     ),
     chainActiveIdx: index("policies_chain_active_idx").on(t.chainId, t.isActive),
+    positionKeyIdx: index("policies_position_key_idx").on(t.positionKey),
   })
 );
 
@@ -271,6 +273,7 @@ export const intents = pgTable(
     positionId: uuid("position_id")
       .notNull()
       .references(() => positions.id, { onDelete: "cascade" }),
+    positionKey: text("position_key"),
     action: intentActionEnum("action").notNull(),
     amount: numeric("amount", { precision: 38, scale: 18 }).notNull(),
     asset: text("asset").notNull(),
