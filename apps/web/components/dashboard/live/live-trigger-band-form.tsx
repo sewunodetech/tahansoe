@@ -76,20 +76,22 @@ export function LiveTriggerBandForm({ g }: { g: UseGuardianReturn }) {
           <div className="space-y-1.5">
             <label className="text-xs text-[var(--text-secondary)]">Min Trigger HF</label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               step="0.05"
               value={minHf}
-              onChange={(e) => setMinHf(Number(e.target.value))}
+              onChange={(e) => setMinHf(Number(e.target.value.replace(",", ".")))}
               className="font-mono text-xs"
             />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs text-[var(--text-secondary)]">Max Trigger HF</label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               step="0.05"
               value={maxHf}
-              onChange={(e) => setMaxHf(Number(e.target.value))}
+              onChange={(e) => setMaxHf(Number(e.target.value.replace(",", ".")))}
               className="font-mono text-xs"
             />
           </div>

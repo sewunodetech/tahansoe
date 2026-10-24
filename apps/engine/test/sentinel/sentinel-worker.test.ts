@@ -24,7 +24,7 @@ test("sentinel-worker: mendeteksi transisi zona risiko dan mengirim alert hanya 
 
   const user = "0x1111111111111111111111111111111111111111";
   const guardian = "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E";
-  const debtAsset = "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d";
+  const debtAsset = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d";
 
   const userId = await db.upsertUser(user as any, 421614);
   db.linkedTelegram.set(userId, ["chat_999"]);
@@ -100,12 +100,12 @@ test("sentinel-worker: mendeteksi RESERVE_LOW saat saldo atau allowance kurang d
   const db = new InMemorySentinelDatabase();
   const adapter = new FakeChannelAdapter();
 
-  const user = "0x2222222222222222222222222222222222222222";
+  const user = "0x1111111111111111111111111111111111111111";
   const guardian = "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E";
-  const debtAsset = "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d";
+  const debtAsset = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d";
 
   const userId = await db.upsertUser(user as any, 421614);
-  db.linkedTelegram.set(userId, ["chat_888"]);
+  db.linkedTelegram.set(userId, ["chat_999"]);
 
   await db.upsertPolicy({
     userId,
@@ -113,13 +113,12 @@ test("sentinel-worker: mendeteksi RESERVE_LOW saat saldo atau allowance kurang d
     guardianAddress: guardian as any,
     guardianVersion: 1,
     debtAsset: debtAsset as any,
-    maxRepayPerAction: 500_000_000n, // cap: 500 USDC
+    maxRepayPerAction: 500_000_000n, // Cap 500
     triggerThreshold: 1.30,
     targetHealthFactor: 1.60,
   });
 
-  // Saldo cukup tapi allowance hanya 200 USDC (< cap 500 USDC)
-  let allowance = 200_000_000n;
+  let allowance = 200_000_000n; // 200 (< 500) -> Reserve Low!
   let balance = 1000_000_000n;
 
   const worker = new SentinelWorker({
@@ -133,7 +132,7 @@ test("sentinel-worker: mendeteksi RESERVE_LOW saat saldo atau allowance kurang d
           collateralBase: 2000_00000000n,
           debtBase: 1000_00000000n,
           liquidationThresholdBps: 8000n,
-          healthFactor: hfToWad(1.80),
+          healthFactor: hfToWad(2.0), // HF aman
         },
         allowance,
         balance,
@@ -142,7 +141,7 @@ test("sentinel-worker: mendeteksi RESERVE_LOW saat saldo atau allowance kurang d
     ],
   });
 
-  // Tick 1: Reserve low terpicu
+  // Tick 1: Terdeteksi RESERVE_LOW
   await worker.tick();
   assert.equal(adapter.sentMessages.length, 1);
   assert.match(adapter.sentMessages[0]!.message, /CADANGAN RESERVOIR RENDAH|RESERVE CAPACITY LOW/);
@@ -178,4 +177,93 @@ test("sentinel-worker: advisory lock guard mencegah dua instance berjalan bersam
 
   await worker.start();
   assert.equal(exitCode, 0); // Keluar bersih tanpa melempar exception
+});
+
+test("sentinel-worker: deduplikasi zona risiko bekerja independen per positionKey untuk user yang sama", async () => {
+  const db = new InMemorySentinelDatabase();
+  const adapter = new FakeChannelAdapter();
+
+  const user = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const guardian = "0x1A5D249A8e711E2288AdD7c01E31Eb7FFB05D97E";
+  const usdc = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d";
+  const weth = "0x1df462e2712496373a347f8ad10802a5e95f053d";
+
+  const userId = await db.upsertUser(user as any, 421614);
+  db.linkedTelegram.set(userId, ["chat_multi_pos"]);
+
+  const posKeyUsdc = `aave-v3:421614:${guardian.toLowerCase()}:${usdc.toLowerCase()}`;
+  const posKeyWeth = `aave-v3:421614:${guardian.toLowerCase()}:${weth.toLowerCase()}`;
+
+  await db.upsertPolicy({
+    userId,
+    chainId: 421614,
+    guardianAddress: guardian as any,
+    guardianVersion: 4,
+    debtAsset: usdc as any,
+    positionKey: posKeyUsdc,
+    protocol: "aave-v3",
+    maxRepayPerAction: 500_000_000n,
+    triggerThreshold: 1.30,
+    targetHealthFactor: 1.60,
+  });
+
+  await db.upsertPolicy({
+    userId,
+    chainId: 421614,
+    guardianAddress: guardian as any,
+    guardianVersion: 4,
+    debtAsset: weth as any,
+    positionKey: posKeyWeth,
+    protocol: "aave-v3",
+    maxRepayPerAction: 100_000_000_000_000_000n,
+    triggerThreshold: 1.30,
+    targetHealthFactor: 1.60,
+  });
+
+  let hfUsdc = 2.0; // Safe
+  let hfWeth = 2.0; // Safe
+
+  const worker = new SentinelWorker({
+    chainId: 421614,
+    db,
+    channelAdapter: adapter,
+    lockClient: null,
+    multicallLoader: async (policies) => {
+      return policies.map((p) => {
+        const isUsdc = p.debtAsset.toLowerCase() === usdc.toLowerCase();
+        const hf = isUsdc ? hfUsdc : hfWeth;
+        return {
+          accountData: {
+            collateralBase: 2000_00000000n,
+            debtBase: 1000_00000000n,
+            liquidationThresholdBps: 8000n,
+            healthFactor: hfToWad(hf),
+          },
+          allowance: 1000_000_000_000_000_000n,
+          balance: 1000_000_000_000_000_000n,
+          quoteAmount: 0n,
+        };
+      });
+    },
+  });
+
+  // Tick 1: Status awal (inisialisasi zona Safe untuk kedua posisi)
+  const res1 = await worker.tick();
+  assert.equal(res1.checkedUsers, 2);
+  assert.equal(adapter.sentMessages.length, 0);
+
+  // Tick 2: USDC turun ke Warning (1.40), WETH tetap Safe (2.0)
+  hfUsdc = 1.40;
+  const res2 = await worker.tick();
+  assert.equal(res2.transitions.length, 1);
+  assert.equal(res2.transitions[0]!.positionKey, posKeyUsdc);
+  assert.equal(adapter.sentMessages.length, 1);
+
+  // Tick 3: USDC tetap Warning, WETH sekarang turun ke Critical (1.20)
+  // WETH harus mengirim alert baru meskipun user yang sama sudah punya alert aktif di USDC!
+  hfWeth = 1.20;
+  const res3 = await worker.tick();
+  assert.equal(res3.transitions.length, 1);
+  assert.equal(res3.transitions[0]!.positionKey, posKeyWeth);
+  assert.equal(adapter.sentMessages.length, 2);
 });

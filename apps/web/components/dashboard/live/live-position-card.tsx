@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -18,6 +19,21 @@ export function LivePositionCard({ g }: { g: UseGuardianReturn }) {
   const account = g.account!;
   const trigger = g.policy?.triggerHf ?? DEFAULT_TRIGGER;
   const target = g.policy?.targetHf ?? DEFAULT_TARGET;
+
+  if (account.hf === null && g.target.isSimulation) {
+    return (
+      <Card className="p-6">
+        <p className="text-sm text-[var(--text-primary)]">No Aave V3 borrow on your simulation wallet yet</p>
+        <p className="text-xs text-[var(--text-tertiary)] mt-1">
+          Open one on the{" "}
+          <Link href="/dashboard" className="text-[var(--brand)] hover:underline">
+            Overview
+          </Link>{" "}
+          with Auto-fill, then come back to adjust its protection.
+        </p>
+      </Card>
+    );
+  }
 
   if (account.hf === null) {
     return (
@@ -47,7 +63,7 @@ export function LivePositionCard({ g }: { g: UseGuardianReturn }) {
         <div>
           <p className="text-sm font-medium text-[var(--text-primary)]">Aave V3 Position</p>
           <p className="text-xs font-mono text-[var(--text-tertiary)] mt-1">
-            Arbitrum Sepolia · Collateral {formatUsd(account.collateralUsd)} · Debt {formatUsd(account.debtUsd)} ·
+            {g.target.chainName} · Collateral {formatUsd(account.collateralUsd)} · Debt {formatUsd(account.debtUsd)} ·
             Liquidation threshold {account.liquidationThreshold.toFixed(3)}
           </p>
         </div>

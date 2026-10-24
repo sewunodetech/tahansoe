@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/page-header";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -88,31 +89,17 @@ function DemoProtectionSetupPage() {
 
   return (
     <div className="w-full p-5 md:p-8 space-y-6">
-      {/* Top Header & Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1 text-xs font-mono text-[var(--text-tertiary)]">
-            <Link href="/dashboard" className="hover:text-[var(--text-primary)] transition-colors">
-              Dashboard
+      <PageHeader
+        eyebrow="Protection"
+        title="Set up protection"
+        actions={
+          <Button variant="ghost" size="sm" asChild className="text-xs">
+            <Link href="/dashboard/protection">
+              <ArrowLeft className="size-3.5" /> Back to Protection
             </Link>
-            <span>/</span>
-            <Link href="/dashboard/protection" className="hover:text-[var(--text-primary)] transition-colors">
-              Protection
-            </Link>
-            <span>/</span>
-            <span className="text-[var(--text-primary)]">Setup Wizard</span>
-          </div>
-          <h1 className="font-display text-2xl md:text-3xl font-light text-[var(--text-primary)]">
-            Configure Liquidation Protection
-          </h1>
-        </div>
-
-        <Button variant="ghost" size="sm" asChild className="text-xs font-mono self-start sm:self-auto">
-          <Link href="/dashboard">
-            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Exit to Dashboard
-          </Link>
-        </Button>
-      </div>
+          </Button>
+        }
+      />
 
       {/* Stepper Progress */}
       <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] overflow-x-auto">
@@ -234,7 +221,7 @@ export default function ProtectionSetupPage() {
   const { isLive } = useDashboardMode();
   if (!isLive) return <DemoProtectionSetupPage />;
   return (
-    <LivePage eyebrow="Setup" title="Set up Layer 1" subtitle="Two transactions: approve a capped amount, then save the policy.">
+    <LivePage eyebrow="Protection" title="Set up Layer 1" subtitle="Two transactions: approve a capped amount, then save the policy.">
       <LiveProtection />
     </LivePage>
   );

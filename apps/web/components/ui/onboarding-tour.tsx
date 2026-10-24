@@ -16,7 +16,7 @@ import React, {
 } from "react";
 import {
   ArrowRight, X, ShieldCheck, LayoutDashboard, Clock,
-  Sparkles, Send, Settings, CheckCircle, ChevronLeft, ChevronRight,
+  Sparkles, Send, Settings, CheckCircle, ChevronLeft, ChevronRight, Layers,
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────
@@ -48,9 +48,17 @@ export const TOUR_STEPS: TourStep[] = [
     id:          "overview",
     targetId:    "tour-nav-home",
     title:       "Overview",
-    description: "Your live command center. See your Health Factor, risk zone, live ETH price ticker, and instant layer readiness.",
+    description: "Your Guardian view. Each protected position shows its Health Factor, the ETH price where the Guardian acts and where liquidation starts, when it was last checked, and the reserves ready to repay.",
     icon:        LayoutDashboard,
     badge:       "Dashboard",
+    placement:   "right",
+  },
+  {
+    id:          "positions",
+    targetId:    "tour-nav-positions",
+    title:       "Positions",
+    description: "Every borrow position we can read for this wallet, per protocol and chain, with collateral, debt, liquidation price, and whether it is Protected, Not protected, or Monitor only.",
+    icon:        Layers,
     placement:   "right",
   },
   {
@@ -413,9 +421,12 @@ function TourCard({
 export function OnboardingTourProvider({
   children,
   onNavigate,
+  autoOpen = true,
 }: {
   children:    React.ReactNode;
   onNavigate?: (path: string) => void;
+  /** False skips the first-visit auto-open (e.g. Simulation Mode has its own guided flow). */
+  autoOpen?:   boolean;
 }) {
   const [isOpen,  setIsOpen]  = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
@@ -424,13 +435,14 @@ export function OnboardingTourProvider({
 
   /* Auto-open for first-time visitors */
   useEffect(() => {
+    if (!autoOpen) return;
     const done = localStorage.getItem(STORAGE_KEY);
     if (!done) {
       /* Small delay so the dashboard has rendered */
       const t = setTimeout(() => setIsOpen(true), 900);
       return () => clearTimeout(t);
     }
-  }, []);
+  }, [autoOpen]);
 
   /* Update spotlight rect each animation frame while open */
   useEffect(() => {

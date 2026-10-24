@@ -17,9 +17,13 @@ Penjaga posisi pinjaman DeFi. Kalau Health Factor posisi Aave kamu turun ke bata
 Likuidasi terjadi saat user tidak sempat bereaksi: harga turun tengah malam, sequencer down, atau user sedang tidak di depan layar. Penalti likuidasi beberapa persen dari collateral yang dilikuidasi langsung hilang. Tahansoe bertindak otomatis, lebih awal, dan dengan biaya jauh lebih kecil.
 
 ### Bedanya dengan alert biasa atau DeFi Saver/Instadapp?
-- Alert hanya memberi tahu; Tahansoe bertindak.
-- Tahansoe tidak memindahkan posisi ke smart wallet atau proxy. Posisi tetap di wallet user di Aave; user hanya memberi allowance terbatas ke kontrak yang tidak punya admin.
-- Ada lapisan AI yang menjelaskan risiko pasar dan bisa menggeser trigger lebih awal, tapi hanya di dalam rentang yang disetujui user (ADR 0002).
+- **Alert hanya memberi tahu; Tahansoe bertindak.**
+- **Soal wallet:** DeFi Saver kini sudah mendukung wallet EOA untuk Aave v3 dan Compound v3 (protokol lain masih memerlukan smart wallet/proxy). Posisi di Tahansoe selalu tetap di wallet EOA user di Aave tanpa perlu migrasi akun; user hanya memberi allowance terbatas ke kontrak tanpa admin.
+- **Perbedaan nyata Tahansoe:**
+  1. **3 Lapis Proteksi:** Tahansoe mengecek secara bertingkat: stablecoin di wallet (L1) → cadangan yield vault (L2) → flash deleverage/jual collateral hanya jika terpaksa (L3). L1 dan L2 tidak memerlukan swap sehingga tetap mempertahankan eksposur collateral (mis. ETH). Sementara otomasi tipikal (seperti DeFi Saver) langsung melunasi utang dengan menjual collateral via swap.
+  2. **Fee Sukses:** Hanya membayar 0,15% saat posisi benar-benar diselamatkan (HF di bawah trigger statis user); aksi preemptif oleh AI risk agent sepenuhnya gratis. Sebaliknya, otomasi tipikal memungut fee otomasi 0,05% + fee swap 0,25% + gas yang dibebankan ke posisi pada setiap eksekusi.
+  3. **Tanpa Minimum Utang:** Tahansoe tidak membatasi ukuran posisi ($0 minimum), sedangkan otomasi tipikal mensyaratkan minimum utang (mis. $500 di Arbitrum, $30.000 di Ethereum mainnet pada DeFi Saver).
+  4. **Dynamic Trigger:** AI risk agent dapat menaikkan trigger proteksi secara preemptif saat regime pasar memburuk (selalu di dalam band yang disetujui user, ADR 0002), bukan sekadar threshold statis yang bereaksi terlambat setelah crash terjadi.
 
 ### Protokol dan chain apa yang didukung?
 Saat ini Aave V3 di Arbitrum Sepolia (testnet). Arbitrum One setelah audit. Morpho Blue ada di roadmap; arsitekturnya chain-agnostic (ADR 0001).
@@ -116,7 +120,7 @@ Lewat satu gateway OpenAI-compatible (ADR 0009), jadi model bisa diganti tanpa m
 Informasi gratis untuk semua (alert HF, alert kritis, regime, penjelasan riset, dan proteksi statis). Otomasi lanjutan berbayar (Pro): dynamic trigger, rekomendasi trigger, multi-posisi dan multi-chain, laporan berkala (ADR 0006).
 
 ### Ada fee on-chain?
-Tidak. Kontrak tidak punya jalur untuk mengirim dana ke Tahansoe. Pembayaran Pro lewat transaksi terpisah yang ditandatangani user atau checkout off-chain, tidak pernah dari allowance Guardian.
+Saat ini tidak ada fee — kontrak yang di-deploy di testnet tidak memungut fee apa pun. Ke depan, diusulkan fee sukses sebesar 0,15% (15 bps) dari jumlah repay hanya saat posisi benar-benar diselamatkan (ADR 0013, status Proposed). Fee ini hanya berlaku jika HF turun di bawah trigger statis pilihan user dan di bawah 1,50; aksi preemptif yang dipicu AI tetap 100% gratis.
 
 ### Siapa yang membayar gas keeper?
 Tahansoe, sebagai biaya operasional. Chainlink Automation (LINK) sebagai cadangan.

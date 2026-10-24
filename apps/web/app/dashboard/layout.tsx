@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useDisconnect } from "wagmi";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { SidebarNav, SearchModal } from "@/components/ui/dashboard-sidebar";
@@ -10,6 +10,10 @@ import { SimulationProvider, useSimulation, type AlertEvent } from "@/lib/simula
 import { SimulationEngine } from "@/lib/simulation-engine";
 import { OnboardingTourProvider } from "@/components/ui/onboarding-tour";
 import { DashboardModeProvider, useDashboardMode } from "@/lib/dashboard-mode";
+import { SimBanner } from "@/components/dashboard/sim/sim-banner";
+import { SimDashboardProvider } from "@/components/dashboard/sim/sim-context";
+import { SimUnavailable } from "@/components/dashboard/sim/sim-dashboard";
+import { useSimActions } from "@/lib/sim/hooks";
 import { Loader2, X, AlertTriangle, CheckCircle, Zap, Bell } from "lucide-react";
 
 /* ── Alert toast ─────────────────────────────────────────────────────────── */
@@ -110,11 +114,18 @@ function AlertToastContainer() {
 
 /* ── Inner layout ────────────────────────────────────────────────────────── */
 function DashboardInner({ children }: { children: React.ReactNode }) {
-  const { isConnected, address } = useAuthGuard();
+  const { isConnected, address, isSimulation } = useAuthGuard();
   const { disconnect } = useDisconnect();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [collapsed, setCollapsed] = useState(false);
+
+  /* Start collapsed on phones so the content keeps most of the width */
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- viewport is only known after mount
+    if (window.matchMedia("(max-width: 767px)").matches) setCollapsed(true);
+  }, []);
   const [searchOpen, setSearchOpen] = useState(false);
 
   /* ⌘K shortcut */
@@ -129,8 +140,12 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", h);
   }, []);
 
-  const handleDisconnect = () => {
-    disconnect();
+  const { exit: exitSimulation } = useSimActions();
+
+  const handleDisconnect = async () => {
+    // Disconnecting the burner wallet ends the simulation: fork session, sim cookie and key.
+    if (isSimulation) await exitSimulation();
+    else disconnect();
     router.replace("/connect");
   };
 
@@ -147,7 +162,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <OnboardingTourProvider onNavigate={handleTourNavigate}>
+    <OnboardingTourProvider onNavigate={handleTourNavigate} autoOpen={!isSimulation}>
       <div className="flex h-screen overflow-hidden bg-[var(--bg)] text-[var(--text-primary)]">
         {/* Sidebar */}
         <div
@@ -158,6 +173,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
             address={address}
             onDisconnect={handleDisconnect}
             collapsed={collapsed}
+            networkLabel={isSimulation ? "Simulation fork" : undefined}
           />
         </div>
 
@@ -174,7 +190,9 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
 
           {/* Children from Next.js routing */}
           <main className="flex-1 overflow-y-auto scrollbar-hide bg-[var(--bg)]">
-            {children}
+            {isSimulation && <SimBanner />}
+            {/* Telegram linking needs a real account; a sim session never reaches it. */}
+            {isSimulation && pathname.startsWith("/dashboard/telegram") ? <SimUnavailable feature="Telegram alerts" /> : children}
           </main>
         </div>
 
@@ -209,8 +227,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <DashboardModeProvider>
       <SimulationProvider>
-        <DemoSimulationEngine />
-        <DashboardInner>{children}</DashboardInner>
+        <SimDashboardProvider>
+          <DemoSimulationEngine />
+          <DashboardInner>{children}</DashboardInner>
+        </SimDashboardProvider>
       </SimulationProvider>
     </DashboardModeProvider>
   );

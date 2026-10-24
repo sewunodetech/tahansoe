@@ -191,6 +191,7 @@ export const policies = pgTable(
     positionId: uuid("position_id").references(() => positions.id, {
       onDelete: "cascade",
     }),
+    positionKey: text("position_key"),
     chainId: integer("chain_id").notNull().default(421614),
     guardianAddress: text("guardian_address"),
     guardianVersion: integer("guardian_version"),
@@ -237,6 +238,7 @@ export const policies = pgTable(
       t.guardianAddress
     ),
     chainActiveIdx: index("policies_chain_active_idx").on(t.chainId, t.isActive),
+    positionKeyIdx: index("policies_position_key_idx").on(t.positionKey),
   })
 );
 
@@ -271,6 +273,7 @@ export const intents = pgTable(
     positionId: uuid("position_id")
       .notNull()
       .references(() => positions.id, { onDelete: "cascade" }),
+    positionKey: text("position_key"),
     action: intentActionEnum("action").notNull(),
     amount: numeric("amount", { precision: 38, scale: 18 }).notNull(),
     asset: text("asset").notNull(),
@@ -282,6 +285,8 @@ export const intents = pgTable(
     reason: text("reason").notNull(),
     estimatedGas: numeric("estimated_gas", { precision: 38, scale: 0 }),
     estimatedSlippageBps: integer("estimated_slippage_bps"),
+    feeAmount: numeric("fee_amount", { precision: 38, scale: 18 }),
+    feeWaived: numeric("fee_waived", { precision: 38, scale: 18 }),
     status: intentStatusEnum("status").notNull().default("PENDING"),
     txHash: text("tx_hash"),
     errorMessage: text("error_message"),
@@ -343,3 +348,28 @@ export const broadcasts = pgTable(
 
 export type Broadcast = typeof broadcasts.$inferSelect;
 export type NewBroadcast = typeof broadcasts.$inferInsert;
+
+export const simSessions = pgTable(
+  "sim_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    address: text("address").notNull(),
+    mode: text("mode").notNull(),
+    scenario: text("scenario"),
+    forkId: text("fork_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    positionOpenedAt: timestamp("position_opened_at", { withTimezone: true }),
+    firstProtectAt: timestamp("first_protect_at", { withTimezone: true }),
+    layersUsed: integer("layers_used").array(),
+    convertedAt: timestamp("converted_at", { withTimezone: true }),
+    userAgentHash: text("user_agent_hash"),
+  },
+  (t) => ({
+    createdAtIdx: index("sim_sessions_created_at_idx").on(t.createdAt),
+  })
+);
+
+export type SimSession = typeof simSessions.$inferSelect;
+export type NewSimSession = typeof simSessions.$inferInsert;

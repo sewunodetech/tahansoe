@@ -41,7 +41,7 @@ const NOTIF_DEFS: NotifDef[] = [
     key: "notifHfWarning",
     label: "Health Factor Warning Margin",
     description:
-      "Alert when HF enters the warning buffer (trigger + 0.15) — early advisory warning before execution occurs.",
+      "Alert when HF enters the warning buffer (trigger + 0.15), an early warning before the Guardian acts.",
     icon: AlertTriangle,
     iconClass: "text-[var(--warning)]",
   },

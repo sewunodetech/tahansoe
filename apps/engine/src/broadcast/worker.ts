@@ -494,6 +494,11 @@ export class BroadcastWorker {
     let sent = 0;
 
     for (const s of signals) {
+      // Alert kritis hanya dari modul deterministik. Sinyal RESEARCH (AI) boleh menyebut
+      // path T7/T10/dst. tanpa data on-chain yang mengonfirmasi, dan tiap run memakai id
+      // baru sehingga lolos dedupe (bug spam 24 Okt 2026).
+      if (s.module !== "ORACLE" && s.module !== "ONCHAIN") continue;
+
       let alertKind: "sequencer" | "depeg" | "pool" | "oracle" | undefined;
 
       // 1. Sequencer down (ORACLE T10)
@@ -504,16 +509,9 @@ export class BroadcastWorker {
       else if (s.module === "ONCHAIN" && s.paths?.includes("T4")) {
         alertKind = "depeg";
       }
-      // 3. Pool kering (T7 / util >= 98%)
-      else if (
-        s.paths?.includes("T7") ||
-        (s.module === "ONCHAIN" &&
-          s.evidence?.some(
-            (e) =>
-              e?.title?.toLowerCase().includes("utilization") &&
-              (e.title.includes("98") || e.title.includes("99")),
-          ))
-      ) {
+      // 3. Pool kering (T7: carry.ts menambahkan path ini hanya bila utilization >= 98%).
+      // Jangan mencocokkan angka "98" di teks evidence: APR "4.98%" ikut terdeteksi.
+      else if (s.module === "ONCHAIN" && s.paths?.includes("T7")) {
         alertKind = "pool";
       }
       // 4. ORACLE T8 berat (severity >= 0.6)
@@ -627,8 +625,13 @@ export class BroadcastWorker {
         return false;
       }
 
-      // Dalam jendela 6 jam, hanya kirim jika severity naik
-      const prevSeverity = this.alertSeverities.get(dedupeKey) ?? 0;
+      // Dalam jendela 6 jam, hanya kirim jika severity naik. Severity terakhir hanya ada
+      // di memori: setelah restart anggap sama (jangan kirim ulang semua alert 6 jam terakhir).
+      const prevSeverity = this.alertSeverities.get(dedupeKey);
+      if (prevSeverity === undefined) {
+        this.alertSeverities.set(dedupeKey, severity);
+        return true;
+      }
       if (severity > prevSeverity) {
         return false;
       }

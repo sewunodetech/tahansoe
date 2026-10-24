@@ -8,12 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { LayerBadge } from "@/components/ui/layer-badge";
 import { Input } from "@/components/ui/input";
-import { AAVE_POOL, LIVE_CHAIN, aavePoolAbi } from "@/lib/contracts";
-import { ARBITRUM_SEPOLIA } from "@tahansoe/domain";
+import { aavePoolAbi } from "@/lib/contracts";
 import type { UseGuardianReturn } from "@/hooks/useGuardian";
 import { TxStatus } from "./live-shared";
-
-const DEFAULT_WETH = (ARBITRUM_SEPOLIA.tokens?.WETH ?? "0x1dF462e2712496373A347f8ad10802a5E95f053D") as Address;
 
 const SLIPPAGE_PRESETS = [
   { label: "0.3%", bps: 30 },
@@ -23,6 +20,7 @@ const SLIPPAGE_PRESETS = [
 
 export function LiveLayer3Form({ g }: { g: UseGuardianReturn }) {
   const existing = g.layer3;
+  const DEFAULT_WETH = g.target.weth;
 
   const [enabled, setEnabled] = useState<boolean>(existing?.enabled ?? true);
   const [collateralAsset, setCollateralAsset] = useState<string>(
@@ -48,8 +46,8 @@ export function LiveLayer3Form({ g }: { g: UseGuardianReturn }) {
 
   // Read the Aave reserve data to locate the corresponding aToken address
   const { data: reserveData } = useReadContract({
-    chainId: LIVE_CHAIN.id,
-    address: AAVE_POOL,
+    chainId: g.target.chain.id,
+    address: g.target.pool,
     abi: aavePoolAbi,
     functionName: "getReserveData",
     args: isValidCollateral ? [collateralAsset as Address] : undefined,
@@ -133,10 +131,11 @@ export function LiveLayer3Form({ g }: { g: UseGuardianReturn }) {
             <div className="space-y-1.5">
               <label className="text-xs text-[var(--text-secondary)]">Max Collateral per Action (WETH)</label>
               <Input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 placeholder="0.5"
                 value={maxCollateral}
-                onChange={(e) => setMaxCollateral(e.target.value)}
+                onChange={(e) => setMaxCollateral(e.target.value.replace(",", "."))}
                 className="font-mono text-xs"
               />
             </div>

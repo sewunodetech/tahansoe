@@ -1,0 +1,12 @@
+{
+  "id": "_test",
+  "title": "Test fixture (hand-made)",
+  "description": "Tiny synthetic path used by unit tests: 2000 -> 1500 -> 1800 over one day.",
+  "source": "hand-made for apps/simnet tests",
+  "normalized": true,
+  "points": [
+    { "t": 1700000000, "price": 2000 },
+    { "t": 1700043200, "price": 1500 },
+    { "t": 1700086400, "price": 1800 }
+  ]
+}

@@ -2,7 +2,7 @@
  * Scheduled Price Sampler Worker (ADR 0005, spec §3.8).
  *
  * Worker background yang mengambil sampel harga AaveOracle & Chainlink secara periodik (default 60s):
- *  - Single-instance enforcement via Postgres advisory lock key 42161002.
+ *  - Single-instance enforcement via Postgres advisory lock key 42161004 (42161002 milik settlement).
  *  - Menjalankan sample pertama segera saat start.
  *  - Loop interval setiap 60 detik (dapat diubah via env PRICE_SAMPLE_INTERVAL_SEC).
  *  - Anti-overlap guard (tidak pernah ada 2 sample run berjalan bersamaan).
@@ -25,7 +25,7 @@ import { sampleOnce, type SampledPrice } from "../sources/price-sampler.ts";
 import { sampleRatesOnce, type SampleRatesResult } from "../sources/rate-sampler.ts";
 
 /** Key advisory lock unik untuk price worker (Arbitrum One + price suffix). */
-export const PRICE_WORKER_ADVISORY_LOCK_KEY = 42161002;
+export const PRICE_WORKER_ADVISORY_LOCK_KEY = 42161004;
 
 /** Interval sampling harga standar: 60 detik. */
 export const DEFAULT_PRICE_SAMPLE_INTERVAL_SEC = 60;

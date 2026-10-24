@@ -44,7 +44,7 @@ User yang meminjam stablecoin (USDT/USDC) dengan collateral volatil (ETH, WBTC, 
 3. **Likuidasi mahal.** Penalti likuidasi Aave V3 berkisar 5–10% dari posisi yang dilikuidasi.
 4. **Automation berbasis threshold statis bereaksi setelah harga bergerak.** Crash besar hampir selalu didahului atau dipicu oleh *event*: keputusan suku bunga, eskalasi perang, pengumuman tarif, depeg stablecoin/LST, exploit protokol, kebangkrutan exchange. Threshold statis (mis. HF 1.30) tidak tahu bahwa malam ini ada FOMC atau bahwa konflik baru saja pecah. Pada gap turun yang cepat, buffer statis sering tidak cukup.
 
-Solusi eksisting (DeFi Saver, Instadapp, Summer.fi Automation) sudah menyediakan automation non-custodial berbasis threshold, tetapi umumnya: (a) mewajibkan migrasi posisi ke smart wallet/proxy mereka, (b) berfokus ke mainnet dan user besar, dan (c) tidak memasukkan konteks pasar — buffer tetap sama apa pun kondisi dunia.
+Solusi eksisting (DeFi Saver, Instadapp, Summer.fi Automation) sudah menyediakan automation non-custodial berbasis threshold, tetapi umumnya: (a) sebagian besar masih mewajibkan migrasi posisi ke smart wallet/proxy mereka (DeFi Saver kini telah mendukung wallet EOA untuk Aave v3 dan Compound v3, namun protokol lain masih memerlukan smart wallet), (b) berfokus ke mainnet dan user besar, dan (c) tidak memasukkan konteks pasar — buffer tetap sama apa pun kondisi dunia.
 
 ### Diferensiasi Tahansoe
 
@@ -433,7 +433,7 @@ User menyatakan niat ("jaga posisiku konservatif, tahan drop 30%"). LLM menerjem
 
 ### Milestone 1 — Integrasi end-to-end (Arbitrum Sepolia)
 - [ ] Chain registry + `arbitrumSepolia` di wagmi
-- [ ] `ProtocolAdapter` interface + `AaveAdapter` (read posisi asli)
+- [x] `ProtocolAdapter` interface + `AaveAdapter` (read posisi asli) — baca saja lewat `PositionReader` (`createAaveV3Reader`, plus `createMorphoBlueReader` read-only), [spec](specs/m1-positions-holdings-guardian-view.md); `buildRepay`/`buildSupply` belum
 - [ ] Settings → `approve` + `setPolicy` on-chain
 - [ ] Keeper cron + viem: `needsProtection` → `protect`, catat ke tabel `intents`
 - [x] Notifikasi Telegram dari server (bukan dari browser) — sentinel (alert posisi per user) + broadcaster riset ([ADR 0012](decisions/0012-unified-db-outbound-research-broadcast.md)); `app/api/alerts/notify` simulasi browser masih ada

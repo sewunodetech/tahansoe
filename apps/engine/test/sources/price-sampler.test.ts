@@ -6,7 +6,7 @@
  *  - realizedVolatility (deret pendek, konstan, fluktuatif, window filter)
  *  - maxDrawdown (harga konstan, naik, crash, multiple peaks, filter range)
  *  - sampleOnce (dengan mock viem client dan mock DB)
- *  - PriceWorker (advisory lock 42161002, lock collision, interval loop, error resilience, graceful stop)
+ *  - PriceWorker (advisory lock 42161004, lock collision, interval loop, error resilience, graceful stop)
  */
 
 import { test, describe, it } from "node:test";
@@ -236,7 +236,7 @@ describe("sampleOnce", () => {
 // 5. Tests untuk PriceWorker
 // ============================================================================
 describe("PriceWorker", () => {
-  it("menggunakan key advisory lock 42161002 dan berhasil start & sample", async () => {
+  it("menggunakan key advisory lock 42161004 dan berhasil start & sample", async () => {
     let queriedLockKey: number | null = null;
     let unlockedLockKey: number | null = null;
 

@@ -127,10 +127,11 @@ export function LiveLayer2Form({ g }: { g: UseGuardianReturn }) {
             <div className="space-y-1.5">
               <label className="text-xs text-[var(--text-secondary)]">Max Assets per Action ({token.symbol})</label>
               <Input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 placeholder="500"
                 value={maxAssets}
-                onChange={(e) => setMaxAssets(e.target.value)}
+                onChange={(e) => setMaxAssets(e.target.value.replace(",", "."))}
                 className="font-mono text-xs"
               />
             </div>

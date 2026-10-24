@@ -31,15 +31,21 @@ export interface GuardianDeployment {
   /** Block deploy; batas bawah pencarian event. */
   deployedBlock: number;
   features?: GuardianFeatures;
+  /** Protokol lending target (default: "aave-v3"). */
+  protocol?: "aave-v3" | "morpho-blue";
 }
 
 export interface ChainMorphoConfig {
-  morpho: Address;
+  /** Singleton Morpho Blue. */
+  blue: Address;
+  /** Block deploy Morpho Blue; batas bawah pemindaian event. */
+  deployedBlock?: number;
 }
 
 export interface ChainConfig {
   chainId: number;
   name: string;
+  isSimulation?: boolean;
   rpcUrls: string[];                  // dari env, bukan hardcode di kode
   blockTimeMs: number;
   aave?: ChainAaveConfig;
@@ -95,6 +101,14 @@ export const ARBITRUM_ONE: ChainConfig = {
     pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
     oracle: "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7",
   },
+  /**
+   * Sumber: docs.morpho.org/addresses (24 Okt 2026). eth_getCode di arb1.arbitrum.io
+   * tidak kosong (24 Okt 2026); log pertama kontrak ada di block 296446593.
+   */
+  morpho: {
+    blue: "0x6c247b1F6182318877311737BaC0844bAa518F5e",
+    deployedBlock: 296446593,
+  },
   sequencerUptimeFeed: "0xFdB631F5EE196F0ed6FAa767959853A9F217697D",
   priceFeeds: {
     "ETH/USD": "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
@@ -116,6 +130,23 @@ export const ARBITRUM_ONE: ChainConfig = {
   explorer: "https://arbiscan.io",
 };
 
+/**
+ * Arbitrum One Simulation (fork anvil lokal/VPS).
+ * Sumber: docs/specs/m1-simulation-mode.md §3.2 & ADR 0014.
+ */
+export const ARBITRUM_ONE_SIM: ChainConfig = {
+  chainId: 4216199,
+  name: "Arbitrum One (Simulation)",
+  rpcUrls: [],
+  blockTimeMs: 250,
+  aave: ARBITRUM_ONE.aave,
+  tokens: ARBITRUM_ONE.tokens,
+  priceFeeds: ARBITRUM_ONE.priceFeeds,
+  guardians: [],
+  explorer: "",
+  isSimulation: true,
+};
+
 export const SUPPORTED_CHAINS: readonly ChainConfig[] = [
   ARBITRUM_SEPOLIA,
   ARBITRUM_ONE,
@@ -124,6 +155,7 @@ export const SUPPORTED_CHAINS: readonly ChainConfig[] = [
 export const CHAINS: Record<number, ChainConfig> = {
   [ARBITRUM_SEPOLIA.chainId]: ARBITRUM_SEPOLIA,
   [ARBITRUM_ONE.chainId]: ARBITRUM_ONE,
+  [ARBITRUM_ONE_SIM.chainId]: ARBITRUM_ONE_SIM,
 };
 
 /**
@@ -148,19 +180,39 @@ export function getChainConfig(
   };
 }
 
-/** Guardian versi tertinggi di chain, atau undefined jika belum ada deployment. */
-export function currentGuardian(chain: ChainConfig): GuardianDeployment | undefined {
-  const list = chain.guardians ?? [];
+/** Semua deployment Guardian untuk protokol tertentu pada chain. */
+export function guardiansFor(
+  chain: ChainConfig,
+  protocol: "aave-v3" | "morpho-blue"
+): GuardianDeployment[] {
+  return (chain.guardians ?? []).filter(
+    (g) => (g.protocol ?? "aave-v3") === protocol
+  );
+}
+
+/**
+ * Guardian versi tertinggi untuk protokol tertentu pada suatu chain, atau undefined jika belum ada deployment.
+ */
+export function latestGuardian(
+  chain: ChainConfig,
+  protocol: "aave-v3" | "morpho-blue"
+): GuardianDeployment | undefined {
+  const list = guardiansFor(chain, protocol);
   return list.reduce<GuardianDeployment | undefined>(
     (best, g) => (best === undefined || g.version > best.version ? g : best),
     undefined
   );
 }
 
-/** Semua Guardian selain versi terbaru (kandidat migrasi), dari versi terbaru ke terlama. */
+/** Guardian versi tertinggi di chain (Aave V3), atau undefined jika belum ada deployment. */
+export function currentGuardian(chain: ChainConfig): GuardianDeployment | undefined {
+  return latestGuardian(chain, "aave-v3");
+}
+
+/** Semua Guardian selain versi terbaru untuk Aave (kandidat migrasi), dari versi terbaru ke terlama. */
 export function legacyGuardians(chain: ChainConfig): GuardianDeployment[] {
   const current = currentGuardian(chain);
-  return (chain.guardians ?? [])
+  return guardiansFor(chain, "aave-v3")
     .filter((g) => g !== current)
     .sort((a, b) => b.version - a.version);
 }
@@ -170,4 +222,3 @@ export function isGuardianV2(deployment?: GuardianDeployment): boolean {
   if (!deployment) return false;
   return deployment.version >= 2 || Boolean(deployment.features?.layer2 || deployment.features?.layer3);
 }
-

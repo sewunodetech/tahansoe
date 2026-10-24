@@ -310,6 +310,18 @@ Centang "Run whether user is logged on or not" dan "Restart on failure" (mis. ti
 
 Advisory lock Postgres memastikan hanya satu instance scheduler aktif; instance kedua keluar bersih. Ctrl+C / SIGTERM melepas lock sebelum keluar.
 
+**Docker (VPS produksi, 24 Okt 2026):** `Dockerfile` + `docker-compose.yml` di folder ini menjalankan `tahansoe start` (research, sampler, fusion, settle, broadcaster) dalam satu container `tahansoe-engine` dengan `restart: unless-stopped`. Secret tidak masuk image.
+
+```bash
+# di server, dari apps/engine (butuh .env dan config/settings.json di sampingnya)
+docker compose up -d --build                                   # build + start
+docker compose run --rm engine npx tsx src/cli/tahansoe.ts doctor
+docker logs -f tahansoe-engine                                 # log
+docker compose down                                            # stop bersih (SIGTERM, grace 40 s)
+```
+
+`config/` di-mount ke `/app/config` (`TAHANSOE_SETTINGS=/app/config/settings.json`, folder bukan file agar penulisan atomik tetap jalan). `.data` dan `out` disimpan di volume bernama. Sentinel (`tahansoe sentinel run`) belum ikut di container ini.
+
 ### 3.4 Script npm (alias ke `tahansoe`)
 
 | Perintah | Penjelasan |

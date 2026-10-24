@@ -55,14 +55,21 @@ export interface ButtonProps
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, children, ...props }, ref) => {
+    const classes = cn(buttonVariants({ variant, size, className }));
+    // asChild: style the single child (e.g. a Next.js <Link>) as the button instead of nesting it
+    // inside a <button>, which is invalid HTML and breaks keyboard focus.
+    if (asChild && React.isValidElement<{ className?: string }>(children)) {
+      return React.cloneElement(children, {
+        ...(props as Record<string, unknown>),
+        "data-slot": "button",
+        className: cn(classes, children.props.className),
+      } as React.Attributes & { className?: string });
+    }
     return (
-      <button
-        ref={ref}
-        data-slot="button"
-        className={cn(buttonVariants({ variant, size, className }))}
-        {...props}
-      />
+      <button ref={ref} data-slot="button" className={classes} {...props}>
+        {children}
+      </button>
     );
   }
 );

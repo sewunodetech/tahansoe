@@ -3,6 +3,7 @@ import { Hero } from "@/components/landing/Hero";
 import { TheProblem } from "@/components/landing/TheProblem";
 import { PositionLab } from "@/components/landing/lab/PositionLab";
 import { ProtectionLayers } from "@/components/landing/ProtectionLayers";
+import { Compare } from "@/components/landing/Compare";
 import { Agents } from "@/components/landing/Agents";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { OpenByDefault } from "@/components/landing/OpenByDefault";
@@ -20,6 +21,7 @@ export default function Home() {
         <PositionLab />
         <TheProblem />
         <ProtectionLayers />
+        <Compare />
         <Agents />
         <HowItWorks />
         <OpenByDefault />

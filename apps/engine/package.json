@@ -35,6 +35,7 @@
     "@tahansoe/db": "*",
     "@tahansoe/domain": "*",
     "picocolors": "^1.1.1",
+    "undici": "^7.30.1",
     "viem": "^2.55.19",
     "zod": "^4.1.12"
   },

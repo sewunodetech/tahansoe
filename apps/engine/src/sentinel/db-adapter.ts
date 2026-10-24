@@ -8,9 +8,10 @@ import {
   notificationLogs,
   telegramAccounts,
 } from "@tahansoe/db";
-import type { Address, RiskZone } from "@tahansoe/domain";
+import type { Address } from "@tahansoe/domain";
 import type { EventSyncDatabase } from "./event-sync.ts";
 import type { PolicyRecord } from "./types.ts";
+import { buildPositionKey } from "./adapters.ts";
 
 export interface SentinelDatabase extends EventSyncDatabase {
   loadActivePolicies(chainId: number): Promise<PolicyRecord[]>;
@@ -24,6 +25,7 @@ export interface SentinelDatabase extends EventSyncDatabase {
     debtValueUsd: string;
     oracleSource: string;
     now: Date;
+    marketId?: string;
   }): Promise<string>;
   linkPolicyPosition(policyId: string, positionId: string): Promise<void>;
   getLastNotification(
@@ -102,13 +104,16 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
     chainId: number;
     guardianAddress: Address;
     guardianVersion: number;
-    debtAsset: Address;
+    debtAsset?: Address;
+    marketId?: string;
+    positionKey?: string;
+    protocol?: "aave-v3" | "morpho-blue";
     maxRepayPerAction: bigint;
     triggerThreshold: number;
     targetHealthFactor: number;
   }): Promise<void> {
     const gAddr = data.guardianAddress.toLowerCase();
-    const dAsset = data.debtAsset.toLowerCase();
+    const dAsset = (data.debtAsset ?? data.marketId ?? "").toLowerCase();
 
     await this.db
       .insert(policies)
@@ -136,9 +141,31 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
           updatedAt: new Date(),
         },
       });
+
+    // Guard update position_key jika kolom ada di DB (Task B)
+    if (data.positionKey) {
+      try {
+        await this.db.execute(
+          sql`UPDATE policies SET position_key = ${data.positionKey} WHERE user_id = ${data.userId} AND guardian_address = ${gAddr}`,
+        );
+      } catch {
+        // Kolom position_key belum tersedia di database jika migrasi belum berjalan
+      }
+    }
   }
 
-  async disablePolicy(userId: string, guardianAddress: Address): Promise<void> {
+  async disablePolicy(userId: string, guardianAddress: Address, positionKey?: string): Promise<void> {
+    if (positionKey) {
+      try {
+        await this.db.execute(
+          sql`UPDATE policies SET is_active = false, updated_at = now() WHERE user_id = ${userId} AND guardian_address = ${guardianAddress.toLowerCase()} AND position_key = ${positionKey}`,
+        );
+        return;
+      } catch {
+        // Fallback jika kolom position_key belum ada di database
+      }
+    }
+
     await this.db
       .update(policies)
       .set({ isActive: false, updatedAt: new Date() })
@@ -156,6 +183,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
     kind: number;
     source: Address;
     maxAssets: bigint;
+    positionKey?: string;
   }): Promise<void> {
     await this.db
       .update(policies)
@@ -180,6 +208,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
     collateralAsset: Address;
     maxCollateral: bigint;
     maxSlippageBps: number;
+    positionKey?: string;
   }): Promise<void> {
     await this.db
       .update(policies)
@@ -204,6 +233,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
     minTriggerHf: number;
     maxTriggerHf: number;
     riskAgent: Address;
+    positionKey?: string;
   }): Promise<void> {
     await this.db
       .update(policies)
@@ -226,6 +256,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
     guardianAddress: Address;
     dynamicTriggerHf: number;
     validUntil: Date;
+    positionKey?: string;
   }): Promise<void> {
     await this.db
       .update(policies)
@@ -300,24 +331,40 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
         ),
       );
 
-    return rows.map((r) => ({
-      id: r.id,
-      userId: r.userId,
-      userAddress: r.walletAddress as Address,
-      chainId: r.chainId,
-      guardianAddress: (r.guardianAddress ?? "") as Address,
-      guardianVersion: r.guardianVersion ?? 1,
-      debtAsset: (r.debtAsset ?? "") as Address,
-      maxRepayPerAction: r.maxRepayPerAction ? BigInt(r.maxRepayPerAction) : 0n,
-      triggerThreshold: Number(r.triggerThreshold ?? "1.30"),
-      targetHealthFactor: Number(r.targetHealthFactor ?? "1.60"),
-      isActive: r.isActive,
-      minTriggerHf: r.minTriggerHf ? Number(r.minTriggerHf) : null,
-      maxTriggerHf: r.maxTriggerHf ? Number(r.maxTriggerHf) : null,
-      riskAgent: (r.riskAgent as Address) ?? null,
-      dynamicTriggerHf: r.dynamicTriggerHf ? Number(r.dynamicTriggerHf) : null,
-      dynamicValidUntil: r.dynamicValidUntil ?? null,
-    }));
+    return rows.map((r) => {
+      const gAddr = ((r.guardianAddress ?? "") as Address).toLowerCase() as Address;
+      const dAsset = (r.debtAsset ?? "").toLowerCase();
+      const isMorpho = dAsset.startsWith("0x") && dAsset.length === 66;
+      const protocol = isMorpho ? "morpho-blue" : "aave-v3";
+      const posKey = buildPositionKey({
+        protocol,
+        chainId: r.chainId,
+        guardian: gAddr,
+        key: dAsset,
+      });
+
+      return {
+        id: r.id,
+        userId: r.userId,
+        userAddress: r.walletAddress as Address,
+        chainId: r.chainId,
+        guardianAddress: gAddr,
+        guardianVersion: r.guardianVersion ?? 1,
+        debtAsset: dAsset as Address,
+        marketId: isMorpho ? dAsset : null,
+        positionKey: posKey,
+        protocol,
+        maxRepayPerAction: r.maxRepayPerAction ? BigInt(r.maxRepayPerAction) : 0n,
+        triggerThreshold: Number(r.triggerThreshold ?? "1.30"),
+        targetHealthFactor: Number(r.targetHealthFactor ?? "1.60"),
+        isActive: r.isActive,
+        minTriggerHf: r.minTriggerHf ? Number(r.minTriggerHf) : null,
+        maxTriggerHf: r.maxTriggerHf ? Number(r.maxTriggerHf) : null,
+        riskAgent: (r.riskAgent as Address) ?? null,
+        dynamicTriggerHf: r.dynamicTriggerHf ? Number(r.dynamicTriggerHf) : null,
+        dynamicValidUntil: r.dynamicValidUntil ?? null,
+      };
+    });
   }
 
   async upsertPosition(data: {
@@ -330,6 +377,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
     debtValueUsd: string;
     oracleSource: string;
     now: Date;
+    marketId?: string;
   }): Promise<string> {
     const existing = await this.db
       .select({ id: positions.id })
@@ -353,6 +401,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
           debtValueUsd: data.debtValueUsd,
           oracleSource: data.oracleSource,
           lastCheckedAt: data.now,
+          marketId: data.marketId,
         })
         .where(eq(positions.id, existing[0]!.id));
 
@@ -365,6 +414,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
         userId: data.userId,
         protocol: data.protocol,
         chainId: data.chainId,
+        marketId: data.marketId,
         healthFactor: data.healthFactor,
         liquidationThreshold: data.liquidationThreshold,
         collateralValueUsd: data.collateralValueUsd,
@@ -448,23 +498,41 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
     chainId: number;
     guardianAddress: Address;
     guardianVersion: number;
-    debtAsset: Address;
+    debtAsset?: Address;
+    marketId?: string;
+    positionKey?: string;
+    protocol?: "aave-v3" | "morpho-blue";
     maxRepayPerAction: bigint;
     triggerThreshold: number;
     targetHealthFactor: number;
   }): Promise<void> {
-    const key = `${data.userId}:${data.guardianAddress.toLowerCase()}`;
-    const user = Array.from(this.users.values()).find((u) => u.id === data.userId);
-    const existing = this.policies.get(key);
+    const isMorpho = Boolean(data.marketId) || data.protocol === "morpho-blue";
+    const protocol = isMorpho ? "morpho-blue" : "aave-v3";
+    const keyVal = data.marketId ?? data.debtAsset ?? "";
+    const gAddr = data.guardianAddress.toLowerCase() as Address;
+    const posKey = data.positionKey ?? buildPositionKey({
+      protocol,
+      chainId: data.chainId,
+      guardian: gAddr,
+      key: keyVal,
+    });
 
-    this.policies.set(key, {
+    const user = Array.from(this.users.values()).find((u) => u.id === data.userId);
+    const existing = Array.from(this.policies.values()).find(
+      (p) => p.userId === data.userId && p.guardianAddress.toLowerCase() === gAddr && (p.positionKey === posKey || (!data.positionKey && p.debtAsset === (data.debtAsset?.toLowerCase() ?? ""))),
+    );
+
+    const record: PolicyRecord & { positionId?: string; sourcePrompt?: string } = {
       id: existing?.id ?? `policy-${this.nextId++}`,
       userId: data.userId,
       userAddress: (user?.walletAddress ?? "") as Address,
       chainId: data.chainId,
-      guardianAddress: data.guardianAddress.toLowerCase() as Address,
+      guardianAddress: gAddr,
       guardianVersion: data.guardianVersion,
-      debtAsset: data.debtAsset.toLowerCase() as Address,
+      debtAsset: (data.debtAsset?.toLowerCase() ?? (data.marketId?.toLowerCase() ?? "")) as Address,
+      marketId: data.marketId?.toLowerCase() ?? null,
+      positionKey: posKey,
+      protocol,
       maxRepayPerAction: data.maxRepayPerAction,
       triggerThreshold: data.triggerThreshold,
       targetHealthFactor: data.targetHealthFactor,
@@ -474,14 +542,21 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
       riskAgent: existing?.riskAgent ?? null,
       dynamicTriggerHf: existing?.dynamicTriggerHf ?? null,
       dynamicValidUntil: existing?.dynamicValidUntil ?? null,
-    });
+    };
+
+    // Simpan baik dengan key positionKey maupun fallback userId:guardianAddress
+    this.policies.set(posKey, record);
+    this.policies.set(`${data.userId}:${gAddr}`, record);
   }
 
-  async disablePolicy(userId: string, guardianAddress: Address): Promise<void> {
-    const key = `${userId}:${guardianAddress.toLowerCase()}`;
-    const policy = this.policies.get(key);
-    if (policy) {
-      policy.isActive = false;
+  async disablePolicy(userId: string, guardianAddress: Address, positionKey?: string): Promise<void> {
+    const gAddr = guardianAddress.toLowerCase();
+    for (const [key, pol] of this.policies.entries()) {
+      if (pol.userId === userId && pol.guardianAddress.toLowerCase() === gAddr) {
+        if (!positionKey || pol.positionKey === positionKey || key === positionKey) {
+          pol.isActive = false;
+        }
+      }
     }
   }
 
@@ -491,13 +566,17 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
     kind: number;
     source: Address;
     maxAssets: bigint;
+    positionKey?: string;
   }): Promise<void> {
-    const key = `${data.userId}:${data.guardianAddress.toLowerCase()}`;
-    const policy = this.policies.get(key);
-    if (policy) {
-      (policy as any).layer2Kind = data.kind;
-      (policy as any).layer2Source = data.source.toLowerCase();
-      (policy as any).layer2MaxAssets = data.maxAssets;
+    const gAddr = data.guardianAddress.toLowerCase();
+    for (const pol of this.policies.values()) {
+      if (pol.userId === data.userId && pol.guardianAddress.toLowerCase() === gAddr) {
+        if (!data.positionKey || pol.positionKey === data.positionKey) {
+          (pol as any).layer2Kind = data.kind;
+          (pol as any).layer2Source = data.source.toLowerCase();
+          (pol as any).layer2MaxAssets = data.maxAssets;
+        }
+      }
     }
   }
 
@@ -508,14 +587,18 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
     collateralAsset: Address;
     maxCollateral: bigint;
     maxSlippageBps: number;
+    positionKey?: string;
   }): Promise<void> {
-    const key = `${data.userId}:${data.guardianAddress.toLowerCase()}`;
-    const policy = this.policies.get(key);
-    if (policy) {
-      (policy as any).layer3Enabled = data.enabled;
-      (policy as any).layer3CollateralAsset = data.collateralAsset.toLowerCase();
-      (policy as any).layer3MaxCollateral = data.maxCollateral;
-      (policy as any).layer3MaxSlippageBps = data.maxSlippageBps;
+    const gAddr = data.guardianAddress.toLowerCase();
+    for (const pol of this.policies.values()) {
+      if (pol.userId === data.userId && pol.guardianAddress.toLowerCase() === gAddr) {
+        if (!data.positionKey || pol.positionKey === data.positionKey) {
+          (pol as any).layer3Enabled = data.enabled;
+          (pol as any).layer3CollateralAsset = data.collateralAsset.toLowerCase();
+          (pol as any).layer3MaxCollateral = data.maxCollateral;
+          (pol as any).layer3MaxSlippageBps = data.maxSlippageBps;
+        }
+      }
     }
   }
 
@@ -525,13 +608,17 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
     minTriggerHf: number;
     maxTriggerHf: number;
     riskAgent: Address;
+    positionKey?: string;
   }): Promise<void> {
-    const key = `${data.userId}:${data.guardianAddress.toLowerCase()}`;
-    const policy = this.policies.get(key);
-    if (policy) {
-      policy.minTriggerHf = data.minTriggerHf;
-      policy.maxTriggerHf = data.maxTriggerHf;
-      policy.riskAgent = data.riskAgent.toLowerCase() as Address;
+    const gAddr = data.guardianAddress.toLowerCase();
+    for (const pol of this.policies.values()) {
+      if (pol.userId === data.userId && pol.guardianAddress.toLowerCase() === gAddr) {
+        if (!data.positionKey || pol.positionKey === data.positionKey) {
+          pol.minTriggerHf = data.minTriggerHf;
+          pol.maxTriggerHf = data.maxTriggerHf;
+          pol.riskAgent = data.riskAgent.toLowerCase() as Address;
+        }
+      }
     }
   }
 
@@ -540,12 +627,16 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
     guardianAddress: Address;
     dynamicTriggerHf: number;
     validUntil: Date;
+    positionKey?: string;
   }): Promise<void> {
-    const key = `${data.userId}:${data.guardianAddress.toLowerCase()}`;
-    const policy = this.policies.get(key);
-    if (policy) {
-      policy.dynamicTriggerHf = data.dynamicTriggerHf;
-      policy.dynamicValidUntil = data.validUntil;
+    const gAddr = data.guardianAddress.toLowerCase();
+    for (const pol of this.policies.values()) {
+      if (pol.userId === data.userId && pol.guardianAddress.toLowerCase() === gAddr) {
+        if (!data.positionKey || pol.positionKey === data.positionKey) {
+          pol.dynamicTriggerHf = data.dynamicTriggerHf;
+          pol.dynamicValidUntil = data.validUntil;
+        }
+      }
     }
   }
 
@@ -566,9 +657,17 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
   }
 
   async loadActivePolicies(chainId: number): Promise<PolicyRecord[]> {
-    return Array.from(this.policies.values()).filter(
-      (p) => p.chainId === chainId && p.isActive,
-    );
+    // Kembalikan set policy unik yang aktif
+    const seen = new Set<string>();
+    const result: PolicyRecord[] = [];
+    for (const p of this.policies.values()) {
+      const uniqueId = p.positionKey ?? `${p.userId}:${p.guardianAddress}`;
+      if (p.chainId === chainId && p.isActive && !seen.has(uniqueId)) {
+        seen.add(uniqueId);
+        result.push(p);
+      }
+    }
+    return result;
   }
 
   async upsertPosition(data: {
@@ -581,8 +680,9 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
     debtValueUsd: string;
     oracleSource: string;
     now: Date;
+    marketId?: string;
   }): Promise<string> {
-    const key = `${data.userId}:${data.protocol}:${data.chainId}`;
+    const key = `${data.userId}:${data.protocol}:${data.chainId}:${data.marketId ?? "pool"}`;
     let pos = this.positions.get(key);
     if (!pos) {
       pos = { id: `pos-${this.nextId++}`, ...data };

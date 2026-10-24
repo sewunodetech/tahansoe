@@ -9,12 +9,99 @@
 
 ## Sudah jalan
 
+### Guardian v4: Kebijakan per-posisi & proteksi Morpho Blue — 24 Okt 2026 ([spec](specs/m4-guardian-v4-per-position.md), [ADR 0015](decisions/0015-guardian-v4-per-position-policies.md), branch `feat/user-proof-sim-fee`)
+
+Dikerjakan lima worker paralel Antigravity (Orca run `run_49048ccfe5bf`), digabung dan diverifikasi penuh.
+
+- **Kontrak (`contracts/`):**
+  - `TahansoeGuardianAaveV4`: kebijakan per-`(user, debtAsset)` untuk multi-debt Aave V3, urutan prioritas utang (`setDebtPriority`), isolasi penyelamatan hanya pada aset utang yang ditargetkan, enumerasi posisi (`positionsPage`).
+  - `TahansoeGuardianMorpho`: proteksi pasar Morpho Blue independen (`marketId`), formula HF LLTV 10^36 desimal, L1 (wallet) + L2 (ERC-4626 vault), proteksi invariant selektor Morpho terlarang.
+  - `GuardianCore`: shared library untuk layer ordering, fee sukses 15 bps (ADR 0013), dynamic trigger clamping.
+  - Script deployment Arbitrum Sepolia `contracts/script/DeployAaveV4.s.sol`.
+  - 88 test lulus (unit, fuzz, invariant 128k transisi per handler).
+- **Domain & Database (`packages/domain`, `packages/db`):**
+  - `@tahansoe/domain`: helper canonical `positionKey` (`aave-v3:chainId:guardian:debtAsset` & `morpho-blue:chainId:guardian:marketId`), `parsePositionKey`, ABI v4 terkunci.
+  - `@tahansoe/db`: kolom nullable `position_key` pada `policies` dan `intents` dengan index dan migrasi idempotent.
+- **Engine Sentinel & Keeper (`apps/engine`):**
+  - Sentinel worker multi-guardian (v2/v3, AaveV4, Morpho) dengan discovery otomatis dan debt priority sorting.
+  - Keeper loop non-custodial per-position dengan deduplikasi tick dan FeeCharged receipts decorator.
+  - 498 test engine lulus.
+- **Simnet Fork & Web UI (`apps/simnet`, `apps/web`):**
+  - `apps/simnet`: deploy otomatis v4 di Anvil fork Arbitrum One, loop eksekusi keeper simulasi multi-posisi.
+  - `apps/web`: hook `useGuardianV4`, dialog proteksi per-posisi (Aave & Morpho), daftar posisi terproteksi dengan reorder prioritas, integrasi simulation dashboard.
+- **Verifikasi:** Monorepo typecheck bersih, 88 forge tests + 684 unit tests monorepo lulus.
+
+### Positions, Holdings, Reserves, dan Overview "Guardian view" — 24 Okt 2026 ([spec](specs/m1-positions-holdings-guardian-view.md), branch `feat/user-proof-sim-fee`)
+
+Dikerjakan empat worker paralel (2 Claude, 2 Antigravity), lalu digabung dan diverifikasi.
+
+- **`packages/domain`:**
+  - `PositionDetail`, `createAaveV3Reader` (breakdown per reserve on-chain), `createMorphoBlueReader` (read-only), `priceForHealthFactor`.
+  - Domain kini bergantung pada `viem` dan `zod`.
+  - Morpho Blue Arbitrum One `0x6c247b1F…8F5e` terverifikasi via `eth_getCode`. Penemuan market lewat API GraphQL Morpho (tervalidasi Zod), dengan cadangan `getLogs`. Nilai posisi selalu dibaca on-chain.
+  - Tes baca nyata di Arbitrum One lulus.
+- **Web:**
+  - Menu **Positions**: Aave dan Morpho per chain, badge Protected / Not protected / Monitor only, harga likuidasi.
+  - Menu **Holdings**: saldo, allowance, dan kapasitas L1.
+  - Menu **Reserves**: sumber L2; menu hanya muncul bila L2 aktif.
+  - **Overview "Guardian view"**: gauge HF (likuidasi/trigger/target), harga ETH saat trigger dan saat likuidasi, detak Sentinel/keeper, meter cadangan L1/L2/L3.
+- **Detak pengecekan:** `GET /api/positions/heartbeat` (SIWE saja) dari `positions.last_checked_at`; simnet menambah `keeperCheckedAt`.
+- **Perbaikan saat integrasi:**
+  - deep link `/dashboard/*` tetap bertahan setelah reload (guard menunggu reconnect wagmi, `?next=`);
+  - chain simulasi memakai Multicall3;
+  - fork live simnet dibuat ulang otomatis bila RPC non-arsip sudah membuang state-nya.
+- **Verifikasi:** typecheck dan lint bersih; test engine 486, simnet 61, web 46, db 5, domain 75; Playwright di fork sungguhan untuk Positions, Holdings, Reserves, dan deep link.
+
+**Gap:**
+- Simnet produksi butuh RPC arsip (Alchemy/Infura gratis).
+- Nilai USD Morpho hanya tersedia bila loan token juga reserve Aave.
+
+### User proof: Simulation Mode + Guardian v3 fee sukses — 24 Okt 2026 (branch `feat/user-proof-sim-fee`; [ADR 0013](decisions/0013-success-fee-on-protection.md) & [ADR 0014](decisions/0014-simulation-network-anvil-fork.md) masih **Proposed**)
+
+Dikerjakan enam worker paralel (Orca), lalu digabung dan diverifikasi.
+
+- **Kontrak:**
+  - `TahansoeGuardianV3`: turunan V2 dengan fee sukses 15 bps, hanya bila HF < trigger statis dan < 1,50. Proteksi selalu didahulukan; sisa fee yang tak terbayar dihapus (waived); treasury `immutable`; event `FeeCharged`; view `quoteFee`.
+  - V2 hanya mendapat dua hook internal no-op (`_afterLayers`, `_refundLeftover`); perilakunya tidak berubah.
+  - `SimPriceFeed`: aggregator mock 8 desimal, `setAnswer` hanya oleh updater.
+  - `DeploySim.s.sol`: dijaga `SIM_CHAIN_ID`; mengganti sumber WETH AaveOracle lewat Aave executor yang di-impersonate; mencetak satu baris `SIM_DEPLOYMENT {json}`.
+  - `forge test`: 53 lulus, 3 fork test di-skip tanpa RPC. Fork suite di Arbitrum One 5/5 (dijalankan worker).
+- **`apps/simnet`** (baru):
+  - Fork manager anvil: satu fork bersama untuk mode live, plus fork pribadi (maks 4, TTL 15 menit).
+  - Deploy module, relay Chainlink 5 detik, replay/crash, faucet (slot storage WETH=51, USDC=9), keeper simulasi.
+  - RPC proxy dengan allowlist dan session API ber-`x-simnet-key`.
+  - Dockerfile dan compose (mem_limit 2g). 56 test.
+  - Sudah dicek manual di fork Arbitrum One via WSL. Image Docker belum di-build.
+- **Skenario replay** (`apps/simnet/scenarios`, data Binance ETHUSDT): Agu 2024 (577 titik), Okt 2025 (289), Mar 2020 ternormalisasi (433).
+- **`packages/domain`:** `simulateCascade` menghitung `feeEligible`/`fee`/`feeWaived`; ada `ARBITRUM_ONE_SIM` (chainId 4216199, tidak masuk `SUPPORTED_CHAINS`).
+- **`packages/db`:** tabel `sim_sessions` dan kolom `intents.fee_amount`/`fee_waived` (migrasi idempoten, belum dijalankan ke DB prod).
+- **Web:**
+  - `/connect` punya pilihan simulasi; wallet burner di browser dengan `simConnector`.
+  - `/api/sim/*` dengan validasi Zod dan `session.sim` yang terpisah dari SIWE.
+  - Dashboard punya mode `simulation`: banner, panel skenario, wizard + Auto-fill, daftar tx dengan fee, panel "Tanpa Tahansoe", CTA konversi. `SIMNET_MOCK=1` untuk demo tanpa layanan.
+  - Landing punya section perbandingan (`#compare`). FAQ/PRD dikoreksi: DeFi Saver kini mendukung EOA untuk Aave v3.
+- **Verifikasi gabungan:** `npm run typecheck` bersih, `npm run lint` 0 error, `npm test` 618 lulus (engine 486, simnet 56, web 18, db 5, domain 53).
+
+**Gap:**
+- ADR 0013/0014 belum Accepted. security.md I1/I4 dan ADR 0006 belum direvisi, sehingga V3 belum boleh di-deploy ke chain nyata.
+- Simnet belum di-deploy ke VPS, dan Cloudflare Tunnel untuk RPC proxy publik belum ada.
+- Wizard di fork sungguhan baru diuji dengan mock, belum end-to-end.
+- Image Docker simnet belum di-build.
+- Bonus likuidasi WETH 5% masih di-hardcode di `apps/web/lib/sim/fee.ts`.
+
 ### Satu DB + broadcast riset ke bot Telegram web — 23 Okt 2026 ([ADR 0012](decisions/0012-unified-db-outbound-research-broadcast.md), [spec](specs/m3-research-broadcast.md), [plan](plans/research-broadcast.md))
 - **Satu database:** engine kini memakai `DATABASE_URL` yang sama dengan web (Neon `custos`). Migrasi idempoten dijalankan; data riset historis dari DB engine lama disalin sekali, insert-only (`npm run db:copy-engine`, 1009 baris: 15 `research_reports`, 163 `signals`, 70 `risk_assessments`, 408 `price_samples`, 352 `rate_samples`, 1 `llm_usage_daily`). Tabel user-level tidak disalin. `npm run db:check` menampilkan host DB tersamar.
 - **Engine hanya kirim (outbound-only):** `BroadcastWorker` (`apps/engine/src/broadcast/`) mengirim ke semua `telegram_accounts` aktif lewat bot web. Isinya digest terjadwal (`BROADCAST_DIGEST_TIMES`, default 08:00 & 20:00 `Asia/Jakarta`) dan alert segera saat regime naik atau ada sinyal kritis (T10/T4/T7/T8 berat). Dedupe 6 jam dan hysteresis turun 1 jam, dengan dedupe & log di tabel `broadcasts`. Advisory lock `42161006`. Rate limit ≤ 25 msg/s dengan `retry_after` pada 429; 403 menonaktifkan akun. Tersedia `tahansoe broadcast digest|once [--dry]` dan `start --no-broadcast`. Sentinel kini memakai `TelegramSender`.
 - **Gateway inbound engine dihapus:** pairing, polling `getUpdates`, router/Q&A chat, bot lock, dan `gateway pair` tidak ada lagi. Q&A chat lewat Telegram ikut hilang.
 - **Web:** webhook menangani `/start` (sambutan), `/start <code>` (link/re-link), dan `/stop` (berhenti langganan). Halaman Telegram menjelaskan isi notifikasi. `npm test -w apps/web` kini menjalankan test route.
 - Dikerjakan paralel lewat Orca orchestration (worker Antigravity); konteks worker diambil dari index codebase-memory.
+
+### Engine di VPS (Docker) — 24 Okt 2026
+- `tahansoe start` jalan 24/7 di VPS Ubuntu 24.04 (2 vCPU, 3,6 GB) sebagai container `tahansoe-engine` (`apps/engine/Dockerfile`, `apps/engine/docker-compose.yml`), `restart: unless-stopped`, bertahan setelah reboot (sudah diuji). Kode di `/opt/tahansoe`, firewall `ufw` hanya SSH, tidak ada port terbuka.
+- **Bug yang ketemu saat deploy:**
+  - `undici` dipakai engine (`gdelt.ts`, `settle-job.ts`, `scorecard.ts`) tapi tidak dideklarasikan. Selama ini ikut ter-hoist dari dependensi web. Kini jadi dependensi `@tahansoe/engine`.
+  - Advisory lock price worker (`42161002`) bertabrakan dengan settlement. Di `start`, settle mengambil lock duluan, lalu price worker `exit(0)` dan seluruh agent mati (restart loop di Docker, tiap restart memicu satu run riset). Price worker kini memakai `42161004`; ada test keunikan key.
+  - **Spam alert "Pool ETH liquidity constrained"** (15 pesan sekaligus ke 1 user, 06:04 UTC): broadcaster memperlakukan sinyal `RESEARCH` (AI) yang menyebut path T7 sebagai alert pool kritis. Dedupe-nya memakai id sinyal, dan tiap run riset di restart loop membuat id baru. Isinya juga keliru: utilization asli WETH 81%, USDC 78%. Kini alert kritis hanya dari modul `ORACLE`/`ONCHAIN`. Heuristik angka "98" di teks evidence dihapus (APR "4.98%" ikut terdeteksi). Setelah restart, alert yang sudah tercatat < 6 jam tidak dikirim ulang (severity yang tidak diketahui dianggap sama). Test 9 & 10 di `broadcast.test.ts`.
 
 ### Landing interaktif: Position Lab — 24 Okt 2026
 - Section `#lab` tepat setelah hero (`components/landing/lab/`): scene isometrik collateral, debt, dan reserve L1/L2/L3. Pengunjung bisa menggeser harga ETH atau menjalankan "3 a.m. crash"; layer menyala berurutan dengan animasi aliran dana, dan di sampingnya ada perbandingan posisi yang sama tanpa proteksi (likuidasi + penalti).
@@ -129,7 +216,7 @@
 
 ### Broadcast riset (ADR 0012, review alignment 23 Okt 2026)
 - [ ] `broadcast/worker.ts` masih hardcode `chainId = 42161` (I6) → ambil dari chain registry / opsi config.
-- [ ] Severity alert sinyal (`alertSeverities`) hanya tersimpan di memori → setelah restart, alert kritis dalam jendela 6 jam bisa terkirim ulang. Simpan severity di tabel `broadcasts`.
+- [ ] Severity alert sinyal (`alertSeverities`) hanya tersimpan di memori. Sejak 24 Okt, restart tidak lagi mengirim ulang alert, tapi kenaikan severity pertama setelah restart (dalam 6 jam) tidak terdeteksi. Simpan severity di tabel `broadcasts`.
 - [ ] `packages/db/scripts/copy-engine-data.ts` fallback ke path `.env` lokal developer → wajibkan `SOURCE_DATABASE_URL`.
 - [ ] Belum ada test regresi untuk `onRunCompleted` di `tahansoe start` yang terpanggil sebelum broadcaster dibuat (bug TDZ sudah diperbaiki 23 Okt).
 - [ ] Preferensi per user (bahasa, matikan digest, filter aset) belum ada; semua akun aktif menerima broadcast yang sama.
@@ -146,7 +233,10 @@
 - [ ] Scorecard belum direkap otomatis mingguan (settlement sendiri sudah berjalan tiap 60 menit di `tahansoe schedule run`, lock terpisah; data scorecard baru bermakna setelah scheduler jalan beberapa hari).
 - [ ] Modul teknikal lanjutan M2 (volatilitas realized EWMA/GARCH, funding rate ekstrem, open interest perp DEX) belum diimplementasikan.
 - [x] Pengiriman notifikasi alert Telegram langsung dari server engine sudah selesai via Sentinel Worker (Workstream C).
-- [ ] Host deployment untuk long-running engine worker di lingkungan cloud/VPS belum dipilih.
+- [x] Host deployment engine worker: VPS Ubuntu 24.04 + Docker (24 Okt 2026), lihat entri "Engine di VPS".
+- [ ] Deploy VPS masih salin manual (tar + scp ke `/opt/tahansoe`); belum ada skrip/CI deploy. Cloudflare Tunnel belum dipasang (belum perlu, worker outbound-only).
+- [ ] Sentinel & keeper (`tahansoe sentinel run`) belum dijalankan di VPS.
+- [ ] Price worker memanggil `process.exit(0)` saat lock dipegang instance lain, sehingga ikut mematikan seluruh `tahansoe start`. Sebaiknya lewati sampler saja, seperti job settle/fusion.
 
 ### Produk Web & Kontrak (M1)
 - [ ] Web app belum terhubung ke kontrak Guardian v1 (belum ada read/write on-chain langsung).
@@ -170,6 +260,12 @@
 3. **Implementasi Notifikasi Telegram Server:** Memindahkan trigger alert Telegram dari frontend browser ke engine worker agar alert tetap terkirim saat user tidak membuka web.
 4. **Implementasi Integrasi Web On-chain (Spec M1):** Menghubungkan settings web ke `TahansoeGuardian` v1 (`approve` + `setPolicy`), membaca posisi Aave nyata via wagmi/viem, dan menyelesaikan transisi dashboard demo.
 5. **Modul Teknikal Lanjutan M2:** Volatilitas realized (EWMA), funding rate ekstrem, dan open interest pada perp DEX Arbitrum.
+6. **User proof (masukan mentor, 24 Okt 2026), masih Proposed/Draft dan menunggu review owner:**
+   - [ADR 0013](decisions/0013-success-fee-on-protection.md): fee sukses 0,15%, hanya saat HF di bawah trigger statis dan di bawah 1,50. Menggantikan butir 2–4 ADR 0006 dan merevisi I1/I4 saat Accepted.
+   - [ADR 0014](decisions/0014-simulation-network-anvil-fork.md): fork anvil di VPS dan workspace `apps/simnet`.
+   - Spec [simulation mode](specs/m1-simulation-mode.md) dan [Guardian v3 fee](specs/m4-guardian-success-fee.md).
+   - Section perbandingan dengan DeFi Saver di landing.
+   - Koreksi FAQ/PRD: DeFi Saver kini mendukung EOA untuk Aave v3.
 
 ---
 

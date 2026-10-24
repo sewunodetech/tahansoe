@@ -451,4 +451,81 @@ describe("BroadcastWorker & Telegram Outbound", () => {
     assert.equal(sentMessages.length, 1);
     assert.equal(lockAcquireAttempts, 2);
   });
+
+  test("9. Sinyal RESEARCH ber-path T7/T10 tidak memicu alert kritis; ONCHAIN T7 tetap", async () => {
+    const now = new Date("2026-10-24T06:00:00Z");
+    const sentMessages: string[] = [];
+    const base = {
+      chainId: 42161,
+      assets: ["ETH", "USDC"],
+      direction: "DOWN" as const,
+      confidence: 0.6,
+      horizonHours: 72,
+      observedAt: now,
+      expiresAt: new Date(now.getTime() + 72 * 3600 * 1000),
+    };
+    const research = (id: string): Signal => ({
+      ...base,
+      id,
+      module: "RESEARCH",
+      paths: ["T11", "T7", "T10", "T4"],
+      severity: 0.55,
+      evidence: [],
+    });
+    const worker = new BroadcastWorker({
+      env: {},
+      sender: { send: async (_chatId, html) => void sentMessages.push(html) },
+      now: () => now,
+      loadRecipients: async () => [{ telegramUserId: 111n, userId: "u1" }],
+      loadAssessments: async () => [],
+      loadActiveSignals: async () => [
+        research("r-1"),
+        research("r-2"),
+        {
+          ...base,
+          id: "o-1",
+          module: "ONCHAIN",
+          paths: ["T11"],
+          severity: 0.4,
+          dedupeKey: "ONCHAIN:T11:kink:USDC",
+          evidence: [{ source: "aave_rates", title: "Reserve USDC utilization at 92.0% past optimal kink of 90.0% (borrow APR 4.98%)" }],
+        },
+        {
+          ...base,
+          id: "o-2",
+          module: "ONCHAIN",
+          paths: ["T11", "T7"],
+          severity: 0.9,
+          dedupeKey: "ONCHAIN:T11:kink:WETH",
+          evidence: [{ source: "aave_rates", title: "Reserve WETH utilization at 98.5% past optimal kink of 90.0%" }],
+        },
+      ],
+      loadLatestReport: async () => null,
+      isDeduped: async () => false,
+      recordBroadcast: async () => {},
+    });
+
+    const sent = await worker.pollOnce();
+    assert.equal(sent, 1, "hanya ONCHAIN T7 yang dikirim");
+    assert.equal(sentMessages.length, 1);
+    assert.match(sentMessages[0]!, /liquidity constrained/);
+  });
+
+  test("10. Setelah restart, alert yang sudah terkirim < 6 jam tidak dikirim ulang", async () => {
+    const sentAt = new Date("2026-10-24T05:00:00Z");
+    const now = new Date("2026-10-24T06:00:00Z");
+    const fakeDb = {
+      select: () => ({
+        from: () => ({ where: () => ({ limit: async () => [{ createdAt: sentAt }] }) }),
+      }),
+    };
+    // Instance baru (memori severity kosong), baris broadcasts dari instance lama 1 jam lalu.
+    const worker = new BroadcastWorker({ env: {}, db: fakeDb, now: () => now });
+    assert.equal(await worker.isDeduped("alert:signal:ONCHAIN:T11:kink:WETH", 0.9, now), true);
+    // Severity naik setelah itu tetap boleh kirim ulang.
+    assert.equal(await worker.isDeduped("alert:signal:ONCHAIN:T11:kink:WETH", 1.0, now), false);
+    // Lewat 6 jam: boleh kirim ulang.
+    const later = new Date("2026-10-24T11:30:00Z");
+    assert.equal(await worker.isDeduped("alert:signal:ONCHAIN:T11:kink:FRAX", 0.5, later), false);
+  });
 });

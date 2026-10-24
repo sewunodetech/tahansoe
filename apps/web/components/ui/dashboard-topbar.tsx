@@ -7,7 +7,7 @@ import { PanelLeft, Search, Wallet, ChevronRight, Pause, Play } from "lucide-rea
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useTour } from "@/components/ui/onboarding-tour";
 import { useProtection } from "@/hooks/useProtection";
-import { useDashboardMode, type DashboardMode } from "@/lib/dashboard-mode";
+import { useDashboardMode } from "@/lib/dashboard-mode";
 
 export interface DashboardTopbarProps {
   collapsed?: boolean;
@@ -37,7 +37,7 @@ export function DashboardTopbar({
   const pathname = usePathname();
   const { isPaused, actions, ethPrice } = useProtection();
   const { restart: restartTour } = useTour();
-  const { mode, setMode, isLive } = useDashboardMode();
+  const { mode, setMode, isLive, isSimulation } = useDashboardMode();
 
   const currentLabel = ROUTE_LABELS[pathname] ?? "Dashboard";
   const shortAddress = address
@@ -67,52 +67,62 @@ export function DashboardTopbar({
           </button>
         )}
 
-        <div className="w-px h-4 mx-0.5 bg-[var(--border)]" />
+        <div className="hidden sm:block w-px h-4 mx-0.5 bg-[var(--border)]" />
 
-        {/* Breadcrumbs */}
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs font-medium">
+        {/* Breadcrumbs: the root crumb drops on phones so the right-side controls keep their room. */}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs font-medium min-w-0">
           <Link
             href="/dashboard"
-            className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+            className="hidden sm:inline text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
           >
             Tahansoe
           </Link>
-          <ChevronRight className="w-3 h-3 text-[var(--border-strong)] shrink-0" strokeWidth={1.5} />
+          <ChevronRight className="hidden sm:block w-3 h-3 text-[var(--border-strong)] shrink-0" strokeWidth={1.5} />
           <span className="text-[var(--text-primary)]">{currentLabel}</span>
         </nav>
       </div>
 
       {/* ── Right: Live/Demo switch, simulation controls, Theme, Tour, Wallet ── */}
       <div className="flex items-center gap-2">
-        {/* Live / Demo switch */}
-        <div
-          role="radiogroup"
-          aria-label="Data source"
-          className="flex items-center h-7 p-0.5 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] text-[11px] font-mono"
-        >
-          {(["live", "demo"] as DashboardMode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              role="radio"
-              aria-checked={mode === m}
-              onClick={() => setMode(m)}
-              title={m === "live" ? "Your real Aave position on Arbitrum Sepolia" : "Simulated position and market"}
-              className={`flex items-center gap-1.5 h-6 px-2.5 rounded-full transition-colors cursor-pointer ${
-                mode === m
-                  ? "bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-sm"
-                  : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-              }`}
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  m === "live" ? "bg-[var(--safe)]" : "bg-[var(--warning)]"
+        {isSimulation ? (
+          <span
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-[var(--warning-border)] bg-[var(--warning-bg)] text-[11px] font-mono text-[var(--warning)]"
+            title="Fake funds on a fork of Arbitrum One"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning)] animate-pulse" />
+            Simulation
+          </span>
+        ) : (
+          /* Live / Demo switch */
+          <div
+            role="radiogroup"
+            aria-label="Data source"
+            className="flex items-center h-7 p-0.5 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] text-[11px] font-mono"
+          >
+            {(["live", "demo"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={mode === m}
+                onClick={() => setMode(m)}
+                title={m === "live" ? "Your real Aave position on Arbitrum Sepolia" : "Simulated position and market"}
+                className={`flex items-center gap-1.5 h-6 px-2.5 rounded-full transition-colors cursor-pointer ${
+                  mode === m
+                    ? "bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-sm"
+                    : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
                 }`}
-              />
-              {m === "live" ? "Live" : "Demo"}
-            </button>
-          ))}
-        </div>
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    m === "live" ? "bg-[var(--safe)]" : "bg-[var(--warning)]"
+                  }`}
+                />
+                {m === "live" ? "Live" : "Demo"}
+              </button>
+            ))}
+          </div>
+        )}
 
         {!isLive && (
           <>
@@ -120,7 +130,7 @@ export function DashboardTopbar({
             <div className="hidden lg:flex items-center gap-1.5 h-7 px-2.5 rounded-md font-mono text-[11px] bg-[var(--bg-subtle)] border border-[var(--border)]">
               <span className="text-[var(--text-tertiary)]">ETH</span>
               <span className="text-[var(--text-secondary)]">
-                ${ethPrice.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                ${ethPrice.price.toLocaleString("en-US", { maximumFractionDigits: 0 })}
               </span>
               <span className={isEthUp ? "text-[var(--safe)]" : "text-[var(--danger)]"}>
                 {isEthUp ? "▲" : "▼"} {Math.abs(ethPrice.change24h).toFixed(2)}%
@@ -168,8 +178,8 @@ export function DashboardTopbar({
         {/* Theme toggle */}
         <ThemeToggle />
 
-        {/* Wallet pill */}
-        <div className="flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border)] text-[11px] font-mono text-[var(--text-primary)]">
+        {/* Wallet pill (on phones the sidebar footer already shows the address) */}
+        <div className="hidden sm:flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border)] text-[11px] font-mono text-[var(--text-primary)]">
           <Wallet className="w-3 h-3 text-[var(--brand)] shrink-0" strokeWidth={1.8} />
           <span>{shortAddress}</span>
           {onDisconnect && (

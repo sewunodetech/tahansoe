@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import { Play } from "lucide-react";
 import { useProtection } from "@/hooks/useProtection";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { ActivityStats } from "@/components/dashboard/activity/activity-stats";
 import { HfRecoveryChart } from "@/components/dashboard/activity/hf-recovery-chart";
@@ -41,37 +41,17 @@ function DemoActivityPage() {
 
   return (
     <div className="w-full p-5 md:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <Eyebrow dot variant="brand">
-              Audit Trail
-            </Eyebrow>
-            <span className="text-[11px] font-mono text-[var(--text-tertiary)]">
-              Arbitrum Sepolia
-            </span>
-          </div>
-          <h1 className="font-display text-2xl md:text-3xl font-light text-[var(--text-primary)]">
-            Execution Activity & Audit Log
-          </h1>
-          <p className="text-xs text-[var(--text-secondary)] mt-1 font-mono">
-            On-chain interventions across Layers 1, 2, and 3 · Deterministic execution record
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => actions.simulatePriceDrop(15)}
-            className="text-xs font-mono gap-1.5"
-          >
-            <Play className="w-3 h-3 text-[var(--warning)]" />
-            Simulate Drop (Test Cascade)
+      <PageHeader
+        eyebrow="Activity"
+        title="Guardian activity"
+        subtitle="Every repay the Guardian made across Layers 1, 2 and 3, in order."
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => actions.simulatePriceDrop(15)} className="text-xs gap-1.5">
+            <Play className="size-3 text-[var(--warning)]" />
+            Simulate a 15% drop
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Summary Stats */}
       <ActivityStats activity={activity} />
@@ -89,7 +69,7 @@ export default function ActivityPage() {
   const { isLive } = useDashboardMode();
   if (!isLive) return <DemoActivityPage />;
   return (
-    <LivePage eyebrow="Audit Trail" title="Guardian Activity" subtitle="Every policy change and repay the Guardian made for this wallet.">
+    <LivePage eyebrow="Activity" title="Guardian activity" subtitle="Every policy change and repay the Guardian made for this wallet.">
       <LiveActivity />
     </LivePage>
   );

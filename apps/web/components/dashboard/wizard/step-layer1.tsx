@@ -79,7 +79,7 @@ export function StepLayer1({
           <div className="p-3.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center text-xs font-mono space-y-1.5">
             <div className="flex justify-between">
               <span className="text-[var(--text-tertiary)]">Total Debt</span>
-              <span className="text-[var(--text-primary)]">${debtUsd.toLocaleString()} USDC</span>
+              <span className="text-[var(--text-primary)]">${debtUsd.toLocaleString("en-US")} USDC</span>
             </div>
             <div className="flex justify-between">
               <span className="text-[var(--text-tertiary)]">Coverage Provided</span>
@@ -99,7 +99,7 @@ export function StepLayer1({
           <ApprovalExplainer
             layer={1}
             tokenSymbol="USDC"
-            amountCap={`${cap.toLocaleString()} USDC`}
+            amountCap={`${cap.toLocaleString("en-US")} USDC`}
           />
         </div>
 
@@ -151,7 +151,7 @@ export function StepLayer1({
         onOpenChange={setModalOpen}
         layer={1}
         tokenSymbol="USDC"
-        amountCap={`${cap.toLocaleString()} USDC`}
+        amountCap={`${cap.toLocaleString("en-US")} USDC`}
         onConfirm={onApprove}
       />
     </div>

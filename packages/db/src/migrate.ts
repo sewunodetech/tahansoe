@@ -180,6 +180,7 @@ export async function runMigrations(
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       position_id UUID REFERENCES positions (id) ON DELETE CASCADE,
+      position_key TEXT,
       chain_id INTEGER NOT NULL DEFAULT 421614,
       guardian_address TEXT,
       guardian_version INTEGER,
@@ -207,6 +208,7 @@ export async function runMigrations(
     );
   `);
   await runSql(`
+    ALTER TABLE policies ADD COLUMN IF NOT EXISTS position_key TEXT;
     ALTER TABLE policies ADD COLUMN IF NOT EXISTS chain_id INTEGER NOT NULL DEFAULT 421614;
     ALTER TABLE policies ADD COLUMN IF NOT EXISTS guardian_address TEXT;
     ALTER TABLE policies ADD COLUMN IF NOT EXISTS guardian_version INTEGER;
@@ -234,6 +236,9 @@ export async function runMigrations(
   await runSql(`
     CREATE INDEX IF NOT EXISTS policies_chain_active_idx ON policies (chain_id, is_active);
   `);
+  await runSql(`
+    CREATE INDEX IF NOT EXISTS policies_position_key_idx ON policies (position_key);
+  `);
   log("  policies");
 
   await runSql(`
@@ -256,6 +261,7 @@ export async function runMigrations(
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       position_id UUID NOT NULL REFERENCES positions (id) ON DELETE CASCADE,
+      position_key TEXT,
       action intent_action NOT NULL,
       amount NUMERIC(38,18) NOT NULL,
       asset TEXT NOT NULL,
@@ -264,6 +270,8 @@ export async function runMigrations(
       reason TEXT NOT NULL,
       estimated_gas NUMERIC(38,0),
       estimated_slippage_bps INTEGER,
+      fee_amount NUMERIC(38,18),
+      fee_waived NUMERIC(38,18),
       status intent_status NOT NULL DEFAULT 'PENDING',
       tx_hash TEXT,
       error_message TEXT,
@@ -279,6 +287,11 @@ export async function runMigrations(
   `);
   await runSql(`
     CREATE INDEX IF NOT EXISTS intents_status_idx ON intents (status);
+  `);
+  await runSql(`
+    ALTER TABLE intents ADD COLUMN IF NOT EXISTS position_key TEXT;
+    ALTER TABLE intents ADD COLUMN IF NOT EXISTS fee_amount NUMERIC(38,18);
+    ALTER TABLE intents ADD COLUMN IF NOT EXISTS fee_waived NUMERIC(38,18);
   `);
   log("  intents");
 
@@ -465,6 +478,24 @@ export async function runMigrations(
   `);
   await runSql(`CREATE UNIQUE INDEX IF NOT EXISTS broadcasts_dedupe_key_unique ON broadcasts (dedupe_key);`);
   log("  broadcasts");
+
+  await runSql(`
+    CREATE TABLE IF NOT EXISTS sim_sessions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      address TEXT NOT NULL,
+      mode TEXT NOT NULL,
+      scenario TEXT,
+      fork_id TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      position_opened_at TIMESTAMPTZ,
+      first_protect_at TIMESTAMPTZ,
+      layers_used INTEGER[],
+      converted_at TIMESTAMPTZ,
+      user_agent_hash TEXT
+    );
+  `);
+  await runSql(`CREATE INDEX IF NOT EXISTS sim_sessions_created_at_idx ON sim_sessions (created_at);`);
+  log("  sim_sessions");
 
   log("\nMigration complete.");
 }

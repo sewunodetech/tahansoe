@@ -47,7 +47,7 @@ export function StepPosition({ position, hf, ethPrice, onNext }: StepPositionPro
               </span>
             </div>
             <p className="text-xs text-[var(--text-tertiary)] font-mono mt-1">
-              Collateral: {collateral} (${collateralUsd.toLocaleString()}) · Debt: {debt}
+              Collateral: {collateral} (${collateralUsd.toLocaleString("en-US")}) · Debt: {debt}
             </p>
           </div>
 
@@ -80,7 +80,7 @@ export function StepPosition({ position, hf, ethPrice, onNext }: StepPositionPro
               Current ETH Price
             </span>
             <span className="text-sm font-mono font-medium text-[var(--text-primary)] mt-0.5 block">
-              ${ethPrice.toLocaleString()}
+              ${ethPrice.toLocaleString("en-US")}
             </span>
           </div>
           <div className="p-3 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border)]">
@@ -88,7 +88,7 @@ export function StepPosition({ position, hf, ethPrice, onNext }: StepPositionPro
               Liquidation Price
             </span>
             <span className="text-sm font-mono font-medium text-[var(--danger)] mt-0.5 block">
-              ${liquidationPrice.toLocaleString()}
+              ${liquidationPrice.toLocaleString("en-US")}
             </span>
           </div>
           <div className="p-3 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border)]">

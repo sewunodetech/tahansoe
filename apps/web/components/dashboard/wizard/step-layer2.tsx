@@ -161,7 +161,7 @@ export function StepLayer2({
               <ApprovalExplainer
                 layer={2}
                 tokenSymbol="Vault Shares"
-                amountCap={`$${cap.toLocaleString()}`}
+                amountCap={`$${cap.toLocaleString("en-US")}`}
               />
             </div>
 
@@ -222,7 +222,7 @@ export function StepLayer2({
         onOpenChange={setModalOpen}
         layer={2}
         tokenSymbol="Vault Shares"
-        amountCap={`$${cap.toLocaleString()}`}
+        amountCap={`$${cap.toLocaleString("en-US")}`}
         onConfirm={onApprove}
       />
     </div>

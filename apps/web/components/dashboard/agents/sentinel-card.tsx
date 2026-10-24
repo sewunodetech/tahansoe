@@ -97,7 +97,7 @@ export function SentinelCard() {
             </span>
           </div>
           <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-            Smart contract keepers execute mathematical rules deterministically when HF drops below your trigger threshold. The Sentinel AI acts purely as an advisor to synthesize volatility diagnostics — <strong>AI never signs transactions or holds keys</strong>.
+            Smart contract keepers execute mathematical rules deterministically when HF drops below your trigger threshold. The Sentinel AI acts purely as an advisor to explain volatility. <strong>AI never signs transactions or holds keys</strong>.
           </p>
         </div>
 

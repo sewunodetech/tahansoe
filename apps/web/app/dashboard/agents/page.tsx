@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Newspaper, Bot, Shield, CheckCircle2 } from "lucide-react";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { Card } from "@/components/ui/card";
 import { MarketPulseCard } from "@/components/dashboard/agents/market-pulse-card";
 import { SentinelCard } from "@/components/dashboard/agents/sentinel-card";
@@ -10,23 +10,11 @@ import { SentinelCard } from "@/components/dashboard/agents/sentinel-card";
 export default function AgentsPage() {
   return (
     <div className="w-full p-5 md:p-8 space-y-6">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-1.5">
-          <Eyebrow dot variant="brand">
-            Dual AI Architecture
-          </Eyebrow>
-          <span className="text-[11px] font-mono text-[var(--text-tertiary)]">
-            Arbitrum Sepolia
-          </span>
-        </div>
-        <h1 className="font-display text-2xl md:text-3xl font-light text-[var(--text-primary)]">
-          AI Intelligence Agents
-        </h1>
-        <p className="text-xs text-[var(--text-secondary)] mt-1 font-mono">
-          Market Pulse research briefs and 24/7 HF Sentinel telemetry · AI explains, rules execute
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Agents"
+        title="AI risk agents"
+        subtitle="Market Pulse researches the market, the HF Sentinel watches your position. AI explains, rules execute."
+      />
 
       {/* Architecture Highlights Strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

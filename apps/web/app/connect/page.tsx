@@ -4,8 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useConnect, useDisconnect, useChainId } from "wagmi";
 import { useAuth } from "@/hooks/useAuth";
-import { Wallet, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
+import { Wallet, AlertCircle, Loader2, ArrowLeft, FlaskConical } from "lucide-react";
 import { BrandMark } from "@/components/ui/brand-mark";
+import { SIM_CONNECTOR_ID } from "@/lib/sim/connector";
+import { getOrCreateBurner } from "@/lib/sim/burner";
+import { setSimRpcPath } from "@/lib/sim/rpc";
+import { SimApiError, startSimSession } from "@/lib/sim/hooks";
+import type { SimHealth } from "@/lib/sim/types";
 
 const WALLETS = [
   {
@@ -43,40 +48,73 @@ const WALLETS = [
   },
 ];
 
+/** Where to land after connecting: the dashboard page the visitor was sent here from, if any. */
+function nextPath(): string {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/dashboard") ? next : "/dashboard";
+}
+
 export default function ConnectPage() {
   const router = useRouter();
-  const { isConnected, address } = useAccount();
+  const { isConnected, address, connector: activeConnector } = useAccount();
   const chainId = useChainId();
-  const { connect, connectors, isPending, error: connectError, variables } = useConnect();
-  const { disconnect } = useDisconnect();
+  const { connect, connectAsync, connectors, isPending, error: connectError, variables } = useConnect();
+  const { disconnect, disconnectAsync } = useDisconnect();
   const { signIn, status: authStatus, error: authError, reset: resetAuth } = useAuth();
 
   const [step, setStep] = useState<"connect" | "sign">("connect");
+  const [simHealth, setSimHealth] = useState<SimHealth | null>(null);
+  const [simStarting, setSimStarting] = useState(false);
+  const [simError, setSimError] = useState<string | null>(null);
+  const [simEnded, setSimEnded] = useState(false);
+  const isSimConnected = activeConnector?.id === SIM_CONNECTOR_ID;
 
   useEffect(() => {
-    if (isConnected && step === "connect") {
+    let cancelled = false;
+    fetch("/api/sim/health")
+      .then((res) => (res.ok ? res.json() : { ok: false }))
+      .then((h: SimHealth) => { if (!cancelled) setSimHealth(h); })
+      .catch(() => { if (!cancelled) setSimHealth({ ok: false }); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // The burner wallet never signs in with SIWE: resume its simulation, or drop it when it ended.
+  useEffect(() => {
+    if (!isConnected || !isSimConnected || simStarting) return;
+    if (new URLSearchParams(window.location.search).get("sim") === "ended") {
+      setSimRpcPath(null);
+      disconnect();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect the redirect reason once
+      setSimEnded(true);
+      return;
+    }
+    router.replace(nextPath());
+  }, [isConnected, isSimConnected, simStarting, disconnect, router]);
+
+  useEffect(() => {
+    if (isConnected && !isSimConnected && step === "connect") {
       // Check if session already valid before prompting sign-in
       fetch("/api/auth/me")
         .then((res) => {
           if (res.ok) {
-            router.replace("/dashboard");
+            router.replace(nextPath());
           } else {
             setStep("sign");
           }
         })
         .catch(() => setStep("sign"));
     }
-  }, [isConnected, step, router]);
+  }, [isConnected, isSimConnected, step, router]);
 
   useEffect(() => {
-    if (isConnected && step === "sign") {
+    if (isConnected && !isSimConnected && step === "sign") {
       signIn();
     }
-  }, [isConnected, step, signIn]);
+  }, [isConnected, isSimConnected, step, signIn]);
 
   useEffect(() => {
     if (authStatus === "authenticated") {
-      router.replace("/dashboard");
+      router.replace(nextPath());
     }
   }, [authStatus, router]);
 
@@ -90,6 +128,30 @@ export default function ConnectPage() {
     const connector = getConnectorByWalletId(walletId);
     if (!connector) return;
     connect({ connector });
+  };
+
+  const simAvailable = simHealth?.ok === true;
+
+  /** Burner key in this browser + a Live fork session, then into the dashboard. */
+  const handleStartSimulation = async () => {
+    const simConnector = connectors.find((c) => c.id === SIM_CONNECTOR_ID);
+    if (!simConnector) return;
+    setSimStarting(true);
+    setSimError(null);
+    try {
+      if (isConnected) await disconnectAsync();
+      const burner = getOrCreateBurner();
+      await startSimSession({ address: burner.address, mode: "live" });
+      await connectAsync({ connector: simConnector });
+      router.replace(nextPath());
+    } catch (err) {
+      setSimError(
+        err instanceof SimApiError && err.status === 409
+          ? "All simulation slots are busy. Try again in a minute."
+          : err instanceof Error ? err.message : "Could not start the simulation."
+      );
+      setSimStarting(false);
+    }
   };
 
   const handleBack = () => {
@@ -165,6 +227,60 @@ export default function ConnectPage() {
                 </button>
               );
             })}
+
+            <div className="flex items-center gap-3 my-3" aria-hidden>
+              <div className="flex-1 h-px bg-[var(--border)]" />
+              <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-disabled)]">or</span>
+              <div className="flex-1 h-px bg-[var(--border)]" />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleStartSimulation}
+              disabled={!simAvailable || simStarting || isPending}
+              className="w-full flex items-center gap-4 px-4 py-3.5 rounded-[16px] border border-dashed border-[var(--border-strong)] bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed text-left"
+            >
+              <div className="w-10 h-10 rounded-[8px] bg-[var(--warning-bg)] border border-[var(--warning-border)] flex items-center justify-center shrink-0">
+                {simStarting || simHealth === null ? (
+                  <Loader2 className="w-5 h-5 text-[var(--warning)] animate-spin" strokeWidth={1.5} />
+                ) : (
+                  <FlaskConical className="w-5 h-5 text-[var(--warning)]" strokeWidth={1.5} />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-[var(--text-primary)]">
+                  Try a simulation first — no wallet needed
+                </p>
+                <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
+                  {simStarting
+                    ? "Creating your simulation wallet…"
+                    : "Fake funds on a fork of Arbitrum One. Watch the Guardian protect a position."}
+                </p>
+              </div>
+            </button>
+
+            {simHealth && !simHealth.ok && (
+              <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed px-1">
+                The simulation network is offline right now. Try the{" "}
+                <a href="/simulation" className="text-[var(--brand)] underline underline-offset-2">
+                  in-browser demo
+                </a>{" "}
+                instead, or connect a wallet and switch the dashboard to Demo mode.
+              </p>
+            )}
+
+            {simEnded && (
+              <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed px-1">
+                Your simulation session ended. Start a new one any time.
+              </p>
+            )}
+
+            {simError && (
+              <div className="flex items-start gap-2.5 px-4 py-3 rounded-[8px] bg-red-500/8 border border-red-500/15">
+                <AlertCircle className="w-4 h-4 text-red-400/70 shrink-0 mt-0.5" strokeWidth={1.5} />
+                <p className="text-[12px] text-red-400/70 leading-relaxed">{simError}</p>
+              </div>
+            )}
 
             {connectError && (
               <div className="mt-4 flex items-start gap-2.5 px-4 py-3 rounded-[8px] bg-red-500/8 border border-red-500/15">
