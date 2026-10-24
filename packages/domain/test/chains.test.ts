@@ -48,7 +48,7 @@ describe("sanity chains registry", () => {
       }
 
       if (chain.morpho) {
-        assertAddress(chain.morpho.morpho, `${chain.name} morpho.morpho`);
+        assertAddress(chain.morpho.blue, `${chain.name} morpho.blue`);
       }
 
       assertAddress(chain.guardian, `${chain.name} guardian`);
