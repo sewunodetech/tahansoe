@@ -100,6 +100,10 @@ async function main() {
   };
   process.on("SIGINT", () => void shutdown("SIGINT"));
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  // Windows: Ctrl+Break and closing the console window. A hard kill (Task Manager, TerminateProcess)
+  // cannot be caught; anvil children then outlive simnet and must be stopped by hand.
+  process.on("SIGBREAK", () => void shutdown("SIGBREAK"));
+  process.on("SIGHUP", () => void shutdown("SIGHUP"));
   process.on("exit", killAllAnvils);
 
   server.listen(env.SIM_PORT, () => log(`listening on :${env.SIM_PORT} (chainId ${env.SIM_CHAIN_ID})`));

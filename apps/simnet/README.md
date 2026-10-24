@@ -54,6 +54,8 @@ curl -X POST -H "content-type: application/json" \
 
 **Windows:** Foundry di mesin dev terpasang di WSL, bukan di PATH Windows. Jalankan simnet di dalam WSL (Node + `~/.foundry/bin` di PATH), atau set `SIM_ANVIL_BIN`/`SIM_FORGE_BIN` ke binary Linux saat simnet berjalan di WSL/Docker. Simnet yang berjalan di Node Windows tidak bisa memanggil binary WSL secara langsung.
 
+**Mematikan simnet:** pakai Ctrl+C (SIGINT/SIGTERM/SIGBREAK/SIGHUP ditangani; semua fork anvil ikut berhenti). Kill paksa di Windows (Task Manager/`taskkill /F`) tidak bisa ditangkap, sehingga proses `anvil` tertinggal. Bersihkan dengan `Get-Process anvil | Stop-Process`. Di Docker tidak terjadi karena container berhenti bersama semua prosesnya.
+
 Test: `npm test -w @tahansoe/simnet`. Test integrasi anvil sungguhan (`test/integration.test.ts`) otomatis di-skip bila `anvil` tidak ada di PATH atau `ARB_ONE_RPC_URL` kosong.
 
 ## Environment
