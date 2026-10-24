@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Menu, X } from "lucide-react";
 
 const navLinks = [
+  { href: "#lab", label: "Try it" },
   { href: "#layers", label: "Layers" },
   { href: "#agents", label: "Agents" },
   { href: "#how", label: "How it works" },

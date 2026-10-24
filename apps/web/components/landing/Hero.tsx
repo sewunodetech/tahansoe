@@ -64,7 +64,7 @@ export function Hero() {
 
               <div className="mt-10 flex flex-wrap gap-3">
                 <Link href="/connect" className="btn-iridescent">Launch app</Link>
-                <a href="#layers" className="btn-ghost-soft">See the 3 layers</a>
+                <a href="#lab" className="btn-ghost-soft">Try the crash simulator</a>
               </div>
             </div>
 

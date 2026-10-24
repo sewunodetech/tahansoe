@@ -1,6 +1,6 @@
 # Status Proyek
 
-**Last updated:** 23 Oktober 2026
+**Last updated:** 24 Oktober 2026
 **Milestone aktif:** M2 (Core Risk Engine v1 / Research Layer) dan M1 (Integrasi on-chain web) — lihat [PRD §10](prd.md#10-roadmap-eksekusi)
 
 > Perbarui file ini di akhir setiap pekerjaan: pindahkan item yang selesai, tambahkan gap baru, dan tulis next step.
@@ -15,6 +15,13 @@
 - **Gateway inbound engine dihapus:** pairing, polling `getUpdates`, router/Q&A chat, bot lock, dan `gateway pair` tidak ada lagi. Q&A chat lewat Telegram ikut hilang.
 - **Web:** webhook menangani `/start` (sambutan), `/start <code>` (link/re-link), dan `/stop` (berhenti langganan). Halaman Telegram menjelaskan isi notifikasi. `npm test -w apps/web` kini menjalankan test route.
 - Dikerjakan paralel lewat Orca orchestration (worker Antigravity); konteks worker diambil dari index codebase-memory.
+
+### Landing interaktif: Position Lab — 24 Okt 2026
+- Section `#lab` tepat setelah hero (`components/landing/lab/`): scene isometrik collateral, debt, dan reserve L1/L2/L3. Pengunjung bisa menggeser harga ETH atau menjalankan "3 a.m. crash"; layer menyala berurutan dengan animasi aliran dana, dan di sampingnya ada perbandingan posisi yang sama tanpa proteksi (likuidasi + penalti).
+- Setiap objek bisa di-inspect (hover, klik, atau keyboard). Inspector menjelaskan apa objek itu, kenapa penting, dan angka live-nya (termasuk harga likuidasi). Layer bisa dimatikan atau dinyalakan dari inspector atau panel.
+- Model simulasi (`lab/model.ts`) memakai angka ilustratif (2 ETH, LT 0.83, trigger 1.30, target 1.60), bukan parameter protokol live. Disclaimer tampil di bawah section.
+- Langkah tiap layer di section Layers kini diputar berurutan saat terlihat di layar (`StepTrack`).
+- Semua ilustrasi isometrik lain (Problem, Cascade, L1/L2/L3, kedua Agent) kini bisa di-inspect lewat `illustrations/inspect.tsx` (`Inspectable` + `Hot`): hover, klik, atau keyboard memilih satu bagian, bagian lain meredup, dan kartu di bawahnya menjelaskan bagian itu. Kode kontrak di "Open by default" menjelaskan tiap baris penting (`AnnotatedCode`), dan langkah "How it works" bisa dipilih untuk melihat detailnya (`HowSteps`).
 
 ### Web, Dashboard & Kontrak
 - Landing page + dashboard (positions, history, bot, chat placeholder, settings)

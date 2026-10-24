@@ -1,12 +1,44 @@
 import Link from "next/link";
 import { Tag } from "./Tag";
-import { MiniIcon, type MiniKind } from "./illustrations/MiniIcon";
+import { HowSteps, type HowStep } from "./HowSteps";
 
-const steps: { icon: MiniKind; title: string; body: string }[] = [
-  { icon: "connect", title: "Connect", body: "Sign in with your wallet. We find your Aave position on Arbitrum." },
-  { icon: "choose", title: "Choose layers", body: "Pick your trigger and target HF, then which layers to turn on." },
-  { icon: "approve", title: "Approve", body: "Grant each layer a capped allowance. You see exactly what each one allows." },
-  { icon: "watch", title: "Sentinel watches", body: "24/7 checks, Telegram alerts, and automatic repay when needed." },
+const steps: HowStep[] = [
+  {
+    icon: "connect",
+    title: "Connect",
+    body: "Sign in with your wallet. We find your Aave position on Arbitrum.",
+    details: [
+      "Sign-In with Ethereum: one signature, no password, no email, and no transaction.",
+      "Tahansoe reads your public Aave position (collateral, debt, Health Factor). Nothing is moved.",
+    ],
+  },
+  {
+    icon: "choose",
+    title: "Choose layers",
+    body: "Pick your trigger and target HF, then which layers to turn on.",
+    details: [
+      "Trigger = when to act (for example HF 1.30). Target = where to bring HF back (for example 1.60).",
+      "Turn on any of the three layers: wallet reserve, position reserve, flash deleverage. They always run in that order.",
+    ],
+  },
+  {
+    icon: "approve",
+    title: "Approve",
+    body: "Grant each layer a capped allowance. You see exactly what each one allows.",
+    details: [
+      "Each layer is a separate token approval in your own wallet, with a cap you choose.",
+      "Funds stay in your wallet until they are needed, and only ever repay your own debt. Revoke any approval in one click.",
+    ],
+  },
+  {
+    icon: "watch",
+    title: "Sentinel watches",
+    body: "24/7 checks, Telegram alerts, and automatic repay when needed.",
+    details: [
+      "The HF Sentinel checks your position around the clock and warns you on Telegram as HF approaches your trigger.",
+      "Below the trigger, the rules run your layers in order until HF is back at target, then send you a receipt.",
+    ],
+  },
 ];
 
 export function HowItWorks() {
@@ -21,24 +53,9 @@ export function HowItWorks() {
           </h2>
         </div>
 
-        <ol className="relative mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          <div
-            aria-hidden="true"
-            className="hidden lg:block absolute top-[52px] left-[12%] right-[12%] border-t border-dashed border-[var(--border-strong)]"
-          />
-          {steps.map((s, i) => (
-            <li key={s.title} className="relative flex flex-col items-center text-center">
-              <div className="glass-surface rounded-full size-[104px] flex items-center justify-center">
-                <MiniIcon kind={s.icon} className="size-20" />
-              </div>
-              <p className="mt-5 text-[11px] font-mono text-[var(--text-tertiary)]">0{i + 1}</p>
-              <p className="mt-1 text-[16px] font-semibold uppercase tracking-[0.02em] text-[var(--text-primary)]">{s.title}</p>
-              <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--text-secondary)] max-w-[240px]">{s.body}</p>
-            </li>
-          ))}
-        </ol>
+        <HowSteps steps={steps} />
 
-        <div className="mt-14 flex justify-center">
+        <div className="mt-12 flex justify-center">
           <Link href="/connect" className="btn-iridescent">Protect my position</Link>
         </div>
       </div>
