@@ -23,6 +23,7 @@ Subcommands:
 Options:
   --rpc <url>      Arbitrum RPC URL (defaults to ARB_SEPOLIA_RPC_URL)
   --interval <sec> Loop interval in seconds (default: 60)
+  --dynamic-trigger-mode <off|dry-run|live> Dynamic trigger mode (default: from settings or dry-run)
   --json           Output results as JSON
   --help           Show this help message`;
 
@@ -50,6 +51,7 @@ export async function sentinelCommand(
         rpc: { type: "string" },
         interval: { type: "string" },
         json: { type: "boolean" },
+        "dynamic-trigger-mode": { type: "string" },
       },
       allowPositionals: true,
     });
@@ -133,9 +135,14 @@ export async function sentinelCommand(
     ? Number.parseInt(intervalArg, 10)
     : env.sentinelPollIntervalSec();
 
+  const dtModeArg = typeof parsed.values["dynamic-trigger-mode"] === "string"
+    ? (parsed.values["dynamic-trigger-mode"] as "off" | "dry-run" | "live")
+    : undefined;
+
   const worker =
     deps.worker ??
     new SentinelWorker({
+      dynamicTriggerMode: dtModeArg,
       client,
       db,
       chainId,

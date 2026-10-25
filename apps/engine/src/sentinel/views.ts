@@ -243,3 +243,56 @@ export function protectedExecutionAlert(opts: {
 
   return lines.join("\n");
 }
+
+
+export function dynamicTriggerAlert(opts: {
+  user: string;
+  fromHf: number;
+  toHf: number;
+  regime?: string;
+  explanation?: string;
+  protocol?: string;
+  symbol?: string;
+  debtAsset?: string;
+  marketId?: string;
+  positionKey?: string;
+  lang?: Lang;
+}): string {
+  const lang = opts.lang ?? "en";
+  const userShort = `${opts.user.slice(0, 6)}…${opts.user.slice(-4)}`;
+  const protocolName = formatProtocolName(opts.protocol);
+  const posDisplay = formatPositionDisplay({
+    userShort,
+    symbol: opts.symbol,
+    debtAsset: opts.debtAsset,
+    marketId: opts.marketId,
+  });
+
+  const lines = [
+    `🛡️ <b>${L(lang, "TRIGGER DINAMIS DIPERBARUI", "DYNAMIC TRIGGER UPDATED")}</b>`,
+  ];
+
+  if (protocolName) {
+    lines.push(`<b>${L(lang, "Protokol", "Protocol")}:</b> <code>${escapeHtml(protocolName)}</code>`);
+  }
+
+  const direction = opts.toHf >= opts.fromHf
+    ? L(lang, "dinaikkan", "raised")
+    : L(lang, "disesuaikan", "adjusted");
+
+  lines.push(
+    `<b>${L(lang, "Posisi", "Position")}:</b> ${posDisplay}`,
+    `<b>Trigger:</b> ${direction} <code>${opts.fromHf.toFixed(2)}</code> ➔ <code>${opts.toHf.toFixed(2)}</code>`,
+  );
+
+  if (opts.regime) {
+    lines.push(`<b>Regime:</b> <code>${escapeHtml(opts.regime)}</code>`);
+  }
+
+  if (opts.explanation) {
+    lines.push(`<b>${L(lang, "Alasan", "Reason")}:</b> ${escapeHtml(opts.explanation)}`);
+  }
+
+  lines.push("", footer(lang));
+  return lines.join("\n");
+}

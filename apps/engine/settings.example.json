@@ -26,5 +26,8 @@
   "modelPrices": {},
   "estimate": {
     "runsPerDay": 12
+  },
+  "dynamicTrigger": {
+    "mode": "dry-run"
   }
 }

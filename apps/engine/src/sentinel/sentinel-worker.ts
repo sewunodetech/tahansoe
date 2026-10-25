@@ -51,7 +51,9 @@ import {
   type StrategyLibrary,
 } from "../strategy/index.ts";
 import { loadSettingsSync } from "../settings/settings.ts";
-import type { KeeperExecutionResult, SentinelTickResult, UserPositionSnapshot, PolicyRecord } from "./types.ts";
+import { env } from "../config.ts";
+import type { KeeperExecutionResult, SentinelTickResult, UserPositionSnapshot, PolicyRecord, DynamicTriggerDecision } from "./types.ts";
+import { DynamicTriggerService, type DynamicTriggerMode } from "./dynamic-trigger.ts";
 
 export const DEFAULT_SENTINEL_INTERVAL_SEC = 60;
 
@@ -103,6 +105,12 @@ export interface SentinelWorkerOptions {
   multicallLoader?: (
     policies: Array<{ user: Address; guardianAddress: Address; debtAsset: Address; guardianVersion?: number }>,
   ) => Promise<MulticallBatchResult[]>;
+  /** Mode Dynamic Trigger: "off" | "dry-run" | "live" (default: dari settings atau "dry-run") */
+  dynamicTriggerMode?: DynamicTriggerMode;
+  /** Private key risk agent untuk menandatangani setDynamicTrigger (opsional, fallback ke env) */
+  riskAgentPrivateKey?: string;
+  /** Custom dynamic trigger service (opsional untuk testing) */
+  dynamicTriggerService?: DynamicTriggerService;
 }
 
 export class SentinelWorker {
@@ -130,6 +138,7 @@ export class SentinelWorker {
   private readonly positionReserveLowAlerted = new Map<string, boolean>();
 
   readonly protectionAgentMode: "off" | "shadow";
+  readonly dynamicTriggerService: DynamicTriggerService;
   private readonly protectionDecider: ProtectionDecider;
 
   constructor(options: SentinelWorkerOptions = {}) {
@@ -180,6 +189,25 @@ export class SentinelWorker {
       warn: (m) => console.warn(`[sentinel] ${m}`),
       error: (m) => console.error(`[sentinel] ${m}`),
     };
+
+        const settingsResult = loadSettingsSync();
+    const dtMode =
+      options.dynamicTriggerMode ??
+      settingsResult.settings.dynamicTrigger?.mode ??
+      "dry-run";
+
+    this.dynamicTriggerService =
+      options.dynamicTriggerService ??
+      new DynamicTriggerService({
+        client: this.client,
+        chainId: this.chainId,
+        db: this.db,
+        mode: dtMode,
+        riskAgentPrivateKey: options.riskAgentPrivateKey ?? env.riskAgentPrivateKey(),
+        logger: this.logger,
+        now: () => this.clock.now(),
+        channelAdapter: this.channelAdapter,
+      });
 
     this.exitFn = options.exitFn ?? ((code) => process.exit(code));
   }
@@ -268,6 +296,7 @@ export class SentinelWorker {
         transitions: [],
         alertsSent: 0,
         keeperActions: [],
+        dynamicTriggerActions: [],
       };
     }
 
@@ -303,6 +332,7 @@ export class SentinelWorker {
           transitions: [],
           alertsSent: 0,
           keeperActions: [],
+        dynamicTriggerActions: [],
         };
       }
 
@@ -583,12 +613,22 @@ export class SentinelWorker {
         }
       }
 
+      // 9. Evaluasi Dynamic Trigger (ADR 0002) untuk setiap policy v4 aktif
+      const dynamicTriggerActions: DynamicTriggerDecision[] = [];
+      try {
+        const dtResults = await this.dynamicTriggerService.evaluateAll(activePolicies);
+        dynamicTriggerActions.push(...dtResults);
+      } catch (err) {
+        this.logger.error(`[sentinel] error pada evaluasi dynamic trigger: ${err}`);
+      }
+
       return {
         syncedLogs,
         checkedUsers: activePolicies.length,
         transitions,
         alertsSent,
         keeperActions,
+        dynamicTriggerActions,
       };
     } finally {
       this.isExecuting = false;
