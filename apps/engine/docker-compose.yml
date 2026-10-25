@@ -1,5 +1,5 @@
-# Deploy engine di VPS: satu container `tahansoe start` (research, sampler, fusion,
-# settle, broadcaster). Jalankan dari folder ini:
+# Deploy engine di VPS: container `tahansoe start` (research, sampler, fusion,
+# settle, broadcaster) dan container `tahansoe sentinel run` (sentinel, keeper, dynamic trigger). Jalankan dari folder ini:
 #   docker compose up -d --build
 # Butuh di samping file ini: .env (secret, di-gitignore) dan config/settings.json.
 services:
@@ -19,6 +19,28 @@ services:
       - engine-data:/app/apps/engine/.data
       - engine-out:/app/apps/engine/out
     stop_grace_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # HF sentinel + keeper + dynamic trigger writer (Arbitrum Sepolia). Mode dynamic trigger dari
+  # settings.json (`dynamicTrigger.mode`); `live` butuh RISK_AGENT_PRIVATE_KEY di .env.
+  sentinel:
+    image: tahansoe-engine:latest
+    container_name: tahansoe-sentinel
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      TAHANSOE_SETTINGS: /app/config/settings.json
+    command: ["npx", "tsx", "src/cli/tahansoe.ts", "sentinel", "run"]
+    volumes:
+      - ./config:/app/config
+    depends_on:
+      - engine
+    stop_grace_period: 20s
     logging:
       driver: json-file
       options:
