@@ -64,3 +64,6 @@ import "./broadcast/api.test.ts";
 import "./broadcast/queue.test.ts";
 import "./broadcast/views.test.ts";
 import "./broadcast/broadcast.test.ts";
+import "./backtest/deciders.test.ts";
+import "./backtest/protection-replay.test.ts";
+import "./backtest/gate.test.ts";

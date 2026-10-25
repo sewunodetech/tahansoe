@@ -1,0 +1,977 @@
+{
+  "id": "may-2022-luna-ust",
+  "title": "May 2022 Terra/LUNA Collapse",
+  "description": "Algorithmic stablecoin UST lost parity with USD, triggering runaway LUNA minting, massive crypto market liquidations, and broad contagion.",
+  "source": "binance:ETHUSDT",
+  "normalized": false,
+  "points": [
+    {
+      "t": 1651968000,
+      "price": 2618.29,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1651971600,
+      "price": 2595.49,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1651975200,
+      "price": 2549.5,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1651978800,
+      "price": 2545.08,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1651982400,
+      "price": 2536.17,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1651986000,
+      "price": 2537.24,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1651989600,
+      "price": 2560.75,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1651993200,
+      "price": 2556.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1651996800,
+      "price": 2562.96,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652000400,
+      "price": 2550.93,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652004000,
+      "price": 2567.25,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652007600,
+      "price": 2568.09,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652011200,
+      "price": 2556.36,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652014800,
+      "price": 2524,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652018400,
+      "price": 2525.68,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652022000,
+      "price": 2517,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652025600,
+      "price": 2521.4,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652029200,
+      "price": 2529.48,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652032800,
+      "price": 2562.08,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652036400,
+      "price": 2562.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652040000,
+      "price": 2540.64,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652043600,
+      "price": 2555.57,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652047200,
+      "price": 2539.46,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652050800,
+      "price": 2519.71,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652054400,
+      "price": 2524.38,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652058000,
+      "price": 2505.82,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652061600,
+      "price": 2442.25,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652065200,
+      "price": 2457.56,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652068800,
+      "price": 2461.41,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652072400,
+      "price": 2443.68,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652076000,
+      "price": 2454.18,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652079600,
+      "price": 2447.86,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652083200,
+      "price": 2463.95,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652086800,
+      "price": 2445.66,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652090400,
+      "price": 2377.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652094000,
+      "price": 2406.03,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652097600,
+      "price": 2394.08,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652101200,
+      "price": 2413.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652104800,
+      "price": 2384.58,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652108400,
+      "price": 2381.87,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652112000,
+      "price": 2328.19,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652115600,
+      "price": 2299.87,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652119200,
+      "price": 2285.04,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652122800,
+      "price": 2270.68,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652126400,
+      "price": 2291,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652130000,
+      "price": 2276.25,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652133600,
+      "price": 2293.37,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652137200,
+      "price": 2228.55,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652140800,
+      "price": 2288.28,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652144400,
+      "price": 2310.89,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652148000,
+      "price": 2322.64,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652151600,
+      "price": 2300.79,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652155200,
+      "price": 2344.64,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652158800,
+      "price": 2405,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652162400,
+      "price": 2398.14,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652166000,
+      "price": 2373.68,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652169600,
+      "price": 2385.7,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652173200,
+      "price": 2374.01,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652176800,
+      "price": 2370.5,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652180400,
+      "price": 2402,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652184000,
+      "price": 2444.98,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652187600,
+      "price": 2425.76,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652191200,
+      "price": 2357.89,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652194800,
+      "price": 2361.99,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652198400,
+      "price": 2353.52,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652202000,
+      "price": 2400.38,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652205600,
+      "price": 2377.47,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652209200,
+      "price": 2354.28,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652212800,
+      "price": 2328.64,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652216400,
+      "price": 2263.91,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652220000,
+      "price": 2320.16,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652223600,
+      "price": 2342.05,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652227200,
+      "price": 2355.37,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652230800,
+      "price": 2337.13,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652234400,
+      "price": 2377.28,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652238000,
+      "price": 2360.53,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652241600,
+      "price": 2352.9,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652245200,
+      "price": 2380.93,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652248800,
+      "price": 2293.85,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652252400,
+      "price": 2315.13,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652256000,
+      "price": 2377.98,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652259600,
+      "price": 2436.07,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652263200,
+      "price": 2433,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652266800,
+      "price": 2410.22,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652270400,
+      "price": 2174.94,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652274000,
+      "price": 2341.08,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652277600,
+      "price": 2349.05,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652281200,
+      "price": 2264.53,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652284800,
+      "price": 2209.3,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652288400,
+      "price": 2186.05,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652292000,
+      "price": 2178.31,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652295600,
+      "price": 2117.42,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652299200,
+      "price": 2042.84,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652302800,
+      "price": 2097.36,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652306400,
+      "price": 2083.73,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652310000,
+      "price": 2084.99,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652313600,
+      "price": 2152.25,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652317200,
+      "price": 2104.86,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652320800,
+      "price": 2049.71,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652324400,
+      "price": 1971.56,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652328000,
+      "price": 1902.48,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652331600,
+      "price": 1835.29,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652335200,
+      "price": 1846.18,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652338800,
+      "price": 1916.3,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652342400,
+      "price": 1914.68,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652346000,
+      "price": 1916.09,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652349600,
+      "price": 1979.36,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652353200,
+      "price": 1952.76,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652356800,
+      "price": 1959.35,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652360400,
+      "price": 1909.12,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652364000,
+      "price": 2026.04,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652367600,
+      "price": 1968.23,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652371200,
+      "price": 2026.31,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652374800,
+      "price": 1934.82,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652378400,
+      "price": 1910.62,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652382000,
+      "price": 1945.28,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652385600,
+      "price": 1930.49,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652389200,
+      "price": 1914.44,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652392800,
+      "price": 1924.18,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652396400,
+      "price": 1960.22,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    },
+    {
+      "t": 1652400000,
+      "price": 2013.13,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:may-2022-luna-ust"
+      ]
+    }
+  ]
+}
