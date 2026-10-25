@@ -9,8 +9,18 @@ export function isSimnetMock(): boolean {
   return process.env.SIMNET_MOCK === "1" && process.env.NODE_ENV !== "production";
 }
 
+/**
+ * Public simnet on the engine VPS (Caddy + Let's Encrypt). Used when SIMNET_URL is not set; that
+ * simnet runs with SIM_PUBLIC_API=1, so no key is needed. SIMNET_URL + SIMNET_API_KEY still win.
+ */
+export const PUBLIC_SIMNET_URL = "https://119-28-119-206.sslip.io";
+
+function simnetBase(): string {
+  return (process.env.SIMNET_URL || PUBLIC_SIMNET_URL).replace(/\/$/, "");
+}
+
 export function isSimnetConfigured(): boolean {
-  return isSimnetMock() || Boolean(process.env.SIMNET_URL && process.env.SIMNET_API_KEY);
+  return isSimnetMock() || Boolean(simnetBase());
 }
 
 export interface SimnetResponse<T> {
@@ -21,17 +31,17 @@ export interface SimnetResponse<T> {
 /** Calls simnet and returns status + parsed JSON. Network errors surface as status 503. */
 export async function simnetFetch<T>(
   path: string,
-  init: { method?: "GET" | "POST" | "DELETE"; body?: unknown; timeoutMs?: number } = {}
+  init: { method?: "GET" | "POST" | "DELETE"; body?: unknown; timeoutMs?: number; clientIp?: string } = {}
 ): Promise<SimnetResponse<T>> {
-  const base = process.env.SIMNET_URL?.replace(/\/$/, "");
+  const base = simnetBase();
   const key = process.env.SIMNET_API_KEY;
-  if (!base || !key) return { status: 503, body: { error: "simnet_not_configured" } as T };
 
   try {
     const res = await fetch(`${base}${path}`, {
       method: init.method ?? "GET",
       headers: {
-        "x-simnet-key": key,
+        ...(key ? { "x-simnet-key": key } : {}),
+        ...(init.clientIp ? { "x-sim-client-ip": init.clientIp } : {}),
         ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
       },
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,

@@ -9,7 +9,8 @@ import { ARBITRUM_ONE_SIM, type ChainConfig } from "@tahansoe/domain";
 export const SIM_CHAIN_ID = Number(process.env.NEXT_PUBLIC_SIM_CHAIN_ID ?? 4216199) || 4216199;
 
 /** Public RPC proxy base; the per-session fork path is appended (see lib/sim/rpc.ts). */
-export const SIM_RPC_BASE = (process.env.NEXT_PUBLIC_SIM_RPC_BASE ?? "").replace(/\/$/, "");
+/** Public simnet RPC proxy fallback (same host as PUBLIC_SIMNET_URL in simnet.server.ts). */
+export const SIM_RPC_BASE = (process.env.NEXT_PUBLIC_SIM_RPC_BASE || "https://119-28-119-206.sslip.io").replace(/\/$/, "");
 
 export const simChain = defineChain({
   id: SIM_CHAIN_ID,

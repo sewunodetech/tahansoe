@@ -192,3 +192,54 @@ describe("simnet HTTP API", () => {
     assert.equal(huge.status, 413);
   });
 });
+
+describe("simnet HTTP API, public mode (SIM_PUBLIC_API=1)", () => {
+  let base = "";
+  let close: () => Promise<void>;
+  let t = 1_000_000;
+
+  before(async () => {
+    let sessions: SessionService | undefined;
+    const forks = new ForkManager(async () => fakeRuntime(), {
+      maxPrivate: 1,
+      ttlMs: 15 * 60_000,
+      onForkGone: (id) => sessions?.forkGone(id),
+    });
+    sessions = new SessionService(forks, scenarios, 4216199);
+    const server = createSimnetServer({
+      apiKey: KEY,
+      sessions,
+      forks,
+      publicApi: true,
+      clock: () => t,
+      forwardToFork: async (_url, reqs) => reqs.map((r) => ({ jsonrpc: "2.0" as const, id: r.id, result: "0x10" })),
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    close = () => new Promise((r) => server.close(() => r()));
+  });
+  after(() => close());
+
+  const post = (client: string) =>
+    fetch(base + "/v1/sessions", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-sim-client-ip": client },
+      body: JSON.stringify({ address: USER, mode: "live" }),
+    });
+
+  it("accepts the session API without a key", async () => {
+    const res = await fetch(base + "/v1/health");
+    assert.equal(res.status, 200);
+  });
+
+  it("caps session creation per client and frees the cap after the window", async () => {
+    const { PUBLIC_SESSION_LIMIT } = await import("../src/http.ts");
+    for (let i = 0; i < PUBLIC_SESSION_LIMIT.max; i++) {
+      assert.notEqual((await post("198.51.100.7")).status, 429);
+    }
+    assert.equal((await post("198.51.100.7")).status, 429);
+    assert.notEqual((await post("198.51.100.8")).status, 429, "other visitors are not affected");
+    t += PUBLIC_SESSION_LIMIT.windowMs + 1;
+    assert.notEqual((await post("198.51.100.7")).status, 429);
+  });
+});

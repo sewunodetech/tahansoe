@@ -49,6 +49,8 @@ export interface ServerDeps {
   forwardToFork(url: string, reqs: JsonRpcRequest[]): Promise<JsonRpcResponse[]>;
   /** Trust `cf-connecting-ip` / `x-forwarded-for` (only behind Cloudflare Tunnel or a reverse proxy). */
   trustProxy?: boolean;
+  /** Accept the session API without `x-simnet-key`, with a per-client cap on session creation. */
+  publicApi?: boolean;
   log?: (msg: string, extra?: unknown) => void;
   clock?: () => number;
 }
@@ -103,8 +105,26 @@ const CORS = {
   "access-control-max-age": "86400",
 };
 
+/** Public mode: max session creations per client in a sliding window. */
+export const PUBLIC_SESSION_LIMIT = { max: 10, windowMs: 10 * 60_000 } as const;
+
 export function createSimnetServer(deps: ServerDeps): Server {
   const limiter = new RateLimiter(LIMITS.rpcRatePerSec, deps.clock);
+  const publicSessionLog = new Map<string, number[]>();
+  const now = () => (deps.clock ? deps.clock() : Date.now());
+
+  /** True when this client may create another session in public mode. */
+  function takePublicSession(client: string): boolean {
+    const t = now();
+    const recent = (publicSessionLog.get(client) ?? []).filter((at) => t - at < PUBLIC_SESSION_LIMIT.windowMs);
+    if (recent.length >= PUBLIC_SESSION_LIMIT.max) {
+      publicSessionLog.set(client, recent);
+      return false;
+    }
+    recent.push(t);
+    publicSessionLog.set(client, recent);
+    return true;
+  }
   const log = deps.log ?? (() => {});
 
   async function handleRpc(req: IncomingMessage, res: ServerResponse, forkId: string) {
@@ -148,11 +168,21 @@ export function createSimnetServer(deps: ServerDeps): Server {
 
   async function handleApi(req: IncomingMessage, res: ServerResponse, parts: string[]) {
     const key = req.headers["x-simnet-key"];
-    if (!keysMatch(typeof key === "string" ? key : undefined, deps.apiKey)) {
+    const authenticated = keysMatch(typeof key === "string" ? key : undefined, deps.apiKey);
+    if (!authenticated && !deps.publicApi) {
       return send(res, 401, { error: "unauthorized" });
     }
     const method = req.method ?? "GET";
     const [resource, id, action] = parts;
+
+    if (!authenticated && resource === "sessions" && parts.length === 1 && method === "POST") {
+      // The web server forwards the visitor's IP; direct callers fall back to their own address.
+      const forwarded = req.headers["x-sim-client-ip"];
+      const client = typeof forwarded === "string" && forwarded ? forwarded : clientIp(req, deps.trustProxy ?? false);
+      if (!takePublicSession(client)) {
+        return send(res, 429, { error: "rate_limited", retryAfterSec: PUBLIC_SESSION_LIMIT.windowMs / 1000 });
+      }
+    }
 
     if (resource === "health" && parts.length === 1 && method === "GET") {
       return send(res, 200, { ok: true, forks: deps.forks.counts() });

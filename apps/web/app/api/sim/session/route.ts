@@ -76,6 +76,8 @@ export async function POST(req: NextRequest) {
       body: { address, mode, ...(scenario ? { scenario } : {}) },
       // A private fork boots anvil and deploys the contracts: about 15–20 s, slower on a cold RPC.
       timeoutMs: SESSION_CREATE_TIMEOUT_MS,
+      // The public simnet caps session creation per visitor, not per Vercel egress IP.
+      clientIp: clientIp(req.headers),
     });
     if (status === 409) {
       return NextResponse.json(
