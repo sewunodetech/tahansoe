@@ -40,7 +40,9 @@ function resolveUriToHttp(uri: string): string {
 }
 
 export function useAgentIdentity(customAgentId: bigint = DEFAULT_AGENT_ID) {
-  const publicClient = usePublicClient();
+  // Always read the registry on the live chain, never the wallet's current chain (the wagmi
+  // default is Arbitrum One, where the Sepolia registry address has no code).
+  const publicClient = usePublicClient({ chainId: LIVE_CHAIN_CONFIG.chainId });
   const [state, setState] = useState<AgentIdentityState>(INITIAL_STATE);
 
   const fetchIdentity = useCallback(async () => {
@@ -63,30 +65,15 @@ export function useAgentIdentity(customAgentId: bigint = DEFAULT_AGENT_ID) {
     try {
       // 1. Read Agent Identity from Identity Registry
       let owner: Address;
-      let agentWallet: Address;
-      let agentURI: string;
 
+      // Only ownerOf decides registration; wallet and URI are optional extras.
       try {
-        [owner, agentWallet, agentURI] = await Promise.all([
-          publicClient.readContract({
-            address: identityAddress,
-            abi: identityRegistryAbi,
-            functionName: "ownerOf",
-            args: [customAgentId],
-          }),
-          publicClient.readContract({
-            address: identityAddress,
-            abi: identityRegistryAbi,
-            functionName: "getAgentWallet",
-            args: [customAgentId],
-          }),
-          publicClient.readContract({
-            address: identityAddress,
-            abi: identityRegistryAbi,
-            functionName: "tokenURI",
-            args: [customAgentId],
-          }),
-        ]);
+        owner = await publicClient.readContract({
+          address: identityAddress,
+          abi: identityRegistryAbi,
+          functionName: "ownerOf",
+          args: [customAgentId],
+        });
       } catch {
         // Agent is not minted / registered yet
         setState({
@@ -97,6 +84,24 @@ export function useAgentIdentity(customAgentId: bigint = DEFAULT_AGENT_ID) {
         });
         return;
       }
+      const [agentWallet, agentURI] = await Promise.all([
+        publicClient
+          .readContract({
+            address: identityAddress,
+            abi: identityRegistryAbi,
+            functionName: "getAgentWallet",
+            args: [customAgentId],
+          })
+          .catch(() => owner),
+        publicClient
+          .readContract({
+            address: identityAddress,
+            abi: identityRegistryAbi,
+            functionName: "tokenURI",
+            args: [customAgentId],
+          })
+          .catch(() => ""),
+      ]);
 
       // 2. Fetch Registration Metadata File
       let metadata: AgentRegistrationFile | null = null;
