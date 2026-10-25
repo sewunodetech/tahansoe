@@ -17,7 +17,7 @@ function shortenAddress(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-export function AgentCard({ agentId = 1n, className }: AgentCardProps) {
+export function AgentCard({ agentId = LIVE_CHAIN_CONFIG.erc8004?.agentId ?? 0n, className }: AgentCardProps) {
   const {
     loading,
     registered,

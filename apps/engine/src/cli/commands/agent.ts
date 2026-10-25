@@ -156,7 +156,7 @@ export async function agentIdentityCommand(
   const isJson = Boolean(parsed.values.json);
 
   const agentIdStr = asString(parsed.values["agent-id"]);
-  const agentId = BigInt(agentIdStr || "1");
+  const agentId = agentIdStr ? BigInt(agentIdStr) : (chainConfig.erc8004?.agentId ?? 0n);
 
   switch (subcommand) {
     case "show": {

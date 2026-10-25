@@ -130,7 +130,7 @@ Trust has to be earned with evidence, not promised. This is what exists today an
   - Liquidation counts match on-chain data; for example, 189 wallets were liquidated during the USDC depeg window.
   - Historical HF reconstruction is still being built, so no playbook from it is used yet.
 - **Shadow mode:** the agent records every plan it *would* make in `protection_plans` without sending transactions, so its decisions can be audited before it is allowed to act.
-- **ERC-8004 identity:** the agent registers in the [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) Identity Registry, and settlement outcomes feed its public Reputation Registry. Reputation only counts feedback from addresses that actually had a policy with us (a Sybil filter).
+- **ERC-8004 identity:** the agent is registered in the [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) Identity Registry on Arbitrum Sepolia as **agentId 296** ([registration tx](https://sepolia.arbiscan.io/tx/0xf99308fd3c7f337029cddcb9585a47bb676943f19a51b552b907597f49030564), [registration file](https://www.tahansoe.xyz/.well-known/agent-registration.json)). Settlement outcomes will feed its public Reputation Registry. Reputation only counts feedback from addresses that actually had a policy with us (a Sybil filter).
 
 ---
 
@@ -188,7 +188,7 @@ Key decisions are recorded as ADRs in [`docs/decisions/`](docs/decisions/), for 
 | Aave V3 PoolAddressesProvider | `0xB25a5D144626a0D488e52AE717A051a2E9997076` | `0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb` |
 | Aave V3 Pool | `0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff` | `0x794a61358D6845594F94dc1DB02A252b5b4814aD` |
 | Morpho Blue | n/a | `0x6c247b1F6182318877311737BaC0844bAa518F5e` |
-| ERC-8004 Identity Registry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
+| ERC-8004 Identity Registry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` (Tahansoe agentId **296**) | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
 | ERC-8004 Reputation Registry | `0x8004B663056A597Dffe9eCcC1965A193B7388713` | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
 
 All addresses live in the chain registry ([`packages/domain/src/chains.ts`](packages/domain/src/chains.ts)); nothing is hardcoded in app code.
