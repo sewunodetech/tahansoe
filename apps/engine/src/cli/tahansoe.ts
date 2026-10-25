@@ -33,6 +33,7 @@ const COMMANDS = [
   ["broadcast", "Broadcast risk digest and proactive alerts (digest, once)"],
   ["strategy", "Protection strategy management and survivor miner (mine, list-windows)"],
   ["backtest", "Run protection backtest harnesses (e.g. protection)"],
+  ["agent", "Protection Agent ERC-8004 identity & reputation (show, prepare-register, prepare-feedback)"],
 ] as const;
 
 const TOP_HELP = `Usage: tahansoe <command> [options]
@@ -220,6 +221,10 @@ export async function main(argv: string[]): Promise<number> {
     case "backtest": {
       const { backtestCommand } = await import("./commands/backtest.ts");
       return backtestCommand(rest);
+    }
+    case "agent": {
+      const { agentCommand } = await import("./commands/agent.ts");
+      return agentCommand(rest);
     }
     default:
       process.stderr.write(`perintah tidak dikenal: ${cmd}\n\n${TOP_HELP}\n`);

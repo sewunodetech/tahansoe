@@ -68,3 +68,5 @@ import "./strategy/miner.test.ts";
 import "./backtest/deciders.test.ts";
 import "./backtest/protection-replay.test.ts";
 import "./backtest/gate.test.ts";
+import "./erc8004/erc8004.test.ts";
+import "./erc8004/cli.test.ts";

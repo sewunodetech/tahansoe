@@ -1,0 +1,36 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Tahansoe Protection Agent",
+  "description": "Autonomous non-custodial risk agent protecting on-chain borrow positions from liquidation",
+  "image": "https://tahansoe.xyz/brand/agent-avatar.png",
+  "services": [
+    {
+      "name": "web",
+      "endpoint": "https://tahansoe.xyz",
+      "version": "1.0.0"
+    },
+    {
+      "name": "scorecard",
+      "endpoint": "https://tahansoe.xyz/scorecard",
+      "version": "1.0.0"
+    }
+  ],
+  "x402Support": false,
+  "active": true,
+  "supportedTrust": [
+    "reputation"
+  ],
+  "strategyVersion": "pp-2026.11.1",
+  "supportedGuardians": [
+    {
+      "version": 1,
+      "address": "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E",
+      "protocol": "aave-v3"
+    },
+    {
+      "version": 4,
+      "address": "0xa7Bbab6366a723e17cd2f220D708757e449571b4",
+      "protocol": "aave-v3"
+    }
+  ]
+}
