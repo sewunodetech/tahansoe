@@ -65,6 +65,8 @@ export const env = {
     optionalEnv("ARB_SEPOLIA_RPC_URL", optionalEnv("ARBITRUM_SEPOLIA_RPC_URL", "")),
   /** Private key keeper EOA (0x...). KOSONG = dry-run mode (I8: server-only, tidak pernah di-log). */
   keeperPrivateKey: () => optionalEnv("KEEPER_PRIVATE_KEY", ""),
+  /** Private key risk agent EOA (0x...) untuk setDynamicTrigger (ADR 0002). KOSONG = dry-run mode. */
+  riskAgentPrivateKey: () => optionalEnv("RISK_AGENT_PRIVATE_KEY", ""),
   /** Interval polling sentinel loop (detik), default 60s. */
   sentinelPollIntervalSec: () => positiveInt("SENTINEL_POLL_INTERVAL_SEC", 60),
 

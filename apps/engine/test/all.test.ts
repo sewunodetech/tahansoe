@@ -75,3 +75,4 @@ import "./strategy/library.test.ts";
 import "./strategy/agent.test.ts";
 import "./sentinel/shadow.test.ts";
 import "./cli/agent-cli.test.ts";
+import "./sentinel/dynamic-trigger.test.ts";

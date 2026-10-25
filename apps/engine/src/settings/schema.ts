@@ -70,6 +70,15 @@ export const protectionAgentSchema = z
 
 export type ProtectionAgentSettings = z.infer<typeof protectionAgentSchema>;
 
+/** Pengaturan Dynamic Trigger (spec ADR 0002). */
+export const dynamicTriggerSchema = z
+  .object({
+    mode: z.enum(["off", "dry-run", "live"]).default("dry-run"),
+  })
+  .strict();
+
+export type DynamicTriggerSettings = z.infer<typeof dynamicTriggerSchema>;
+
 /** Skema utama settings.json (version 2). */
 export const settingsSchema = z
   .object({
@@ -83,6 +92,7 @@ export const settingsSchema = z
     /** Pengaturan antarmuka pengguna (bahasa). */
     ui: uiSchema.optional(),
     protectionAgent: protectionAgentSchema.optional(),
+    dynamicTrigger: dynamicTriggerSchema.default({ mode: "dry-run" }),
   })
   .strict();
 
@@ -90,7 +100,13 @@ export type Settings = z.infer<typeof settingsSchema>;
 
 /** Settings kosong valid (dipakai saat file tidak ada). */
 export function emptySettings(): Settings {
-  return { version: SETTINGS_VERSION, roles: {}, modelPrices: {}, estimate: {} };
+  return {
+    version: SETTINGS_VERSION,
+    roles: {},
+    modelPrices: {},
+    estimate: {},
+    dynamicTrigger: { mode: "dry-run" },
+  };
 }
 
 /** Nama provider lama (ADR 0008) yang awalannya di-strip saat migrasi/baca. */

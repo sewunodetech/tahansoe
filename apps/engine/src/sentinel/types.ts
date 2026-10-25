@@ -59,10 +59,30 @@ export interface KeeperExecutionResult {
   error?: string;
 }
 
+export interface DynamicTriggerDecision {
+  user: Address;
+  guardianAddress: Address;
+  guardianVersion: number;
+  debtAsset: Address;
+  marketId?: string | null;
+  positionKey?: string;
+  protocol?: "aave-v3" | "morpho-blue";
+  status: "executed" | "dry_run" | "skipped" | "failed";
+  reason: string;
+  currentDynamicTrigger?: number | null;
+  targetTriggerHf?: number;
+  validUntilSec?: number;
+  regime?: string;
+  explanation?: string;
+  txHash?: string;
+  error?: string;
+}
+
 export interface SentinelTickResult {
   syncedLogs: number;
   checkedUsers: number;
   transitions: { user: Address; from: RiskZone; to: RiskZone; positionKey?: string }[];
   alertsSent: number;
   keeperActions: KeeperExecutionResult[];
+  dynamicTriggerActions?: DynamicTriggerDecision[];
 }

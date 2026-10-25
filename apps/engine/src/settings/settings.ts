@@ -173,6 +173,7 @@ export function migrateV1toV2(v1: Record<string, unknown>, warnings: string[] = 
     ...(pricingUrl ? { pricingUrl } : {}),
     modelPrices,
     estimate,
+    dynamicTrigger: { mode: "dry-run" },
   };
 }
 
