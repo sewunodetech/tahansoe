@@ -1,0 +1,977 @@
+{
+  "id": "mar-2023-svb-usdc-depeg",
+  "title": "March 2023 Silicon Valley Bank and USDC Depeg",
+  "description": "Regulators seized Silicon Valley Bank with Circle holding .3B of reserves there, causing USDC to depeg to .88 before emergency backstops restored stability.",
+  "source": "binance:ETHUSDT",
+  "normalized": false,
+  "points": [
+    {
+      "t": 1678320000,
+      "price": 1535.85,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678323600,
+      "price": 1537.82,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678327200,
+      "price": 1542.85,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678330800,
+      "price": 1541.74,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678334400,
+      "price": 1538.41,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678338000,
+      "price": 1537.76,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678341600,
+      "price": 1541.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678345200,
+      "price": 1536.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678348800,
+      "price": 1532.35,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678352400,
+      "price": 1532.29,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678356000,
+      "price": 1533.49,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678359600,
+      "price": 1535.32,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678363200,
+      "price": 1531.98,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678366800,
+      "price": 1539.04,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678370400,
+      "price": 1539.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678374000,
+      "price": 1534.04,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678377600,
+      "price": 1526.82,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678381200,
+      "price": 1529.44,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678384800,
+      "price": 1505.75,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678388400,
+      "price": 1488.27,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678392000,
+      "price": 1414.7,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678395600,
+      "price": 1432.1,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678399200,
+      "price": 1432.54,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678402800,
+      "price": 1437.32,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678406400,
+      "price": 1425.9,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678410000,
+      "price": 1429.74,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678413600,
+      "price": 1425.76,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678417200,
+      "price": 1426.34,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678420800,
+      "price": 1415.51,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678424400,
+      "price": 1420.08,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678428000,
+      "price": 1406.57,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678431600,
+      "price": 1412.27,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678435200,
+      "price": 1407.42,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678438800,
+      "price": 1396.88,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678442400,
+      "price": 1379.56,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678446000,
+      "price": 1384.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678449600,
+      "price": 1396.08,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678453200,
+      "price": 1424.63,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678456800,
+      "price": 1401.23,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678460400,
+      "price": 1417.03,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678464000,
+      "price": 1414.99,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678467600,
+      "price": 1407.41,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678471200,
+      "price": 1403.85,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678474800,
+      "price": 1423.5,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678478400,
+      "price": 1417.93,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678482000,
+      "price": 1424.61,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678485600,
+      "price": 1424.15,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678489200,
+      "price": 1426.44,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678492800,
+      "price": 1435.57,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678496400,
+      "price": 1466.24,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678500000,
+      "price": 1464.84,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678503600,
+      "price": 1458.31,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678507200,
+      "price": 1460.33,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678510800,
+      "price": 1462.17,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678514400,
+      "price": 1457.19,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678518000,
+      "price": 1416.65,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678521600,
+      "price": 1434.26,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678525200,
+      "price": 1434.86,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678528800,
+      "price": 1426.22,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678532400,
+      "price": 1427.1,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678536000,
+      "price": 1426.26,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678539600,
+      "price": 1429.29,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678543200,
+      "price": 1432.44,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678546800,
+      "price": 1428.01,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678550400,
+      "price": 1431.93,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678554000,
+      "price": 1449.43,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678557600,
+      "price": 1448.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678561200,
+      "price": 1449.22,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678564800,
+      "price": 1466.21,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678568400,
+      "price": 1465.03,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678572000,
+      "price": 1459.69,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678575600,
+      "price": 1471.97,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678579200,
+      "price": 1463.94,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678582800,
+      "price": 1463.72,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678586400,
+      "price": 1465.63,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678590000,
+      "price": 1467,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678593600,
+      "price": 1465.42,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678597200,
+      "price": 1462.98,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678600800,
+      "price": 1458.43,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678604400,
+      "price": 1459.56,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678608000,
+      "price": 1463.22,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678611600,
+      "price": 1460.39,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678615200,
+      "price": 1463.74,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678618800,
+      "price": 1465.17,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678622400,
+      "price": 1458.91,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678626000,
+      "price": 1457.93,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678629600,
+      "price": 1454.33,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678633200,
+      "price": 1455.88,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678636800,
+      "price": 1462.43,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678640400,
+      "price": 1514.98,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678644000,
+      "price": 1532.1,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678647600,
+      "price": 1512.57,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678651200,
+      "price": 1541.09,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678654800,
+      "price": 1541.12,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678658400,
+      "price": 1564.31,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678662000,
+      "price": 1580.33,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678665600,
+      "price": 1611.88,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678669200,
+      "price": 1599.23,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678672800,
+      "price": 1589.3,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678676400,
+      "price": 1588.43,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678680000,
+      "price": 1594.93,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678683600,
+      "price": 1599.48,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678687200,
+      "price": 1601.91,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678690800,
+      "price": 1606.84,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678694400,
+      "price": 1586.85,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678698000,
+      "price": 1570.76,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678701600,
+      "price": 1583.55,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678705200,
+      "price": 1581.07,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678708800,
+      "price": 1582.31,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678712400,
+      "price": 1598.37,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678716000,
+      "price": 1643.34,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678719600,
+      "price": 1664.68,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678723200,
+      "price": 1663.49,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678726800,
+      "price": 1669.36,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678730400,
+      "price": 1676.84,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678734000,
+      "price": 1677.68,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678737600,
+      "price": 1665.42,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678741200,
+      "price": 1667.28,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678744800,
+      "price": 1680.3,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678748400,
+      "price": 1673.45,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    },
+    {
+      "t": 1678752000,
+      "price": 1667.48,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:mar-2023-svb-usdc-depeg"
+      ]
+    }
+  ]
+}

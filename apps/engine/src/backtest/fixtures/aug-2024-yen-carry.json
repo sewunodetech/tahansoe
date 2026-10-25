@@ -1,0 +1,4625 @@
+{
+  "id": "aug-2024-yen-carry",
+  "title": "August 2024 Yen Carry Trade Unwind",
+  "description": "Bank of Japan interest rate hikes sparked an unwind of global yen carry trades, triggering severe risk-off crypto spot selloffs and perp liquidation cascades.",
+  "source": "binance:ETHUSDT",
+  "normalized": false,
+  "points": [
+    {
+      "t": 1722729600,
+      "price": 2905.2,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722729900,
+      "price": 2908.75,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722730200,
+      "price": 2909.53,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722730500,
+      "price": 2914.63,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722730800,
+      "price": 2903.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722731100,
+      "price": 2903.86,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722731400,
+      "price": 2906.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722731700,
+      "price": 2917.3,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722732000,
+      "price": 2916.88,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722732300,
+      "price": 2914.29,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722732600,
+      "price": 2916.14,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722732900,
+      "price": 2914.39,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722733200,
+      "price": 2906.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722733500,
+      "price": 2902.56,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722733800,
+      "price": 2902.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722734100,
+      "price": 2904.27,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722734400,
+      "price": 2902.36,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722734700,
+      "price": 2897.8,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722735000,
+      "price": 2888.64,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722735300,
+      "price": 2885.22,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722735600,
+      "price": 2889.92,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722735900,
+      "price": 2899.2,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722736200,
+      "price": 2905.55,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722736500,
+      "price": 2907.27,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722736800,
+      "price": 2907.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722737100,
+      "price": 2916.53,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722737400,
+      "price": 2912.29,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722737700,
+      "price": 2915.06,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722738000,
+      "price": 2918.21,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722738300,
+      "price": 2918.8,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722738600,
+      "price": 2931.64,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722738900,
+      "price": 2925.2,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722739200,
+      "price": 2914.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722739500,
+      "price": 2919.19,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722739800,
+      "price": 2918.31,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722740100,
+      "price": 2920.51,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722740400,
+      "price": 2916.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722740700,
+      "price": 2919.18,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722741000,
+      "price": 2912.11,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722741300,
+      "price": 2915.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722741600,
+      "price": 2911.78,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722741900,
+      "price": 2912.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722742200,
+      "price": 2910.09,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722742500,
+      "price": 2912.79,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722742800,
+      "price": 2912.54,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722743100,
+      "price": 2912.63,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722743400,
+      "price": 2915.02,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722743700,
+      "price": 2915.78,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722744000,
+      "price": 2914.78,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722744300,
+      "price": 2913.8,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722744600,
+      "price": 2914.73,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722744900,
+      "price": 2917.52,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722745200,
+      "price": 2918.79,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722745500,
+      "price": 2918,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722745800,
+      "price": 2916.79,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722746100,
+      "price": 2912,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722746400,
+      "price": 2909.31,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722746700,
+      "price": 2908,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722747000,
+      "price": 2904.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722747300,
+      "price": 2901.94,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722747600,
+      "price": 2904.93,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722747900,
+      "price": 2905.26,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722748200,
+      "price": 2907.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722748500,
+      "price": 2905.41,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722748800,
+      "price": 2906.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722749100,
+      "price": 2909.88,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722749400,
+      "price": 2912.75,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722749700,
+      "price": 2917.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722750000,
+      "price": 2913.07,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722750300,
+      "price": 2912.2,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722750600,
+      "price": 2914.72,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722750900,
+      "price": 2915.36,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722751200,
+      "price": 2915.78,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722751500,
+      "price": 2915.12,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722751800,
+      "price": 2912.11,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722752100,
+      "price": 2916.41,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722752400,
+      "price": 2916.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722752700,
+      "price": 2916.7,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722753000,
+      "price": 2917.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722753300,
+      "price": 2914.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722753600,
+      "price": 2915.58,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722753900,
+      "price": 2921.2,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722754200,
+      "price": 2921.04,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722754500,
+      "price": 2918.05,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722754800,
+      "price": 2917.38,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722755100,
+      "price": 2916.29,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722755400,
+      "price": 2915.31,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722755700,
+      "price": 2914.29,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722756000,
+      "price": 2913.79,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722756300,
+      "price": 2908.28,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722756600,
+      "price": 2901.09,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722756900,
+      "price": 2895.03,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722757200,
+      "price": 2895.18,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722757500,
+      "price": 2894.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722757800,
+      "price": 2890.97,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722758100,
+      "price": 2893.24,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722758400,
+      "price": 2887,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722758700,
+      "price": 2882.79,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722759000,
+      "price": 2885.49,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722759300,
+      "price": 2891.3,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722759600,
+      "price": 2894.74,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722759900,
+      "price": 2897.89,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722760200,
+      "price": 2903.5,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722760500,
+      "price": 2904.73,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722760800,
+      "price": 2909.77,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722761100,
+      "price": 2909.4,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722761400,
+      "price": 2911.19,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722761700,
+      "price": 2906.27,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722762000,
+      "price": 2906.2,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722762300,
+      "price": 2911.49,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722762600,
+      "price": 2914.68,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722762900,
+      "price": 2909.78,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722763200,
+      "price": 2911.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722763500,
+      "price": 2909.69,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722763800,
+      "price": 2908.96,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722764100,
+      "price": 2911.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722764400,
+      "price": 2909.76,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722764700,
+      "price": 2913.8,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722765000,
+      "price": 2914.93,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722765300,
+      "price": 2912.54,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722765600,
+      "price": 2910.2,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722765900,
+      "price": 2906.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722766200,
+      "price": 2906,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722766500,
+      "price": 2910.63,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722766800,
+      "price": 2914.4,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722767100,
+      "price": 2911.2,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722767400,
+      "price": 2910.08,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722767700,
+      "price": 2909.99,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722768000,
+      "price": 2910.28,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722768300,
+      "price": 2910.88,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722768600,
+      "price": 2912.78,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722768900,
+      "price": 2915.83,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722769200,
+      "price": 2914.68,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722769500,
+      "price": 2913.9,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722769800,
+      "price": 2911.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722770100,
+      "price": 2914.33,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722770400,
+      "price": 2917.15,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722770700,
+      "price": 2919,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722771000,
+      "price": 2916.29,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722771300,
+      "price": 2917.11,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722771600,
+      "price": 2914.41,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722771900,
+      "price": 2910.93,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722772200,
+      "price": 2912.61,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722772500,
+      "price": 2914.22,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722772800,
+      "price": 2918.21,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722773100,
+      "price": 2916.3,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722773400,
+      "price": 2912.19,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722773700,
+      "price": 2913.09,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722774000,
+      "price": 2915.41,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722774300,
+      "price": 2915.35,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722774600,
+      "price": 2918.3,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722774900,
+      "price": 2919.85,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722775200,
+      "price": 2918.66,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722775500,
+      "price": 2919.32,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722775800,
+      "price": 2922.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722776100,
+      "price": 2923.57,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722776400,
+      "price": 2918.8,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722776700,
+      "price": 2914.53,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722777000,
+      "price": 2912.61,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722777300,
+      "price": 2914.35,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722777600,
+      "price": 2916.29,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722777900,
+      "price": 2915,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722778200,
+      "price": 2916.79,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722778500,
+      "price": 2915.69,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722778800,
+      "price": 2918.67,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722779100,
+      "price": 2917.7,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722779400,
+      "price": 2916.88,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722779700,
+      "price": 2910.83,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722780000,
+      "price": 2908.33,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722780300,
+      "price": 2906.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722780600,
+      "price": 2891.4,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722780900,
+      "price": 2894.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722781200,
+      "price": 2886.72,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722781500,
+      "price": 2881.51,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722781800,
+      "price": 2868.67,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722782100,
+      "price": 2856.66,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722782400,
+      "price": 2866.11,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722782700,
+      "price": 2863.07,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722783000,
+      "price": 2871.21,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722783300,
+      "price": 2864.4,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722783600,
+      "price": 2859.81,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722783900,
+      "price": 2851.8,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722784200,
+      "price": 2850.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722784500,
+      "price": 2848.21,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722784800,
+      "price": 2845.75,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722785100,
+      "price": 2838.54,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722785400,
+      "price": 2843.11,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722785700,
+      "price": 2839.71,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722786000,
+      "price": 2845,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722786300,
+      "price": 2836.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722786600,
+      "price": 2832.52,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722786900,
+      "price": 2826.98,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722787200,
+      "price": 2817.78,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722787500,
+      "price": 2829.19,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722787800,
+      "price": 2834.56,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722788100,
+      "price": 2820.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722788400,
+      "price": 2821.43,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722788700,
+      "price": 2825.19,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722789000,
+      "price": 2830.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722789300,
+      "price": 2828.46,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722789600,
+      "price": 2832.9,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722789900,
+      "price": 2829.93,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722790200,
+      "price": 2825.06,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722790500,
+      "price": 2810.8,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722790800,
+      "price": 2809.67,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722791100,
+      "price": 2795.46,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722791400,
+      "price": 2748.45,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722791700,
+      "price": 2743.76,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722792000,
+      "price": 2751.49,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722792300,
+      "price": 2738.13,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722792600,
+      "price": 2725.63,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722792900,
+      "price": 2725.02,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722793200,
+      "price": 2652.46,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722793500,
+      "price": 2689.35,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722793800,
+      "price": 2706.8,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722794100,
+      "price": 2700.19,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722794400,
+      "price": 2697.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722794700,
+      "price": 2713.15,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722795000,
+      "price": 2694.71,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722795300,
+      "price": 2693.04,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722795600,
+      "price": 2693.79,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722795900,
+      "price": 2697.2,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722796200,
+      "price": 2700.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722796500,
+      "price": 2693.24,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722796800,
+      "price": 2704.12,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722797100,
+      "price": 2716.99,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722797400,
+      "price": 2733.42,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722797700,
+      "price": 2729.78,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722798000,
+      "price": 2717.4,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722798300,
+      "price": 2722.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722798600,
+      "price": 2732.67,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722798900,
+      "price": 2744.99,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722799200,
+      "price": 2758.63,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722799500,
+      "price": 2760.7,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722799800,
+      "price": 2741.58,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722800100,
+      "price": 2743.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722800400,
+      "price": 2753.71,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722800700,
+      "price": 2751.4,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722801000,
+      "price": 2765,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722801300,
+      "price": 2757.55,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722801600,
+      "price": 2758.47,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722801900,
+      "price": 2761.34,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722802200,
+      "price": 2765.9,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722802500,
+      "price": 2758.78,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722802800,
+      "price": 2758.17,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722803100,
+      "price": 2753.78,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722803400,
+      "price": 2749.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722803700,
+      "price": 2739.3,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722804000,
+      "price": 2739,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722804300,
+      "price": 2750.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722804600,
+      "price": 2749.17,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722804900,
+      "price": 2752.42,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722805200,
+      "price": 2746.99,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722805500,
+      "price": 2746.03,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722805800,
+      "price": 2746.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722806100,
+      "price": 2743.67,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722806400,
+      "price": 2742.8,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722806700,
+      "price": 2736,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722807000,
+      "price": 2731.82,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722807300,
+      "price": 2733.39,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722807600,
+      "price": 2736.85,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722807900,
+      "price": 2740.12,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722808200,
+      "price": 2731.81,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722808500,
+      "price": 2730.48,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722808800,
+      "price": 2725.12,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722809100,
+      "price": 2738.41,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722809400,
+      "price": 2741.71,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722809700,
+      "price": 2727.16,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722810000,
+      "price": 2726.61,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722810300,
+      "price": 2733.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722810600,
+      "price": 2738.14,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722810900,
+      "price": 2744,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722811200,
+      "price": 2740.32,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722811500,
+      "price": 2730,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722811800,
+      "price": 2724.36,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722812100,
+      "price": 2722.17,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722812400,
+      "price": 2719.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722812700,
+      "price": 2712.39,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722813000,
+      "price": 2705.36,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722813300,
+      "price": 2701.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722813600,
+      "price": 2705.4,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722813900,
+      "price": 2713.19,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722814200,
+      "price": 2707.03,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722814500,
+      "price": 2704.26,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722814800,
+      "price": 2704.63,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722815100,
+      "price": 2697.38,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722815400,
+      "price": 2682.71,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722815700,
+      "price": 2688.92,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722816000,
+      "price": 2697.44,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722816300,
+      "price": 2668.1,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722816600,
+      "price": 2651.49,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722816900,
+      "price": 2682.57,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722817200,
+      "price": 2653.01,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722817500,
+      "price": 2651.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722817800,
+      "price": 2654.4,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722818100,
+      "price": 2611.52,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722818400,
+      "price": 2607,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722818700,
+      "price": 2613.05,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722819000,
+      "price": 2592.61,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722819300,
+      "price": 2526.81,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722819600,
+      "price": 2517.12,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722819900,
+      "price": 2337.01,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722820200,
+      "price": 2316.32,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722820500,
+      "price": 2339.34,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722820800,
+      "price": 2301.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722821100,
+      "price": 2323.79,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722821400,
+      "price": 2334.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722821700,
+      "price": 2357.47,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722822000,
+      "price": 2350.89,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722822300,
+      "price": 2346.5,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722822600,
+      "price": 2341,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722822900,
+      "price": 2319.25,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722823200,
+      "price": 2288.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722823500,
+      "price": 2303.1,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722823800,
+      "price": 2264.29,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722824100,
+      "price": 2237.4,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722824400,
+      "price": 2298.05,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722824700,
+      "price": 2284.53,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722825000,
+      "price": 2296.87,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722825300,
+      "price": 2272.1,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722825600,
+      "price": 2265.11,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722825900,
+      "price": 2300.3,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722826200,
+      "price": 2318.5,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722826500,
+      "price": 2334.61,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722826800,
+      "price": 2316.04,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722827100,
+      "price": 2298.24,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722827400,
+      "price": 2296.9,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722827700,
+      "price": 2306.04,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722828000,
+      "price": 2318.78,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722828300,
+      "price": 2315.8,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722828600,
+      "price": 2310.86,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722828900,
+      "price": 2321.76,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722829200,
+      "price": 2333.01,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722829500,
+      "price": 2330,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722829800,
+      "price": 2323.11,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722830100,
+      "price": 2312.72,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722830400,
+      "price": 2322.99,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722830700,
+      "price": 2346.01,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722831000,
+      "price": 2376.58,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722831300,
+      "price": 2384.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722831600,
+      "price": 2369.27,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722831900,
+      "price": 2355.13,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722832200,
+      "price": 2354.77,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722832500,
+      "price": 2337.8,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722832800,
+      "price": 2352.71,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722833100,
+      "price": 2344.5,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722833400,
+      "price": 2338,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722833700,
+      "price": 2336.8,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722834000,
+      "price": 2301.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722834300,
+      "price": 2294.71,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722834600,
+      "price": 2304.82,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722834900,
+      "price": 2298,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722835200,
+      "price": 2323.61,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722835500,
+      "price": 2345.21,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722835800,
+      "price": 2358.17,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722836100,
+      "price": 2346.24,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722836400,
+      "price": 2341.2,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722836700,
+      "price": 2338.57,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722837000,
+      "price": 2329.53,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722837300,
+      "price": 2311.7,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722837600,
+      "price": 2288.99,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722837900,
+      "price": 2289.13,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722838200,
+      "price": 2281.4,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722838500,
+      "price": 2252.57,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722838800,
+      "price": 2176.06,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722839100,
+      "price": 2202.01,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722839400,
+      "price": 2238.61,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722839700,
+      "price": 2205.62,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722840000,
+      "price": 2195.17,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722840300,
+      "price": 2243.51,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722840600,
+      "price": 2235.94,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722840900,
+      "price": 2268.21,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722841200,
+      "price": 2279.11,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722841500,
+      "price": 2288.41,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722841800,
+      "price": 2290.68,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722842100,
+      "price": 2323.66,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722842400,
+      "price": 2327.06,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722842700,
+      "price": 2342.04,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722843000,
+      "price": 2328.43,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722843300,
+      "price": 2347.4,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722843600,
+      "price": 2356.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722843900,
+      "price": 2364.12,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722844200,
+      "price": 2351.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722844500,
+      "price": 2357.55,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722844800,
+      "price": 2353.62,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722845100,
+      "price": 2329.95,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722845400,
+      "price": 2334.76,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722845700,
+      "price": 2351.26,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722846000,
+      "price": 2343.9,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722846300,
+      "price": 2323.53,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722846600,
+      "price": 2327.04,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722846900,
+      "price": 2319.92,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722847200,
+      "price": 2302.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722847500,
+      "price": 2303.52,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722847800,
+      "price": 2306.33,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722848100,
+      "price": 2325.44,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722848400,
+      "price": 2330.06,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722848700,
+      "price": 2329.08,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722849000,
+      "price": 2320.39,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722849300,
+      "price": 2328.85,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722849600,
+      "price": 2327.88,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722849900,
+      "price": 2325.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722850200,
+      "price": 2319.1,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722850500,
+      "price": 2317.73,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722850800,
+      "price": 2304.78,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722851100,
+      "price": 2283.07,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722851400,
+      "price": 2297.94,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722851700,
+      "price": 2317.64,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722852000,
+      "price": 2311.53,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722852300,
+      "price": 2288.14,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722852600,
+      "price": 2284.18,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722852900,
+      "price": 2278.72,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722853200,
+      "price": 2269.18,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722853500,
+      "price": 2263.83,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722853800,
+      "price": 2259.77,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722854100,
+      "price": 2226.09,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722854400,
+      "price": 2279.19,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722854700,
+      "price": 2282.03,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722855000,
+      "price": 2274.3,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722855300,
+      "price": 2272.78,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722855600,
+      "price": 2255.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722855900,
+      "price": 2245.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722856200,
+      "price": 2277.17,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722856500,
+      "price": 2259.49,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722856800,
+      "price": 2269.25,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722857100,
+      "price": 2235.94,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722857400,
+      "price": 2233.03,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722857700,
+      "price": 2235.33,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722858000,
+      "price": 2245.15,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722858300,
+      "price": 2267.08,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722858600,
+      "price": 2291.45,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722858900,
+      "price": 2290.57,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722859200,
+      "price": 2304.22,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722859500,
+      "price": 2284.62,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722859800,
+      "price": 2262.2,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722860100,
+      "price": 2239.11,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722860400,
+      "price": 2238.77,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722860700,
+      "price": 2234.02,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722861000,
+      "price": 2228.63,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722861300,
+      "price": 2249.23,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722861600,
+      "price": 2269.45,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722861900,
+      "price": 2264.37,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722862200,
+      "price": 2232.8,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722862500,
+      "price": 2228.21,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722862800,
+      "price": 2233.22,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722863100,
+      "price": 2240.88,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722863400,
+      "price": 2222.4,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722863700,
+      "price": 2221.47,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722864000,
+      "price": 2214.8,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722864300,
+      "price": 2189.07,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722864600,
+      "price": 2278.19,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722864900,
+      "price": 2303.4,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722865200,
+      "price": 2292.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722865500,
+      "price": 2340.19,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722865800,
+      "price": 2338.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722866100,
+      "price": 2337.78,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722866400,
+      "price": 2390.28,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722866700,
+      "price": 2359.81,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722867000,
+      "price": 2366,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722867300,
+      "price": 2399.3,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722867600,
+      "price": 2390,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722867900,
+      "price": 2359.93,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722868200,
+      "price": 2387.35,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722868500,
+      "price": 2399.86,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722868800,
+      "price": 2421.81,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722869100,
+      "price": 2402.17,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722869400,
+      "price": 2417.97,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722869700,
+      "price": 2403.57,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722870000,
+      "price": 2385.08,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722870300,
+      "price": 2412.39,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722870600,
+      "price": 2419.4,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722870900,
+      "price": 2412.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722871200,
+      "price": 2414.31,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722871500,
+      "price": 2414.42,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722871800,
+      "price": 2439.74,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722872100,
+      "price": 2444.49,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722872400,
+      "price": 2434.85,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722872700,
+      "price": 2438.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722873000,
+      "price": 2452.88,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722873300,
+      "price": 2450.8,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722873600,
+      "price": 2459.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722873900,
+      "price": 2464.69,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722874200,
+      "price": 2478.85,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722874500,
+      "price": 2479,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722874800,
+      "price": 2497.56,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722875100,
+      "price": 2514.3,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722875400,
+      "price": 2486.8,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722875700,
+      "price": 2478.39,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722876000,
+      "price": 2485.61,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722876300,
+      "price": 2470,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722876600,
+      "price": 2465.52,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722876900,
+      "price": 2453.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722877200,
+      "price": 2456.99,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722877500,
+      "price": 2437.21,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722877800,
+      "price": 2443.84,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722878100,
+      "price": 2458.97,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722878400,
+      "price": 2466.72,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722878700,
+      "price": 2454.5,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722879000,
+      "price": 2464.28,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722879300,
+      "price": 2460.4,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722879600,
+      "price": 2473.5,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722879900,
+      "price": 2487.55,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722880200,
+      "price": 2481.8,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722880500,
+      "price": 2469.62,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722880800,
+      "price": 2467.45,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722881100,
+      "price": 2465.85,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722881400,
+      "price": 2457.44,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722881700,
+      "price": 2444.21,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722882000,
+      "price": 2414.4,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722882300,
+      "price": 2419.6,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722882600,
+      "price": 2419.29,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722882900,
+      "price": 2403.83,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722883200,
+      "price": 2403.98,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722883500,
+      "price": 2397.39,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722883800,
+      "price": 2392.98,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722884100,
+      "price": 2374.41,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722884400,
+      "price": 2387.2,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722884700,
+      "price": 2381.22,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722885000,
+      "price": 2371.47,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722885300,
+      "price": 2372.61,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722885600,
+      "price": 2394.99,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722885900,
+      "price": 2397.79,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722886200,
+      "price": 2406.2,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722886500,
+      "price": 2401.56,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722886800,
+      "price": 2384.13,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722887100,
+      "price": 2381.2,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722887400,
+      "price": 2386.59,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722887700,
+      "price": 2404.9,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722888000,
+      "price": 2413.76,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722888300,
+      "price": 2436.4,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722888600,
+      "price": 2423.19,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722888900,
+      "price": 2410,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722889200,
+      "price": 2424.64,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722889500,
+      "price": 2429.54,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722889800,
+      "price": 2425.6,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722890100,
+      "price": 2411,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722890400,
+      "price": 2428.59,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722890700,
+      "price": 2418.38,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722891000,
+      "price": 2420.04,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722891300,
+      "price": 2436.87,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722891600,
+      "price": 2442.33,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722891900,
+      "price": 2433.72,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722892200,
+      "price": 2448.88,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722892500,
+      "price": 2463.21,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722892800,
+      "price": 2449.46,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722893100,
+      "price": 2439.89,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722893400,
+      "price": 2445,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722893700,
+      "price": 2442.95,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722894000,
+      "price": 2435.01,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722894300,
+      "price": 2422.44,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722894600,
+      "price": 2425.1,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722894900,
+      "price": 2428.5,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722895200,
+      "price": 2440.39,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722895500,
+      "price": 2446.26,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722895800,
+      "price": 2428.4,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722896100,
+      "price": 2439.75,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722896400,
+      "price": 2455.96,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722896700,
+      "price": 2458.8,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722897000,
+      "price": 2450.77,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722897300,
+      "price": 2459.51,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722897600,
+      "price": 2450.56,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722897900,
+      "price": 2450.79,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722898200,
+      "price": 2443.41,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722898500,
+      "price": 2452.79,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722898800,
+      "price": 2460.13,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722899100,
+      "price": 2465.5,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722899400,
+      "price": 2457.32,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722899700,
+      "price": 2451.38,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722900000,
+      "price": 2439.21,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722900300,
+      "price": 2442.58,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722900600,
+      "price": 2444.39,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722900900,
+      "price": 2446.59,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722901200,
+      "price": 2436.95,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722901500,
+      "price": 2419.1,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722901800,
+      "price": 2416.41,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722902100,
+      "price": 2419.59,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    },
+    {
+      "t": 1722902400,
+      "price": 2425.48,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:aug-2024-yen-carry"
+      ]
+    }
+  ]
+}

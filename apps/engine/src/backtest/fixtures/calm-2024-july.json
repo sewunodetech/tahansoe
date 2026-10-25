@@ -1,0 +1,593 @@
+{
+  "id": "calm-2024-july",
+  "title": "July 2024 Calm Baseline Period",
+  "description": "A 3-day quiet market period with tight rangebound ETH price movement and no geopolitical or protocol shocks, used to measure false positive actions.",
+  "source": "binance:ETHUSDT",
+  "normalized": false,
+  "points": [
+    {
+      "t": 1720569600,
+      "price": 3033.2,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720573200,
+      "price": 3059.04,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720576800,
+      "price": 3071.08,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720580400,
+      "price": 3080,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720584000,
+      "price": 3118.8,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720587600,
+      "price": 3102.3,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720591200,
+      "price": 3110.42,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720594800,
+      "price": 3097.08,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720598400,
+      "price": 3087.52,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720602000,
+      "price": 3088.22,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720605600,
+      "price": 3103.01,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720609200,
+      "price": 3102.22,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720612800,
+      "price": 3109.79,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720616400,
+      "price": 3106.25,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720620000,
+      "price": 3100.77,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720623600,
+      "price": 3122.76,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720627200,
+      "price": 3120.01,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720630800,
+      "price": 3102.8,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720634400,
+      "price": 3102,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720638000,
+      "price": 3107.03,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720641600,
+      "price": 3096.01,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720645200,
+      "price": 3096,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720648800,
+      "price": 3100.94,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720652400,
+      "price": 3101.05,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720656000,
+      "price": 3100.9,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720659600,
+      "price": 3121.79,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720663200,
+      "price": 3104.03,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720666800,
+      "price": 3077.2,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720670400,
+      "price": 3084.7,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720674000,
+      "price": 3098.22,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720677600,
+      "price": 3105.54,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720681200,
+      "price": 3118.22,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720684800,
+      "price": 3122.85,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720688400,
+      "price": 3143.79,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720692000,
+      "price": 3145,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720695600,
+      "price": 3147.04,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720699200,
+      "price": 3192.5,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720702800,
+      "price": 3180.68,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720706400,
+      "price": 3149.21,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720710000,
+      "price": 3117.95,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720713600,
+      "price": 3125.75,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720717200,
+      "price": 3131.19,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720720800,
+      "price": 3138,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720724400,
+      "price": 3107.11,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720728000,
+      "price": 3115.5,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720731600,
+      "price": 3109.76,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720735200,
+      "price": 3102.98,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720738800,
+      "price": 3099.57,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720742400,
+      "price": 3093.68,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720746000,
+      "price": 3088.51,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720749600,
+      "price": 3107.21,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720753200,
+      "price": 3085.74,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720756800,
+      "price": 3083.55,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720760400,
+      "price": 3082.72,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720764000,
+      "price": 3092.16,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720767600,
+      "price": 3072.3,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720771200,
+      "price": 3081.09,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720774800,
+      "price": 3058.47,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720778400,
+      "price": 3071.16,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720782000,
+      "price": 3070,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720785600,
+      "price": 3075.37,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720789200,
+      "price": 3119.15,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720792800,
+      "price": 3118.26,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720796400,
+      "price": 3131.34,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720800000,
+      "price": 3139,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720803600,
+      "price": 3143.3,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720807200,
+      "price": 3142.08,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720810800,
+      "price": 3116.1,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720814400,
+      "price": 3109.38,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720818000,
+      "price": 3119.56,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720821600,
+      "price": 3127.28,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720825200,
+      "price": 3133.88,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    },
+    {
+      "t": 1720828800,
+      "price": 3132.96,
+      "regime": "CALM",
+      "signalIds": [
+        "historical:calm-2024-july"
+      ]
+    }
+  ]
+}

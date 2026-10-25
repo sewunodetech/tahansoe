@@ -83,6 +83,11 @@ Plan ditolak bila: aksi tidak ada di mandat; `amount` > cap mandat per aksi atau
 - Metrik (PRD §12): likuidasi tercegah, biaya repay/deleverage tak perlu, false positive pada periode tenang, lead time.
 - Simnet (ADR 0014) dipakai untuk uji eksekusi end-to-end strategi di fork.
 - Gate rilis: strategi baru wajib ≥ strategi aktif pada likuidasi tercegah **dan** tidak lebih buruk > 10% pada biaya/false positive.
+- Implementasi harness (apps/engine/src/backtest/):
+  - Fixture tersimpan di fixtures/ mencakup 7 jendela crash PRD §6.4 (Maret 2020, Mei 2022, Juni 2022, November 2022, Maret 2023, Agustus 2024, Oktober 2025) + 1 periode tenang (Juli 2024).
+  - DeciderRegistry memuat static (Guardian v4 protect) dan dynamic (dynamic trigger ADR 0002), dapat didaftarkan decider baru.
+  - Helper passesReleaseGate(candidate, active) mengevaluasi syarat rilis secara deterministik.
+  - CLI tahansoe backtest protection [--scenario id] [--json] menjalankan evaluasi dan mencetak tabel perbandingan serta status release gate.
 
 ### 3.6 Guardian v5 (Fase B)
 

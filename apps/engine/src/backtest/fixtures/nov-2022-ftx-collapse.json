@@ -1,0 +1,977 @@
+{
+  "id": "nov-2022-ftx-collapse",
+  "title": "November 2022 FTX Collapse and Contagion",
+  "description": "Leaked balance sheets of Alameda Research triggered a run on FTX deposits, culminating in paused withdrawals, bankruptcy, and sharp crypto asset drops.",
+  "source": "binance:ETHUSDT",
+  "normalized": false,
+  "points": [
+    {
+      "t": 1667692800,
+      "price": 1629.35,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667696400,
+      "price": 1614.24,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667700000,
+      "price": 1616.53,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667703600,
+      "price": 1621.24,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667707200,
+      "price": 1619.84,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667710800,
+      "price": 1615.66,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667714400,
+      "price": 1616.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667718000,
+      "price": 1622.88,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667721600,
+      "price": 1631.46,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667725200,
+      "price": 1628.23,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667728800,
+      "price": 1628.83,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667732400,
+      "price": 1620.35,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667736000,
+      "price": 1618.36,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667739600,
+      "price": 1621.53,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667743200,
+      "price": 1626.42,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667746800,
+      "price": 1623.77,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667750400,
+      "price": 1622.09,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667754000,
+      "price": 1616.04,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667757600,
+      "price": 1610.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667761200,
+      "price": 1610.41,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667764800,
+      "price": 1611.82,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667768400,
+      "price": 1603.81,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667772000,
+      "price": 1601.82,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667775600,
+      "price": 1568.29,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667779200,
+      "price": 1573.28,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667782800,
+      "price": 1582.41,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667786400,
+      "price": 1592.69,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667790000,
+      "price": 1587.5,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667793600,
+      "price": 1587.54,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667797200,
+      "price": 1588.24,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667800800,
+      "price": 1575.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667804400,
+      "price": 1550.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667808000,
+      "price": 1568.08,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667811600,
+      "price": 1564.1,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667815200,
+      "price": 1578.54,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667818800,
+      "price": 1580,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667822400,
+      "price": 1584.51,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667826000,
+      "price": 1579.3,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667829600,
+      "price": 1572.52,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667833200,
+      "price": 1592.03,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667836800,
+      "price": 1578.2,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667840400,
+      "price": 1585.56,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667844000,
+      "price": 1588.81,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667847600,
+      "price": 1600.52,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667851200,
+      "price": 1601.64,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667854800,
+      "price": 1575.4,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667858400,
+      "price": 1559.22,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667862000,
+      "price": 1568.1,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667865600,
+      "price": 1561.56,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667869200,
+      "price": 1571.35,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667872800,
+      "price": 1538.85,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667876400,
+      "price": 1507.07,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667880000,
+      "price": 1465,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667883600,
+      "price": 1470.39,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667887200,
+      "price": 1485.16,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667890800,
+      "price": 1492,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667894400,
+      "price": 1486.57,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667898000,
+      "price": 1489.7,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667901600,
+      "price": 1479.15,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667905200,
+      "price": 1476.87,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667908800,
+      "price": 1478.89,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667912400,
+      "price": 1462.03,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667916000,
+      "price": 1444.13,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667919600,
+      "price": 1462.48,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667923200,
+      "price": 1545.82,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667926800,
+      "price": 1447.42,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667930400,
+      "price": 1346.14,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667934000,
+      "price": 1315.39,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667937600,
+      "price": 1310.57,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667941200,
+      "price": 1336.7,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667944800,
+      "price": 1318.58,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667948400,
+      "price": 1334.77,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667952000,
+      "price": 1317.5,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667955600,
+      "price": 1317.22,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667959200,
+      "price": 1295.01,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667962800,
+      "price": 1312.39,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667966400,
+      "price": 1303.99,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667970000,
+      "price": 1302.81,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667973600,
+      "price": 1294.32,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667977200,
+      "price": 1274.35,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667980800,
+      "price": 1263.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667984400,
+      "price": 1216.24,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667988000,
+      "price": 1195.02,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667991600,
+      "price": 1220.04,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667995200,
+      "price": 1227.03,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1667998800,
+      "price": 1214.53,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668002400,
+      "price": 1225.89,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668006000,
+      "price": 1163.02,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668009600,
+      "price": 1174.29,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668013200,
+      "price": 1168.53,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668016800,
+      "price": 1163.86,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668020400,
+      "price": 1195.47,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668024000,
+      "price": 1164.99,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668027600,
+      "price": 1106.68,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668031200,
+      "price": 1117.65,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668034800,
+      "price": 1102.73,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668038400,
+      "price": 1146.14,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668042000,
+      "price": 1137.8,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668045600,
+      "price": 1149.98,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668049200,
+      "price": 1174.16,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668052800,
+      "price": 1176.4,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668056400,
+      "price": 1187.25,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668060000,
+      "price": 1176.07,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668063600,
+      "price": 1189.72,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668067200,
+      "price": 1215.8,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668070800,
+      "price": 1198.65,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668074400,
+      "price": 1181.01,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668078000,
+      "price": 1187.04,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668081600,
+      "price": 1214.99,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668085200,
+      "price": 1300.09,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668088800,
+      "price": 1324.32,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668092400,
+      "price": 1321.61,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668096000,
+      "price": 1321.27,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668099600,
+      "price": 1259.12,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668103200,
+      "price": 1273.83,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668106800,
+      "price": 1292.31,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668110400,
+      "price": 1334.57,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668114000,
+      "price": 1325.44,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668117600,
+      "price": 1324.14,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668121200,
+      "price": 1299.28,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    },
+    {
+      "t": 1668124800,
+      "price": 1296.72,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:nov-2022-ftx-collapse"
+      ]
+    }
+  ]
+}
