@@ -12,7 +12,14 @@ import {
   renderComparisonTable,
   runBacktestSuite,
 } from "../../backtest/index.ts";
+import { createProtectionAgentDecider } from "../../strategy/agent.ts";
+import { SEED_STRATEGY_VERSION } from "../../strategy/library.ts";
 import { EXIT_ERROR, EXIT_OK, flagOrNpm } from "./args.ts";
+
+// Protection Agent dengan seed playbook (spec §3.4). Versi dari DB baru dipakai setelah ada strategi ACTIVE.
+if (!defaultDeciderRegistry.has("agent")) {
+  defaultDeciderRegistry.register("agent", createProtectionAgentDecider(SEED_STRATEGY_VERSION));
+}
 
 export const BACKTEST_HELP = `tahansoe backtest — Protection strategy backtest harness
 

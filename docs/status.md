@@ -9,6 +9,23 @@
 
 ## Sudah jalan
 
+### Protection Strategy Agent Fase A — 25 Okt 2026 ([spec](specs/m4-protection-strategy-agent.md), [ADR 0016](decisions/0016-bounded-protection-agent.md), [ADR 0017](decisions/0017-erc8004-agent-identity.md), branch `feat/protection-agent`)
+
+Dikerjakan empat worker Antigravity (Orca run `run_60dcc45a6134`), di-review dan diperbaiki koordinator sebelum merge.
+
+- **Fondasi (`packages/domain`, `packages/db`):** `ProtectionPlanSchema`, `Mandate` + `defaultMandate` (DELEVERAGE mati default, `maxPreemptHF = trigger + 0.25`, cap 24 jam = 3 × cap per aksi), `PositionState`, `ProtectionDecider`, `Playbook`; alamat registry ERC-8004 Sepolia dan One di chain registry; tabel `protection_plans` dan `strategy_versions`.
+- **Agent + rule engine (`apps/engine/src/strategy/`):** decider deterministik dari playbook, LLM opsional hanya merangking kandidat valid, rule engine §3.3, `planHash` keccak256. Mode shadow di sentinel mencatat plan ke `protection_plans` tanpa transaksi. CLI `tahansoe agent plans`. Perbaikan koordinator: `SHIFT_TRIGGER` kini menaikkan trigger di atas trigger statis dan di bawah target/`maxPreemptHF`, tanpa klaim perubahan HF.
+- **Backtest (`apps/engine/src/backtest/`):** harness replay harga historis Binance ETHUSDT untuk 7 jendela crash + 1 periode tenang, decider static/dynamic/agent, gate rilis, CLI `tahansoe backtest protection`. Setiap laporan mencetak batasannya (posisi sintetis, regime dilabeli hindsight).
+- **Miner (`apps/engine/src/strategy/miner/`):** pipeline survivor vs terlikuidasi dari event Aave V3 Arbitrum One, CLI `tahansoe strategy mine`. Perbaikan koordinator: tanpa fallback diam-diam ke fixture, laporan diberi `dataSource`, run fixture tidak pernah disimpan, dokumen tidak lagi menyajikan angka fixture sebagai temuan.
+- **ERC-8004 (`apps/engine/src/erc8004/`, `apps/web`):** ABI Identity/Reputation (diverifikasi read-only ke proxy Sepolia), calldata `register`/`giveFeedback` tanpa tanda tangan, filter Sybil, CLI `tahansoe agent identity`, kartu agent di halaman Protection. Perbaikan koordinator: URL web dan URI registrasi wajib diisi (tanpa domain karangan), deskripsi sesuai mandat ADR 0016.
+- **Verifikasi:** typecheck dan lint bersih; test engine 584, web 84, domain 91, db 6.
+
+**Gap:**
+- Belum ada temuan empiris miner: butuh arsip RPC Arbitrum One (Alchemy/Infura).
+- Backtest belum membedakan strategi: static sudah mencegah semua likuidasi di set posisi default; agent vs static = 23 vs 23, biaya +8,6%. Perlu posisi lebih rapuh dan regime hasil replay engine, bukan label hindsight.
+- Registrasi agent ERC-8004 on-chain menunggu URL web publik untuk file registrasi; pemilik NFT sesuai ADR 0017 adalah multisig.
+- Shadow mode belum di-deploy ke engine VPS.
+
 ### Guardian v4: Kebijakan per-posisi & proteksi Morpho Blue — 24 Okt 2026 ([spec](specs/m4-guardian-v4-per-position.md), [ADR 0015](decisions/0015-guardian-v4-per-position-policies.md), branch `feat/user-proof-sim-fee`)
 
 Dikerjakan lima worker paralel Antigravity (Orca run `run_49048ccfe5bf`), digabung dan diverifikasi penuh.

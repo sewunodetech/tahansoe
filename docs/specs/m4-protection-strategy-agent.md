@@ -91,6 +91,7 @@ Plan ditolak bila: aksi tidak ada di mandat; `amount` > cap mandat per aksi atau
 - Hasil pertama (25 Okt 2026, dynamic vs static): likuidasi tercegah sama (23 vs 23), biaya dynamic +16,2% sehingga gate **gagal**. Batasan yang ikut dicetak di setiap laporan:
   - Harga dari Binance ETHUSDT, posisi sintetis. Static sudah mencegah semua likuidasi di set posisi default, jadi set ini belum membedakan strategi; perlu posisi yang lebih rapuh (HF awal lebih rendah, cadangan lebih kecil, kolateral lebih volatil).
   - Seri regime dilabeli manual dengan hindsight. Lead time dan decider yang memakai regime terlalu optimistis; promosi strategi wajib juga lulus dengan regime hasil replay engine sendiri.
+- Agent (seed `pp-2026.10.0`) vs static, 25 Okt 2026: likuidasi tercegah sama (23 vs 23), biaya +8,6% (gate lolos tipis di bawah ambang 10%), lead time 31,6 jam vs 25,6 jam dengan label hindsight. Kesimpulan: belum ada bukti nilai tambah agent; set posisi perlu dibuat lebih rapuh sebelum gate punya arti.
 
 ### 3.6 Guardian v5 (Fase B)
 
@@ -135,12 +136,12 @@ Plan ditolak bila: aksi tidak ada di mandat; `amount` > cap mandat per aksi atau
 
 ## 5. Kriteria penerimaan
 
-- [ ] ADR 0016 dan 0017 Accepted oleh owner.
-- [ ] `ProtectionPlan` + validator rule engine dengan test penolakan untuk setiap aturan §3.3.
-- [ ] Miner menghasilkan playbook dari minimal 3 jendela crash historis di Arbitrum One, dengan laporan selamat vs terlikuidasi.
-- [ ] Backtest proteksi melaporkan statis vs dynamic vs agent untuk skenario §6.4 + periode tenang; strategi aktif pertama lolos gate §3.5.
-- [ ] Fase A: mode shadow berjalan di Sepolia, plan tercatat di `protection_plans`, `setDynamicTrigger` hanya dalam band.
-- [ ] Agent terdaftar di ERC-8004 Identity Registry Arbitrum Sepolia; file registrasi dapat diakses; feedback settlement tertulis ke Reputation Registry.
+- [x] ADR 0016 dan 0017 Accepted oleh owner (25 Okt 2026).
+- [x] `ProtectionPlan` + validator rule engine dengan test penolakan untuk setiap aturan §3.3.
+- [ ] Miner menghasilkan playbook dari minimal 3 jendela crash historis di Arbitrum One, dengan laporan selamat vs terlikuidasi. (Pipeline + test di atas fixture sintetis selesai; run nyata menunggu arsip RPC.)
+- [ ] Backtest proteksi melaporkan statis vs dynamic vs agent untuk skenario §6.4 + periode tenang; strategi aktif pertama lolos gate §3.5. (Harness + laporan selesai; gate belum bermakna, lihat §3.5.)
+- [ ] Fase A: mode shadow berjalan di Sepolia, plan tercatat di `protection_plans`, `setDynamicTrigger` hanya dalam band. (Kode shadow di sentinel selesai; belum di-deploy ke engine VPS.)
+- [ ] Agent terdaftar di ERC-8004 Identity Registry Arbitrum Sepolia; file registrasi dapat diakses; feedback settlement tertulis ke Reputation Registry. (Calldata + kartu agent selesai; registrasi on-chain menunggu URL web publik.)
 - [ ] Fase B: Guardian v5 dengan unit/fuzz/invariant/fork test hijau; deploy + verify Sepolia; UI mandat + log keputusan.
 - [ ] security.md, PRD, architecture.md diperbarui.
 
