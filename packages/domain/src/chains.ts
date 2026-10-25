@@ -57,6 +57,11 @@ export interface ChainConfig {
   aave?: ChainAaveConfig;
   morpho?: ChainMorphoConfig;
   erc8004?: ChainErc8004Config;
+  /**
+   * Alamat risk agent Tahansoe yang boleh memanggil `setDynamicTrigger` (ADR 0002) bila user
+   * memilihnya di `setTriggerBand`. Hanya menggeser trigger di dalam band user; tidak bisa memindahkan dana.
+   */
+  riskAgent?: Address;
   /** Guardian klasik (v1–v3, satu policy per user) versi tertinggi. Guardian v4 hanya di `guardians`. */
   guardian?: Address;
   /** Semua deployment Guardian, lama dan baru. */
@@ -83,6 +88,8 @@ export const ARBITRUM_SEPOLIA: ChainConfig = {
   },
   guardian: "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E",
   /** Diverifikasi on-chain 25 Okt 2026 (`name()` = "AgentIdentity"; Reputation → Identity). */
+  /** Testnet: wallet deployer Sepolia. Mainnet memakai kunci terpisah (keystore keeper). */
+  riskAgent: "0x4eF8E7A6106Ffc768fcd12b5886319dA71CD42ca",
   erc8004: {
     identity: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
     reputation: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
