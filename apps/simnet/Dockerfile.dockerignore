@@ -1,0 +1,17 @@
+# Simnet image needs contracts/ (deploy scripts on the fork), unlike the engine image that the
+# root .dockerignore is written for. BuildKit reads this file instead of the root one.
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+**/.data
+**/.cache
+**/out
+**/.next
+**/settings.json
+.git
+contracts/lib
+contracts/broadcast
+docs
+apps/web/*
+!apps/web/package.json
