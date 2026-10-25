@@ -62,20 +62,8 @@ export async function mineCrashWindow(
     }
     events = fixtureFn();
   } else {
-    try {
-      events = await fetchWindowLogs(window, options);
-    } catch (err) {
-      // Fallback ke fixture jika RPC tidak diset dan error meminta fixtures
-      const msg = err instanceof Error ? err.message : String(err);
-      if (
-        (msg.includes("ARB_ONE_RPC_URL") || msg.includes("Cache tidak ditemukan")) &&
-        FIXTURE_EVENTS_BY_WINDOW[window.id]
-      ) {
-        events = FIXTURE_EVENTS_BY_WINDOW[window.id]!();
-      } else {
-        throw err;
-      }
-    }
+    // Tanpa fallback diam-diam ke fixture: hasil run live tidak boleh tercampur data sintetis.
+    events = await fetchWindowLogs(window, options);
   }
 
   // 2. Kelompokkan event per wallet
@@ -160,9 +148,11 @@ export async function runSurvivorMiner(
       overallSurvivalRate,
     },
     generatedAt: new Date().toISOString(),
+    dataSource: options.useFixtures ? "FIXTURE" : "RPC",
   };
 
-  if (options.saveOutput !== false) {
+  // Fixture adalah data sintetis untuk test: jangan pernah menulisnya sebagai kandidat playbook.
+  if (options.saveOutput !== false && !options.useFixtures) {
     await savePlaybooksToFile(report, options.outputPath);
   }
 

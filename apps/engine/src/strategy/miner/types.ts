@@ -141,4 +141,6 @@ export interface MinerRunReport {
     overallSurvivalRate: number;
   };
   generatedAt: string;
+  /** FIXTURE = wallet sintetis untuk test, bukan bukti empiris; hanya RPC yang boleh jadi kandidat playbook. */
+  dataSource: "FIXTURE" | "RPC";
 }

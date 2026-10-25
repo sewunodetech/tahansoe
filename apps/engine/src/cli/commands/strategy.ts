@@ -138,6 +138,9 @@ export async function strategyCommand(
     `Jendela ditambang: ${report.summary.totalWindowsMined} | Total posisi at-risk: ${report.summary.totalAtRiskAnalyzed}`,
     `Survivor: ${report.summary.totalSurvivors} (${(report.summary.overallSurvivalRate * 100).toFixed(1)}%) | Terlikuidasi: ${report.summary.totalLiquidated}`,
   ];
+  if (report.dataSource === "FIXTURE") {
+    headerLines.push("", "DATA FIXTURE SINTETIS: bukan temuan on-chain dan tidak disimpan.");
+  }
 
   writeOut(box(theme, "STRATEGY MINING", headerLines, Math.min(theme.width, 74)) + "\n\n");
 
@@ -166,7 +169,9 @@ export async function strategyCommand(
     writeOut(`  Deskripsi: ${sanitizeExternal(pb.description)}\n\n`);
   }
 
-  writeOut(dim(theme, `Tersimpan di: apps/engine/data/playbooks/survivor-playbooks.json\n`));
+  if (report.dataSource === "RPC") {
+    writeOut(dim(theme, `Tersimpan di: ${outPath ?? "apps/engine/data/playbooks/survivor-playbooks.json"}\n`));
+  }
   writeOut(dim(theme, `Data privasi: 100% agregat, tanpa alamat wallet on-chain.\n`));
 
   return EXIT_OK;

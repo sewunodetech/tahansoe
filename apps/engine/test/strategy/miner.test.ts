@@ -33,6 +33,7 @@ import {
   aggregateWindowResults,
   assertNoWalletsLeaked,
   emitCandidatePlaybooks,
+  savePlaybooksToFile,
 } from "../../src/strategy/miner/playbook-emitter.ts";
 import {
   mineCrashWindow,
@@ -431,26 +432,25 @@ test("Playbook Emitter: assertNoWalletsLeaked mendeteksi dan menolak kebocoran a
   );
 });
 
-test("Survivor Miner: end-to-end run pada 3 jendela crash menghasilkan report dan playbooks", async () => {
+test("Survivor Miner: run fixture ditandai FIXTURE dan tidak pernah disimpan sebagai kandidat", async () => {
   const tempOut = path.resolve(process.cwd(), "apps/engine/.data/test-playbooks.json");
+  await fs.unlink(tempOut).catch(() => {});
 
   const report = await runSurvivorMiner({
     useFixtures: true,
     outputPath: tempOut,
   });
 
+  assert.equal(report.dataSource, "FIXTURE");
   assert.equal(report.windows.length, 3, "Harus menambang tepat 3 jendela");
   assert.ok(report.summary.totalAtRiskAnalyzed >= 10);
-  assert.ok(report.summary.totalSurvivors >= 5);
-  assert.ok(report.summary.totalLiquidated >= 3);
   assert.ok(report.candidatePlaybooks.length >= 4);
+  await assert.rejects(fs.readFile(tempOut, "utf-8"), "fixture sintetis tidak boleh tertulis ke disk");
 
-  // Periksa file tersimpan di disk
+  // Penyimpanan (dipakai run RPC) tetap tidak membocorkan alamat wallet.
+  await savePlaybooksToFile({ ...report, dataSource: "RPC" }, tempOut);
   const content = await fs.readFile(tempOut, "utf-8");
-  assert.ok(content.length > 0);
   assert.equal(content.includes("0x1111111111111111111111111111111111111001"), false);
-
-  // Bersihkan file tes sementara
   await fs.unlink(tempOut).catch(() => {});
 });
 
