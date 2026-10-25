@@ -1,6 +1,6 @@
 # 0016 — Protection Agent memilih aksi proteksi dalam mandat yang disetujui user
 
-- **Status:** Proposed
+- **Status:** Accepted (owner, 25 Okt 2026)
 - **Tanggal:** 2026-10-25
 - **Pengusul:** Owner (arahan 25 Okt 2026: agent memilih aksi dalam batas, belajar strategi proteksi, bukan copy trade)
 

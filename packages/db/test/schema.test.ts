@@ -122,5 +122,10 @@ describe("packages/db simulation and success fee schema (specs m1 §3.9 & m4 §3
       !/CREATE UNIQUE INDEX IF NOT EXISTS policies_user_guardian_unique/.test(allSql),
       "Should no longer create the old one-policy-per-guardian index"
     );
+
+    // Protection Strategy Agent (spec m4-protection-strategy-agent §3.8)
+    assert.ok(allSql.includes("CREATE TABLE IF NOT EXISTS protection_plans"));
+    assert.ok(allSql.includes("CREATE UNIQUE INDEX IF NOT EXISTS protection_plans_plan_hash_unique ON protection_plans (plan_hash)"));
+    assert.ok(allSql.includes("CREATE TABLE IF NOT EXISTS strategy_versions"));
   });
 });

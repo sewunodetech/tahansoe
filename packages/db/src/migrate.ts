@@ -513,6 +513,43 @@ export async function runMigrations(
   await runSql(`CREATE INDEX IF NOT EXISTS sim_sessions_created_at_idx ON sim_sessions (created_at);`);
   log("  sim_sessions");
 
+  await runSql(`
+    CREATE TABLE IF NOT EXISTS protection_plans (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      position_key TEXT NOT NULL,
+      strategy_version TEXT NOT NULL,
+      action TEXT NOT NULL,
+      amount NUMERIC(78,0),
+      trigger_hf NUMERIC(10,4),
+      health_factor NUMERIC(10,4) NOT NULL,
+      expected_hf_after NUMERIC(10,4) NOT NULL,
+      urgency TEXT NOT NULL,
+      regime TEXT,
+      drivers JSONB NOT NULL DEFAULT '[]',
+      playbook_ids JSONB NOT NULL DEFAULT '[]',
+      plan_hash TEXT NOT NULL,
+      decision TEXT NOT NULL,
+      reject_reason TEXT,
+      mode TEXT NOT NULL DEFAULT 'SHADOW',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+  await runSql(`CREATE INDEX IF NOT EXISTS protection_plans_position_created_idx ON protection_plans (position_key, created_at);`);
+  await runSql(`CREATE UNIQUE INDEX IF NOT EXISTS protection_plans_plan_hash_unique ON protection_plans (plan_hash);`);
+  log("  protection_plans");
+
+  await runSql(`
+    CREATE TABLE IF NOT EXISTS strategy_versions (
+      version TEXT PRIMARY KEY,
+      playbooks JSONB NOT NULL,
+      backtest_report JSONB,
+      status TEXT NOT NULL DEFAULT 'CANDIDATE',
+      approved_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+  log("  strategy_versions");
+
   log("\nMigration complete.");
 }
 

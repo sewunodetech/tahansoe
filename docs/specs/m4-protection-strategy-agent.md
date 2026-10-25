@@ -1,7 +1,7 @@
 # Spec: Protection Strategy Agent
 
 - **Milestone:** M4 "Risk band + risk agent per user", dengan ketergantungan pada M2 "Framework backtest + skenario historis §6.4" dan M3 "Kalibrasi regime → buffer via backtest" + "Reflection loop" ([PRD §10](../prd.md#10-roadmap-eksekusi))
-- **Status:** Draft
+- **Status:** In progress (Fase A)
 - **Pemilik:** Tim Engine + Tim Kontrak + Tim Web
 - **Terkait:** [ADR 0016](../decisions/0016-bounded-protection-agent.md), [ADR 0017](../decisions/0017-erc8004-agent-identity.md), [ADR 0002](../decisions/0002-ai-advises-rules-decide.md), [ADR 0005](../decisions/0005-reflection-loop.md), [ADR 0013](../decisions/0013-success-fee-on-protection.md), [ADR 0015](../decisions/0015-guardian-v4-per-position-policies.md), PRD §6.4
 
@@ -144,9 +144,9 @@ Plan ditolak bila: aksi tidak ada di mandat; `amount` > cap mandat per aksi atau
 - Simnet: crash scenario dengan agent aktif vs statis, hasil ditampilkan di Simulation Mode.
 - Manual: beri dan cabut mandat di Sepolia; pastikan aksi agent setelah dicabut revert.
 
-## 7. Pertanyaan terbuka
+## 7. Keputusan atas pertanyaan terbuka (owner, 25 Okt 2026)
 
-- Nilai default mandat (cap per aksi, cap 24 jam, `maxPreemptHF`): usulan `maxPreemptHF = trigger statis + 0.25`, cap = `maxRepayPerAction` policy.
-- Apakah user boleh memberi mandat ke agent selain agent Tahansoe di v1? Usulan: tidak, baru setelah audit dan ada Validation Registry.
-- Sumber arsip RPC untuk miner (Alchemy/Infura gratis cukup untuk jendela crash, atau perlu penyedia berbayar).
-- Apakah aksi preemptif yang ternyata tidak perlu (false positive) memengaruhi reputasi agent secara otomatis? Usulan: ya, tag `false-positive` dari settlement.
+- Default mandat: `maxPreemptHF = trigger statis + 0.25`; cap per aksi = `maxRepayPerAction` policy; cap 24 jam = 3 × cap per aksi.
+- v1 hanya agent Tahansoe; agent pihak ketiga setelah audit dan Validation Registry tersedia.
+- Miner memakai arsip RPC tier gratis (Alchemy/Infura) lebih dulu.
+- Aksi preemptif yang ternyata tidak perlu otomatis menjadi feedback `false-positive` dari settlement.

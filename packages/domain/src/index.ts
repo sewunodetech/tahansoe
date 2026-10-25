@@ -12,3 +12,4 @@ export * from "./zone";
 export * from "./cascade";
 export * from "./positions";
 export * from "./guardian";
+export * from "./strategy";

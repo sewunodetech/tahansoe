@@ -378,3 +378,54 @@ export const simSessions = pgTable(
 
 export type SimSession = typeof simSessions.$inferSelect;
 export type NewSimSession = typeof simSessions.$inferInsert;
+
+/**
+ * Keputusan Protection Agent per tick (spec m4-protection-strategy-agent §3.8, ADR 0016).
+ * Fase A: semua plan tercatat (shadow), termasuk yang ditolak rule engine.
+ */
+export const protectionPlans = pgTable(
+  "protection_plans",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    positionKey: text("position_key").notNull(),
+    strategyVersion: text("strategy_version").notNull(),
+    action: text("action").notNull(),
+    amount: numeric("amount", { precision: 78, scale: 0 }),
+    triggerHf: numeric("trigger_hf", { precision: 10, scale: 4 }),
+    healthFactor: numeric("health_factor", { precision: 10, scale: 4 }).notNull(),
+    expectedHfAfter: numeric("expected_hf_after", { precision: 10, scale: 4 }).notNull(),
+    urgency: text("urgency").notNull(),
+    regime: text("regime"),
+    drivers: jsonb("drivers").$type<string[]>().notNull().default([]),
+    playbookIds: jsonb("playbook_ids").$type<string[]>().notNull().default([]),
+    planHash: text("plan_hash").notNull(),
+    decision: text("decision").notNull(),
+    rejectReason: text("reject_reason"),
+    mode: text("mode").notNull().default("SHADOW"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    positionCreatedIdx: index("protection_plans_position_created_idx").on(t.positionKey, t.createdAt),
+    planHashUnique: uniqueIndex("protection_plans_plan_hash_unique").on(t.planHash),
+  })
+);
+
+export type ProtectionPlanRow = typeof protectionPlans.$inferSelect;
+export type NewProtectionPlanRow = typeof protectionPlans.$inferInsert;
+
+/** Versi strategy library beserta laporan backtest (spec §3.4–§3.5). */
+export const strategyVersions = pgTable("strategy_versions", {
+  version: text("version").primaryKey(),
+  playbooks: jsonb("playbooks").notNull(),
+  backtestReport: jsonb("backtest_report"),
+  status: text("status").notNull().default("CANDIDATE"),
+  approvedBy: text("approved_by"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type StrategyVersionRow = typeof strategyVersions.$inferSelect;
+export type NewStrategyVersionRow = typeof strategyVersions.$inferInsert;

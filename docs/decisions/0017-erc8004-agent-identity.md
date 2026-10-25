@@ -1,6 +1,6 @@
 # 0017 — Identitas dan reputasi Protection Agent lewat ERC-8004
 
-- **Status:** Proposed
+- **Status:** Accepted (owner, 25 Okt 2026)
 - **Tanggal:** 2026-10-25
 - **Pengusul:** Owner
 
