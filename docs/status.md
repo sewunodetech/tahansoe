@@ -25,6 +25,7 @@ Dikerjakan empat worker Antigravity (Orca run `run_60dcc45a6134`), di-review dan
 - Backtest belum membedakan strategi: static sudah mencegah semua likuidasi di set posisi default; agent vs static = 23 vs 23, biaya +8,6%. Perlu posisi lebih rapuh dan regime hasil replay engine, bukan label hindsight.
 - Registrasi agent ERC-8004 on-chain menunggu URL web publik untuk file registrasi; pemilik NFT sesuai ADR 0017 adalah multisig.
 - Shadow mode belum di-deploy ke engine VPS.
+- Belum ada penulis `setDynamicTrigger` di engine: kontrak v2–v4 mendukungnya dan Risk Fusion menghitung `recommendedTriggerHF`, tetapi rekomendasi itu hanya sampai ke user sebagai alert. Proteksi on-chain saat ini = Guardian saat HF < trigger statis user.
 
 ### Guardian v4: Kebijakan per-posisi & proteksi Morpho Blue — 24 Okt 2026 ([spec](specs/m4-guardian-v4-per-position.md), [ADR 0015](decisions/0015-guardian-v4-per-position-policies.md), branch `feat/user-proof-sim-fee`)
 
