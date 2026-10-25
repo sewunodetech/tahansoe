@@ -8,6 +8,7 @@ import { LayerBadge } from "@/components/ui/layer-badge";
 import { useGuardian } from "@/hooks/useGuardian";
 import { useGuardianV4 } from "@/hooks/useGuardianV4";
 import { ProtectedPositionsList } from "@/components/dashboard/guardian-v4/protected-positions-list";
+import { AgentCard } from "@/components/dashboard/agent/agent-card";
 import { LiveGate } from "./live-shared";
 import { LivePositionCard } from "./live-position-card";
 import { LivePolicyForm } from "./live-policy-form";
@@ -46,6 +47,7 @@ export function LiveProtection() {
       <LiveGate g={g}>
         <div className="space-y-6">
           <LiveMigrationBanner g={g} />
+          <AgentCard />
           <ProtectedPositionsList />
         </div>
       </LiveGate>
@@ -56,6 +58,7 @@ export function LiveProtection() {
     <LiveGate g={g}>
       <div className="space-y-6">
         <LiveMigrationBanner g={g} />
+        <AgentCard />
         <LivePositionCard g={g} />
 
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">

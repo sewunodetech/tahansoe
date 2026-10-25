@@ -1,0 +1,1169 @@
+{
+  "id": "jun-2022-steth-celsius",
+  "title": "June 2022 stETH Discount and Celsius Insolvency",
+  "description": "Lido stETH traded at a significant discount to ETH, causing margin pressure on Three Arrows Capital and insolvency at Celsius Network.",
+  "source": "binance:ETHUSDT",
+  "normalized": false,
+  "points": [
+    {
+      "t": 1654732800,
+      "price": 1791.42,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654736400,
+      "price": 1782.55,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654740000,
+      "price": 1794.38,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654743600,
+      "price": 1799.31,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654747200,
+      "price": 1798.16,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654750800,
+      "price": 1799.58,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654754400,
+      "price": 1799.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654758000,
+      "price": 1811.99,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654761600,
+      "price": 1816.02,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654765200,
+      "price": 1819.67,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654768800,
+      "price": 1811.2,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654772400,
+      "price": 1805.15,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654776000,
+      "price": 1793.98,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654779600,
+      "price": 1796.42,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654783200,
+      "price": 1790.63,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654786800,
+      "price": 1799.35,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654790400,
+      "price": 1811.92,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654794000,
+      "price": 1805.25,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654797600,
+      "price": 1792.67,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654801200,
+      "price": 1783.74,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654804800,
+      "price": 1795.24,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654808400,
+      "price": 1794.47,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654812000,
+      "price": 1788.83,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654815600,
+      "price": 1788.81,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654819200,
+      "price": 1774.51,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654822800,
+      "price": 1776.18,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654826400,
+      "price": 1786.86,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654830000,
+      "price": 1792.49,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654833600,
+      "price": 1793.31,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654837200,
+      "price": 1791.93,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654840800,
+      "price": 1789.78,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654844400,
+      "price": 1788.63,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654848000,
+      "price": 1785.92,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654851600,
+      "price": 1768.09,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654855200,
+      "price": 1771.17,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654858800,
+      "price": 1771.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654862400,
+      "price": 1729.36,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654866000,
+      "price": 1728.7,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654869600,
+      "price": 1738.52,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654873200,
+      "price": 1727.1,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654876800,
+      "price": 1682.11,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654880400,
+      "price": 1683.35,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654884000,
+      "price": 1679.3,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654887600,
+      "price": 1669,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654891200,
+      "price": 1678.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654894800,
+      "price": 1678.35,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654898400,
+      "price": 1675.33,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654902000,
+      "price": 1662.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654905600,
+      "price": 1679.28,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654909200,
+      "price": 1676,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654912800,
+      "price": 1673.88,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654916400,
+      "price": 1669.63,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654920000,
+      "price": 1677.4,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654923600,
+      "price": 1668.95,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654927200,
+      "price": 1665.7,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654930800,
+      "price": 1667.46,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654934400,
+      "price": 1578.19,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654938000,
+      "price": 1596.73,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654941600,
+      "price": 1586.81,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654945200,
+      "price": 1575.96,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654948800,
+      "price": 1553.24,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654952400,
+      "price": 1572.42,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654956000,
+      "price": 1526.62,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654959600,
+      "price": 1517.6,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654963200,
+      "price": 1535.75,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654966800,
+      "price": 1533.95,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654970400,
+      "price": 1551.18,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654974000,
+      "price": 1546.48,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654977600,
+      "price": 1523.34,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654981200,
+      "price": 1539.45,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654984800,
+      "price": 1548.13,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654988400,
+      "price": 1532.89,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654992000,
+      "price": 1537.64,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654995600,
+      "price": 1513.85,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1654999200,
+      "price": 1453.29,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655002800,
+      "price": 1466.97,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655006400,
+      "price": 1452.85,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655010000,
+      "price": 1431.03,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655013600,
+      "price": 1458.33,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655017200,
+      "price": 1471.26,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655020800,
+      "price": 1470.62,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655024400,
+      "price": 1463.86,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655028000,
+      "price": 1460.48,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655031600,
+      "price": 1468.98,
+      "regime": "STRESSED",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655035200,
+      "price": 1463.09,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655038800,
+      "price": 1447.76,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655042400,
+      "price": 1510.1,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655046000,
+      "price": 1525.92,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655049600,
+      "price": 1506.61,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655053200,
+      "price": 1521.5,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655056800,
+      "price": 1512.79,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655060400,
+      "price": 1479.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655064000,
+      "price": 1477.42,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655067600,
+      "price": 1474.46,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655071200,
+      "price": 1456.41,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655074800,
+      "price": 1434.84,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655078400,
+      "price": 1387.4,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655082000,
+      "price": 1364.36,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655085600,
+      "price": 1339.41,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655089200,
+      "price": 1350.83,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655092800,
+      "price": 1349.69,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655096400,
+      "price": 1323.04,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655100000,
+      "price": 1324.35,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655103600,
+      "price": 1283.46,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655107200,
+      "price": 1206.93,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655110800,
+      "price": 1237.56,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655114400,
+      "price": 1221.85,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655118000,
+      "price": 1209.23,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655121600,
+      "price": 1218.33,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655125200,
+      "price": 1237.32,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655128800,
+      "price": 1192.55,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655132400,
+      "price": 1229.97,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655136000,
+      "price": 1240.14,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655139600,
+      "price": 1239.47,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655143200,
+      "price": 1231.9,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655146800,
+      "price": 1228.69,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655150400,
+      "price": 1242.17,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655154000,
+      "price": 1229.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655157600,
+      "price": 1193.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655161200,
+      "price": 1209.82,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655164800,
+      "price": 1172.53,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655168400,
+      "price": 1102.52,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655172000,
+      "price": 1119.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655175600,
+      "price": 1174.1,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655179200,
+      "price": 1156.88,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655182800,
+      "price": 1227.13,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655186400,
+      "price": 1234.18,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655190000,
+      "price": 1241.16,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655193600,
+      "price": 1219.4,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655197200,
+      "price": 1190.94,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655200800,
+      "price": 1186.26,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655204400,
+      "price": 1175.23,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655208000,
+      "price": 1197.95,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655211600,
+      "price": 1219.05,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655215200,
+      "price": 1222.38,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655218800,
+      "price": 1250.67,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655222400,
+      "price": 1226.94,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655226000,
+      "price": 1213.4,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655229600,
+      "price": 1209.5,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655233200,
+      "price": 1206.15,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655236800,
+      "price": 1189.32,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655240400,
+      "price": 1169,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655244000,
+      "price": 1176.81,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655247600,
+      "price": 1208.9,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    },
+    {
+      "t": 1655251200,
+      "price": 1193.26,
+      "regime": "CRISIS",
+      "signalIds": [
+        "historical:jun-2022-steth-celsius"
+      ]
+    }
+  ]
+}

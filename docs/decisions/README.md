@@ -9,7 +9,7 @@ Aturan:
 | No | Judul | Status |
 |----|-------|--------|
 | 0001 | [Arbitrum-first, arsitektur chain-agnostic](0001-arbitrum-first-chain-agnostic.md) | Accepted |
-| 0002 | [AI advises, rules decide, contract enforces](0002-ai-advises-rules-decide.md) | Accepted |
+| 0002 | [AI advises, rules decide, contract enforces](0002-ai-advises-rules-decide.md) | Accepted; poin 3 sebagian di-supersede oleh [0016](0016-bounded-protection-agent.md) |
 | 0003 | [Guardian v1 memakai approve dari EOA, bukan Safe Module](0003-guardian-v1-eoa-approve.md) | Accepted |
 | 0004 | [Lapis riset multi-agent (pola TradingAgents) di Core Risk Engine](0004-multi-agent-research-layer.md) | Accepted |
 | 0005 | [Reflection loop: evaluasi ulang tanpa mengubah aturan sendiri](0005-reflection-loop.md) | Accepted |
@@ -23,3 +23,5 @@ Aturan:
 | 0013 | [Model bisnis: fee sukses 0,15% hanya saat posisi diselamatkan](0013-success-fee-on-protection.md) | Proposed |
 | 0014 | [Jaringan simulasi: fork anvil di VPS, layanan `apps/simnet`](0014-simulation-network-anvil-fork.md) | Proposed |
 | 0015 | [Guardian v4: policy per posisi, Aave multi-utang, dan Morpho Blue](0015-guardian-v4-per-position-policies.md) | Accepted |
+| 0016 | [Protection Agent memilih aksi proteksi dalam mandat yang disetujui user](0016-bounded-protection-agent.md) | Accepted |
+| 0017 | [Identitas dan reputasi Protection Agent lewat ERC-8004](0017-erc8004-agent-identity.md) | Accepted |

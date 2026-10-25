@@ -42,6 +42,12 @@ export interface ChainMorphoConfig {
   deployedBlock?: number;
 }
 
+/** Registry ERC-8004 Trustless Agents (ADR 0017). Validation Registry belum dipakai. */
+export interface ChainErc8004Config {
+  identity: Address;
+  reputation: Address;
+}
+
 export interface ChainConfig {
   chainId: number;
   name: string;
@@ -50,6 +56,7 @@ export interface ChainConfig {
   blockTimeMs: number;
   aave?: ChainAaveConfig;
   morpho?: ChainMorphoConfig;
+  erc8004?: ChainErc8004Config;
   /** Guardian klasik (v1–v3, satu policy per user) versi tertinggi. Guardian v4 hanya di `guardians`. */
   guardian?: Address;
   /** Semua deployment Guardian, lama dan baru. */
@@ -75,6 +82,11 @@ export const ARBITRUM_SEPOLIA: ChainConfig = {
     oracle: "0xEf95A6B9e88Bd509Fd67BA741cf2b263DaC65c00",
   },
   guardian: "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E",
+  /** Diverifikasi on-chain 25 Okt 2026 (`name()` = "AgentIdentity"; Reputation → Identity). */
+  erc8004: {
+    identity: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    reputation: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
+  },
   guardians: [
     { version: 1, address: "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E", deployedBlock: 313944170 },
     /** TahansoeGuardianAaveV4, deploy & verify 25 Okt 2026 (contracts/broadcast/DeployAaveV4.s.sol). */
@@ -113,6 +125,11 @@ export const ARBITRUM_ONE: ChainConfig = {
    * Sumber: docs.morpho.org/addresses (24 Okt 2026). eth_getCode di arb1.arbitrum.io
    * tidak kosong (24 Okt 2026); log pertama kontrak ada di block 296446593.
    */
+  /** Diverifikasi on-chain 25 Okt 2026 (`name()` = "AgentIdentity"; Reputation → Identity). */
+  erc8004: {
+    identity: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    reputation: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
+  },
   morpho: {
     blue: "0x6c247b1F6182318877311737BaC0844bAa518F5e",
     deployedBlock: 296446593,

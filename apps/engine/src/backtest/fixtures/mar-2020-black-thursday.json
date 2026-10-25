@@ -1,0 +1,3473 @@
+{
+  "id": "mar-2020-black-thursday",
+  "title": "March 2020 COVID Black Thursday Crash",
+  "description": "Global pandemic panic caused a historic ETH market crash and extreme network congestion that stalled liquidation keepers. Historical ETH prices are normalized.",
+  "source": "binance:ETHUSDT",
+  "normalized": true,
+  "points": [
+    {
+      "t": 1583884800,
+      "price": 200.33,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583885400,
+      "price": 201.22,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583886000,
+      "price": 201.83,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583886600,
+      "price": 201.65,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583887200,
+      "price": 201.48,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583887800,
+      "price": 202.12,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583888400,
+      "price": 203.04,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583889000,
+      "price": 202.23,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583889600,
+      "price": 201.69,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583890200,
+      "price": 201.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583890800,
+      "price": 201.67,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583891400,
+      "price": 202.42,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583892000,
+      "price": 202.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583892600,
+      "price": 201.85,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583893200,
+      "price": 200.79,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583893800,
+      "price": 201.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583894400,
+      "price": 201.51,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583895000,
+      "price": 200.7,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583895600,
+      "price": 200.51,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583896200,
+      "price": 200.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583896800,
+      "price": 201.63,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583897400,
+      "price": 201.21,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583898000,
+      "price": 201.87,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583898600,
+      "price": 201.63,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583899200,
+      "price": 201.54,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583899800,
+      "price": 201.84,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583900400,
+      "price": 201.15,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583901000,
+      "price": 200.85,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583901600,
+      "price": 201.2,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583902200,
+      "price": 201.17,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583902800,
+      "price": 200.39,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583903400,
+      "price": 200.29,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583904000,
+      "price": 199.35,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583904600,
+      "price": 199.51,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583905200,
+      "price": 198.97,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583905800,
+      "price": 199,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583906400,
+      "price": 199.86,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583907000,
+      "price": 199.85,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583907600,
+      "price": 199.52,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583908200,
+      "price": 199.98,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583908800,
+      "price": 199.11,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583909400,
+      "price": 198.63,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583910000,
+      "price": 198.47,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583910600,
+      "price": 197.75,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583911200,
+      "price": 198.95,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583911800,
+      "price": 199.17,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583912400,
+      "price": 198.66,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583913000,
+      "price": 198.72,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583913600,
+      "price": 200.31,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583914200,
+      "price": 200.24,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583914800,
+      "price": 199.83,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583915400,
+      "price": 198.26,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583916000,
+      "price": 198.55,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583916600,
+      "price": 198.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583917200,
+      "price": 198.26,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583917800,
+      "price": 197.96,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583918400,
+      "price": 197.06,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583919000,
+      "price": 198.09,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583919600,
+      "price": 197,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583920200,
+      "price": 197.19,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583920800,
+      "price": 196.8,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583921400,
+      "price": 195.18,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583922000,
+      "price": 196.14,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583922600,
+      "price": 195.69,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583923200,
+      "price": 195.47,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583923800,
+      "price": 196.9,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583924400,
+      "price": 196.51,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583925000,
+      "price": 195.73,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583925600,
+      "price": 197.04,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583926200,
+      "price": 197.36,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583926800,
+      "price": 197.69,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583927400,
+      "price": 197.08,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583928000,
+      "price": 195.96,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583928600,
+      "price": 196.89,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583929200,
+      "price": 196.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583929800,
+      "price": 196.92,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583930400,
+      "price": 196.02,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583931000,
+      "price": 196.93,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583931600,
+      "price": 197.69,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583932200,
+      "price": 197.88,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583932800,
+      "price": 197.9,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583933400,
+      "price": 197.82,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583934000,
+      "price": 197.01,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583934600,
+      "price": 196.71,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583935200,
+      "price": 196.28,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583935800,
+      "price": 196.74,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583936400,
+      "price": 196.75,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583937000,
+      "price": 196.31,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583937600,
+      "price": 194.93,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583938200,
+      "price": 193.96,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583938800,
+      "price": 193.87,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583939400,
+      "price": 194.53,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583940000,
+      "price": 192.35,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583940600,
+      "price": 192.38,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583941200,
+      "price": 190.76,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583941800,
+      "price": 191.59,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583942400,
+      "price": 192.93,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583943000,
+      "price": 191.94,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583943600,
+      "price": 191.36,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583944200,
+      "price": 193.21,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583944800,
+      "price": 192.06,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583945400,
+      "price": 192.39,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583946000,
+      "price": 191,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583946600,
+      "price": 187.84,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583947200,
+      "price": 188.69,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583947800,
+      "price": 185.73,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583948400,
+      "price": 184.52,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583949000,
+      "price": 183.94,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583949600,
+      "price": 183.6,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583950200,
+      "price": 182.22,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583950800,
+      "price": 183.83,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583951400,
+      "price": 186.87,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583952000,
+      "price": 186.69,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583952600,
+      "price": 188.46,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583953200,
+      "price": 188.08,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583953800,
+      "price": 188.04,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583954400,
+      "price": 187.46,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583955000,
+      "price": 188.8,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583955600,
+      "price": 190.95,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583956200,
+      "price": 190.08,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583956800,
+      "price": 191.31,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583957400,
+      "price": 190.74,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583958000,
+      "price": 191.15,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583958600,
+      "price": 189.93,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583959200,
+      "price": 190.71,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583959800,
+      "price": 191.09,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583960400,
+      "price": 192.65,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583961000,
+      "price": 191.61,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583961600,
+      "price": 192.28,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583962200,
+      "price": 191.73,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583962800,
+      "price": 190.88,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583963400,
+      "price": 189.91,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583964000,
+      "price": 190.13,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583964600,
+      "price": 188.94,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583965200,
+      "price": 188.86,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583965800,
+      "price": 192.12,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583966400,
+      "price": 193.23,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583967000,
+      "price": 193.44,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583967600,
+      "price": 195.15,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583968200,
+      "price": 192.94,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583968800,
+      "price": 193.76,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583969400,
+      "price": 194.69,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583970000,
+      "price": 192.98,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583970600,
+      "price": 194.9,
+      "regime": "ELEVATED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583971200,
+      "price": 195.23,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583971800,
+      "price": 193.46,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583972400,
+      "price": 193.98,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583973000,
+      "price": 193.87,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583973600,
+      "price": 192.8,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583974200,
+      "price": 192.75,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583974800,
+      "price": 192.69,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583975400,
+      "price": 192.7,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583976000,
+      "price": 191.78,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583976600,
+      "price": 190.24,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583977200,
+      "price": 189.21,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583977800,
+      "price": 186.23,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583978400,
+      "price": 186,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583979000,
+      "price": 183.42,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583979600,
+      "price": 184.87,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583980200,
+      "price": 187.03,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583980800,
+      "price": 186.49,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583981400,
+      "price": 184.43,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583982000,
+      "price": 185.18,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583982600,
+      "price": 183.91,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583983200,
+      "price": 184.37,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583983800,
+      "price": 185.07,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583984400,
+      "price": 184.22,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583985000,
+      "price": 182.77,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583985600,
+      "price": 181.92,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583986200,
+      "price": 180.09,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583986800,
+      "price": 180.54,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583987400,
+      "price": 181.81,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583988000,
+      "price": 181.12,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583988600,
+      "price": 182.09,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583989200,
+      "price": 181.26,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583989800,
+      "price": 181.81,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583990400,
+      "price": 181.02,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583991000,
+      "price": 181.74,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583991600,
+      "price": 181.41,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583992200,
+      "price": 181.52,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583992800,
+      "price": 181.19,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583993400,
+      "price": 180.65,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583994000,
+      "price": 177.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583994600,
+      "price": 174.09,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583995200,
+      "price": 174.12,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583995800,
+      "price": 172.97,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583996400,
+      "price": 172.82,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583997000,
+      "price": 169.57,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583997600,
+      "price": 171.61,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583998200,
+      "price": 173.61,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583998800,
+      "price": 171.55,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1583999400,
+      "price": 172.55,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584000000,
+      "price": 171.39,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584000600,
+      "price": 168.79,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584001200,
+      "price": 171,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584001800,
+      "price": 171.94,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584002400,
+      "price": 170,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584003000,
+      "price": 170,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584003600,
+      "price": 169.2,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584004200,
+      "price": 168.16,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584004800,
+      "price": 169.56,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584005400,
+      "price": 169.27,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584006000,
+      "price": 168.36,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584006600,
+      "price": 168.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584007200,
+      "price": 167.84,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584007800,
+      "price": 166.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584008400,
+      "price": 162.21,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584009000,
+      "price": 162.05,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584009600,
+      "price": 144.16,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584010200,
+      "price": 145.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584010800,
+      "price": 140.12,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584011400,
+      "price": 140.28,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584012000,
+      "price": 141.14,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584012600,
+      "price": 137.5,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584013200,
+      "price": 128.9,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584013800,
+      "price": 134.64,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584014400,
+      "price": 136.23,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584015000,
+      "price": 140.15,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584015600,
+      "price": 140.27,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584016200,
+      "price": 139.97,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584016800,
+      "price": 138.07,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584017400,
+      "price": 136.13,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584018000,
+      "price": 138.46,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584018600,
+      "price": 136.01,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584019200,
+      "price": 134.21,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584019800,
+      "price": 130.9,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584020400,
+      "price": 128.38,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584021000,
+      "price": 130.35,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584021600,
+      "price": 134.91,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584022200,
+      "price": 135.93,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584022800,
+      "price": 138.63,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584023400,
+      "price": 139.48,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584024000,
+      "price": 139.93,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584024600,
+      "price": 140.24,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584025200,
+      "price": 137.24,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584025800,
+      "price": 139.56,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584026400,
+      "price": 140.61,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584027000,
+      "price": 139.33,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584027600,
+      "price": 141.22,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584028200,
+      "price": 140.61,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584028800,
+      "price": 139.82,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584029400,
+      "price": 136.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584030000,
+      "price": 138.07,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584030600,
+      "price": 136.3,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584031200,
+      "price": 137.98,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584031800,
+      "price": 137.47,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584032400,
+      "price": 140.83,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584033000,
+      "price": 141.97,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584033600,
+      "price": 142.62,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584034200,
+      "price": 142.66,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584034800,
+      "price": 140.28,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584035400,
+      "price": 141.87,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584036000,
+      "price": 141.84,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584036600,
+      "price": 142.59,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584037200,
+      "price": 141.55,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584037800,
+      "price": 138.34,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584038400,
+      "price": 137.81,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584039000,
+      "price": 138.19,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584039600,
+      "price": 137.77,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584040200,
+      "price": 137.9,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584040800,
+      "price": 137.78,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584041400,
+      "price": 138.21,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584042000,
+      "price": 137.86,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584042600,
+      "price": 139.54,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584043200,
+      "price": 137.37,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584043800,
+      "price": 137.18,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584044400,
+      "price": 135.69,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584045000,
+      "price": 131.27,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584045600,
+      "price": 129.02,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584046200,
+      "price": 126.76,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584046800,
+      "price": 128.95,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584047400,
+      "price": 128.65,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584048000,
+      "price": 126.24,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584048600,
+      "price": 128.43,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584049200,
+      "price": 127.52,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584049800,
+      "price": 129.09,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584050400,
+      "price": 131.6,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584051000,
+      "price": 132.35,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584051600,
+      "price": 131.76,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584052200,
+      "price": 129.81,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584052800,
+      "price": 128.48,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584053400,
+      "price": 127.2,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584054000,
+      "price": 124.97,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584054600,
+      "price": 121.44,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584055200,
+      "price": 112.9,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584055800,
+      "price": 106.52,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584056400,
+      "price": 108.49,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584057000,
+      "price": 105.72,
+      "regime": "CRISIS",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584057600,
+      "price": 112.17,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584058200,
+      "price": 110.93,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584058800,
+      "price": 108,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584059400,
+      "price": 110.56,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584060000,
+      "price": 106.65,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584060600,
+      "price": 107,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584061200,
+      "price": 109.54,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584061800,
+      "price": 106.79,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584062400,
+      "price": 106.55,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584063000,
+      "price": 107.47,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584063600,
+      "price": 106.12,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584064200,
+      "price": 100.72,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584064800,
+      "price": 96.5,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584065400,
+      "price": 88.35,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584066000,
+      "price": 91.08,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584066600,
+      "price": 103.19,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584067200,
+      "price": 118.78,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584067800,
+      "price": 113.38,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584068400,
+      "price": 113.18,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584069000,
+      "price": 116.39,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584069600,
+      "price": 123.49,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584070200,
+      "price": 130.72,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584070800,
+      "price": 125.42,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584071400,
+      "price": 123.98,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584072000,
+      "price": 120.16,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584072600,
+      "price": 120.87,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584073200,
+      "price": 121.69,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584073800,
+      "price": 116.54,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584074400,
+      "price": 111.47,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584075000,
+      "price": 113.27,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584075600,
+      "price": 116.12,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584076200,
+      "price": 118.79,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584076800,
+      "price": 120,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584077400,
+      "price": 117.48,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584078000,
+      "price": 118.45,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584078600,
+      "price": 117.27,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584079200,
+      "price": 114.5,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584079800,
+      "price": 119.54,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584080400,
+      "price": 119.01,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584081000,
+      "price": 118.59,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584081600,
+      "price": 121.65,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584082200,
+      "price": 124.11,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584082800,
+      "price": 123,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584083400,
+      "price": 123.88,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584084000,
+      "price": 122.81,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584084600,
+      "price": 121.51,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584085200,
+      "price": 122.1,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584085800,
+      "price": 126.22,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584086400,
+      "price": 131.18,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584087000,
+      "price": 125.05,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584087600,
+      "price": 127.66,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584088200,
+      "price": 123.19,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584088800,
+      "price": 124.15,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584089400,
+      "price": 123.93,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584090000,
+      "price": 126.2,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584090600,
+      "price": 127.39,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584091200,
+      "price": 126.53,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584091800,
+      "price": 127.81,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584092400,
+      "price": 129.37,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584093000,
+      "price": 132.55,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584093600,
+      "price": 131.29,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584094200,
+      "price": 128.51,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584094800,
+      "price": 130.79,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584095400,
+      "price": 132.26,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584096000,
+      "price": 129.41,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584096600,
+      "price": 130.5,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584097200,
+      "price": 126.41,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584097800,
+      "price": 126.95,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584098400,
+      "price": 127.79,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584099000,
+      "price": 130.38,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584099600,
+      "price": 129.43,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584100200,
+      "price": 128.37,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584100800,
+      "price": 126.15,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584101400,
+      "price": 128.82,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584102000,
+      "price": 129.53,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584102600,
+      "price": 129.6,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584103200,
+      "price": 130.34,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584103800,
+      "price": 127.64,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584104400,
+      "price": 128.52,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584105000,
+      "price": 129.77,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584105600,
+      "price": 130.76,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584106200,
+      "price": 139.39,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584106800,
+      "price": 132.76,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584107400,
+      "price": 133.46,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584108000,
+      "price": 134.51,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584108600,
+      "price": 134.22,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584109200,
+      "price": 135.92,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584109800,
+      "price": 134.04,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584110400,
+      "price": 133.53,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584111000,
+      "price": 129.13,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584111600,
+      "price": 122.64,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584112200,
+      "price": 124.4,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584112800,
+      "price": 123.98,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584113400,
+      "price": 117.35,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584114000,
+      "price": 115.65,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584114600,
+      "price": 124.68,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584115200,
+      "price": 121.15,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584115800,
+      "price": 122.72,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584116400,
+      "price": 123.58,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584117000,
+      "price": 127.01,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584117600,
+      "price": 128.23,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584118200,
+      "price": 123.38,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584118800,
+      "price": 122.49,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584119400,
+      "price": 123.23,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584120000,
+      "price": 124.06,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584120600,
+      "price": 125.88,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584121200,
+      "price": 123.92,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584121800,
+      "price": 123.78,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584122400,
+      "price": 123.15,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584123000,
+      "price": 121.88,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584123600,
+      "price": 120.21,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584124200,
+      "price": 120.67,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584124800,
+      "price": 117.11,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584125400,
+      "price": 119.98,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584126000,
+      "price": 121.14,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584126600,
+      "price": 120.78,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584127200,
+      "price": 122.12,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584127800,
+      "price": 118.02,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584128400,
+      "price": 123.29,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584129000,
+      "price": 125.65,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584129600,
+      "price": 128,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584130200,
+      "price": 127.64,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584130800,
+      "price": 128.04,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584131400,
+      "price": 128.44,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584132000,
+      "price": 129.07,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584132600,
+      "price": 127.2,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584133200,
+      "price": 127.66,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584133800,
+      "price": 128.15,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584134400,
+      "price": 128.2,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584135000,
+      "price": 130.11,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584135600,
+      "price": 131.63,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584136200,
+      "price": 128.99,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584136800,
+      "price": 129.51,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584137400,
+      "price": 130.81,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584138000,
+      "price": 130.43,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584138600,
+      "price": 129.92,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584139200,
+      "price": 130.74,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584139800,
+      "price": 132.34,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584140400,
+      "price": 135.07,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584141000,
+      "price": 136.34,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584141600,
+      "price": 132.53,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584142200,
+      "price": 134.88,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584142800,
+      "price": 132.84,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584143400,
+      "price": 132.15,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    },
+    {
+      "t": 1584143700,
+      "price": 134.06,
+      "regime": "STRESSED",
+      "signalIds": [
+        "simnet:mar-2020-black-thursday"
+      ]
+    }
+  ]
+}
