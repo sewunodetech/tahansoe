@@ -64,15 +64,45 @@ function createMockMandate(overrides: Partial<Mandate> = {}): Mandate {
   };
 }
 
-test("createProtectionAgentDecider: memilih HOLD jika HF > maxPreemptHF", async () => {
+test("createProtectionAgentDecider: di atas maxPreemptHF tidak repay, tetapi boleh menaikkan trigger preemptif", async () => {
   const decider = createProtectionAgentDecider(SEED_STRATEGY_VERSION);
-  // HF = 1.55 > maxPreemptHF 1.50
+  // HF = 1.55 > maxPreemptHF 1.50, regime STRESSED
   const state = createMockState({ healthFactor: 1.55 });
   const mandate = createMockMandate({ maxPreemptHF: 1.5 });
 
   const plan = await decider(state, mandate);
+  assert.equal(plan.action, "SHIFT_TRIGGER");
+  assert.equal(plan.triggerHf, 1.45);
+  assert.equal(plan.amount, undefined);
+  // Menggeser trigger di bawah HF saat ini tidak mengubah HF.
+  assert.equal(plan.expectedHfAfter, 1.55);
+});
+
+test("createProtectionAgentDecider: HOLD di atas maxPreemptHF bila mandat tidak mengizinkan SHIFT_TRIGGER", async () => {
+  const decider = createProtectionAgentDecider(SEED_STRATEGY_VERSION);
+  const state = createMockState({ healthFactor: 1.55 });
+  const mandate = createMockMandate({
+    maxPreemptHF: 1.5,
+    actionMask: MANDATE_ACTION_BITS.REPAY_WALLET | MANDATE_ACTION_BITS.REPAY_VAULT,
+  });
+
+  const plan = await decider(state, mandate);
   assert.equal(plan.action, "HOLD");
   assert.equal(plan.expectedHfAfter, 1.55);
+});
+
+test("createProtectionAgentDecider: SHIFT_TRIGGER tidak pernah di bawah trigger statis atau di atas target policy", async () => {
+  const strategy: StrategyVersion = {
+    version: "test-shift",
+    status: "ACTIVE",
+    playbooks: [
+      { id: "too-low", description: "x", when: { regimeAtLeast: "ELEVATED" }, action: "SHIFT_TRIGGER", targetHf: 1.1, source: "MANUAL" },
+      { id: "too-high", description: "x", when: { regimeAtLeast: "ELEVATED" }, action: "SHIFT_TRIGGER", targetHf: 1.7, source: "MANUAL" },
+    ],
+  };
+  const decider = createProtectionAgentDecider(strategy);
+  const plan = await decider(createMockState({ healthFactor: 1.4 }), createMockMandate({ maxPreemptHF: 1.8 }));
+  assert.equal(plan.action, "HOLD");
 });
 
 test("createProtectionAgentDecider: kalkulasi amount tidak pernah melebihi cap dan tidak overshoot target HF secara material", async () => {

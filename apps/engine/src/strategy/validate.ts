@@ -116,8 +116,8 @@ export function validateProtectionPlan(
     };
   }
 
-  // 5. HF > maxPreemptHF
-  if (plan.action !== "HOLD" && state.healthFactor > mandate.maxPreemptHF) {
+  // 5. HF > maxPreemptHF (repay/deleverage saja; SHIFT_TRIGGER dibatasi lewat triggerHf di aturan 8)
+  if (plan.action !== "HOLD" && plan.action !== "SHIFT_TRIGGER" && state.healthFactor > mandate.maxPreemptHF) {
     return {
       decision: "REJECTED",
       reason: `Current HF ${state.healthFactor} is above maxPreemptHF ${mandate.maxPreemptHF}`,
@@ -156,6 +156,27 @@ export function validateProtectionPlan(
         planHash,
       };
     }
+    if (plan.triggerHf <= state.policy.triggerHf) {
+      return {
+        decision: "REJECTED",
+        reason: `triggerHf ${plan.triggerHf} must be above the static trigger ${state.policy.triggerHf}`,
+        planHash,
+      };
+    }
+    if (plan.triggerHf >= state.policy.targetHf) {
+      return {
+        decision: "REJECTED",
+        reason: `triggerHf ${plan.triggerHf} must be below the policy target ${state.policy.targetHf}`,
+        planHash,
+      };
+    }
+    if (plan.triggerHf > mandate.maxPreemptHF) {
+      return {
+        decision: "REJECTED",
+        reason: `triggerHf ${plan.triggerHf} is above maxPreemptHF ${mandate.maxPreemptHF}`,
+        planHash,
+      };
+    }
   }
 
   if (plan.action.startsWith("REPAY_") || plan.action === "DELEVERAGE") {
@@ -189,8 +210,8 @@ export function validateProtectionPlan(
     }
   }
 
-  // 10. expectedHfAfter <= current HF
-  if (plan.action === "HOLD") {
+  // 10. expectedHfAfter <= current HF (menggeser trigger tidak wajib menaikkan HF)
+  if (plan.action === "HOLD" || plan.action === "SHIFT_TRIGGER") {
     if (plan.expectedHfAfter < state.healthFactor) {
       return {
         decision: "REJECTED",

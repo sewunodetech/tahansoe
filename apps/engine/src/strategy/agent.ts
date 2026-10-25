@@ -210,11 +210,6 @@ export function createProtectionAgentDecider(
       validUntil: validUntilIso,
     });
 
-    // Batasan Mandat: bila HF saat ini > maxPreemptHF, agent tidak boleh bertindak
-    if (state.healthFactor > mandate.maxPreemptHF) {
-      return makeHoldPlan();
-    }
-
     // Cari kandidat playbook yang cocok
     const candidateEvaluations: CandidateEvaluation[] = [];
 
@@ -228,6 +223,11 @@ export function createProtectionAgentDecider(
         continue;
       }
 
+      // Di atas maxPreemptHF agent tidak boleh membayar/deleverage; menggeser trigger tetap boleh (ADR 0002).
+      if (pb.action !== "SHIFT_TRIGGER" && state.healthFactor > mandate.maxPreemptHF) {
+        continue;
+      }
+
       // Cek aturan CALM: hanya boleh HOLD / SHIFT_TRIGGER kecuali HF < static trigger
       if (state.regime === "CALM" && pb.action !== "SHIFT_TRIGGER") {
         if (state.healthFactor >= state.policy.triggerHf) {
@@ -236,8 +236,15 @@ export function createProtectionAgentDecider(
       }
 
       if (pb.action === "SHIFT_TRIGGER") {
-        // SHIFT_TRIGGER: trigger baru harus > trigger saat ini dan <= targetHf
-        if (pb.targetHf <= state.healthFactor) {
+        // SHIFT_TRIGGER menaikkan trigger di atas trigger statis user, di bawah target HF policy,
+        // dan tidak melewati maxPreemptHF (band). Menggeser trigger tidak mengubah HF; HF baru
+        // naik ke target policy bila trigger baru berada di atas HF saat ini (Guardian protect).
+        const triggerHf = pb.targetHf;
+        if (
+          triggerHf <= state.policy.triggerHf ||
+          triggerHf >= state.policy.targetHf ||
+          triggerHf > mandate.maxPreemptHF
+        ) {
           continue;
         }
 
@@ -245,8 +252,8 @@ export function createProtectionAgentDecider(
           positionKey: state.positionKey,
           strategyVersion: version.version,
           action: "SHIFT_TRIGGER",
-          triggerHf: pb.targetHf,
-          expectedHfAfter: pb.targetHf,
+          triggerHf,
+          expectedHfAfter: triggerHf > state.healthFactor ? state.policy.targetHf : state.healthFactor,
           urgency: determineUrgency(state.healthFactor),
           drivers: state.signalIds.slice(0, 5),
           playbookIds: [pb.id],

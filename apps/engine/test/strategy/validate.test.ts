@@ -254,3 +254,20 @@ test("computePlanHash: determinisme planHash terhadap urutan key JSON", () => {
   const hashC = computePlanHash(planC);
   assert.notEqual(hashA, hashC);
 });
+
+test("validateProtectionPlan: SHIFT_TRIGGER harus di atas trigger statis, di bawah target, dan ≤ maxPreemptHF", () => {
+  const state = createMockState({ healthFactor: 1.5 }); // di atas maxPreemptHF 1.4: tetap boleh geser trigger
+  const mandate = createMockMandate();
+  const shift = (triggerHf: number) =>
+    validateProtectionPlan(
+      createValidPlan({ action: "SHIFT_TRIGGER", triggerHf, expectedHfAfter: 1.5, amount: undefined }),
+      state,
+      mandate,
+      { now: new Date("2026-10-25T10:00:00.000Z") },
+    );
+
+  assert.equal(shift(1.3).decision, "ACCEPTED");
+  assert.equal(shift(1.1).decision, "REJECTED"); // di bawah trigger statis 1.15
+  assert.equal(shift(1.45).decision, "REJECTED"); // di atas maxPreemptHF 1.4
+  assert.equal(shift(1.6).decision, "REJECTED"); // sama dengan target policy
+});
