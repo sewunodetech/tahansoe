@@ -26,7 +26,7 @@ const LIQUIDATOR_2 = "0x0000000000000000000000000000000000001192";
  */
 export function getUsdcDepegFixtureEvents(): NormalizedAaveEvent[] {
   const window = HISTORICAL_CRASH_WINDOWS[0]!;
-  const drawdownBlock = window.drawdownStartBlock; // 69_850_000n
+  const drawdownBlock = window.drawdownStartBlock;
 
   const events: NormalizedAaveEvent[] = [];
 
@@ -200,7 +200,7 @@ export function getUsdcDepegFixtureEvents(): NormalizedAaveEvent[] {
  */
 export function getYenCarryFixtureEvents(): NormalizedAaveEvent[] {
   const window = HISTORICAL_CRASH_WINDOWS[1]!;
-  const drawdownBlock = window.drawdownStartBlock; // 239_500_000n
+  const drawdownBlock = window.drawdownStartBlock;
 
   const events: NormalizedAaveEvent[] = [];
 
@@ -312,7 +312,7 @@ export function getYenCarryFixtureEvents(): NormalizedAaveEvent[] {
  */
 export function getTariffCrashFixtureEvents(): NormalizedAaveEvent[] {
   const window = HISTORICAL_CRASH_WINDOWS[2]!;
-  const drawdownBlock = window.drawdownStartBlock; // 360_700_000n
+  const drawdownBlock = window.drawdownStartBlock;
 
   const events: NormalizedAaveEvent[] = [];
 

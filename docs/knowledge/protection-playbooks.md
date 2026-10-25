@@ -46,13 +46,13 @@ Sesuai arahan owner (25 Okt 2026) dan [ADR 0016 poin 4](../decisions/0016-bounde
 
 ## 3. Jendela crash yang ditambang
 
-| ID | Periode | Jalur transmisi | Rentang blok (perkiraan, wajib diverifikasi sebelum run) |
+| ID | Periode | Jalur transmisi | Rentang blok (diverifikasi `cast find-block`, 25 Okt 2026) |
 |---|---|---|---|
-| `usdc-depeg-mar-2023` | 10–13 Mar 2023 | T4 | 69.400.000 – 70.800.000 |
-| `yen-carry-aug-2024` | 2–6 Agu 2024 | T1, T3 | 238.800.000 – 240.400.000 |
-| `tariff-crash-oct-2025` | 10–13 Okt 2025 | T1, T3, T6 | 360.000.000 – 362.000.000 |
+| `usdc-depeg-mar-2023` | 10–13 Mar 2023 | T4 | 68.360.960 – 69.579.173 |
+| `yen-carry-aug-2024` | 2–6 Agu 2024 | T1, T3 | 238.476.964 – 240.195.236 |
+| `tariff-crash-oct-2025` | 10–13 Okt 2025 | T1, T3, T6 | 387.876.440 – 389.261.472 |
 
-Rentang blok di `windows.ts` adalah perkiraan. Sebelum run nyata, cocokkan dengan timestamp blok di Arbiscan.
+Rentang blok di `windows.ts` diverifikasi terhadap timestamp blok. Versi awal (dari worker) meleset: jendela tarif menunjuk ke sekitar Juli 2025 dan jendela USDC sebagian besar jatuh setelah krisis.
 
 ## 4. Temuan
 
