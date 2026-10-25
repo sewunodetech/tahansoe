@@ -21,7 +21,7 @@ Dikerjakan empat worker Antigravity (Orca run `run_60dcc45a6134`), di-review dan
 - **Verifikasi:** typecheck dan lint bersih; test engine 584, web 84, domain 91, db 6.
 
 **Gap:**
-- Belum ada temuan empiris miner: butuh arsip RPC Arbitrum One (Alchemy/Infura).
+- Miner belum menghasilkan temuan yang valid. Run nyata pertama (25 Okt 2026, QuickNode arsip Arbitrum One, jendela depeg USDC): 26.292 event, 6.654 wallet, 189 wallet terlikuidasi (cocok dengan hitungan `LiquidationCall` on-chain). Klasifikasi at-risk/survivor **tidak valid**: `getUserAccountData` historis tidak pernah dipanggil; HF ditebak dari ada-tidaknya repay/supply, sehingga survivor = wallet yang bertindak (`noAction` selalu 0). Perlu: HF historis via multicall di titik sampel sepanjang jendela, dan kondisi/target playbook diturunkan dari data, bukan template.
 - Backtest belum membedakan strategi: static sudah mencegah semua likuidasi di set posisi default; agent vs static = 23 vs 23, biaya +8,6%. Perlu posisi lebih rapuh dan regime hasil replay engine, bukan label hindsight.
 - Registrasi agent ERC-8004 on-chain menunggu URL web publik untuk file registrasi; pemilik NFT sesuai ADR 0017 adalah multisig.
 - Shadow mode belum di-deploy ke engine VPS.
