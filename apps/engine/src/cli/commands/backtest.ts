@@ -27,6 +27,16 @@ Options:
   --help, -h            Show this help message
 `;
 
+/**
+ * Batasan yang wajib ikut setiap laporan (spec m4-protection-strategy-agent §3.5).
+ * Harga skenario berasal dari Binance ETHUSDT, tetapi seri regime dilabeli manual dengan hindsight.
+ */
+export const BACKTEST_CAVEATS: readonly string[] = [
+  "Prices are historical (Binance ETHUSDT); positions are synthetic.",
+  "Regime series are hand-labelled with hindsight, so lead time and any regime-aware decider are optimistic. This is not evidence of the engine's forecasting ability.",
+  "Compare deciders against each other on the same labels only; promote a strategy only after it also passes on regimes replayed from the engine itself.",
+];
+
 function jsonBigIntReplacer(_key: string, value: unknown): unknown {
   return typeof value === "bigint" ? value.toString() : value;
 }
@@ -107,6 +117,7 @@ export async function backtestCommand(args: string[]): Promise<number> {
       process.stdout.write(
         JSON.stringify(
           {
+            caveats: BACKTEST_CAVEATS,
             candidate: candidateReport,
             active: activeReport,
             gate: gateResult,
@@ -117,6 +128,7 @@ export async function backtestCommand(args: string[]): Promise<number> {
       );
     } else {
       process.stdout.write(renderComparisonTable(candidateReport, activeReport, gateResult) + "\n");
+      process.stdout.write(BACKTEST_CAVEATS.map((c) => `NOTE: ${c}`).join("\n") + "\n");
     }
 
     return EXIT_OK;

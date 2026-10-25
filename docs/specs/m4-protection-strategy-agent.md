@@ -88,6 +88,9 @@ Plan ditolak bila: aksi tidak ada di mandat; `amount` > cap mandat per aksi atau
   - DeciderRegistry memuat static (Guardian v4 protect) dan dynamic (dynamic trigger ADR 0002), dapat didaftarkan decider baru.
   - Helper passesReleaseGate(candidate, active) mengevaluasi syarat rilis secara deterministik.
   - CLI tahansoe backtest protection [--scenario id] [--json] menjalankan evaluasi dan mencetak tabel perbandingan serta status release gate.
+- Hasil pertama (25 Okt 2026, dynamic vs static): likuidasi tercegah sama (23 vs 23), biaya dynamic +16,2% sehingga gate **gagal**. Batasan yang ikut dicetak di setiap laporan:
+  - Harga dari Binance ETHUSDT, posisi sintetis. Static sudah mencegah semua likuidasi di set posisi default, jadi set ini belum membedakan strategi; perlu posisi yang lebih rapuh (HF awal lebih rendah, cadangan lebih kecil, kolateral lebih volatil).
+  - Seri regime dilabeli manual dengan hindsight. Lead time dan decider yang memakai regime terlalu optimistis; promosi strategi wajib juga lulus dengan regime hasil replay engine sendiri.
 
 ### 3.6 Guardian v5 (Fase B)
 
