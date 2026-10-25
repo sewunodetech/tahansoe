@@ -18,6 +18,8 @@ import type { GuardianDeployment } from "@tahansoe/domain";
 import { recommendedRepayBase, baseToToken, remainingActions, hfToWad, wadToNumber, isGuardianV2 } from "@tahansoe/domain";
 import { aaveOracleAbi, aavePoolAbi, guardianAbi, guardianV2Abi } from "@/lib/contracts";
 import { useLiveTarget } from "@/lib/live-target";
+import { isGuardianV4Available } from "@/lib/guardian-v4";
+import { useSimSession } from "@/lib/sim/hooks";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const REFRESH_MS = 15_000;
@@ -132,6 +134,7 @@ export function useGuardian(selectedAsset?: Address) {
   const { address: user, chainId } = useAccount();
   const target = useLiveTarget();
   const { chain, pool, oracle, guardian, legacyGuardians, debtAssets } = target;
+  const { data: simSession } = useSimSession(target.isSimulation);
   const publicClient = usePublicClient({ chainId: chain.id });
   const { mutateAsync: writeContract } = useWriteContract();
   const { mutateAsync: switchChain } = useSwitchChain();
@@ -140,6 +143,29 @@ export function useGuardian(selectedAsset?: Address) {
   const isV2 = isGuardianV2(guardian);
   const enabled = Boolean(user) && target.ready;
   const query = { enabled, refetchInterval: REFRESH_MS };
+
+  const v4Available = useMemo(
+    () =>
+      isGuardianV4Available({
+        chainId: chain.id,
+        isSimulation: target.isSimulation,
+        simContracts: simSession?.contracts,
+      }),
+    [chain.id, target.isSimulation, simSession?.contracts]
+  );
+
+  const effectiveLegacyGuardians = useMemo(() => {
+    if (!v4Available) return legacyGuardians;
+    // When v4 is available on Live, classic v1–v3 deployments (including target.guardian if < v4) are migration candidates
+    const all = [guardian, ...legacyGuardians].filter((g) => g.version < 4);
+    const seen = new Set<string>();
+    return all.filter((g) => {
+      const addr = g.address.toLowerCase();
+      if (seen.has(addr)) return false;
+      seen.add(addr);
+      return true;
+    });
+  }, [v4Available, guardian, legacyGuardians]);
 
   /* ── Position + policy on the current Guardian ─────────────────────────── */
   const v1Contracts = [
@@ -182,7 +208,7 @@ export function useGuardian(selectedAsset?: Address) {
   });
 
   /* ── Older Guardian versions (migration) ───────────────────────────────── */
-  const legacyContracts = legacyGuardians.flatMap((g) => [
+  const legacyContracts = effectiveLegacyGuardians.flatMap((g) => [
     { chainId: chain.id, address: g.address, abi: guardianAbi, functionName: "policies" as const, args: [user!] as const },
     ...debtAssets.map((asset) => ({
       chainId: chain.id,
@@ -195,7 +221,7 @@ export function useGuardian(selectedAsset?: Address) {
   const legacy = useReadContracts({
     contracts: legacyContracts,
     allowFailure: false,
-    query: { ...query, enabled: enabled && legacyGuardians.length > 0 },
+    query: { ...query, enabled: enabled && effectiveLegacyGuardians.length > 0 },
   });
 
   /* ── Derived values ────────────────────────────────────────────────────── */
@@ -275,18 +301,19 @@ export function useGuardian(selectedAsset?: Address) {
   const legacyExposure: LegacyExposure[] = useMemo(() => {
     if (!legacy.data) return [];
     const perGuardian = 1 + debtAssets.length;
-    return legacyGuardians.map((deployment, i) => {
+    return effectiveLegacyGuardians.map((deployment, i) => {
       const slice = legacy.data.slice(i * perGuardian, (i + 1) * perGuardian);
-      const legacyPolicy = toPolicy(slice[0] as readonly [boolean, Address, bigint, bigint, bigint]);
+      const rawPolicy = slice[0] as readonly [boolean, Address, bigint, bigint, bigint] | undefined;
+      const legacyPolicy = toPolicy(rawPolicy);
       const allowances = debtAssets.map((asset, j) => ({
         asset: asset.address,
         symbol: asset.symbol,
         decimals: asset.decimals,
-        amount: slice[1 + j] as bigint,
+        amount: (slice[1 + j] as bigint | undefined) ?? 0n,
       })).filter((a) => a.amount > 0n);
       return { deployment, policy: legacyPolicy, allowances };
     }).filter((x) => x.policy?.enabled || x.allowances.length > 0);
-  }, [legacy.data, legacyGuardians, debtAssets]);
+  }, [legacy.data, effectiveLegacyGuardians, debtAssets]);
 
   /** Recommended per-action cap in token units: repay needed when HF hits the trigger. */
   const recommendedMaxRepay = useCallback(

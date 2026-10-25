@@ -6,6 +6,7 @@ import { ArrowRight, Network, ShieldOff } from "lucide-react";
 import { hfToWad, recommendedRepayBase } from "@tahansoe/domain";
 import { Card } from "@/components/ui/card";
 import { useGuardian } from "@/hooks/useGuardian";
+import { useGuardianV4 } from "@/hooks/useGuardianV4";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
 import { useHoldings } from "@/hooks/useHoldings";
 import { useReserves } from "@/hooks/useReserves";
@@ -30,6 +31,7 @@ const isProtected = (p: PositionWithStatus): p is ProtectedItem => p.status.kind
  */
 export function GuardianView({ showMigration = true }: { showMigration?: boolean }) {
   const g = useGuardian();
+  const g4 = useGuardianV4();
   const { l1CapacityUsd } = useHoldings();
   const { l2CapacityUsd } = useReserves();
   const { positions, isLoading, unavailable, guardianChainId } = usePositions();
@@ -44,12 +46,18 @@ export function GuardianView({ showMigration = true }: { showMigration?: boolean
       ? g.account.hf
       : healthFactorOf(item.position);
 
+  const primaryV4 = g4.available && guarded[0]
+    ? g4.protectedPositions.find((p) =>
+        p.protocol === guarded[0].position.protocol && p.chainId === guarded[0].position.chainId
+      )
+    : undefined;
+
   const main = guarded[0]?.position.mainCollateral;
   const capacity = computeCapacity({
-    policy: g.policy,
-    token: g.token,
-    layer2: g.layer2,
-    layer3: g.layer3,
+    policy: primaryV4 ? primaryV4.policy : g.policy,
+    token: primaryV4 && g.token?.address.toLowerCase() === primaryV4.keyIdentifier.toLowerCase() ? g.token : g.token,
+    layer2: primaryV4 ? (primaryV4.layer2Aave ? { source: primaryV4.layer2Aave.source, maxAssetsPerAction: primaryV4.layer2Aave.maxAssetsPerAction } : null) : g.layer2,
+    layer3: primaryV4 ? (primaryV4.layer3Aave ?? null) : g.layer3,
     l3Collateral: main ? { address: main.address, symbol: main.symbol, decimals: main.decimals, unitPriceUsd: unitPrice(main) } : undefined,
     l1CapacityUsd,
     l2CapacityUsd,

@@ -11,7 +11,13 @@
  */
 
 import type { PublicClient, WalletClient } from "viem";
-import type { Address, ChainConfig } from "@tahansoe/domain";
+import {
+  guardiansFor,
+  isPerPositionGuardian,
+  type Address,
+  type ChainConfig,
+  type GuardianDeployment,
+} from "@tahansoe/domain";
 import {
   guardianAbi,
   guardianV2Abi,
@@ -80,15 +86,20 @@ export function buildPositionKey(params: {
 }
 
 /**
- * Discovery Guardian dari registry per chain.
- * TODO: ganti dengan helper dari @tahansoe/domain setelah Task B selesai di-merge.
+ * Discovery Guardian dari registry per chain menggunakan helper domain.
  */
 export function getGuardiansForChain(chain: ChainConfig): DiscoveredGuardian[] {
-  const list = chain.guardians && chain.guardians.length > 0
-    ? chain.guardians
-    : chain.guardian
-      ? [{ version: 1, address: chain.guardian, deployedBlock: 0 }]
-      : [];
+  const aaveList = guardiansFor(chain, "aave-v3");
+  const morphoList = guardiansFor(chain, "morpho-blue");
+  let list: GuardianDeployment[] = [...aaveList, ...morphoList];
+
+  if (list.length === 0) {
+    if (chain.guardians && chain.guardians.length > 0) {
+      list = chain.guardians;
+    } else if (chain.guardian) {
+      list = [{ version: 1, address: chain.guardian, deployedBlock: 0, protocol: "aave-v3" }];
+    }
+  }
 
   return list.map((g) => ({
     address: g.address.toLowerCase() as Address,
@@ -120,17 +131,26 @@ export class V2V3GuardianAdapter implements GuardianAdapter {
 
   async getPositions(pageSize = 100): Promise<GuardianPosition[]> {
     if (!this.client) return [];
+    if (this.version === 1) {
+      // Guardian v1 tidak memiliki enumerasi posisi on-chain (usersPage).
+      return [];
+    }
     const positions: GuardianPosition[] = [];
     let offset = 0n;
     const limit = BigInt(pageSize);
 
     while (true) {
-      const users = await this.client.readContract({
-        address: this.guardianAddress,
-        abi: guardianV2Abi,
-        functionName: "usersPage",
-        args: [offset, limit],
-      }) as Address[];
+      let users: Address[];
+      try {
+        users = await this.client.readContract({
+          address: this.guardianAddress,
+          abi: guardianV2Abi,
+          functionName: "usersPage",
+          args: [offset, limit],
+        }) as Address[];
+      } catch {
+        break;
+      }
 
       if (!users || users.length === 0) break;
 
@@ -187,6 +207,20 @@ export class V2V3GuardianAdapter implements GuardianAdapter {
 
     if (!needs) {
       return { needsProtection: false, quoteAmount: 0n };
+    }
+
+    if (this.version === 1) {
+      const quote = await this.client.readContract({
+        address: this.guardianAddress,
+        abi: guardianAbi,
+        functionName: "quoteRepay",
+        args: [position.user],
+      }) as bigint;
+
+      return {
+        needsProtection: true,
+        quoteAmount: quote,
+      };
     }
 
     const quote = await this.client.readContract({
@@ -512,8 +546,30 @@ export function createGuardianAdapter(options: GuardianAdapterOptions): Guardian
   if (options.protocol === "morpho-blue") {
     return new MorphoGuardianAdapter(options);
   }
-  if (options.version >= 4) {
+  if (options.version >= 4 || isPerPositionGuardian(options as any)) {
     return new AaveV4GuardianAdapter(options);
   }
   return new V2V3GuardianAdapter(options);
+}
+
+export function createGuardianAdaptersForChain(
+  chain: ChainConfig,
+  options?: {
+    client?: PublicClient;
+    walletClient?: WalletClient;
+    protectCaller?: (guardian: Address, user: Address, key?: string) => Promise<`0x${string}`>;
+  },
+): GuardianAdapter[] {
+  const discovered = getGuardiansForChain(chain);
+  return discovered.map((g) =>
+    createGuardianAdapter({
+      chainId: chain.chainId,
+      guardianAddress: g.address,
+      version: g.version,
+      protocol: g.protocol,
+      client: options?.client,
+      walletClient: options?.walletClient,
+      protectCaller: options?.protectCaller,
+    }),
+  );
 }

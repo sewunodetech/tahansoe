@@ -17,8 +17,8 @@ Dikerjakan lima worker paralel Antigravity (Orca run `run_49048ccfe5bf`), digabu
   - `TahansoeGuardianAaveV4`: kebijakan per-`(user, debtAsset)` untuk multi-debt Aave V3, urutan prioritas utang (`setDebtPriority`), isolasi penyelamatan hanya pada aset utang yang ditargetkan, enumerasi posisi (`positionsPage`).
   - `TahansoeGuardianMorpho`: proteksi pasar Morpho Blue independen (`marketId`), formula HF LLTV 10^36 desimal, L1 (wallet) + L2 (ERC-4626 vault), proteksi invariant selektor Morpho terlarang.
   - `GuardianCore`: shared library untuk layer ordering, fee sukses 15 bps (ADR 0013), dynamic trigger clamping.
-  - Script deployment Arbitrum Sepolia `contracts/script/DeployAaveV4.s.sol`.
-  - 88 test lulus (unit, fuzz, invariant 128k transisi per handler).
+  - Script deployment Arbitrum Sepolia `contracts/script/DeployAaveV4.s.sol`. **Deployed & verified 25 Okt 2026:** `TahansoeGuardianAaveV4` `0xa7Bbab6366a723e17cd2f220D708757e449571b4` (block 322451784), `MockSwapRouter` `0x3A4440473141DAB3822bAb065a4d16fc18255F6C`; treasury = deployer testnet `0x4eF8E7A6106Ffc768fcd12b5886319dA71CD42ca`.
+  - 88 test lulus (unit, fuzz, invariant 128k transisi per handler); 4 fork test Arbitrum One di-skip karena butuh `ARB_ONE_RPC_URL`.
 - **Domain & Database (`packages/domain`, `packages/db`):**
   - `@tahansoe/domain`: helper canonical `positionKey` (`aave-v3:chainId:guardian:debtAsset` & `morpho-blue:chainId:guardian:marketId`), `parsePositionKey`, ABI v4 terkunci.
   - `@tahansoe/db`: kolom nullable `position_key` pada `policies` dan `intents` dengan index dan migrasi idempotent.
@@ -29,7 +29,10 @@ Dikerjakan lima worker paralel Antigravity (Orca run `run_49048ccfe5bf`), digabu
 - **Simnet Fork & Web UI (`apps/simnet`, `apps/web`):**
   - `apps/simnet`: deploy otomatis v4 di Anvil fork Arbitrum One, loop eksekusi keeper simulasi multi-posisi.
   - `apps/web`: hook `useGuardianV4`, dialog proteksi per-posisi (Aave & Morpho), daftar posisi terproteksi dengan reorder prioritas, integrasi simulation dashboard.
-- **Verifikasi:** Monorepo typecheck bersih, 88 forge tests + 684 unit tests monorepo lulus.
+- **Live Sepolia ke v4 (25 Okt 2026, Orca run `run_fbc2167df1f5`):** v4 terdaftar di `ARBITRUM_SEPOLIA.guardians`; `currentGuardian()`/`legacyGuardians()` kini hanya Guardian klasik v1–v3 (ABI satu policy per user), v4 lewat `latestGuardian()`/`isPerPositionGuardian()`. Web Live memakai v4 untuk Protection, Positions, Overview, Holdings, dan Activity (event v1 + v4); banner migrasi muncul bila wallet masih punya policy atau allowance di v1. Engine: adapter v1 + AaveV4 dari registry, multicall `quoteProtect` untuk v4, keeper memakai `guardianVersion`, event sync v4 dari block 322451784; smoke read-only ke Sepolia lulus. Test: engine 503, simnet 69, web 82, db 6, domain 86.
+- **Policy per posisi di DB (25 Okt 2026):** index unik `policies (user_id, guardian_address)` diganti dua partial unique index: `policies_user_guardian_classic_unique` (`WHERE position_key IS NULL`, Guardian v1–v3) dan `policies_user_guardian_position_unique` (`(user_id, guardian_address, position_key) WHERE position_key IS NOT NULL`, v4 dan Morpho). Migrasi idempotent mengosongkan `position_key` policy klasik sebelum index lama di-drop. Event sync hanya memberi `position_key` untuk Guardian per posisi; upsert dan disable memakai target yang sesuai.
+- **Gap:** kontrak v4 tidak memancarkan event saat `setLayer2`/`setLayer3`/`setTriggerBand`, jadi konfigurasi L2/L3/band v4 tidak tersinkron ke DB (engine membaca on-chain lewat `quoteProtect`). Perlu event di versi kontrak berikutnya.
+- **Verifikasi (dicek ulang 25 Okt 2026):** typecheck dan lint bersih; forge 88 lulus, 4 fork di-skip; test engine 498, simnet 69, web 67, db 6, domain 85 (725 total).
 
 ### Positions, Holdings, Reserves, dan Overview "Guardian view" — 24 Okt 2026 ([spec](specs/m1-positions-holdings-guardian-view.md), branch `feat/user-proof-sim-fee`)
 
@@ -276,6 +279,7 @@ Dikerjakan enam worker paralel (Orca), lalu digabung dan diverifikasi.
 - **(SELESAI 9 Okt 2026, commit 8bfa840) `tahansoe setup` wizard:** input `LLM_API_URL` + `LLM_API_KEY` (tersembunyi) → tes `/models` → pilih model + estimasi biaya → simpan `settings.json`; isi `DATABASE_URL` (+ migrasi) & RPC; tutup dengan `doctor`. Secret hanya ke `.env` (gitignored), tidak pernah dicetak ulang.
 - [x] ~~**Pilihan database lokal (ADR 0010)**~~ — di-supersede ADR 0011 (14 Okt 2026), PGlite dihapus: `DB_DRIVER=pglite` (Postgres embedded, data di `apps/engine/.data/`, tanpa server/akun — skema & query Drizzle tetap sama) di samping `DB_DRIVER=neon`. Auto-migrasi dan file advisory lock selesai.
 
+- Guardian v4 `setLayer2` kind `L2_ATOKEN`: validasi `source` sama dengan `getReserveData(debtAsset).aTokenAddress`, bukan hanya `UNDERLYING_ASSET_ADDRESS()` (pola warisan V2; aToken palsu hanya merugikan user yang mengaturnya, tapi bisa memakai aToken yang nyasar ke Guardian).
 - EIP-7702 untuk smart account tanpa migrasi wallet
 - `repayWithATokens` sebagai opsi sumber dana tanpa modal idle
 - API risk score untuk partner B2B

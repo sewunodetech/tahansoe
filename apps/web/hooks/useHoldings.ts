@@ -8,6 +8,8 @@ import { CHAINS, ARBITRUM_SEPOLIA, ARBITRUM_ONE } from "@tahansoe/domain";
 import { aaveOracleAbi } from "@/lib/contracts";
 import { useLiveTarget } from "@/lib/live-target";
 import { useGuardian } from "@/hooks/useGuardian";
+import { getGuardianV4Address } from "@/lib/guardian-v4";
+import { useSimSession } from "@/lib/sim/hooks";
 import {
   type HoldingRow,
   buildHoldingRow,
@@ -43,6 +45,19 @@ export function useHoldings(): {
   const { chain, oracle, guardian, weth, debtAssets, ready } = target;
   const publicClient = usePublicClient({ chainId: chain.id });
   const { policy, isLoading: isGuardianLoading, readError: guardianError } = useGuardian();
+
+  const { data: simSession } = useSimSession(target.isSimulation);
+  const aaveV4Address = useMemo(
+    () =>
+      getGuardianV4Address({
+        chainId: chain.id,
+        protocol: "aave-v3",
+        isSimulation: target.isSimulation,
+        simContracts: simSession?.contracts,
+      }),
+    [chain.id, target.isSimulation, simSession?.contracts]
+  );
+  const activeGuardianAddress = aaveV4Address ?? guardian.address;
 
   // Active chain token list from registry, plus any active debt assets from target
   const tokenList: TokenMeta[] = useMemo(() => {
@@ -93,7 +108,7 @@ export function useHoldings(): {
           address: token.address,
           abi: erc20Abi,
           functionName: "allowance" as const,
-          args: [user, guardian.address] as const,
+          args: [user, activeGuardianAddress] as const,
         },
         {
           chainId: chain.id,
@@ -121,7 +136,7 @@ export function useHoldings(): {
     });
 
     return calls;
-  }, [user, ready, tokenList, chain.id, guardian.address, oracle, weth]);
+  }, [user, ready, tokenList, chain.id, activeGuardianAddress, oracle, weth]);
 
   const enabled = Boolean(user && ready && contracts.length > 0);
 

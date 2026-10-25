@@ -34,7 +34,7 @@ export function ProtectedPositionsList({
 }: ProtectedPositionsListProps = {}) {
   const g4 = useGuardianV4();
   const { positions } = usePositions();
-  const [editingPos, setEditingPos] = useState<PositionDetail | null>(null);
+  const [editingTarget, setEditingTarget] = useState<{ position: PositionDetail; debtAsset?: Address } | null>(null);
   const [actionLoadingKey, setActionLoadingKey] = useState<string | null>(null);
   const [localPriorityOrder, setLocalPriorityOrder] = useState<Address[] | null>(null);
 
@@ -248,7 +248,12 @@ export function ProtectedPositionsList({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setEditingPos(pDetail)}
+                        onClick={() =>
+                          setEditingTarget({
+                            position: pDetail,
+                            debtAsset: isAave ? (pos.keyIdentifier as Address) : undefined,
+                          })
+                        }
                         disabled={isLoadingThis}
                         className="text-xs"
                       >
@@ -288,13 +293,14 @@ export function ProtectedPositionsList({
       )}
 
       {/* Edit modal */}
-      {editingPos && (
+      {editingTarget && (
         <PositionProtectionDialog
-          open={Boolean(editingPos)}
-          onOpenChange={(open) => !open && setEditingPos(null)}
-          position={editingPos}
+          open={Boolean(editingTarget)}
+          onOpenChange={(open) => !open && setEditingTarget(null)}
+          position={editingTarget.position}
+          initialDebtAsset={editingTarget.debtAsset}
           onSuccess={() => {
-            setEditingPos(null);
+            setEditingTarget(null);
             g4.actions.refetch();
           }}
         />

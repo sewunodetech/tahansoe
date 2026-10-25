@@ -11,7 +11,7 @@
 
 import { parseEventLogs, type PublicClient } from "viem";
 import type { Address } from "@tahansoe/domain";
-import { wadToNumber, getChainConfig, ARBITRUM_SEPOLIA } from "@tahansoe/domain";
+import { wadToNumber, getChainConfig, ARBITRUM_SEPOLIA, PER_POSITION_GUARDIAN_VERSION } from "@tahansoe/domain";
 import {
   policySetEventAbi,
   policyDisabledEventAbi,
@@ -246,12 +246,15 @@ export async function syncGuardianEvents(options: SyncOptions): Promise<SyncResu
                 });
               } else {
                 const debtAsset = (args.debtAsset as string).toLowerCase() as Address;
-                const positionKey = buildPositionKey({
-                  protocol: "aave-v3",
-                  chainId,
-                  guardian: guardianAddress,
-                  key: debtAsset,
-                });
+                // Guardian klasik (v1–v3) punya satu policy per user; hanya v4 yang per aset utang.
+                const positionKey = guardian.version >= PER_POSITION_GUARDIAN_VERSION
+                  ? buildPositionKey({
+                      protocol: "aave-v3",
+                      chainId,
+                      guardian: guardianAddress,
+                      key: debtAsset,
+                    })
+                  : undefined;
 
                 await options.db.upsertPolicy({
                   userId,
@@ -329,8 +332,16 @@ export async function syncGuardianEvents(options: SyncOptions): Promise<SyncResu
               const amountIn = BigInt(args.amountIn);
               const debtRepaid = BigInt(args.debtRepaid);
               const key = (args.debtAsset ?? args.marketId ?? "").toLowerCase();
+              const positionKey = key
+                ? buildPositionKey({
+                    protocol: args.marketId ? "morpho-blue" : "aave-v3",
+                    chainId,
+                    guardian: guardianAddress,
+                    key,
+                  })
+                : undefined;
               options.logger?.info?.(
-                `[event-sync] LayerUsed: user=${userAddress} guardian=${guardianAddress} key=${key} layer=${layer} amountIn=${amountIn} debtRepaid=${debtRepaid}`,
+                `[event-sync] LayerUsed: user=${userAddress} guardian=${guardianAddress} key=${key} positionKey=${positionKey} layer=${layer} amountIn=${amountIn} debtRepaid=${debtRepaid}`,
               );
               break;
             }
@@ -385,8 +396,16 @@ export async function syncGuardianEvents(options: SyncOptions): Promise<SyncResu
               const amount = BigInt(args.amount);
               const waived = BigInt(args.waived);
               const key = (args.debtAsset ?? args.marketId ?? "").toLowerCase();
+              const positionKey = key
+                ? buildPositionKey({
+                    protocol: args.marketId ? "morpho-blue" : "aave-v3",
+                    chainId,
+                    guardian: guardianAddress,
+                    key,
+                  })
+                : undefined;
               options.logger?.info?.(
-                `[event-sync] FeeCharged: user=${userAddress} guardian=${guardianAddress} key=${key} amount=${amount} waived=${waived}`,
+                `[event-sync] FeeCharged: user=${userAddress} guardian=${guardianAddress} key=${key} positionKey=${positionKey} amount=${amount} waived=${waived}`,
               );
               break;
             }

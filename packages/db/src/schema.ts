@@ -12,6 +12,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const protocolEnum = pgEnum("protocol", ["aave-v3", "morpho-blue"]);
 
@@ -233,10 +234,14 @@ export const policies = pgTable(
   },
   (t) => ({
     userIdx: index("policies_user_idx").on(t.userId),
-    userGuardianUnique: uniqueIndex("policies_user_guardian_unique").on(
-      t.userId,
-      t.guardianAddress
-    ),
+    // Guardian klasik v1–v3: satu policy per user per Guardian (position_key NULL).
+    userGuardianClassicUnique: uniqueIndex("policies_user_guardian_classic_unique")
+      .on(t.userId, t.guardianAddress)
+      .where(sql`${t.positionKey} IS NULL`),
+    // Guardian per posisi (v4, Morpho): satu policy per posisi (ADR 0015).
+    userGuardianPositionUnique: uniqueIndex("policies_user_guardian_position_unique")
+      .on(t.userId, t.guardianAddress, t.positionKey)
+      .where(sql`${t.positionKey} IS NOT NULL`),
     chainActiveIdx: index("policies_chain_active_idx").on(t.chainId, t.isActive),
     positionKeyIdx: index("policies_position_key_idx").on(t.positionKey),
   })

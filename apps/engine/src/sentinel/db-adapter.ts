@@ -1,4 +1,4 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, sql } from "drizzle-orm";
 import type { Db } from "@tahansoe/db";
 import {
   users,
@@ -123,6 +123,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
         guardianAddress: gAddr,
         guardianVersion: data.guardianVersion,
         debtAsset: dAsset,
+        positionKey: data.positionKey,
         maxRepayPerAction: data.maxRepayPerAction.toString(),
         triggerThreshold: data.triggerThreshold.toFixed(4),
         targetHealthFactor: data.targetHealthFactor.toFixed(4),
@@ -130,42 +131,25 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
-        target: [policies.userId, policies.guardianAddress],
+        // Dua partial unique index: klasik (position_key NULL) dan per posisi (ADR 0015).
+        target: data.positionKey
+          ? [policies.userId, policies.guardianAddress, policies.positionKey]
+          : [policies.userId, policies.guardianAddress],
+        targetWhere: data.positionKey ? isNotNull(policies.positionKey) : isNull(policies.positionKey),
         set: {
           isActive: true,
           guardianVersion: data.guardianVersion,
           debtAsset: dAsset,
+          positionKey: data.positionKey,
           maxRepayPerAction: data.maxRepayPerAction.toString(),
           triggerThreshold: data.triggerThreshold.toFixed(4),
           targetHealthFactor: data.targetHealthFactor.toFixed(4),
           updatedAt: new Date(),
         },
       });
-
-    // Guard update position_key jika kolom ada di DB (Task B)
-    if (data.positionKey) {
-      try {
-        await this.db.execute(
-          sql`UPDATE policies SET position_key = ${data.positionKey} WHERE user_id = ${data.userId} AND guardian_address = ${gAddr}`,
-        );
-      } catch {
-        // Kolom position_key belum tersedia di database jika migrasi belum berjalan
-      }
-    }
   }
 
   async disablePolicy(userId: string, guardianAddress: Address, positionKey?: string): Promise<void> {
-    if (positionKey) {
-      try {
-        await this.db.execute(
-          sql`UPDATE policies SET is_active = false, updated_at = now() WHERE user_id = ${userId} AND guardian_address = ${guardianAddress.toLowerCase()} AND position_key = ${positionKey}`,
-        );
-        return;
-      } catch {
-        // Fallback jika kolom position_key belum ada di database
-      }
-    }
-
     await this.db
       .update(policies)
       .set({ isActive: false, updatedAt: new Date() })
@@ -173,6 +157,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
         and(
           eq(policies.userId, userId),
           eq(policies.guardianAddress, guardianAddress.toLowerCase()),
+          positionKey ? eq(policies.positionKey, positionKey) : undefined,
         ),
       );
   }
@@ -197,6 +182,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
         and(
           eq(policies.userId, data.userId),
           eq(policies.guardianAddress, data.guardianAddress.toLowerCase()),
+          data.positionKey ? eq(policies.positionKey, data.positionKey) : undefined,
         ),
       );
   }
@@ -223,6 +209,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
         and(
           eq(policies.userId, data.userId),
           eq(policies.guardianAddress, data.guardianAddress.toLowerCase()),
+          data.positionKey ? eq(policies.positionKey, data.positionKey) : undefined,
         ),
       );
   }
@@ -247,6 +234,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
         and(
           eq(policies.userId, data.userId),
           eq(policies.guardianAddress, data.guardianAddress.toLowerCase()),
+          data.positionKey ? eq(policies.positionKey, data.positionKey) : undefined,
         ),
       );
   }
@@ -269,6 +257,7 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
         and(
           eq(policies.userId, data.userId),
           eq(policies.guardianAddress, data.guardianAddress.toLowerCase()),
+          data.positionKey ? eq(policies.positionKey, data.positionKey) : undefined,
         ),
       );
   }
@@ -508,19 +497,14 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
   }): Promise<void> {
     const isMorpho = Boolean(data.marketId) || data.protocol === "morpho-blue";
     const protocol = isMorpho ? "morpho-blue" : "aave-v3";
-    const keyVal = data.marketId ?? data.debtAsset ?? "";
     const gAddr = data.guardianAddress.toLowerCase() as Address;
-    const posKey = data.positionKey ?? buildPositionKey({
-      protocol,
-      chainId: data.chainId,
-      guardian: gAddr,
-      key: keyVal,
-    });
+    // Sama dengan partial unique index di DB: Guardian klasik satu baris per user per Guardian
+    // (positionKey null), Guardian per posisi satu baris per positionKey.
+    const posKey = data.positionKey ?? null;
+    const storeKey = posKey ?? `${data.userId}:${gAddr}`;
 
     const user = Array.from(this.users.values()).find((u) => u.id === data.userId);
-    const existing = Array.from(this.policies.values()).find(
-      (p) => p.userId === data.userId && p.guardianAddress.toLowerCase() === gAddr && (p.positionKey === posKey || (!data.positionKey && p.debtAsset === (data.debtAsset?.toLowerCase() ?? ""))),
-    );
+    const existing = this.policies.get(storeKey);
 
     const record: PolicyRecord & { positionId?: string; sourcePrompt?: string } = {
       id: existing?.id ?? `policy-${this.nextId++}`,
@@ -544,9 +528,7 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
       dynamicValidUntil: existing?.dynamicValidUntil ?? null,
     };
 
-    // Simpan baik dengan key positionKey maupun fallback userId:guardianAddress
-    this.policies.set(posKey, record);
-    this.policies.set(`${data.userId}:${gAddr}`, record);
+    this.policies.set(storeKey, record);
   }
 
   async disablePolicy(userId: string, guardianAddress: Address, positionKey?: string): Promise<void> {

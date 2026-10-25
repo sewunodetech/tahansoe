@@ -230,8 +230,24 @@ export async function runMigrations(
   await runSql(`
     CREATE INDEX IF NOT EXISTS policies_user_idx ON policies (user_id);
   `);
+  // Policy per posisi (ADR 0015): Guardian klasik v1–v3 tetap satu baris per user per Guardian
+  // dengan position_key NULL; Guardian v4 dan Morpho satu baris per position_key.
   await runSql(`
-    CREATE UNIQUE INDEX IF NOT EXISTS policies_user_guardian_unique ON policies (user_id, guardian_address);
+    UPDATE policies SET position_key = NULL
+    WHERE position_key IS NOT NULL
+      AND COALESCE(guardian_version, 1) < 4
+      AND position_key NOT LIKE 'morpho-blue:%';
+  `);
+  await runSql(`
+    DROP INDEX IF EXISTS policies_user_guardian_unique;
+  `);
+  await runSql(`
+    CREATE UNIQUE INDEX IF NOT EXISTS policies_user_guardian_classic_unique
+      ON policies (user_id, guardian_address) WHERE position_key IS NULL;
+  `);
+  await runSql(`
+    CREATE UNIQUE INDEX IF NOT EXISTS policies_user_guardian_position_unique
+      ON policies (user_id, guardian_address, position_key) WHERE position_key IS NOT NULL;
   `);
   await runSql(`
     CREATE INDEX IF NOT EXISTS policies_chain_active_idx ON policies (chain_id, is_active);

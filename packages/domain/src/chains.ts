@@ -50,7 +50,7 @@ export interface ChainConfig {
   blockTimeMs: number;
   aave?: ChainAaveConfig;
   morpho?: ChainMorphoConfig;
-  /** Guardian versi terbaru (= versi tertinggi di `guardians`). */
+  /** Guardian klasik (v1–v3, satu policy per user) versi tertinggi. Guardian v4 hanya di `guardians`. */
   guardian?: Address;
   /** Semua deployment Guardian, lama dan baru. */
   guardians?: GuardianDeployment[];
@@ -77,6 +77,14 @@ export const ARBITRUM_SEPOLIA: ChainConfig = {
   guardian: "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E",
   guardians: [
     { version: 1, address: "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E", deployedBlock: 313944170 },
+    /** TahansoeGuardianAaveV4, deploy & verify 25 Okt 2026 (contracts/broadcast/DeployAaveV4.s.sol). */
+    {
+      version: 4,
+      address: "0xa7Bbab6366a723e17cd2f220D708757e449571b4",
+      deployedBlock: 322451784,
+      protocol: "aave-v3",
+      features: { layer2: true, layer3: true, triggerBand: true },
+    },
   ],
   priceFeeds: {},
   /** Reserve Aave V3 testnet (Pool.getReservesList, diverifikasi on-chain 22 Okt 2026). */
@@ -204,15 +212,35 @@ export function latestGuardian(
   );
 }
 
-/** Guardian versi tertinggi di chain (Aave V3), atau undefined jika belum ada deployment. */
-export function currentGuardian(chain: ChainConfig): GuardianDeployment | undefined {
-  return latestGuardian(chain, "aave-v3");
+/** Versi pertama dengan policy per posisi (ADR 0015); ABI-nya berbeda dari v1–v3. */
+export const PER_POSITION_GUARDIAN_VERSION = 4;
+
+/** True untuk Guardian v4+ (policy per posisi), yang tidak bisa dipanggil dengan ABI v1–v3. */
+export function isPerPositionGuardian(deployment?: GuardianDeployment): boolean {
+  return Boolean(deployment && deployment.version >= PER_POSITION_GUARDIAN_VERSION);
 }
 
-/** Semua Guardian selain versi terbaru untuk Aave (kandidat migrasi), dari versi terbaru ke terlama. */
+/** Guardian Aave klasik (v1–v3), yang memakai ABI satu policy per user. */
+function classicGuardians(chain: ChainConfig): GuardianDeployment[] {
+  return guardiansFor(chain, "aave-v3").filter((g) => !isPerPositionGuardian(g));
+}
+
+/**
+ * Guardian Aave klasik (v1–v3) versi tertinggi, atau undefined jika belum ada.
+ * Guardian v4 sengaja dikecualikan: pemanggil fungsi ini memakai ABI v1–v3.
+ * Untuk v4 gunakan `latestGuardian(chain, protocol)`.
+ */
+export function currentGuardian(chain: ChainConfig): GuardianDeployment | undefined {
+  return classicGuardians(chain).reduce<GuardianDeployment | undefined>(
+    (best, g) => (best === undefined || g.version > best.version ? g : best),
+    undefined
+  );
+}
+
+/** Guardian Aave klasik selain `currentGuardian` (kandidat migrasi), dari versi terbaru ke terlama. */
 export function legacyGuardians(chain: ChainConfig): GuardianDeployment[] {
   const current = currentGuardian(chain);
-  return guardiansFor(chain, "aave-v3")
+  return classicGuardians(chain)
     .filter((g) => g !== current)
     .sort((a, b) => b.version - a.version);
 }
