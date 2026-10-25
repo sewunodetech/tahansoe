@@ -1,0 +1,159 @@
+{
+  "playbooks": [
+    {
+      "id": "miner-repay-wallet-buffer-160",
+      "description": "Preemptive debt repayment from connected wallet when regime escalates to STRESSED and HF drops below 1.35, targeting a robust 1.60 HF cushion based on survivor data.",
+      "when": {
+        "regimeAtLeast": "STRESSED",
+        "hfBelow": 1.35
+      },
+      "action": "REPAY_WALLET",
+      "targetHf": 1.6,
+      "source": "MINER",
+      "evidence": {
+        "sampleSize": 3,
+        "survivalRate": 0.6,
+        "windowIds": [
+          "usdc-depeg-mar-2023",
+          "yen-carry-aug-2024",
+          "tariff-crash-oct-2025"
+        ]
+      }
+    },
+    {
+      "id": "miner-shift-trigger-elevated-145",
+      "description": "Shift dynamic health factor trigger upward to 1.45 when market regime enters ELEVATED to create lead-time for remediation before cascade liquidations.",
+      "when": {
+        "regimeAtLeast": "ELEVATED",
+        "hfBelow": 1.5
+      },
+      "action": "SHIFT_TRIGGER",
+      "targetHf": 1.45,
+      "source": "MINER",
+      "evidence": {
+        "sampleSize": 14,
+        "survivalRate": 0.643,
+        "windowIds": [
+          "usdc-depeg-mar-2023",
+          "yen-carry-aug-2024",
+          "tariff-crash-oct-2025"
+        ]
+      }
+    },
+    {
+      "id": "miner-emergency-deleverage-crisis-150",
+      "description": "Execute automated deleveraging (collateral swap/flash-repay) when regime reaches CRISIS and HF breaches 1.20, targeting recovery to 1.50 HF.",
+      "when": {
+        "regimeAtLeast": "CRISIS",
+        "hfBelow": 1.2
+      },
+      "action": "DELEVERAGE",
+      "targetHf": 1.5,
+      "source": "MINER",
+      "evidence": {
+        "sampleSize": 3,
+        "survivalRate": 0.5,
+        "windowIds": [
+          "usdc-depeg-mar-2023",
+          "yen-carry-aug-2024",
+          "tariff-crash-oct-2025"
+        ]
+      }
+    },
+    {
+      "id": "miner-repay-vault-stressed-165",
+      "description": "Draw secondary reserve liquidity from authorized vault to repay debt when HF drops below 1.25 under STRESSED conditions, targeting 1.65 HF.",
+      "when": {
+        "regimeAtLeast": "STRESSED",
+        "hfBelow": 1.25
+      },
+      "action": "REPAY_VAULT",
+      "targetHf": 1.65,
+      "source": "MINER",
+      "evidence": {
+        "sampleSize": 3,
+        "survivalRate": 0.94,
+        "windowIds": [
+          "usdc-depeg-mar-2023",
+          "yen-carry-aug-2024",
+          "tariff-crash-oct-2025"
+        ]
+      }
+    }
+  ],
+  "miningReport": {
+    "summary": {
+      "totalWindowsMined": 3,
+      "totalAtRiskAnalyzed": 14,
+      "totalSurvivors": 9,
+      "totalLiquidated": 5,
+      "overallSurvivalRate": 0.643
+    },
+    "windows": [
+      {
+        "windowId": "usdc-depeg-mar-2023",
+        "windowName": "USDC Depeg & SVB Collapse (Mar 2023)",
+        "startBlock": "69400000",
+        "endBlock": "70800000",
+        "totalEvents": 13,
+        "totalWallets": 6,
+        "atRiskWallets": 5,
+        "survivedWallets": 3,
+        "liquidatedWallets": 2,
+        "survivalRate": 0.6,
+        "actionDistribution": {
+          "repayWallet": 1,
+          "withdrawAndRepay": 1,
+          "collateralTopup": 1,
+          "noAction": 0
+        },
+        "medianLeadBlocks": 15000,
+        "medianHfAfter": 1.9,
+        "medianRelativeSize": 0.5
+      },
+      {
+        "windowId": "yen-carry-aug-2024",
+        "windowName": "Yen Carry Trade Unwind (Agu 2024)",
+        "startBlock": "238800000",
+        "endBlock": "240400000",
+        "totalEvents": 8,
+        "totalWallets": 4,
+        "atRiskWallets": 4,
+        "survivedWallets": 3,
+        "liquidatedWallets": 1,
+        "survivalRate": 0.75,
+        "actionDistribution": {
+          "repayWallet": 1,
+          "withdrawAndRepay": 1,
+          "collateralTopup": 1,
+          "noAction": 0
+        },
+        "medianLeadBlocks": 18000,
+        "medianHfAfter": 2.03,
+        "medianRelativeSize": 0.583
+      },
+      {
+        "windowId": "tariff-crash-oct-2025",
+        "windowName": "US-China Tariff Escalation Crash (Okt 2025)",
+        "startBlock": "360000000",
+        "endBlock": "362000000",
+        "totalEvents": 11,
+        "totalWallets": 5,
+        "atRiskWallets": 5,
+        "survivedWallets": 3,
+        "liquidatedWallets": 2,
+        "survivalRate": 0.6,
+        "actionDistribution": {
+          "repayWallet": 1,
+          "withdrawAndRepay": 1,
+          "collateralTopup": 1,
+          "noAction": 0
+        },
+        "medianLeadBlocks": 25000,
+        "medianHfAfter": 1.95,
+        "medianRelativeSize": 0.533
+      }
+    ],
+    "generatedAt": "2026-10-25T02:03:17.549Z"
+  }
+}

@@ -31,6 +31,7 @@ const COMMANDS = [
   ["doctor", "Check env & connectivity"],
   ["sentinel", "Health Factor Sentinel & Keeper (run, once, sync)"],
   ["broadcast", "Broadcast risk digest and proactive alerts (digest, once)"],
+  ["strategy", "Protection strategy management and survivor miner (mine, list-windows)"],
 ] as const;
 
 const TOP_HELP = `Usage: tahansoe <command> [options]
@@ -210,6 +211,10 @@ export async function main(argv: string[]): Promise<number> {
     case "broadcast": {
       const { broadcastCommand } = await import("./commands/broadcast.ts");
       return broadcastCommand(rest);
+    }
+    case "strategy": {
+      const { strategyCommand } = await import("./commands/strategy.ts");
+      return strategyCommand(rest);
     }
     default:
       process.stderr.write(`perintah tidak dikenal: ${cmd}\n\n${TOP_HELP}\n`);
