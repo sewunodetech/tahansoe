@@ -12,9 +12,9 @@ Aave V3 and Morpho Blue · Arbitrum first, chain-agnostic by design.
 ## TL;DR
 
 - **Problem:** borrowers on Aave and Morpho lose 5–10% of their collateral to liquidation penalties when markets move faster than they can react. The trigger is often news, macro, a depeg, or an L2 outage, not just "price went down".
-- **Solution:** Tahansoe watches each position's Health Factor 24/7. When HF falls below the user's trigger, a guardian contract repays debt through a 3-layer cascade, using only funds the user has approved. A Core Risk Engine reads oracles, on-chain data, macro calendars, and news to judge the market regime and recommend a thicker buffer **before** the shock. Today that recommendation arrives as an explained alert; writing it on-chain inside the user's band is the next step.
+- **Solution:** Tahansoe watches each position's Health Factor 24/7. When HF falls below the user's trigger, a guardian contract repays debt through a 3-layer cascade, using only funds the user has approved. A Core Risk Engine reads oracles, on-chain data, macro calendars, and news to judge the market regime and recommend a thicker buffer **before** the shock. Users who opt in let Tahansoe's risk agent move their trigger inside a band they approve (`setDynamicTrigger`); it can never move funds, and when it stops, the static trigger applies again.
 - **Why it's different:**
-  - **Context-aware risk assessment** (news, macro, depegs, oracles, sequencer) on top of the HF threshold, moving toward context-aware protection.
+  - **Context-aware protection:** the risk regime (news, macro, depegs, oracles, sequencer) can raise the trigger early, inside a band the user approves.
   - **No wallet migration:** works from a normal EOA with capped approvals.
   - **Per-position policies** across Aave and Morpho.
   - **A bounded Protection Agent**, being proven in shadow mode: it records the action it would take for each position but sends no transactions yet. Once proven, it may act only inside a mandate the user signs and can revoke.
@@ -78,7 +78,7 @@ Funds only ever move from the user's own sources to the user's own debt. The Gua
 
 ### 3. Protection Strategy Agent (bounded autonomy)
 
-> **Today the agent runs in shadow mode (Phase A).** It decides and records what it *would* do for each position, but it sends no transactions. Positions are protected today by the Guardian cascade above when HF falls below the user's own trigger. The engine's regime and recommended trigger reach users as alerts; writing that trigger on-chain (`setDynamicTrigger` inside the user's band) is not wired yet. The agent will be allowed to act only after it beats the static policy in backtests and builds a shadow track record, and only through Guardian v5 mandates after an audit (see [Roadmap](#roadmap-to-mainnet)).
+> **Today the agent runs in shadow mode (Phase A).** It decides and records what it *would* do for each position, but it sends no transactions. Positions are protected today by the Guardian cascade above. Users who opt in also get the engine's recommended trigger written on-chain (`setDynamicTrigger`, inside their band, ADR 0002). The agent will be allowed to act only after it beats the static policy in backtests and builds a shadow track record, and only through Guardian v5 mandates after an audit (see [Roadmap](#roadmap-to-mainnet)).
 
 The agent combines **off-chain research** (regime, signals) with the **on-chain state of each position** (HF, debt composition, available reserves) and chooses a protection action: hold, raise the trigger, repay from wallet, repay from vault, or deleverage. Once it is allowed to act:
 
@@ -99,7 +99,7 @@ The agent combines **off-chain research** (regime, signals) with the **on-chain 
 | | Tahansoe | Static automation (e.g. DeFi Saver, Summer.fi/Instadapp automation) | Alert bots and risk dashboards |
 |---|---|---|---|
 | Reacts to | Market context (news, macro, depeg, oracle, sequencer) **plus** HF | An HF threshold | An HF threshold |
-| Acts before the threshold | Designed for it: the regime recommends a higher buffer early (explained alerts today; the on-chain shift inside user bounds is in progress) | No | No |
+| Acts before the threshold | Yes, opt-in: the regime raises the trigger early, inside the user's band | No | No |
 | Executes the fix | Yes, 3-layer cascade | Yes | No, the user must act |
 | Wallet migration | **None**: works from an EOA with capped approvals | Smart wallet / proxy | n/a |
 | Per-position policies (multi-debt Aave, Morpho markets) | Yes | Varies | n/a |
@@ -143,7 +143,7 @@ Trust has to be earned with evidence, not promised. This is what exists today an
  Oracles, RPC ──▶│  Protection Agent → rule engine → Intent     │──▶ protection_plans (shadow)
                  │  sentinel + keeper · reflection & scorecard  │
                  └───────┬───────────────────┬──────────────────┘
-                         │ protect()         │ setDynamicTrigger() inside the user's band (planned)
+                         │ protect()         │ setDynamicTrigger() inside the user's band
                          ▼                   ▼
                  ┌──────────────────────────────────────────────┐      ┌──────────────────────────┐
                  │ Guardian contracts (no admin, per chain)     │      │ Postgres (Neon)          │
@@ -221,7 +221,7 @@ On **Arbitrum Sepolia** you can use a real wallet with testnet tokens:
 | Web dashboard: positions, holdings, reserves, per-position protection, activity, Simulation Mode | ✅ Live at [tahansoe.xyz](https://www.tahansoe.xyz) |
 | Core Risk Engine: signals, research agents, Risk Fusion, settlement and scorecard, Telegram alerts | ✅ Running |
 | Sentinel and keeper: multi-guardian discovery (v1–v4, Morpho), per-position debt priority | ✅ |
-| Dynamic trigger: engine writes the recommended trigger on-chain (`setDynamicTrigger` inside the user's band) | 🚧 Contracts support it; the engine writer is not built yet |
+| Dynamic trigger: engine writes the recommended trigger on-chain (`setDynamicTrigger` inside the user's band) | ✅ Built and proven end-to-end on an Arbitrum Sepolia fork; the web opt-in UI and the simulation replay are done. Ships in `dry-run` by default; `live` needs `dynamicTrigger.mode = live` plus the risk-agent key |
 | Protection Agent Phase A: decider, rule engine, shadow mode, backtest, ERC-8004 module | ✅ Built, in shadow; agent value not yet proven (see [Building trust](#building-trust)) |
 | Survivor miner with historical HF reconstruction | 🚧 In progress |
 | Guardian v5: on-chain mandates plus `agentProtect` (Protection Agent Phase B) | 🗓 Planned |

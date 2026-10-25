@@ -463,3 +463,20 @@ test("SentinelWorker: dynamic trigger evaluation in sentinel tick does not break
   assert.ok(Array.isArray(res.dynamicTriggerActions));
   assert.equal(res.dynamicTriggerActions.length, 0);
 });
+
+test("triggerBandSlot: cocok dengan `cast index` untuk mapping _triggerBands (Aave v4 slot 4, Morpho slot 3)", async () => {
+  const { triggerBandSlot, TRIGGER_BAND_BASE_SLOT } = await import("../../src/sentinel/dynamic-trigger.ts");
+  const user = "0x00000000000000000000000000000000000000aa" as const;
+  const usdc = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d" as const;
+  const marketId = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" as const;
+  // Dihitung dengan `cast index address <key> <cast index address <user> <base>>` (25 Okt 2026);
+  // pembacaan storage diverifikasi end-to-end pada fork Arbitrum Sepolia terhadap Guardian v4 asli.
+  assert.equal(
+    triggerBandSlot(user, usdc, "address", TRIGGER_BAND_BASE_SLOT.aaveV4),
+    0xb97e0d341dab26a9b8e58ab427ae8ee3c45ecb25d0c8a28ea00af164ca1ce595n,
+  );
+  assert.equal(
+    triggerBandSlot(user, marketId, "bytes32", TRIGGER_BAND_BASE_SLOT.morpho),
+    0x521467b21ed8523bb658cac21d21048e37e643a6fca7214b6f51e2b179971094n,
+  );
+});

@@ -21,7 +21,7 @@ import {
   wadToNumber,
 } from "@tahansoe/domain";
 import type { PublicClient, WalletClient } from "viem";
-import { createWalletClient, http } from "viem";
+import { createWalletClient, encodeAbiParameters, hexToBigInt, http, keccak256, numberToHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { guardianAaveV4Abi, guardianMorphoAbi } from "./abi.ts";
 import type { SentinelDatabase } from "./db-adapter.ts";
@@ -58,6 +58,55 @@ export interface DynamicTriggerServiceOptions {
   logger?: DynamicTriggerServiceLogger;
   now?: () => Date;
   channelAdapter?: TelegramSender;
+}
+
+/**
+ * Slot dasar mapping `_triggerBands` (forge inspect storageLayout, 25 Okt 2026). Guardian v4 tidak
+ * punya view untuk band dan tidak memancarkan event saat setTriggerBand, jadi band dibaca langsung
+ * dari storage. Struct TriggerBand = 5 slot berurutan: min, max, riskAgent, dynamicTriggerHF, validUntil.
+ */
+export const TRIGGER_BAND_BASE_SLOT = { aaveV4: 4n, morpho: 3n } as const;
+
+/** Slot pertama `_triggerBands[user][key]` (mapping bersarang: keccak(key . keccak(user . base))). */
+export function triggerBandSlot(
+  user: Address,
+  key: `0x${string}`,
+  keyType: "address" | "bytes32",
+  baseSlot: bigint,
+): bigint {
+  // Lowercase agar alamat dengan checksum tidak valid tetap diterima viem.
+  const userLc = user.toLowerCase() as Address;
+  const keyLc = key.toLowerCase() as `0x${string}`;
+  const inner = keccak256(encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [userLc, baseSlot]));
+  const outer = keccak256(encodeAbiParameters([{ type: keyType }, { type: "bytes32" }], [keyLc, inner]));
+  return hexToBigInt(outer);
+}
+
+/** Baca TriggerBand on-chain lewat eth_getStorageAt. Null bila band belum pernah diset (riskAgent nol). */
+export async function readTriggerBandFromStorage(
+  client: PublicClient,
+  guardian: Address,
+  user: Address,
+  key: `0x${string}`,
+  isMorpho: boolean,
+): Promise<OnChainTriggerBand | null> {
+  const base = isMorpho ? TRIGGER_BAND_BASE_SLOT.morpho : TRIGGER_BAND_BASE_SLOT.aaveV4;
+  const first = triggerBandSlot(user, key, isMorpho ? "bytes32" : "address", base);
+  const words = await Promise.all(
+    [0n, 1n, 2n, 3n, 4n].map(async (i) => {
+      const v = await client.getStorageAt({ address: guardian, slot: numberToHex(first + i, { size: 32 }) });
+      return v ? hexToBigInt(v) : 0n;
+    }),
+  );
+  const [min, max, agentWord, dynamic, validUntil] = words as [bigint, bigint, bigint, bigint, bigint];
+  if (agentWord === 0n) return null;
+  return {
+    minTriggerHf: wadToNumber(min),
+    maxTriggerHf: wadToNumber(max),
+    riskAgent: numberToHex(agentWord & ((1n << 160n) - 1n), { size: 20 }).toLowerCase() as Address,
+    dynamicTriggerHf: dynamic > 0n ? wadToNumber(dynamic) : null,
+    validUntil: Number(validUntil & ((1n << 64n) - 1n)),
+  };
 }
 
 /**
@@ -193,7 +242,8 @@ export class DynamicTriggerService {
     // Wallet client
     if (options.walletClient) {
       this.walletClient = options.walletClient;
-    } else if (this.account && this.client) {
+    } else if (this.account && this.client && this.chainId === 421614) {
+      // Hanya Arbitrum Sepolia yang punya RPC default; chain lain wajib memberi walletClient eksplisit.
       const rpcUrl = env.arbitrumSepoliaRpcUrl() || "https://sepolia-rollup.arbitrum.io/rpc";
       this.walletClient = createWalletClient({
         account: this.account,
@@ -211,46 +261,24 @@ export class DynamicTriggerService {
   }
 
   /**
-   * Membaca trigger band on-chain (via triggerBandOf jika tersedia, atau fallback ke policy).
+   * Membaca trigger band on-chain dari storage Guardian, fallback ke policy di DB.
    */
   public async readTriggerBand(policy: PolicyRecord): Promise<OnChainTriggerBand | null> {
     const isMorpho = policy.protocol === "morpho-blue" || Boolean(policy.marketId);
 
     if (this.client) {
       try {
-        if (isMorpho && policy.marketId) {
-          const res = (await this.client.readContract({
-            address: policy.guardianAddress,
-            abi: guardianMorphoAbi,
-            functionName: "triggerBandOf",
-            args: [policy.userAddress, policy.marketId as `0x${string}`],
-          })) as [bigint, bigint, Address, bigint, bigint | number];
-
-          return {
-            minTriggerHf: wadToNumber(res[0]),
-            maxTriggerHf: wadToNumber(res[1]),
-            riskAgent: (res[2] as string).toLowerCase() as Address,
-            dynamicTriggerHf: res[3] > 0n ? wadToNumber(res[3]) : null,
-            validUntil: Number(res[4]),
-          };
-        } else {
-          const res = (await this.client.readContract({
-            address: policy.guardianAddress,
-            abi: guardianAaveV4Abi,
-            functionName: "triggerBandOf",
-            args: [policy.userAddress, policy.debtAsset],
-          })) as [bigint, bigint, Address, bigint, bigint | number];
-
-          return {
-            minTriggerHf: wadToNumber(res[0]),
-            maxTriggerHf: wadToNumber(res[1]),
-            riskAgent: (res[2] as string).toLowerCase() as Address,
-            dynamicTriggerHf: res[3] > 0n ? wadToNumber(res[3]) : null,
-            validUntil: Number(res[4]),
-          };
-        }
-      } catch {
-        // triggerBandOf view mungkin tidak di-expose di bytecode kontrak, fallback ke database/policy
+        const key = (isMorpho && policy.marketId ? policy.marketId : policy.debtAsset) as `0x${string}`;
+        const band = await readTriggerBandFromStorage(
+          this.client,
+          policy.guardianAddress,
+          policy.userAddress,
+          key,
+          isMorpho && Boolean(policy.marketId),
+        );
+        if (band) return band;
+      } catch (err) {
+        this.logger.warn(`[dynamic-trigger] Gagal membaca trigger band dari storage: ${err}`);
       }
     }
 

@@ -115,7 +115,7 @@ async function runDryRun() {
     console.log("[dry-run] Using sample Sepolia position for verification with testnet tokens USDC & WETH...");
 
     const sampleUser = getAddress("0x4eF8E7A6106Ffc768fcd12b5886319dA71CD42ca");
-    const usdc = getAddress(ARBITRUM_SEPOLIA.tokens!.USDC);
+    const usdc = getAddress(ARBITRUM_SEPOLIA.tokens!.USDC!);
 
     activePolicies.push({
       id: "sample-pol-sepolia",
@@ -153,7 +153,7 @@ async function runDryRun() {
   };
 
   console.log(`[dry-run] Simulated Market Regime: ${db.latestRiskAssessment.regime}`);
-  console.log(`[dry-run] Assessment Recommended Trigger: ${db.latestRiskAssessment.recommendedTriggerHf.toFixed(2)}`);
+  console.log(`[dry-run] Assessment Recommended Trigger: ${(db.latestRiskAssessment.recommendedTriggerHf ?? 0).toFixed(2)}`);
   console.log(`[dry-run] Assessment Valid Until: ${assessmentValidUntil.toISOString()}`);
 
   // 4. Initialize DynamicTriggerService in dry-run mode
