@@ -21,6 +21,11 @@ import {
   ARBITRUM_SEPOLIA,
   getChainConfig,
   calculateZone,
+  defaultMandate,
+  type PositionState,
+  type ProtectionDecider,
+  type Regime,
+  type StrategyVersion,
   type RiskZone,
 } from "@tahansoe/domain";
 import {
@@ -38,6 +43,14 @@ import { createGuardianAdaptersForChain, type GuardianAdapter } from "./adapters
 import { hfWarningAlert, hfCriticalAlert, reserveLowAlert } from "./views.ts";
 import type { SentinelDatabase } from "./db-adapter.ts";
 import type { TelegramSender } from "../telegram/index.ts";
+import { isDbConfigured, type NewProtectionPlanRow } from "@tahansoe/db";
+import {
+  createProtectionAgentDecider,
+  createStrategyLibrary,
+  validateProtectionPlan,
+  type StrategyLibrary,
+} from "../strategy/index.ts";
+import { loadSettingsSync } from "../settings/settings.ts";
 import type { KeeperExecutionResult, SentinelTickResult, UserPositionSnapshot, PolicyRecord } from "./types.ts";
 
 export const DEFAULT_SENTINEL_INTERVAL_SEC = 60;
@@ -80,6 +93,12 @@ export interface SentinelWorkerOptions {
   logger?: SentinelWorkerLogger;
   exitFn?: (code: number) => void;
   adapters?: GuardianAdapter[];
+  /** Mode Protection Strategy Agent: "off" | "shadow" (default: shadow jika ada DB) */
+  protectionAgentMode?: "off" | "shadow";
+  /** Decider proteksi kustom (opsional) */
+  protectionDecider?: ProtectionDecider;
+  /** Strategy library atau StrategyVersion kustom (opsional) */
+  strategyLibrary?: StrategyLibrary | StrategyVersion;
   /** Injectable multicall loader for unit testing */
   multicallLoader?: (
     policies: Array<{ user: Address; guardianAddress: Address; debtAsset: Address; guardianVersion?: number }>,
@@ -110,6 +129,9 @@ export class SentinelWorker {
   private readonly positionZones = new Map<string, RiskZone>();
   private readonly positionReserveLowAlerted = new Map<string, boolean>();
 
+  readonly protectionAgentMode: "off" | "shadow";
+  private readonly protectionDecider: ProtectionDecider;
+
   constructor(options: SentinelWorkerOptions = {}) {
     this.chainId = options.chainId ?? ARBITRUM_SEPOLIA.chainId;
     this.intervalSec = options.intervalSec ?? DEFAULT_SENTINEL_INTERVAL_SEC;
@@ -120,6 +142,32 @@ export class SentinelWorker {
     this.lockClient = options.lockClient;
     this.multicallLoader = options.multicallLoader;
     this.adapters = options.adapters;
+
+    // Inisialisasi Mode Protection Agent (spec §3.2-3.3, Phase A)
+    if (options.protectionAgentMode) {
+      this.protectionAgentMode = options.protectionAgentMode;
+    } else {
+      let settingsMode: "off" | "shadow" | undefined;
+      try {
+        const s = loadSettingsSync();
+        settingsMode = s?.settings?.protectionAgent?.mode;
+      } catch {
+        /* abaikan */
+      }
+      if (settingsMode) {
+        this.protectionAgentMode = settingsMode;
+      } else {
+        const hasDb = Boolean(this.db) || isDbConfigured();
+        this.protectionAgentMode = hasDb ? "shadow" : "off";
+      }
+    }
+
+    if (options.protectionDecider) {
+      this.protectionDecider = options.protectionDecider;
+    } else {
+      const lib = options.strategyLibrary ?? createStrategyLibrary();
+      this.protectionDecider = createProtectionAgentDecider(lib);
+    }
 
     this.clock = options.clock ?? {
       now: () => new Date(),
@@ -435,6 +483,103 @@ export class SentinelWorker {
             quoteAmount: data.quoteAmount,
           });
           keeperActions.push(keeperResult);
+        }
+
+        // 8. Evaluasi Shadow Protection Agent (spec §3.2-3.3, Phase A: shadow mode)
+        if (this.protectionAgentMode === "shadow") {
+          try {
+            const canonicalPositionKey =
+              policy.positionKey ??
+              `aave-v3:${this.chainId}:${policy.guardianAddress.toLowerCase()}:${policy.debtAsset.toLowerCase()}`;
+
+            let regime: Regime | null = null;
+            let signalIds: string[] = [];
+            if (this.db?.getLatestRiskAssessment) {
+              const assessment = await this.db.getLatestRiskAssessment(this.chainId, "ETH");
+              if (assessment && new Date(assessment.validUntil).getTime() > now.getTime()) {
+                regime = assessment.regime;
+                signalIds = [assessment.id, ...(assessment.drivers?.map((d: any) => d.id) ?? [])];
+              }
+            }
+
+            let spent24h = 0n;
+            if (this.db?.getSpent24h) {
+              const since24h = new Date(now.getTime() - 24 * 3600 * 1000);
+              spent24h = await this.db.getSpent24h(canonicalPositionKey, since24h);
+            }
+
+            const collateralUsd = Number(data.accountData.collateralBase) / 1e8;
+            const debtUsd = Number(data.accountData.debtBase) / 1e8;
+            const liquidationThreshold =
+              Number(data.accountData.liquidationThresholdBps) / 10_000;
+
+            const posState: PositionState = {
+              positionKey: canonicalPositionKey,
+              at: now,
+              healthFactor: hfNumber,
+              collateralUsd,
+              debtUsd,
+              liquidationThreshold,
+              debtAsset: {
+                address: policy.debtAsset,
+                symbol: "DEBT",
+                decimals: 6,
+                priceUsd: 1.0,
+              },
+              reserves: {
+                wallet: data.allowance < data.balance ? data.allowance : data.balance,
+                vault: 0n,
+              },
+              policy: {
+                triggerHf: effectiveTrigger,
+                targetHf: policy.targetHealthFactor,
+                maxRepayPerAction: policy.maxRepayPerAction,
+              },
+              regime,
+              signalIds,
+              spent24h,
+            };
+
+            const mandate = defaultMandate({
+              positionKey: canonicalPositionKey,
+              agent: "0x0000000000000000000000000000000000000001",
+              staticTriggerHf: policy.triggerThreshold,
+              maxRepayPerAction: policy.maxRepayPerAction,
+              validUntil: new Date(now.getTime() + 30 * 86400 * 1000),
+            });
+
+            const plan = await this.protectionDecider(posState, mandate);
+            const validation = validateProtectionPlan(plan, posState, mandate, {
+              now,
+              signalsStale: regime === null,
+            });
+
+            const planRow: NewProtectionPlanRow = {
+              positionKey: canonicalPositionKey,
+              strategyVersion: plan.strategyVersion,
+              action: plan.action,
+              amount: plan.amount ?? null,
+              triggerHf: plan.triggerHf != null ? plan.triggerHf.toFixed(4) : null,
+              healthFactor: hfNumber.toFixed(4),
+              expectedHfAfter: plan.expectedHfAfter.toFixed(4),
+              urgency: plan.urgency,
+              regime: regime ?? undefined,
+              drivers: plan.drivers,
+              playbookIds: plan.playbookIds,
+              planHash: validation.planHash,
+              decision: validation.decision,
+              rejectReason: validation.reason ?? null,
+              mode: "SHADOW",
+              createdAt: now,
+            };
+
+            if (this.db?.insertProtectionPlan) {
+              await this.db.insertProtectionPlan(planRow);
+            }
+          } catch (err) {
+            this.logger.warn(`[sentinel] shadow protection plan error: ${err}`);
+          }
+  
         }
       }
 

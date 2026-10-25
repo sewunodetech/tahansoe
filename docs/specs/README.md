@@ -19,3 +19,4 @@ Spec boleh berubah selama implementasi; perbedaan dengan PRD/architecture harus 
 | M4 | [m4-guardian-success-fee.md](m4-guardian-success-fee.md) | Guardian v3 — fee sukses 0,15% | In progress |
 | M1 | [m1-positions-holdings-guardian-view.md](m1-positions-holdings-guardian-view.md) | Positions, Holdings, Reserves, dan Overview "Guardian view" | In progress |
 | M4/M5 | [m4-guardian-v4-per-position.md](m4-guardian-v4-per-position.md) | Guardian v4 — policy per posisi (Aave multi-utang + Morpho Blue) | In progress |
+| M2/M3/M4 | [m4-protection-strategy-agent.md](m4-protection-strategy-agent.md) | Protection Strategy Agent — aksi proteksi dalam mandat, playbook, backtest, ERC-8004 | In progress |

@@ -1,6 +1,6 @@
 # 0002 — AI advises, rules decide, contract enforces
 
-- **Status:** Accepted
+- **Status:** Accepted; poin 3 sebagian di-supersede oleh [0016](0016-bounded-protection-agent.md) untuk user yang memberi mandat
 - **Tanggal:** 2026-10-07
 - **Pengusul:** Owner
 

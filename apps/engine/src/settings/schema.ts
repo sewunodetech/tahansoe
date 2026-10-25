@@ -61,6 +61,15 @@ export const uiSchema = z
 
 export type UiSettings = z.infer<typeof uiSchema>;
 
+/** Pengaturan Protection Strategy Agent (spec m4-protection-strategy-agent, ADR 0016). */
+export const protectionAgentSchema = z
+  .object({
+    mode: z.enum(["off", "shadow"]).optional(),
+  })
+  .strict();
+
+export type ProtectionAgentSettings = z.infer<typeof protectionAgentSchema>;
+
 /** Skema utama settings.json (version 2). */
 export const settingsSchema = z
   .object({
@@ -73,6 +82,7 @@ export const settingsSchema = z
     estimate: estimateSchema.default({}),
     /** Pengaturan antarmuka pengguna (bahasa). */
     ui: uiSchema.optional(),
+    protectionAgent: protectionAgentSchema.optional(),
   })
   .strict();
 

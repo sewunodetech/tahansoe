@@ -17,7 +17,7 @@ const COMMANDS = [
   ["status", "Background agent status + latest research run"],
   ["logs", "Show background agent log (-f to follow)"],
   ["analyze", "Run one risk-research pass + report card"],
-  ["schedule", "Run the scheduler (foreground) or show status"],
+  ["schedule", "Run the scheduler (foreground) or show status"],
   ["history", "Recent research reports (table + sparkline)"],
   ["report", "Show a full report by <id|latest>"],
   ["models", "List gateway models + prices + cost estimate"],
@@ -31,6 +31,9 @@ const COMMANDS = [
   ["doctor", "Check env & connectivity"],
   ["sentinel", "Health Factor Sentinel & Keeper (run, once, sync)"],
   ["broadcast", "Broadcast risk digest and proactive alerts (digest, once)"],
+  ["strategy", "Protection strategy management and survivor miner (mine, list-windows)"],
+  ["backtest", "Run protection backtest harnesses (e.g. protection)"],
+  ["agent", "Protection Agent: plans (shadow log) and ERC-8004 identity"],
 ] as const;
 
 const TOP_HELP = `Usage: tahansoe <command> [options]
@@ -210,6 +213,18 @@ export async function main(argv: string[]): Promise<number> {
     case "broadcast": {
       const { broadcastCommand } = await import("./commands/broadcast.ts");
       return broadcastCommand(rest);
+    }
+    case "strategy": {
+      const { strategyCommand } = await import("./commands/strategy.ts");
+      return strategyCommand(rest);
+    }
+    case "backtest": {
+      const { backtestCommand } = await import("./commands/backtest.ts");
+      return backtestCommand(rest);
+    }
+    case "agent": {
+      const { agentCommand } = await import("./commands/agent.ts");
+      return agentCommand(rest);
     }
     default:
       process.stderr.write(`perintah tidak dikenal: ${cmd}\n\n${TOP_HELP}\n`);
