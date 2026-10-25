@@ -64,3 +64,4 @@ import "./broadcast/api.test.ts";
 import "./broadcast/queue.test.ts";
 import "./broadcast/views.test.ts";
 import "./broadcast/broadcast.test.ts";
+import "./strategy/miner.test.ts";
