@@ -70,3 +70,8 @@ import "./backtest/protection-replay.test.ts";
 import "./backtest/gate.test.ts";
 import "./erc8004/erc8004.test.ts";
 import "./erc8004/cli.test.ts";
+import "./strategy/validate.test.ts";
+import "./strategy/library.test.ts";
+import "./strategy/agent.test.ts";
+import "./sentinel/shadow.test.ts";
+import "./cli/agent-cli.test.ts";

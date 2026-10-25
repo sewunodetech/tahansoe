@@ -11,9 +11,11 @@ import {
   buildFeedback,
   type ReputationTag,
 } from "../../erc8004/index.ts";
+import type { Db } from "@tahansoe/db";
 import { EXIT_OK, EXIT_ERROR } from "./args.ts";
+import { agentPlansCommand } from "./agent-plans.ts";
 
-export const AGENT_HELP = `tahansoe agent identity — ERC-8004 Identity and Reputation Manager (ADR 0017)
+export const AGENT_IDENTITY_HELP = `tahansoe agent identity — ERC-8004 Identity and Reputation Manager (ADR 0017)
 
 Usage:
   tahansoe agent identity <subcommand> [options]
@@ -35,6 +37,7 @@ Options:
   --help, -h          Show this help message`;
 
 export interface AgentCommandDeps {
+  db?: Db;
   client?: PublicClient;
   chainConfig?: ChainConfig;
   stdout?: (msg: string) => void;
@@ -66,7 +69,37 @@ export function resolveChain(chainName?: string, rpcUrl?: string): {
   return { chainConfig, client };
 }
 
-export async function agentCommand(
+const IDENTITY_SUBCOMMANDS = new Set(["identity", "show", "prepare-register", "prepare-feedback"]);
+
+export const AGENT_HELP = `tahansoe agent — Protection Strategy Agent
+
+Usage:
+  tahansoe agent plans [options]               Recent Protection Agent plans (shadow log)
+  tahansoe agent identity <subcommand> [opts]  ERC-8004 identity and reputation (ADR 0017)
+
+Run "tahansoe agent plans --help" or "tahansoe agent identity --help" for details.`;
+
+/** Entry `tahansoe agent`: `plans` (spec §3.2–3.3) dan `identity` (ADR 0017). */
+export async function agentCommand(argv: string[], deps: AgentCommandDeps = {}): Promise<number> {
+  const writeOut = deps.stdout ?? ((s: string) => void process.stdout.write(s));
+  const writeErr = deps.stderr ?? ((s: string) => void process.stderr.write(s));
+  const sub = argv[0];
+
+  if (!sub || sub === "--help" || sub === "-h" || sub === "help") {
+    writeOut(AGENT_HELP + "\n");
+    return EXIT_OK;
+  }
+  if (sub === "plans") {
+    return agentPlansCommand(argv.slice(1), deps);
+  }
+  if (IDENTITY_SUBCOMMANDS.has(sub)) {
+    return agentIdentityCommand(argv, deps);
+  }
+  writeErr(`subcommand agent tidak dikenal: ${sub}\n\n${AGENT_HELP}\n`);
+  return EXIT_ERROR;
+}
+
+export async function agentIdentityCommand(
   argv: string[],
   deps: AgentCommandDeps = {}
 ): Promise<number> {
@@ -96,7 +129,7 @@ export async function agentCommand(
   }
 
   if (Boolean(parsed.values.help)) {
-    stdout(AGENT_HELP);
+    stdout(AGENT_IDENTITY_HELP);
     return EXIT_OK;
   }
 
@@ -108,7 +141,7 @@ export async function agentCommand(
   }
 
   if (!subcommand) {
-    stdout(AGENT_HELP);
+    stdout(AGENT_IDENTITY_HELP);
     return EXIT_OK;
   }
 
@@ -287,7 +320,7 @@ export async function agentCommand(
     }
 
     default:
-      stderr(`[agent] unknown subcommand: ${subcommand}\n\n${AGENT_HELP}`);
+      stderr(`[agent] unknown subcommand: ${subcommand}\n\n${AGENT_IDENTITY_HELP}`);
       return EXIT_ERROR;
   }
 }

@@ -17,7 +17,7 @@ const COMMANDS = [
   ["status", "Background agent status + latest research run"],
   ["logs", "Show background agent log (-f to follow)"],
   ["analyze", "Run one risk-research pass + report card"],
-  ["schedule", "Run the scheduler (foreground) or show status"],
+  ["schedule", "Run the scheduler (foreground) or show status"],
   ["history", "Recent research reports (table + sparkline)"],
   ["report", "Show a full report by <id|latest>"],
   ["models", "List gateway models + prices + cost estimate"],
@@ -33,7 +33,7 @@ const COMMANDS = [
   ["broadcast", "Broadcast risk digest and proactive alerts (digest, once)"],
   ["strategy", "Protection strategy management and survivor miner (mine, list-windows)"],
   ["backtest", "Run protection backtest harnesses (e.g. protection)"],
-  ["agent", "Protection Agent ERC-8004 identity & reputation (show, prepare-register, prepare-feedback)"],
+  ["agent", "Protection Agent: plans (shadow log) and ERC-8004 identity"],
 ] as const;
 
 const TOP_HELP = `Usage: tahansoe <command> [options]

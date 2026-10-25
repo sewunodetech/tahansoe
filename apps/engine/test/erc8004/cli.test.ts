@@ -5,9 +5,9 @@ import { agentCommand } from "../../src/cli/commands/agent.ts";
 import { EXIT_OK, EXIT_ERROR } from "../../src/cli/commands/args.ts";
 
 describe("CLI tahansoe agent identity", () => {
-  it("help outputs AGENT_HELP and exits with code 0", async () => {
+  it("identity --help outputs the identity help and exits with code 0", async () => {
     let output = "";
-    const code = await agentCommand(["--help"], {
+    const code = await agentCommand(["identity", "--help"], {
       stdout: (m) => {
         output += m + "\n";
       },

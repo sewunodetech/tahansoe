@@ -1,5 +1,5 @@
-import { eq, and, isNull, isNotNull, sql } from "drizzle-orm";
-import type { Db } from "@tahansoe/db";
+import { eq, and, isNull, isNotNull, sql, desc, gte } from "drizzle-orm";
+import type { Db, NewProtectionPlanRow } from "@tahansoe/db";
 import {
   users,
   policies,
@@ -7,8 +7,10 @@ import {
   eventCursors,
   notificationLogs,
   telegramAccounts,
+  protectionPlans,
+  riskAssessments,
 } from "@tahansoe/db";
-import type { Address } from "@tahansoe/domain";
+import type { Address, Regime } from "@tahansoe/domain";
 import type { EventSyncDatabase } from "./event-sync.ts";
 import type { PolicyRecord } from "./types.ts";
 import { buildPositionKey } from "./adapters.ts";
@@ -32,6 +34,12 @@ export interface SentinelDatabase extends EventSyncDatabase {
     userId: string,
     type: "HF_WARNING" | "HF_CRITICAL" | "RESERVE_LOW",
   ): Promise<{ sentAt: Date } | null>;
+  insertProtectionPlan?(plan: NewProtectionPlanRow): Promise<void>;
+  getLatestRiskAssessment?(
+    chainId: number,
+    asset: string,
+  ): Promise<{ id: string; regime: Regime; validUntil: Date; drivers?: any } | null>;
+  getSpent24h?(positionKey: string, since: Date): Promise<bigint>;
 }
 
 export class DrizzleSentinelDatabase implements SentinelDatabase {
@@ -441,6 +449,57 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
 
     return rows.length > 0 ? rows[0]! : null;
   }
+
+  async insertProtectionPlan(plan: NewProtectionPlanRow): Promise<void> {
+    await this.db.insert(protectionPlans).values(plan).onConflictDoNothing();
+  }
+
+  async getLatestRiskAssessment(
+    chainId: number,
+    asset: string,
+  ): Promise<{ id: string; regime: Regime; validUntil: Date; drivers?: any } | null> {
+    const rows = await this.db
+      .select({
+        id: riskAssessments.id,
+        regime: riskAssessments.regime,
+        validUntil: riskAssessments.validUntil,
+        drivers: riskAssessments.drivers,
+      })
+      .from(riskAssessments)
+      .where(and(eq(riskAssessments.chainId, chainId), eq(riskAssessments.asset, asset)))
+      .orderBy(desc(riskAssessments.createdAt))
+      .limit(1);
+
+    const r = rows[0];
+    if (!r) return null;
+    return {
+      id: r.id,
+      regime: r.regime as Regime,
+      validUntil: r.validUntil,
+      drivers: r.drivers,
+    };
+  }
+
+  async getSpent24h(positionKey: string, since: Date): Promise<bigint> {
+    const rows = await this.db
+      .select({ amount: protectionPlans.amount })
+      .from(protectionPlans)
+      .where(
+        and(
+          eq(protectionPlans.positionKey, positionKey),
+          eq(protectionPlans.decision, "ACCEPTED"),
+          gte(protectionPlans.createdAt, since),
+        ),
+      );
+
+    let sum = 0n;
+    for (const r of rows) {
+      if (r.amount) {
+        sum += BigInt(r.amount);
+      }
+    }
+    return sum;
+  }
 }
 
 /**
@@ -453,6 +512,8 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
   public positions = new Map<string, any>();
   public notifications: Array<{ userId: string; type: any; message: string; deliveredOk: boolean; sentAt: Date }> = [];
   public linkedTelegram = new Map<string, string[]>(); // userId -> telegramUserIds
+  public shadowPlans: NewProtectionPlanRow[] = [];
+  public latestRiskAssessment: { id: string; regime: Regime; validUntil: Date; drivers?: any } | null = null;
 
   private nextId = 1;
 
@@ -692,5 +753,32 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
     );
     if (matches.length === 0) return null;
     return { sentAt: matches[matches.length - 1]!.sentAt };
+  }
+
+  async insertProtectionPlan(plan: NewProtectionPlanRow): Promise<void> {
+    this.shadowPlans.push(plan);
+  }
+
+  async getLatestRiskAssessment(
+    _chainId: number,
+    _asset: string,
+  ): Promise<{ id: string; regime: Regime; validUntil: Date; drivers?: any } | null> {
+    return this.latestRiskAssessment;
+  }
+
+  async getSpent24h(positionKey: string, since: Date): Promise<bigint> {
+    let sum = 0n;
+    for (const p of this.shadowPlans) {
+      if (
+        p.positionKey === positionKey &&
+        p.decision === "ACCEPTED" &&
+        p.createdAt &&
+        new Date(p.createdAt).getTime() >= since.getTime() &&
+        p.amount
+      ) {
+        sum += BigInt(p.amount);
+      }
+    }
+    return sum;
   }
 }
