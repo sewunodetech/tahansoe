@@ -4,7 +4,14 @@
  */
 
 import { LIMITS } from "./config.ts";
-import { crashPriceAt, replayPriceAt, type CrashPct, type Scenario } from "./scenario.ts";
+import {
+  crashPriceAt,
+  replayPriceAt,
+  replayRegimeAt,
+  type CrashPct,
+  type Scenario,
+  type ScenarioRegime,
+} from "./scenario.ts";
 
 export type PriceSource = "mainnet" | "replay" | "stress";
 
@@ -17,12 +24,14 @@ export interface PriceSnapshot {
   priceSource: PriceSource;
   scenarioProgress?: number;
   scenarioId?: string;
+  regime?: ScenarioRegime;
 }
 
 export class PriceController {
   private source: PriceSource = "mainnet";
   private price: number | null = null;
   private progress: number | undefined;
+  private regime: ScenarioRegime | undefined;
   private active: Active | undefined;
   private writing: Promise<void> | null = null;
   private pending: number | null = null;
@@ -37,11 +46,16 @@ export class PriceController {
     const s: PriceSnapshot = { price: this.price, priceSource: this.source };
     if (this.progress !== undefined) s.scenarioProgress = this.progress;
     if (this.active?.kind === "replay") s.scenarioId = this.active.scenario.id;
+    if (this.regime !== undefined) s.regime = this.regime;
     return s;
   }
 
   get followsMainnet(): boolean {
     return this.source === "mainnet";
+  }
+
+  get currentRegime(): ScenarioRegime | undefined {
+    return this.regime;
   }
 
   /** Called by the relay. Ignored once a replay/crash has taken over. */
@@ -55,6 +69,7 @@ export class PriceController {
     this.active = { kind: "replay", scenario, startedAt: this.clock(), startPrice, compression };
     this.source = "replay";
     this.progress = 0;
+    this.regime = replayRegimeAt(scenario, 0, { compression, startPrice });
   }
 
   startCrash(pct: CrashPct, rampMs: number = LIMITS.crashRampMs): void {
@@ -62,6 +77,7 @@ export class PriceController {
     this.active = { kind: "crash", pct, startedAt: this.clock(), startPrice, rampMs };
     this.source = "stress";
     this.progress = 0;
+    this.regime = "CALM";
   }
 
   /** Advances the active replay/crash; call every scenario tick. */
@@ -74,6 +90,7 @@ export class PriceController {
         ? replayPriceAt(a.scenario, elapsed, { compression: a.compression, startPrice: a.startPrice })
         : crashPriceAt(a.startPrice, a.pct, elapsed, a.rampMs);
     this.progress = sample.progress;
+    this.regime = sample.regime;
     if (sample.done) this.active = undefined;
     return this.set(sample.price);
   }
