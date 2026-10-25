@@ -64,3 +64,8 @@ import "./broadcast/api.test.ts";
 import "./broadcast/queue.test.ts";
 import "./broadcast/views.test.ts";
 import "./broadcast/broadcast.test.ts";
+import "./strategy/validate.test.ts";
+import "./strategy/library.test.ts";
+import "./strategy/agent.test.ts";
+import "./sentinel/shadow.test.ts";
+import "./cli/agent-cli.test.ts";
