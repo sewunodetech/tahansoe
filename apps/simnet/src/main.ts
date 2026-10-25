@@ -82,6 +82,7 @@ async function main() {
     forks,
     forwardToFork: forwardToAnvil,
     trustProxy: env.SIM_TRUST_PROXY === "1",
+    publicApi: env.SIM_PUBLIC_API === "1",
     log,
   });
 

@@ -27,6 +27,12 @@ export const EnvSchema = z.object({
   SIM_CONTRACTS_DIR: z.string().optional(),
   /** Optional: "1" to rate-limit by cf-connecting-ip / x-forwarded-for (only behind a tunnel/proxy). */
   SIM_TRUST_PROXY: z.enum(["0", "1"]).default("0"),
+  /**
+   * Optional: "1" accepts session API calls without `x-simnet-key` (public demo), with a per-client
+   * cap on session creation. Calls that do send the key are unaffected. Forks hold no real funds and
+   * stay capped by SIM_MAX_PRIVATE_FORKS and the container's memory limit.
+   */
+  SIM_PUBLIC_API: z.enum(["0", "1"]).default("0"),
   /** Optional: scenarios directory (default: apps/simnet/scenarios). */
   SIM_SCENARIOS_DIR: z.string().optional(),
 });

@@ -62,11 +62,13 @@ test("mock simnet - a stress crash starts from the live price and is tagged stre
   assert.ok(start.price > 2_900);
 });
 
-test("GET /api/sim/health - down when simnet is not configured, ok in mock mode", async () => {
+test("GET /api/sim/health - down when simnet is unreachable, ok in mock mode", async () => {
   delete process.env.SIMNET_MOCK;
-  delete process.env.SIMNET_URL;
+  // Without SIMNET_URL the web falls back to the public simnet; point at a closed port to stay offline.
+  process.env.SIMNET_URL = "http://127.0.0.1:9";
   delete process.env.SIMNET_API_KEY;
   assert.deepEqual(await (await health()).json(), { ok: false });
+  delete process.env.SIMNET_URL;
 
   process.env.SIMNET_MOCK = "1";
   const body = await (await health()).json();
