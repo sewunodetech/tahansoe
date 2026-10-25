@@ -1,210 +1,355 @@
 # Tahansoe
 
-**AI risk agent non-custodial untuk melindungi posisi borrow di protokol lending on-chain (Aave V3, lalu Morpho) dari likuidasi. Arbitrum-first, siap cross-chain.**
+**A non-custodial AI risk agent that protects on-chain borrow positions from liquidation.**
+Aave V3 and Morpho Blue · Arbitrum first, chain-agnostic by design.
 
-Tahansoe memantau **Health Factor (HF)** posisi pinjaman kamu secara terus-menerus. Core Risk Engine membaca oracle, data teknikal, fundamental/on-chain, kalender makro, serta berita dan geopolitik untuk menebalkan buffer proteksi **sebelum** pasar bergerak. Saat HF melewati trigger, Tahansoe menjalankan remediasi — *repay*, *top-up collateral*, atau *deleverage* — sebelum posisi mencapai ambang likuidasi.
+[Live app](https://www.tahansoe.xyz) · [Docs](docs/README.md) · [Contracts](contracts/README.md) · [Security model](docs/security.md)
 
-> ⚠️ Tahansoe adalah **risk automation**, bukan jaminan anti-likuidasi. Lihat [Risk Disclosure](#risk-disclosure).
-
----
-
-## Kenapa ini ada
-
-Kalau kamu pinjam stablecoin dengan jaminan aset volatil (ETH, WBTC, LST), ada tiga masalah klasik:
-
-1. **Pasar tidak tidur, kamu tidur.** Monitoring 24/7 tidak realistis.
-2. **Reaksi manual selalu telat.** Saat kamu sadar HF turun, bot liquidator sudah lebih dulu.
-3. **Likuidasi itu mahal.** Penalti likuidasi Aave V3 sekitar 5–10% dari posisi yang dilikuidasi.
-
-Tahansoe mengotomasi langkah pencegahannya, dan bersifat **non-custodial** — dana tidak pernah berpindah ke kustodi Tahansoe.
+> Tahansoe reduces the chance of liquidation. It is **not** a guarantee against liquidation, not price prediction, and not a trading signal. See [Risk disclosure](#risk-disclosure).
 
 ---
 
-## Cara kerja singkat
+## TL;DR
+
+- **Problem:** borrowers on Aave and Morpho lose 5–10% of their collateral to liquidation penalties when markets move faster than they can react. The trigger is often news, macro, a depeg, or an L2 outage, not just "price went down".
+- **Solution:** Tahansoe watches each position's Health Factor 24/7. A Core Risk Engine reads oracles, on-chain data, macro calendars, and news to raise the protection buffer **before** the shock. A guardian contract then repays debt through a 3-layer cascade, using only funds the user has approved.
+- **Why it's different:**
+  - **Context-aware protection** instead of a static threshold.
+  - **No wallet migration:** works from a normal EOA with capped approvals.
+  - **Per-position policies** across Aave and Morpho.
+  - **A bounded Protection Agent:** AI can act only inside a mandate the user signs and can revoke.
+  - **An ERC-8004 on-chain identity** so anyone can audit the agent.
+- **Status:** live on Arbitrum Sepolia; a zero-risk Simulation Mode runs on an Arbitrum One fork. Mainnet follows an external audit.
+
+---
+
+## The problem
+
+If you borrow stablecoins against volatile collateral (ETH, WBTC, LSTs), your position is liquidated when its Health Factor drops below 1.0:
 
 ```
-HF = (nilai collateral × liquidationThreshold) / total utang
-
-HF < 1.0  →  posisi bisa dilikuidasi
+HF = (collateral value × liquidation threshold) / total debt
 ```
 
-Tahansoe bertindak saat `HF < triggerHF` (default **1.30**) dan memulihkan posisi ke `targetHF` (default **1.60**).
+Liquidation is expensive: Aave V3 charges a 5–10% penalty on the liquidated amount. Borrowers keep getting caught for the same reasons:
 
-Alurnya lima lapis:
+| # | What happens | Real example | Why people miss it |
+|---|--------------|--------------|--------------------|
+| 1 | Collateral crashes on news (war, tariffs, central banks) | ETH drops double digits within hours | Manual reaction is always late; liquidation bots are faster |
+| 2 | A stablecoin loses its peg | USDC fell to ~$0.88 when SVB failed (Mar 2023) | HF moves even though ETH is flat |
+| 3 | A protocol or network incident | Exploits, the Arbitrum sequencer halting | You cannot repay while it lasts, and prices jump when it resumes |
+| 4 | Borrow interest quietly erodes the position | Utilization spikes push borrow APR up | HF falls without any price move |
+| 5 | Too much to watch | News, macro calendars, on-chain data in many places | Nobody monitors 24/7 |
 
-| Layer | Isi | Fungsi |
-|-------|-----|--------|
-| 1. Data & signals | Chainlink feeds, posisi Aave/Morpho, data pasar, berita, makro | Bahan mentah (oracle eksekusi **harus** sama dengan yang dipakai protokol target) |
-| 2. Core Risk Engine (AI) | Oracle monitor, teknikal, fundamental/on-chain, makro, berita & sentimen | Menilai regime pasar dan merekomendasikan buffer/trigger beserta alasannya |
-| 3. Policy | Rule engine deterministik | Ubah posisi + policy user + risk assessment jadi **Intent** (REPAY / SUPPLY_COLLATERAL / DELEVERAGE / NOOP) |
-| 4. Trigger | Keeper: `checkUpkeep()` / `performUpkeep()` | Dev: cron + viem · Prod: Chainlink Automation |
-| 5. Execution | `TahansoeGuardian` (tanpa admin, per chain) | Panggil `repay()` (v1) · `supply()` / flash loan (v2) |
-
-Dua prinsip penting:
-
-- **AI advises, rules decide, contract enforces.** AI tidak pernah menandatangani transaksi yang memindahkan dana; pengaruhnya hanya menggeser trigger di dalam band yang disetujui user. Jika AI mati, proteksi kembali ke policy statis.
-- **Intent ≠ transaksi.** Rule engine mengeluarkan Intent terstruktur, sehingga bisa di-*dry run*, disimulasi, dan diaudit sebelum dieksekusi.
-
-Detail lengkap ada di [docs/prd.md](docs/prd.md). Semua dokumentasi (PRD, BRD, arsitektur, security, ADR) ada di [docs/](docs/README.md). Agent/kontributor: mulai dari [AGENTS.md](AGENTS.md).
+Existing automation reacts to a **static** HF threshold, and usually only after the user moves funds into a smart wallet or proxy.
 
 ---
 
-## Status saat ini
+## The solution
 
-Repo ini berisi **aplikasi web Tahansoe** (Next.js) dan **kontrak Guardian** (Foundry). Status detail ada di [docs/status.md](docs/status.md). Yang sudah jalan:
+Tahansoe runs in three parts that never trust each other blindly. **AI advises, rules decide, the contract enforces.**
 
-- ✅ Landing page + dashboard (positions, history, bot, chat, settings)
-- ✅ Login wallet via **SIWE** (Sign-In With Ethereum) + session cookie
-- ✅ **Simulation engine** — mensimulasikan drift harga ETH, penurunan HF, dan pemilihan strategi remediasi secara live di dashboard
-- ✅ Notifikasi & linking akun **Telegram** (webhook + link code)
-- ✅ Skema database (users, positions, intents, notifications, dll.) via Drizzle
-- ✅ Kontrak **TahansoeGuardian v1** (hot reserve repay) — live di Arbitrum Sepolia, lihat [contracts/README.md](contracts/README.md)
+### 1. Core Risk Engine (off-chain)
 
-Yang **belum**:
+- **Deterministic signal modules:**
+  - oracle staleness and deviation;
+  - Arbitrum sequencer uptime;
+  - stablecoin depegs;
+  - Aave reserve utilization and borrow-rate (carry) monitoring;
+  - a macro calendar (FOMC, CPI, NFP).
+- **Multi-agent research layer:**
+  - analyst agents read credible news, FRED, DefiLlama, and on-chain data;
+  - a hawk/dove debate and an assessor propose a market regime: `CALM → ELEVATED → STRESSED → CRISIS`;
+  - research output is schema-validated, capped in confidence, and cannot raise the regime to `STRESSED`/`CRISIS` on its own.
+- **Risk Fusion** turns the signals into a `RiskAssessment` per asset, with a recommended trigger and a plain-language explanation.
+- **Reflection loop:** every prediction is settled against the AaveOracle price and tracked on a scorecard, so alert quality is measured rather than claimed.
 
-- ⏳ Integrasi web app ↔ kontrak (approve + setPolicy, baca posisi asli)
-- ⏳ Keeper & notifikasi dari server
-- ⏳ Core Risk Engine (AI: oracle, teknikal, fundamental, makro, berita/geopolitik) — branch `core-dev`
-- ⏳ Guardian v2 (dynamic trigger band, flash loan), Morpho Blue, chain tambahan
+### 2. Guardian contracts (on-chain, no admin)
 
-Artinya: angka dan posisi di dashboard saat ini berasal dari **simulasi**, bukan posisi on-chain nyata.
+When a position's HF falls below its trigger, anyone can call `protect()`. The Guardian repays the user's own debt toward the target HF through a three-layer cascade:
+
+| Layer | Funding source | When |
+|-------|----------------|------|
+| **L1: Wallet reserve** | Debt token in the user's wallet, within an approved cap | First |
+| **L2: Position reserve** | Redeem from an ERC-4626 vault or Aave aToken the user chose | If L1 is not enough |
+| **L3: Flash deleverage** | Flash-loan repay, then sell capped collateral with a slippage limit | Last resort |
+
+Funds only ever move from the user's own sources to the user's own debt. The Guardian holds no balance between calls. HF must strictly improve, or the transaction reverts.
+
+### 3. Protection Strategy Agent (bounded autonomy)
+
+The agent combines **off-chain research** (regime, signals) with the **on-chain state of each position** (HF, debt composition, available reserves) and chooses a protection action: hold, raise the trigger, repay from wallet, repay from vault, or deleverage.
+
+- **It acts only inside a mandate the user signs per position:**
+  - which actions are allowed (deleverage is off by default);
+  - a per-action cap and a 24-hour cap;
+  - a maximum HF above which it may not act;
+  - an expiry.
+- **Revocable:** the user can revoke the mandate in one transaction.
+- **Checked twice:** a deterministic rule engine validates every plan before it becomes an intent, and the contract re-enforces every bound.
+- **It learns protection strategies, not trades.** Playbooks come from how positions survived past crashes and from our own settlement results. It never copies positions, direction, or leverage from anyone.
+- **New strategy versions ship only after** they pass the backtest gate and human review.
+
+---
+
+## What makes Tahansoe different
+
+| | Tahansoe | Static automation (e.g. DeFi Saver, Summer.fi/Instadapp automation) | Alert bots and risk dashboards |
+|---|---|---|---|
+| Reacts to | Market context (news, macro, depeg, oracle, sequencer) **plus** HF | An HF threshold | An HF threshold |
+| Acts before the threshold | Yes: the regime raises the buffer early, inside user bounds | No | No |
+| Executes the fix | Yes, 3-layer cascade | Yes | No, the user must act |
+| Wallet migration | **None**: works from an EOA with capped approvals | Smart wallet / proxy | n/a |
+| Per-position policies (multi-debt Aave, Morpho markets) | Yes | Varies | n/a |
+| Explains why | Yes, a plain-language reason per change, also on Telegram | Not a focus | Partly |
+| Agent identity and track record | **ERC-8004** identity plus public reputation | Closed bot | Closed bot |
+| Cost model | Pay only when a position is actually saved (planned 0.15% success fee) | Varies by product | Varies by product |
+
+*Competitor features change quickly; we re-check this table before each public release.*
+
+---
+
+## Building trust
+
+Trust has to be earned with evidence, not promised. This is what exists today and what is still in progress.
+
+**Enforced by design ([security invariants](docs/security.md)):**
+- **Non-custodial:** no code path can move user funds anywhere except the user's own position.
+- **No admin keys:** Guardians are immutable, and upgrading means deploying a new version that users opt into.
+- **Same oracle as the protocol:** execution uses the lending protocol's own oracle; other prices serve only as early warning.
+- **Graceful degradation:** if the AI engine is down or its data is stale, protection falls back to the user's static policy.
+- **External content is data, never instructions:** LLM output is structured and schema-validated.
+
+**Measured, in progress:**
+- **Backtest harness:** replays historical Binance ETHUSDT prices over 7 crash windows (Black Thursday, LUNA, stETH/Celsius, FTX, the SVB/USDC depeg, the yen carry unwind, the Oct 2025 tariff crash) plus a calm period. It compares static, dynamic-trigger, and agent policies against a release gate.
+  - *Honest status:* with the current synthetic positions, the static policy already avoids every liquidation. The agent matches it, 23 of 23, at 8.6% higher cost.
+  - The agent's advantage is **not demonstrated yet**. Next: more fragile positions, and regimes replayed from the engine instead of hand-labelled ones.
+- **Survivor miner:** reads Aave V3 Arbitrum One events for historical crash windows from an archive RPC and compares positions that survived with positions that were liquidated.
+  - Liquidation counts match on-chain data; for example, 189 wallets were liquidated during the USDC depeg window.
+  - Historical HF reconstruction is still being built, so no playbook from it is used yet.
+- **Shadow mode:** the agent records every plan it *would* make in `protection_plans` without sending transactions, so its decisions can be audited before it is allowed to act.
+- **ERC-8004 identity:** the agent registers in the [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) Identity Registry, and settlement outcomes feed its public Reputation Registry. Reputation only counts feedback from addresses that actually had a policy with us (a Sybil filter).
+
+---
+
+## Architecture
+
+```
+                 ┌──────────────────────────────────────────────┐
+ News, macro ───▶│ CORE RISK ENGINE (apps/engine)               │
+ FRED, DefiLlama▶│  signals → research agents → Risk Fusion     │──▶ RiskAssessment
+ Oracles, RPC ──▶│  Protection Agent → rule engine → Intent     │──▶ protection_plans (shadow)
+                 │  sentinel + keeper · reflection & scorecard  │
+                 └───────┬───────────────────┬──────────────────┘
+                         │ protect()         │ setDynamicTrigger() (inside the user's band)
+                         ▼                   ▼
+                 ┌──────────────────────────────────────────────┐      ┌──────────────────────────┐
+                 │ Guardian contracts (no admin, per chain)     │      │ Postgres (Neon)          │
+                 │  AaveV4 · Morpho · v1–v3                     │      │ one DB for web + engine  │
+                 └───────┬──────────────────────────────────────┘      └────────────┬─────────────┘
+                         ▼                                                          │
+                 Aave V3 / Morpho Blue                        ┌─────────────────────┴──────────┐
+                                                              │ Web app (apps/web) + Telegram  │
+                 ERC-8004 Identity & Reputation ◀── agent ────│ dashboard, simulation, alerts  │
+                                                              └────────────────────────────────┘
+```
+
+| Component | Location | What it does |
+|-----------|----------|--------------|
+| Web app | `apps/web` | Landing page; dashboard (Positions, Holdings, Reserves, Protection, Activity, Agents); per-position protection setup; Simulation Mode; SIWE login; Telegram linking |
+| Core Risk Engine | `apps/engine` | Signals, research agents, Risk Fusion, sentinel and keeper, Protection Agent, backtest, survivor miner, ERC-8004 module, `tahansoe` CLI, Telegram alerts and digests |
+| Simulation network | `apps/simnet` | Anvil fork of Arbitrum One with Tahansoe contracts and replayable crash scenarios |
+| Shared domain | `packages/domain` | Canonical types, chain registry, HF math, position readers, protection plan schema |
+| Database | `packages/db` | One Drizzle schema with idempotent migrations |
+| Contracts | `contracts` | Foundry: Guardians v1–v4, `GuardianCore`, unit, fuzz, invariant, and fork tests |
+
+Key decisions are recorded as ADRs in [`docs/decisions/`](docs/decisions/), for example [0002 AI advises, rules decide](docs/decisions/0002-ai-advises-rules-decide.md), [0015 per-position Guardian v4](docs/decisions/0015-guardian-v4-per-position-policies.md), [0016 bounded Protection Agent](docs/decisions/0016-bounded-protection-agent.md), and [0017 ERC-8004 identity](docs/decisions/0017-erc8004-agent-identity.md).
+
+---
+
+## Contract addresses
+
+### Tahansoe on Arbitrum Sepolia (testnet, unaudited)
+
+| Contract | Address |
+|----------|---------|
+| TahansoeGuardianAaveV4 (per-position policies, 3 layers, success fee) | [`0xa7Bbab6366a723e17cd2f220D708757e449571b4`](https://sepolia.arbiscan.io/address/0xa7bbab6366a723e17cd2f220d708757e449571b4) ✅ verified |
+| MockSwapRouter (testnet L3 swaps via the Aave oracle) | [`0x3A4440473141DAB3822bAb065a4d16fc18255F6C`](https://sepolia.arbiscan.io/address/0x3a4440473141dab3822bab065a4d16fc18255f6c) ✅ verified |
+| TahansoeGuardian v1 (L1 wallet repay) | [`0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E`](https://sepolia.arbiscan.io/address/0x1a5d249a8e711e2288add7c01e31eb7ffb05d97e) |
+
+`TahansoeGuardianV3` and `TahansoeGuardianMorpho` run in Simulation Mode on the Arbitrum One fork until the audit, because Morpho Blue is not deployed on Arbitrum Sepolia.
+
+### External contracts we integrate with
+
+| Contract | Arbitrum Sepolia | Arbitrum One |
+|----------|------------------|--------------|
+| Aave V3 PoolAddressesProvider | `0xB25a5D144626a0D488e52AE717A051a2E9997076` | `0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb` |
+| Aave V3 Pool | `0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff` | `0x794a61358D6845594F94dc1DB02A252b5b4814aD` |
+| Morpho Blue | n/a | `0x6c247b1F6182318877311737BaC0844bAa518F5e` |
+| ERC-8004 Identity Registry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
+| ERC-8004 Reputation Registry | `0x8004B663056A597Dffe9eCcC1965A193B7388713` | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
+
+All addresses live in the chain registry ([`packages/domain/src/chains.ts`](packages/domain/src/chains.ts)); nothing is hardcoded in app code.
+
+---
+
+## Try it without risking money
+
+**Simulation Mode** in the [dashboard](https://www.tahansoe.xyz/dashboard) gives you a burner wallet on a private fork of Arbitrum One with real Aave and Morpho state:
+
+1. Open a position.
+2. Set up protection.
+3. Replay a historical crash (Black Thursday, the yen carry unwind, the Oct 2025 tariff crash) and watch the Guardian protect the position, side by side with what would have happened without it.
+
+No wallet funds, faucet, or gas are needed.
+
+On **Arbitrum Sepolia** you can use a real wallet with testnet tokens:
+- connect your wallet;
+- approve a capped reserve;
+- set a per-position policy;
+- receive Telegram alerts.
+
+---
+
+## Status
+
+| Area | Status |
+|------|--------|
+| Guardian v4 per-position (Aave multi-debt and Morpho Blue), 3-layer cascade, success fee | ✅ 88 Foundry tests (unit, fuzz, invariant at 128k calls per handler); AaveV4 deployed and verified on Sepolia |
+| Web dashboard: positions, holdings, reserves, per-position protection, activity, Simulation Mode | ✅ Live at [tahansoe.xyz](https://www.tahansoe.xyz) |
+| Core Risk Engine: signals, research agents, Risk Fusion, settlement and scorecard, Telegram alerts | ✅ Running |
+| Sentinel and keeper: multi-guardian discovery (v1–v4, Morpho), per-position debt priority | ✅ |
+| Protection Agent Phase A: decider, rule engine, shadow mode, backtest, ERC-8004 module | ✅ Built, in shadow; agent value not yet proven (see [Building trust](#building-trust)) |
+| Survivor miner with historical HF reconstruction | 🚧 In progress |
+| Guardian v5: on-chain mandates plus `agentProtect` (Protection Agent Phase B) | 🗓 Planned |
+| External audit, then Arbitrum One mainnet | 🗓 Planned |
+
+Detailed, always-current status: [`docs/status.md`](docs/status.md).
+
+---
+
+## Roadmap to mainnet
+
+1. **Prove the agent:** fragile-position backtests and engine-replayed regimes, real survivor playbooks from historical HF, and a shadow-mode track record on Sepolia.
+2. **Register the agent on ERC-8004** and publish settlement-based reputation.
+3. **Guardian v5:** user-signed mandates and `agentProtect` with per-action, 24-hour, and HF caps, tested with unit, fuzz, invariant, and fork suites.
+4. **External audit** of Guardians v4 and v5 and `GuardianCore`.
+5. **Arbitrum One closed beta** with a TVL cap and Chainlink Automation as a second keeper.
+6. **Expansion:** more chains (Base, Optimism), Morpho L3 deleverage, and cross-chain views.
+
+---
+
+## Business model
+
+- **Success fee (planned, [ADR 0013](docs/decisions/0013-success-fee-on-protection.md)):** 0.15% of the debt repaid, charged only when the HF was actually below the user's static trigger, meaning only when a position is saved.
+  - Preemptive agent actions above the trigger are free, so the agent has no incentive to over-act.
+  - Uncollectable fees are waived and never block the rescue.
+- **Later:** B2B risk scores and white-label protection for wallets and lending protocols.
 
 ---
 
 ## Tech stack
 
-| Bagian | Teknologi |
-|--------|-----------|
-| Framework | Next.js 16 (App Router), React 19, TypeScript |
-| Styling | Tailwind CSS v4, shadcn/base-ui, Motion |
-| Web3 | wagmi + viem, SIWE |
-| Database | Neon Postgres + Drizzle ORM |
-| Session | iron-session |
-| Chart | Recharts |
-| Notifikasi | Telegram Bot API |
+| Part | Technology |
+|------|------------|
+| Contracts | Solidity 0.8.26, Foundry, OpenZeppelin v5 |
+| Web | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, wagmi + viem, SIWE, iron-session |
+| Engine | Node.js + TypeScript (tsx), viem, one OpenAI-compatible LLM gateway, zod-validated outputs |
+| Data | Neon Postgres + Drizzle ORM |
+| Simulation | Anvil fork of Arbitrum One (`apps/simnet`) |
+| Notifications | Telegram Bot API |
+| Agent identity | ERC-8004 Identity and Reputation registries |
 
 ---
 
-## Menjalankan secara lokal
+## Run locally
 
-### 1. Prasyarat
-
-- Node.js 20+
-- Database Postgres (disarankan [Neon](https://neon.tech))
-- (Opsional) Telegram bot token dari [@BotFather](https://t.me/BotFather) kalau mau tes notifikasi
-
-### 2. Install
+**Prerequisites:** Node.js 20+, a Postgres database ([Neon](https://neon.tech) recommended), and [Foundry](https://book.getfoundry.sh/) for contracts.
 
 ```bash
 npm install
 ```
 
-### 3. Environment
-
-Buat file `apps/web/.env` (dipakai web app **dan** script database):
+Create `apps/web/.env`; the web app and the database scripts both use it:
 
 ```bash
 DATABASE_URL=postgresql://user:password@host/dbname
-SESSION_SECRET=            # string acak minimal 32 karakter
+SESSION_SECRET=            # random string, at least 32 characters (openssl rand -base64 32)
 NEXT_PUBLIC_APP_DOMAIN=localhost:3000
 
-# Opsional — hanya untuk fitur Telegram
+# Optional
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_WEBHOOK_SECRET=
-
-# Opsional — untuk WalletConnect
 NEXT_PUBLIC_WC_PROJECT_ID=
 ```
 
-Generate `SESSION_SECRET`:
-
 ```bash
-openssl rand -base64 32
+npm run db:migrate     # idempotent schema setup
+npm run dev            # http://localhost:3000
 ```
 
-### 4. Siapkan database
+The engine (`apps/engine`) needs its own `apps/engine/.env` (`DATABASE_URL`, LLM gateway, RPC URLs); see [`apps/engine/README.md`](apps/engine/README.md). Useful commands:
 
 ```bash
-npm run db:migrate
+npm run tahansoe -w @tahansoe/engine -- start --detach            # run the agent in the background
+npm run tahansoe -w @tahansoe/engine -- backtest protection --candidate agent --active static
+npm run tahansoe -w @tahansoe/engine -- agent plans               # Protection Agent shadow log
+npm run tahansoe -w @tahansoe/engine -- agent identity show       # ERC-8004 identity and reputation
 ```
 
-Script database ada di `packages/db/scripts/` dan dijalankan dari root:
-
-| Perintah | Kegunaan |
-|----------|----------|
-| `npm run db:migrate` | Buat enum + tabel (idempotent, aman diulang) |
-| `npm run db:check` | Cek koneksi & isi tabel |
-| `npm run db:reset` | **Hapus** semua tabel lalu buat ulang |
-| `npm run db:fix-telegram` | Perbaiki data linking Telegram |
-
-> **Catatan CLI/Engine (ADR 0011):** Web dan engine sama-sama memakai Postgres server (Neon). Engine butuh `DATABASE_URL` di `apps/engine/.env`; jalankan agent di background dengan `tahansoe start --detach` (lihat `apps/engine/README.md`).
-
-### 5. Jalankan
+Contracts:
 
 ```bash
-npm run dev
+cd contracts
+forge build
+forge test
 ```
 
-Buka [http://localhost:3000](http://localhost:3000), lalu connect wallet untuk masuk ke dashboard.
+| Command (from repo root) | Purpose |
+|--------------------------|---------|
+| `npm run dev` / `build` / `start` | Web app |
+| `npm run lint` | ESLint (web) |
+| `npm run typecheck` | TypeScript, all workspaces |
+| `npm test` | Tests, all workspaces |
+| `npm run db:migrate` / `db:check` / `db:reset` | Database scripts |
 
 ---
 
-## Perintah
-
-| Perintah | Fungsi |
-|----------|--------|
-Semua perintah dijalankan dari root repo (npm workspaces).
-
-| Perintah | Fungsi |
-|----------|--------|
-| `npm run dev` | Development server web (`apps/web`) |
-| `npm run build` | Build production web |
-| `npm run start` | Jalankan hasil build |
-| `npm run lint` | ESLint web |
-| `npm run typecheck` | TypeScript untuk semua workspace |
-| `npm test` | Test semua workspace |
-| `npm run db:*` | Script database (lihat di atas) |
-
-Kontrak (`contracts/`) memakai Foundry — lihat `contracts/README.md`. Engine (`apps/engine`) ikut `typecheck`/`test` root; script run-nya ada di `apps/engine/README.md`.
-
----
-
-## Struktur folder
-
-Monorepo npm workspaces — lihat [ADR 0007](docs/decisions/0007-monorepo-structure-and-runtime.md).
+## Repository layout
 
 ```
 apps/
-  web/                Next.js (landing, dashboard, API routes)
-    app/              halaman & route handler (auth SIWE, telegram, alerts)
-    components/       landing/, ui/, providers/
-    hooks/            useAuth, useAuthGuard, useTelegramLink
-    lib/              session, wagmi-config, utils, simulasi HF (demo)
-  engine/             Core Risk Engine (worker Node): research agents & reflection
+  web/        Next.js app: landing, dashboard, API routes, Simulation Mode
+  engine/     Core Risk Engine: signals, research agents, fusion, sentinel/keeper,
+              Protection Agent (strategy/), backtest/, erc8004/, tahansoe CLI
+  simnet/     Anvil fork service for Simulation Mode
 packages/
-  db/                 SATU skema Drizzle + koneksi Neon + script database
-  domain/             tipe kanonik (Signal, RiskAssessment, Intent, ...), chain registry, rumus HF
-contracts/            Foundry: TahansoeGuardian, test, deploy
-docs/                 PRD, BRD, architecture, security, status, ADR, specs, knowledge
-AGENTS.md             panduan & workflow untuk agent/kontributor
-DESIGN.md             design system (token, tipografi, komponen)
+  domain/     Types, chain registry, HF math, position readers, protection plan schema
+  db/         Drizzle schema and idempotent migrations
+contracts/    Foundry: Guardians v1–v4, GuardianCore, tests, deploy scripts
+docs/         PRD, BRD, architecture, security, status, ADRs, specs, knowledge
+AGENTS.md     Workflow for contributors and coding agents
+DESIGN.md     Design system
 ```
 
----
-
-## Risk Disclosure
-
-Tahansoe **tidak** menjamin posisi kamu bebas dari likuidasi. Tahansoe mengurangi probabilitas likuidasi dengan bertindak lebih awal, tetapi tetap ada kondisi di luar kendali:
-
-- Crash harga yang sangat cepat (gap turun dalam satu blok)
-- Kongesti jaringan / gas spike yang membuat transaksi remediasi telat masuk
-- Keterlambatan update oracle (deviation threshold & heartbeat)
-- Kegagalan atau kekurangan likuiditas pada sumber dana remediasi
-
-Gunakan dengan pemahaman risiko penuh.
+Full documentation index: [`docs/README.md`](docs/README.md) (written in Indonesian).
 
 ---
 
-## Lisensi
+## Risk disclosure
 
-Private / belum ditentukan.
+Tahansoe lowers the probability of liquidation by acting earlier. It cannot remove it. Conditions outside our control include:
+
+- price gaps faster than one block;
+- network congestion or gas spikes that delay the rescue transaction;
+- oracle update lag (deviation thresholds and heartbeats);
+- insufficient liquidity in the rescue funding sources;
+- an L2 sequencer outage.
+
+The contracts are **unaudited** and deployed on testnet only. Use them with full understanding of the risks.
+
+---
+
+## License
+
+Private; license to be decided.
