@@ -46,6 +46,8 @@ export interface ChainMorphoConfig {
 export interface ChainErc8004Config {
   identity: Address;
   reputation: Address;
+  /** agentId Tahansoe Protection Agent di Identity Registry chain ini, bila sudah terdaftar. */
+  agentId?: bigint;
 }
 
 export interface ChainConfig {
@@ -93,6 +95,8 @@ export const ARBITRUM_SEPOLIA: ChainConfig = {
   erc8004: {
     identity: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
     reputation: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
+    /** Didaftarkan 25 Okt 2026, tx 0xf99308fd3c7f337029cddcb9585a47bb676943f19a51b552b907597f49030564. */
+    agentId: 296n,
   },
   guardians: [
     { version: 1, address: "0x1A5D249A8e711E2288AdD7c01e31Eb7FFB05D97E", deployedBlock: 313944170 },
