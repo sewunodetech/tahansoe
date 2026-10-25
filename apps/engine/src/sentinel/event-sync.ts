@@ -58,7 +58,8 @@ export const GUARDIAN_EVENTS_ABI = [
   dynamicTriggerSetMorphoEventAbi,
 ] as const;
 
-export const DEFAULT_CHUNK_SIZE = 50_000n;
+// 10.000 blok: batas eth_getLogs umum di RPC berbayar (mis. QuickNode); 50.000 ditolak di sana.
+export const DEFAULT_CHUNK_SIZE = 10_000n;
 
 export interface EventSyncDatabase {
   getCursor(
