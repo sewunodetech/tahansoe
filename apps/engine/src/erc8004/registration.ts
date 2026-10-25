@@ -39,7 +39,7 @@ export interface BuildRegistrationFileParams {
 
 export const DEFAULT_AGENT_NAME = "Tahansoe Protection Agent";
 export const DEFAULT_AGENT_DESCRIPTION =
-  "Non-custodial liquidation-protection agent for on-chain borrow positions. It acts only within mandates each user approves and can revoke (ADR 0016).";
+  "Non-custodial liquidation-protection agent for on-chain borrow positions. It acts only within mandates each user approves and can revoke.";
 /** Versi seed strategy library (spec m4-protection-strategy-agent §3.4). */
 export const DEFAULT_STRATEGY_VERSION = "pp-2026.10.0";
 
