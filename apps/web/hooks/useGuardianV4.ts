@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { erc20Abi, type Address, type Hash } from "viem";
 import { useAccount, usePublicClient, useReadContracts, useSwitchChain, useWriteContract } from "wagmi";
 import { hfToWad, wadToNumber } from "@tahansoe/domain";
@@ -12,6 +12,11 @@ import {
   getGuardianV4Address,
   formatPositionKeyAave,
   formatPositionKeyMorpho,
+  getSavedTriggerBand,
+  saveTriggerBand,
+  clearSavedTriggerBand,
+  ZERO_ADDRESS,
+  type DynamicTriggerState,
   type LivePolicyV4,
   type LiveLayer2AaveV4,
   type LiveLayer3AaveV4,
@@ -197,6 +202,79 @@ export function useGuardianV4(options: UseGuardianV4Options = {}) {
     query: { enabled: queryEnabled && morphoDetailContracts.length > 0, refetchInterval: REFRESH_MS },
   });
 
+  /* ── 4. Read DynamicTriggerSet events ──────────────────────────────────── */
+  const [dynamicTriggers, setDynamicTriggers] = useState<Map<string, DynamicTriggerState>>(new Map());
+
+  const fetchDynamicTriggers = useCallback(async () => {
+    if (!publicClient || !user) return;
+    const now = Math.floor(Date.now() / 1000);
+    const map = new Map<string, DynamicTriggerState>();
+
+    try {
+      if (aaveGuardianAddress) {
+        const logs = await publicClient.getContractEvents({
+          address: aaveGuardianAddress,
+          abi: guardianAaveV4Abi,
+          eventName: "DynamicTriggerSet",
+          args: { user },
+          fromBlock: 0n,
+        });
+
+        for (const log of logs) {
+          const debtAsset = (log.args as { debtAsset?: Address }).debtAsset?.toLowerCase();
+          const validUntil = Number((log.args as { validUntil?: bigint }).validUntil ?? 0n);
+          const active = validUntil > now;
+          if (debtAsset) {
+            map.set(`aave-v3:${debtAsset}`, {
+              active,
+              dynamicTriggerHf: wadToNumber((log.args as { triggerHF?: bigint }).triggerHF ?? 0n),
+              validUntil,
+              riskAgent: (log.args as { agent?: Address }).agent ?? ZERO_ADDRESS,
+              remainingSeconds: Math.max(0, validUntil - now),
+            });
+          }
+        }
+      }
+
+      if (morphoGuardianAddress) {
+        const logs = await publicClient.getContractEvents({
+          address: morphoGuardianAddress,
+          abi: guardianMorphoAbi,
+          eventName: "DynamicTriggerSet",
+          args: { user },
+          fromBlock: 0n,
+        });
+
+        for (const log of logs) {
+          const marketId = (log.args as { marketId?: `0x${string}` }).marketId?.toLowerCase();
+          const validUntil = Number((log.args as { validUntil?: bigint }).validUntil ?? 0n);
+          const active = validUntil > now;
+          if (marketId) {
+            map.set(`morpho-blue:${marketId}`, {
+              active,
+              dynamicTriggerHf: wadToNumber((log.args as { triggerHF?: bigint }).triggerHF ?? 0n),
+              validUntil,
+              riskAgent: (log.args as { agent?: Address }).agent ?? ZERO_ADDRESS,
+              remainingSeconds: Math.max(0, validUntil - now),
+            });
+          }
+        }
+      }
+
+      setDynamicTriggers(map);
+    } catch {
+      // Ignore RPC log fetch errors gracefully
+    }
+  }, [publicClient, user, aaveGuardianAddress, morphoGuardianAddress]);
+
+  useEffect(() => {
+    if (queryEnabled) {
+      fetchDynamicTriggers();
+      const interval = setInterval(fetchDynamicTriggers, REFRESH_MS);
+      return () => clearInterval(interval);
+    }
+  }, [queryEnabled, fetchDynamicTriggers]);
+
   /* ── Map parsed protected positions ───────────────────────────────────── */
   const aavePoliciesMap = useMemo(() => {
     const map = new Map<string, LivePolicyV4>();
@@ -261,9 +339,13 @@ export function useGuardianV4(options: UseGuardianV4Options = {}) {
           ? { eligible: rawQuoteFee[0], fee: rawQuoteFee[1] }
           : null;
 
+        const posKey = formatPositionKeyAave({ chainId: target.chain.id, guardian: aaveGuardianAddress, debtAsset: asset });
+        const dynamicTrigger = dynamicTriggers.get(`aave-v3:${asset.toLowerCase()}`) ?? null;
+        const savedBand = getSavedTriggerBand(posKey);
+
         list.push({
           protocol: "aave-v3",
-          positionKey: formatPositionKeyAave({ chainId: target.chain.id, guardian: aaveGuardianAddress, debtAsset: asset }),
+          positionKey: posKey,
           chainId: target.chain.id,
           guardianAddress: aaveGuardianAddress,
           keyIdentifier: asset,
@@ -273,6 +355,8 @@ export function useGuardianV4(options: UseGuardianV4Options = {}) {
           feeQuote,
           effectiveTrigger: rawEffTrigger ? wadToNumber(rawEffTrigger) : policy.triggerHf,
           needsProtection: rawNeedsProt ?? false,
+          dynamicTrigger,
+          savedBand,
         });
       });
     }
@@ -295,9 +379,13 @@ export function useGuardianV4(options: UseGuardianV4Options = {}) {
           ? { eligible: rawQuoteFee[0], fee: rawQuoteFee[1] }
           : null;
 
+        const posKey = formatPositionKeyMorpho({ chainId: target.chain.id, guardian: morphoGuardianAddress, marketId: market });
+        const dynamicTrigger = dynamicTriggers.get(`morpho-blue:${market.toLowerCase()}`) ?? null;
+        const savedBand = getSavedTriggerBand(posKey);
+
         list.push({
           protocol: "morpho-blue",
-          positionKey: formatPositionKeyMorpho({ chainId: target.chain.id, guardian: morphoGuardianAddress, marketId: market }),
+          positionKey: posKey,
           chainId: target.chain.id,
           guardianAddress: morphoGuardianAddress,
           keyIdentifier: market,
@@ -306,6 +394,8 @@ export function useGuardianV4(options: UseGuardianV4Options = {}) {
           feeQuote,
           effectiveTrigger: rawEffTrigger ? wadToNumber(rawEffTrigger) : policy.triggerHf,
           needsProtection: rawNeedsProt ?? false,
+          dynamicTrigger,
+          savedBand,
         });
       });
     }
@@ -320,6 +410,7 @@ export function useGuardianV4(options: UseGuardianV4Options = {}) {
     morphoPoliciesMap,
     aaveDetailsRead.data,
     morphoDetailsRead.data,
+    dynamicTriggers,
     target.chain.id,
   ]);
 
@@ -330,8 +421,9 @@ export function useGuardianV4(options: UseGuardianV4Options = {}) {
       morphoOverviewRead.refetch(),
       aaveDetailsRead.refetch(),
       morphoDetailsRead.refetch(),
+      fetchDynamicTriggers(),
     ]);
-  }, [aaveOverviewRead, morphoOverviewRead, aaveDetailsRead, morphoDetailsRead]);
+  }, [aaveOverviewRead, morphoOverviewRead, aaveDetailsRead, morphoDetailsRead, fetchDynamicTriggers]);
 
   const wrongChain = chainId !== target.chain.id;
 
@@ -412,15 +504,28 @@ export function useGuardianV4(options: UseGuardianV4Options = {}) {
   );
 
   const setAaveTriggerBand = useCallback(
-    (debtAsset: Address, minTriggerHf: number, maxTriggerHf: number, riskAgent: Address) => {
+    async (debtAsset: Address, minTriggerHf: number, maxTriggerHf: number, riskAgent: Address) => {
       if (!aaveGuardianAddress) throw new Error("Aave Guardian v4 not deployed on this chain");
-      return send("setTriggerBand", {
+      const ok = await send("setTriggerBand", {
         chainId: target.chain.id,
         address: aaveGuardianAddress,
         abi: guardianAaveV4Abi,
         functionName: "setTriggerBand",
         args: [debtAsset, hfToWad(minTriggerHf), hfToWad(maxTriggerHf), riskAgent],
       });
+      if (ok) {
+        const key = formatPositionKeyAave({
+          chainId: target.chain.id,
+          guardian: aaveGuardianAddress,
+          debtAsset,
+        });
+        if (riskAgent.toLowerCase() === ZERO_ADDRESS.toLowerCase()) {
+          clearSavedTriggerBand(key);
+        } else {
+          saveTriggerBand(key, { minTriggerHf, maxTriggerHf, riskAgent, enabled: true });
+        }
+      }
+      return ok;
     },
     [send, aaveGuardianAddress, target.chain.id]
   );
@@ -497,15 +602,28 @@ export function useGuardianV4(options: UseGuardianV4Options = {}) {
   );
 
   const setMorphoTriggerBand = useCallback(
-    (marketId: `0x${string}`, minTriggerHf: number, maxTriggerHf: number, riskAgent: Address) => {
+    async (marketId: `0x${string}`, minTriggerHf: number, maxTriggerHf: number, riskAgent: Address) => {
       if (!morphoGuardianAddress) throw new Error("Morpho Guardian v4 not deployed on this chain");
-      return send("setTriggerBand", {
+      const ok = await send("setTriggerBand", {
         chainId: target.chain.id,
         address: morphoGuardianAddress,
         abi: guardianMorphoAbi,
         functionName: "setTriggerBand",
         args: [marketId, hfToWad(minTriggerHf), hfToWad(maxTriggerHf), riskAgent],
       });
+      if (ok) {
+        const key = formatPositionKeyMorpho({
+          chainId: target.chain.id,
+          guardian: morphoGuardianAddress,
+          marketId,
+        });
+        if (riskAgent.toLowerCase() === ZERO_ADDRESS.toLowerCase()) {
+          clearSavedTriggerBand(key);
+        } else {
+          saveTriggerBand(key, { minTriggerHf, maxTriggerHf, riskAgent, enabled: true });
+        }
+      }
+      return ok;
     },
     [send, morphoGuardianAddress, target.chain.id]
   );
@@ -582,4 +700,3 @@ export function useGuardianV4(options: UseGuardianV4Options = {}) {
 }
 
 export type UseGuardianV4Return = ReturnType<typeof useGuardianV4>;
-
