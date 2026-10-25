@@ -9,7 +9,7 @@ import type { Deployer } from "./deploy.ts";
 import { Faucet } from "./faucet.ts";
 import { ForkClient } from "./fork-client.ts";
 import type { ForkFactory, ForkRuntime } from "./forks.ts";
-import { startKeeper, type SimEvent } from "./keeper.ts";
+import { SIM_RISK_AGENT, startKeeper, type SimEvent } from "./keeper.ts";
 import { switchWethOracle, writeFeedPrice } from "./oracle.ts";
 import { PriceController } from "./price-controller.ts";
 
@@ -53,6 +53,11 @@ export function createForkFactory(deps: RuntimeDeps): ForkFactory {
         },
         LIMITS.keeperIntervalMs,
         (e) => deps.log(`[${forkId}] keeper error`, e),
+        undefined,
+        {
+          getRegime: () => price.currentRegime,
+          riskAgent: SIM_RISK_AGENT,
+        },
       );
       const ticker = setInterval(() => void price.tick(), LIMITS.scenarioTickMs);
       ticker.unref();

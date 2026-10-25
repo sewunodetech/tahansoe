@@ -10,7 +10,7 @@ import { randomBytes } from "node:crypto";
 import type { Address } from "viem";
 import type { SimDeployment } from "./deploy.ts";
 import type { Faucet } from "./faucet.ts";
-import type { SimEvent } from "./keeper.ts";
+import { SIM_RISK_AGENT, type SimEvent } from "./keeper.ts";
 import type { PriceController } from "./price-controller.ts";
 
 export interface ForkRuntime {
@@ -204,6 +204,7 @@ export function forkContracts(rec: ForkRecord, registry: { pool: Address; weth: 
   return {
     guardian: d.guardian,
     simPriceFeed: d.simPriceFeed,
+    riskAgent: SIM_RISK_AGENT,
     ...(d.testVault ? { testVault: d.testVault } : {}),
     ...(d.guardianAaveV4 ? { guardianAaveV4: d.guardianAaveV4 } : {}),
     ...(d.guardianMorpho ? { guardianMorpho: d.guardianMorpho } : {}),
