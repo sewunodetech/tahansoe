@@ -38,7 +38,15 @@ export interface SentinelDatabase extends EventSyncDatabase {
   getLatestRiskAssessment?(
     chainId: number,
     asset: string,
-  ): Promise<{ id: string; regime: Regime; validUntil: Date; drivers?: any } | null>;
+  ): Promise<{
+    id: string;
+    regime: Regime;
+    validUntil: Date;
+    recommendedTriggerHf?: number;
+    recommendedTargetHf?: number;
+    explanation?: string;
+    drivers?: any;
+  } | null>;
   getSpent24h?(positionKey: string, since: Date): Promise<bigint>;
 }
 
@@ -457,13 +465,24 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
   async getLatestRiskAssessment(
     chainId: number,
     asset: string,
-  ): Promise<{ id: string; regime: Regime; validUntil: Date; drivers?: any } | null> {
+  ): Promise<{
+    id: string;
+    regime: Regime;
+    validUntil: Date;
+    recommendedTriggerHf?: number;
+    recommendedTargetHf?: number;
+    explanation?: string;
+    drivers?: any;
+  } | null> {
     const rows = await this.db
       .select({
         id: riskAssessments.id,
         regime: riskAssessments.regime,
         validUntil: riskAssessments.validUntil,
         drivers: riskAssessments.drivers,
+        recommendedTriggerHf: riskAssessments.recommendedTriggerHf,
+        recommendedTargetHf: riskAssessments.recommendedTargetHf,
+        explanation: riskAssessments.explanation,
       })
       .from(riskAssessments)
       .where(and(eq(riskAssessments.chainId, chainId), eq(riskAssessments.asset, asset)))
@@ -477,6 +496,9 @@ export class DrizzleSentinelDatabase implements SentinelDatabase {
       regime: r.regime as Regime,
       validUntil: r.validUntil,
       drivers: r.drivers,
+      recommendedTriggerHf: r.recommendedTriggerHf != null ? Number(r.recommendedTriggerHf) : undefined,
+      recommendedTargetHf: r.recommendedTargetHf != null ? Number(r.recommendedTargetHf) : undefined,
+      explanation: r.explanation,
     };
   }
 
@@ -513,7 +535,15 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
   public notifications: Array<{ userId: string; type: any; message: string; deliveredOk: boolean; sentAt: Date }> = [];
   public linkedTelegram = new Map<string, string[]>(); // userId -> telegramUserIds
   public shadowPlans: NewProtectionPlanRow[] = [];
-  public latestRiskAssessment: { id: string; regime: Regime; validUntil: Date; drivers?: any } | null = null;
+  public latestRiskAssessment: {
+    id: string;
+    regime: Regime;
+    validUntil: Date;
+    recommendedTriggerHf?: number;
+    recommendedTargetHf?: number;
+    explanation?: string;
+    drivers?: any;
+  } | null = null;
 
   private nextId = 1;
 
@@ -762,7 +792,15 @@ export class InMemorySentinelDatabase implements SentinelDatabase {
   async getLatestRiskAssessment(
     _chainId: number,
     _asset: string,
-  ): Promise<{ id: string; regime: Regime; validUntil: Date; drivers?: any } | null> {
+  ): Promise<{
+    id: string;
+    regime: Regime;
+    validUntil: Date;
+    recommendedTriggerHf?: number;
+    recommendedTargetHf?: number;
+    explanation?: string;
+    drivers?: any;
+  } | null> {
     return this.latestRiskAssessment;
   }
 

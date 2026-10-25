@@ -1,4 +1,5 @@
 import type { Address } from "viem";
+import type { DynamicTriggerState, SavedTriggerBand } from "./trigger-band";
 
 export type ProtocolType = "aave-v3" | "morpho-blue";
 
@@ -60,4 +61,6 @@ export interface ProtectedPositionV4 {
   feeQuote?: LiveQuoteFeeV4 | null;
   effectiveTrigger?: number | null;
   needsProtection?: boolean;
+  dynamicTrigger?: DynamicTriggerState | null;
+  savedBand?: SavedTriggerBand | null;
 }

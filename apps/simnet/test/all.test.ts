@@ -11,3 +11,5 @@ import "./http.test.ts";
 import "./deploy-keeper.test.ts";
 import "./integration.test.ts";
 import "./stale-fork.test.ts";
+import "./dynamic-trigger.test.ts";
+import "./dynamic-trigger-replay.test.ts";

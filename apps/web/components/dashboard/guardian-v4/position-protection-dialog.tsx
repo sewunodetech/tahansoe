@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo } from "react";
 import { formatUnits, parseUnits, type Address } from "viem";
-import { AlertCircle, Info, Loader2, Shield } from "lucide-react";
-import type { PositionDetail } from "@tahansoe/domain";
+import { AlertCircle, Bot, ExternalLink, Info, Loader2, Shield, Sparkles } from "lucide-react";
+import { getChainConfig, type PositionDetail } from "@tahansoe/domain";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,7 +17,17 @@ import { NumberInput } from "@/components/ui/number-input";
 import { Switch } from "@/components/ui/switch";
 import { LayerBadge } from "@/components/ui/layer-badge";
 import { useGuardianV4 } from "@/hooks/useGuardianV4";
-import { validatePolicyInputs } from "@/lib/guardian-v4";
+import { useLiveTarget } from "@/lib/live-target";
+import { useSimSession } from "@/lib/sim/hooks";
+import {
+  formatPositionKeyAave,
+  formatPositionKeyMorpho,
+  calculateDefaultBand,
+  validatePolicyInputs,
+  validateTriggerBandInputs,
+  getSavedTriggerBand,
+  ZERO_ADDRESS,
+} from "@/lib/guardian-v4";
 import { hfLabel, usd } from "@/lib/positions/format";
 
 export interface PositionProtectionDialogProps {
@@ -36,6 +46,9 @@ export function PositionProtectionDialog({
   onSuccess,
 }: PositionProtectionDialogProps) {
   const g4 = useGuardianV4();
+  const target = useLiveTarget();
+  const { data: simSession } = useSimSession(target.isSimulation);
+
   const isAave = position.protocol === "aave-v3";
   const isMorpho = position.protocol === "morpho-blue";
 
@@ -55,6 +68,31 @@ export function PositionProtectionDialog({
     return position.debt[0];
   }, [isAave, position.debt, selectedDebtAsset]);
 
+  // Position key for Guardian v4
+  const positionKey = useMemo(() => {
+    if (isAave && activeDebt && g4.aaveGuardianAddress) {
+      return formatPositionKeyAave({
+        chainId: target.chain.id,
+        guardian: g4.aaveGuardianAddress,
+        debtAsset: activeDebt.address,
+      });
+    }
+    if (isMorpho && g4.morphoGuardianAddress) {
+      return formatPositionKeyMorpho({
+        chainId: target.chain.id,
+        guardian: g4.morphoGuardianAddress,
+        marketId: position.id as `0x${string}`,
+      });
+    }
+    return null;
+  }, [isAave, isMorpho, activeDebt, g4.aaveGuardianAddress, g4.morphoGuardianAddress, target.chain.id, position.id]);
+
+  // Existing protected position object from g4
+  const existingProtectedPos = useMemo(() => {
+    if (!positionKey) return null;
+    return g4.protectedPositions.find((p) => p.positionKey.toLowerCase() === positionKey.toLowerCase()) ?? null;
+  }, [g4.protectedPositions, positionKey]);
+
   // Existing policy if any
   const existingPolicy = useMemo(() => {
     if (isAave && activeDebt) {
@@ -65,6 +103,12 @@ export function PositionProtectionDialog({
     }
     return null;
   }, [isAave, isMorpho, activeDebt, position.id, g4.aavePolicies, g4.morphoPolicies]);
+
+  // Saved trigger band in local state or localStorage
+  const existingSavedBand = useMemo(() => {
+    if (existingProtectedPos?.savedBand) return existingProtectedPos.savedBand;
+    return positionKey ? getSavedTriggerBand(positionKey) : null;
+  }, [existingProtectedPos, positionKey]);
 
   // Form states
   const [triggerHf, setTriggerHf] = useState<number>(existingPolicy?.triggerHf ?? (isMorpho ? 1.15 : 1.3));
@@ -80,6 +124,31 @@ export function PositionProtectionDialog({
     }
     return "100";
   });
+
+  // Dynamic Trigger Band configuration
+  // Risk agent: from simnet session if in simulation mode, else ChainConfig.riskAgent from chain registry
+  const chainRiskAgent = useMemo(() => {
+    if (target.isSimulation) {
+      return (simSession?.contracts as { riskAgent?: Address } | undefined)?.riskAgent;
+    }
+    const cfg = getChainConfig(target.chain.id);
+    return cfg?.riskAgent;
+  }, [target.isSimulation, target.chain.id, simSession?.contracts]);
+
+  const defaultBand = useMemo(() => {
+    return calculateDefaultBand(triggerHf, targetHf);
+  }, [triggerHf, targetHf]);
+
+  const [dynamicTriggerEnabled, setDynamicTriggerEnabled] = useState<boolean>(() => {
+    return existingSavedBand?.enabled ?? Boolean(existingProtectedPos?.dynamicTrigger?.active);
+  });
+  const [bandMinHf, setBandMinHf] = useState<number>(() => {
+    return existingSavedBand?.minTriggerHf ?? defaultBand.minTriggerHf;
+  });
+  const [bandMaxHf, setBandMaxHf] = useState<number>(() => {
+    return existingSavedBand?.maxTriggerHf ?? defaultBand.maxTriggerHf;
+  });
+  const [bandModified, setBandModified] = useState(false);
 
   // Layer 2 configuration
   const [l2Enabled, setL2Enabled] = useState(false);
@@ -105,16 +174,30 @@ export function PositionProtectionDialog({
     }
   }, [maxRepay, decimals]);
 
-  const validation = validatePolicyInputs({
+  const policyValidation = validatePolicyInputs({
     triggerHf,
     targetHf,
     maxRepayPerAction: maxRepayUnits,
   });
 
+  const bandValidation = validateTriggerBandInputs({
+    minTriggerHf: bandMinHf,
+    maxTriggerHf: bandMaxHf,
+    targetHf,
+    riskAgent: chainRiskAgent,
+    enabled: dynamicTriggerEnabled,
+  });
+
+  const isValid = policyValidation.valid && bandValidation.valid;
+
   const handleSave = async () => {
     setFormError(null);
-    if (!validation.valid) {
-      setFormError(validation.error ?? "Invalid policy inputs");
+    if (!policyValidation.valid) {
+      setFormError(policyValidation.error ?? "Invalid policy inputs");
+      return;
+    }
+    if (!bandValidation.valid) {
+      setFormError(bandValidation.error ?? "Invalid trigger band");
       return;
     }
 
@@ -151,6 +234,14 @@ export function PositionProtectionDialog({
             l3SlippageBps
           );
         }
+
+        // 4. Set Trigger Band
+        if (dynamicTriggerEnabled && chainRiskAgent) {
+          await g4.actions.setAaveTriggerBand(activeDebt.address, bandMinHf, bandMaxHf, chainRiskAgent);
+        } else if (!dynamicTriggerEnabled && (existingSavedBand?.enabled || existingProtectedPos?.dynamicTrigger?.active)) {
+          // Turning off resets the band per GuardianCore with riskAgent = 0x0
+          await g4.actions.setAaveTriggerBand(activeDebt.address, 0, 0, ZERO_ADDRESS);
+        }
       } else if (isMorpho) {
         const marketId = position.id as `0x${string}`;
         // 1. Set policy on Morpho Guardian v4
@@ -166,6 +257,13 @@ export function PositionProtectionDialog({
         if (l2Enabled && l2Source) {
           const l2Units = l2MaxAssets ? parseUnits(l2MaxAssets, decimals) : maxRepayUnits;
           await g4.actions.setMorphoLayer2(marketId, l2Source as Address, l2Units);
+        }
+
+        // 3. Set Trigger Band
+        if (dynamicTriggerEnabled && chainRiskAgent) {
+          await g4.actions.setMorphoTriggerBand(marketId, bandMinHf, bandMaxHf, chainRiskAgent);
+        } else if (!dynamicTriggerEnabled && (existingSavedBand?.enabled || existingProtectedPos?.dynamicTrigger?.active)) {
+          await g4.actions.setMorphoTriggerBand(marketId, 0, 0, ZERO_ADDRESS);
         }
       }
 
@@ -255,7 +353,14 @@ export function PositionProtectionDialog({
               </label>
               <NumberInput
                 value={triggerHf}
-                onChange={setTriggerHf}
+                onChange={(val) => {
+                  setTriggerHf(val);
+                  if (!bandModified) {
+                    const b = calculateDefaultBand(val, targetHf);
+                    setBandMinHf(b.minTriggerHf);
+                    setBandMaxHf(b.maxTriggerHf);
+                  }
+                }}
                 min={1.05}
                 max={3.0}
                 step={0.05}
@@ -270,7 +375,14 @@ export function PositionProtectionDialog({
               </label>
               <NumberInput
                 value={targetHf}
-                onChange={setTargetHf}
+                onChange={(val) => {
+                  setTargetHf(val);
+                  if (!bandModified) {
+                    const b = calculateDefaultBand(triggerHf, val);
+                    setBandMinHf(b.minTriggerHf);
+                    setBandMaxHf(b.maxTriggerHf);
+                  }
+                }}
                 min={1.2}
                 max={5.0}
                 step={0.05}
@@ -310,6 +422,153 @@ export function PositionProtectionDialog({
               )}
             </div>
           </div>
+
+          {/* Dynamic trigger (Tahansoe risk agent) */}
+          {target.isSimulation && !chainRiskAgent ? (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 flex items-start gap-2.5">
+              <Info className="size-4 text-[var(--text-tertiary)] shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-[var(--text-secondary)]">Dynamic trigger</p>
+                <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed mt-0.5">
+                  Dynamic triggers are disabled in Simulation Mode (no simulation risk agent configured).
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-[var(--border)] p-3.5 space-y-3.5 bg-[var(--bg-elevated)]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bot className="size-4 text-[var(--brand)]" />
+                  <div>
+                    <span className="text-xs font-medium text-[var(--text-primary)] block">
+                      Dynamic trigger (Tahansoe risk agent)
+                    </span>
+                    <span className="text-[11px] text-[var(--text-tertiary)]">
+                      AI risk agent raises trigger preemptively when market volatility rises
+                    </span>
+                  </div>
+                </div>
+                <Switch
+                  checked={dynamicTriggerEnabled}
+                  onCheckedChange={(checked) => {
+                    setDynamicTriggerEnabled(checked);
+                    if (checked && !bandModified) {
+                      setBandMinHf(defaultBand.minTriggerHf);
+                      setBandMaxHf(defaultBand.maxTriggerHf);
+                    }
+                  }}
+                />
+              </div>
+
+              {dynamicTriggerEnabled && (
+                <div className="space-y-3 pt-3 border-t border-[var(--border)]">
+                  {/* Active dynamic trigger notice if active */}
+                  {existingProtectedPos?.dynamicTrigger?.active && (
+                    <div className="rounded-md bg-[var(--brand-bg)] border border-[var(--brand-border)] p-2.5 flex items-start gap-2 text-xs">
+                      <Sparkles className="size-3.5 text-[var(--brand)] shrink-0 mt-0.5" />
+                      <div className="text-[11px] font-mono text-[var(--text-primary)]">
+                        <span>Active dynamic trigger: {existingProtectedPos.dynamicTrigger.dynamicTriggerHf.toFixed(2)}</span>
+                        <span className="text-[var(--text-tertiary)] block mt-0.5">
+                          Expires in {Math.floor(existingProtectedPos.dynamicTrigger.remainingSeconds / 60)}m {existingProtectedPos.dynamicTrigger.remainingSeconds % 60}s
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Band inputs */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-medium text-[var(--text-primary)]">
+                          Min Trigger HF
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBandMinHf(defaultBand.minTriggerHf);
+                          }}
+                          className="text-[10px] text-[var(--brand)] hover:underline"
+                        >
+                          Reset ({defaultBand.minTriggerHf.toFixed(2)})
+                        </button>
+                      </div>
+                      <NumberInput
+                        value={bandMinHf}
+                        onChange={(val) => {
+                          setBandMinHf(val);
+                          setBandModified(true);
+                        }}
+                        min={1.05}
+                        max={bandMaxHf}
+                        step={0.05}
+                      />
+                      <p className="text-[10px] text-[var(--text-tertiary)] mt-1 font-mono">
+                        Default: static trigger ({triggerHf.toFixed(2)})
+                      </p>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-medium text-[var(--text-primary)]">
+                          Max Trigger HF
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBandMaxHf(defaultBand.maxTriggerHf);
+                          }}
+                          className="text-[10px] text-[var(--brand)] hover:underline"
+                        >
+                          Reset ({defaultBand.maxTriggerHf.toFixed(2)})
+                        </button>
+                      </div>
+                      <NumberInput
+                        value={bandMaxHf}
+                        onChange={(val) => {
+                          setBandMaxHf(val);
+                          setBandModified(true);
+                        }}
+                        min={bandMinHf}
+                        max={Math.min(3.0, targetHf - 0.01)}
+                        step={0.05}
+                      />
+                      <p className="text-[10px] text-[var(--text-tertiary)] mt-1 font-mono">
+                        Cap: min(target - 0.05, trigger + 0.25)
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Risk agent address (read-only with explorer link) */}
+                  <div>
+                    <label className="text-[11px] text-[var(--text-tertiary)] block mb-1">
+                      Risk agent (read-only from registry)
+                    </label>
+                    <div className="flex items-center justify-between h-8 rounded-md border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 font-mono text-xs text-[var(--text-secondary)]">
+                      <span>
+                        {chainRiskAgent
+                          ? `${chainRiskAgent.slice(0, 10)}...${chainRiskAgent.slice(-8)}`
+                          : "No risk agent registered"}
+                      </span>
+                      {chainRiskAgent && target.explorerAddress(chainRiskAgent) && (
+                        <a
+                          href={target.explorerAddress(chainRiskAgent)!}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[var(--brand)] hover:underline inline-flex items-center gap-1 text-[11px]"
+                        >
+                          Explorer <ExternalLink className="size-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Plain explanation */}
+                  <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed bg-[var(--bg-subtle)] p-2 rounded border border-[var(--border)]">
+                    Tahansoe may move your trigger inside this band when risk rises. It cannot move funds. If the agent stops, your static trigger applies.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Layer 2: Vault Reserve */}
           <div className="rounded-lg border border-[var(--border)] p-3 space-y-3">
@@ -439,7 +698,7 @@ export function PositionProtectionDialog({
             variant="primary"
             size="sm"
             onClick={handleSave}
-            disabled={saving || !validation.valid}
+            disabled={saving || !isValid}
           >
             {saving ? (
               <span className="flex items-center gap-1.5">

@@ -8,10 +8,12 @@ import {
   ArrowRight,
   ArrowUp,
   Ban,
+  Bot,
   CheckCircle2,
   Edit2,
   Loader2,
   Shield,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -203,7 +205,7 @@ export function ProtectedPositionsList({
                 {/* Metrics */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
                   <div className="p-2.5 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border)]">
-                    <p className="text-[10px] text-[var(--text-tertiary)] uppercase">Trigger HF</p>
+                    <p className="text-[10px] text-[var(--text-tertiary)] uppercase">Static Trigger HF</p>
                     <p className="text-base text-[var(--text-primary)] mt-0.5">
                       {pos.policy.triggerHf.toFixed(2)}
                     </p>
@@ -226,6 +228,67 @@ export function ProtectedPositionsList({
                       {pos.feeQuote?.eligible ? `${formatUnits(pos.feeQuote.fee, 6)} fee` : "15 bps fee"}
                     </p>
                   </div>
+                </div>
+
+                {/* Dynamic trigger (Tahansoe risk agent) section */}
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--text-primary)]">
+                      <Bot className="size-3.5 text-[var(--brand)]" />
+                      <span>Dynamic trigger (Tahansoe risk agent)</span>
+                    </div>
+                    {pos.dynamicTrigger?.active ? (
+                      <span className="text-[11px] font-mono text-[var(--brand)] inline-flex items-center gap-1 font-medium">
+                        <Sparkles className="size-3" /> Dynamic active ({pos.dynamicTrigger.dynamicTriggerHf.toFixed(2)})
+                      </span>
+                    ) : pos.savedBand?.enabled ? (
+                      <span className="text-[11px] font-mono text-[var(--safe)] inline-flex items-center gap-1">
+                        <CheckCircle2 className="size-3" /> Band authorized
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-mono text-[var(--text-tertiary)]">
+                        Not configured
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono pt-2 border-t border-[var(--border)]">
+                    <div>
+                      <span className="text-[10px] text-[var(--text-tertiary)] uppercase block">Authorized Band</span>
+                      <span className="text-xs text-[var(--text-primary)] mt-0.5 block">
+                        {pos.savedBand?.enabled
+                          ? `[${pos.savedBand.minTriggerHf.toFixed(2)} – ${pos.savedBand.maxTriggerHf.toFixed(2)}]`
+                          : pos.dynamicTrigger?.active
+                          ? "Set on-chain (not readable in v4)"
+                          : "None"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[var(--text-tertiary)] uppercase block">Effective Trigger</span>
+                      <span className="text-xs text-[var(--text-primary)] mt-0.5 block">
+                        {(pos.effectiveTrigger ?? pos.policy.triggerHf).toFixed(2)}
+                        {pos.effectiveTrigger && pos.effectiveTrigger > pos.policy.triggerHf && (
+                          <span className="ml-1 text-[10px] text-[var(--brand)] font-sans">(elevated)</span>
+                        )}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[var(--text-tertiary)] uppercase block">Dynamic Trigger & Expiry</span>
+                      <span className="text-xs text-[var(--text-primary)] mt-0.5 block">
+                        {pos.dynamicTrigger?.active ? (
+                          <span className="text-[var(--brand)]">
+                            {pos.dynamicTrigger.dynamicTriggerHf.toFixed(2)} (expires in {Math.floor(pos.dynamicTrigger.remainingSeconds / 60)}m {pos.dynamicTrigger.remainingSeconds % 60}s)
+                          </span>
+                        ) : (
+                          <span className="text-[var(--text-tertiary)]">Inactive (static trigger applies)</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed pt-1">
+                    Tahansoe may move your trigger inside this band when risk rises. It cannot move funds. If the agent stops, your static trigger applies.
+                  </p>
                 </div>
 
                 {/* Active Layers */}

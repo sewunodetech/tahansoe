@@ -100,6 +100,8 @@ export const guardianV2Abi = parseAbi([
 export const guardianAaveV4Abi = parseAbi([
   "function setPolicy(address debtAsset, uint256 triggerHF, uint256 targetHF, uint256 maxRepayPerAction) external",
   "function disablePolicy(address debtAsset) external",
+  "function setTriggerBand(address debtAsset, uint256 minTriggerHF, uint256 maxTriggerHF, address riskAgent) external",
+  "function setDynamicTrigger(address user, address debtAsset, uint256 triggerHF, uint64 validUntil) external",
   "function setDebtPriority(address[] calldata debtAssets) external",
   "function policyOf(address user, address debtAsset) external view returns (bool enabled, uint256 triggerHF, uint256 targetHF, uint256 maxRepayPerAction)",
   "function debtAssetsOf(address user) external view returns (address[] memory)",
@@ -116,6 +118,8 @@ export const guardianAaveV4Abi = parseAbi([
 export const guardianMorphoAbi = parseAbi([
   "function setPolicy(bytes32 marketId, uint256 triggerHF, uint256 targetHF, uint256 maxRepayPerAction) external",
   "function disablePolicy(bytes32 marketId) external",
+  "function setTriggerBand(bytes32 marketId, uint256 minTriggerHF, uint256 maxTriggerHF, address riskAgent) external",
+  "function setDynamicTrigger(address user, bytes32 marketId, uint256 triggerHF, uint64 validUntil) external",
   "function policyOf(address user, bytes32 marketId) external view returns (bool enabled, uint256 triggerHF, uint256 targetHF, uint256 maxRepayPerAction)",
   "function marketsOf(address user) external view returns (bytes32[] memory)",
   "function healthFactor(address user, bytes32 marketId) external view returns (uint256)",

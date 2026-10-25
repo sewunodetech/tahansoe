@@ -3,18 +3,45 @@
  * - V3: usersPage → needsProtection(user) → protect(user)
  * - AaveV4: positionsPage → needsProtection(user, debtAsset) → protect(user, debtAsset) (at most one per user per tick, highest priority first)
  * - Morpho: positionsPage → needsProtection(user, marketId) → protect(user, marketId)
+ *
+ * During scenario replay on the fork, the sim keeper also acts as the risk agent:
+ * - Ensures a default trigger band with SIM_RISK_AGENT is set for active positions
+ * - For positions whose band riskAgent is SIM_RISK_AGENT, calls setDynamicTrigger
+ *   mapped from the scenario's regime series (CALM/ELEVATED/STRESSED/CRISIS).
+ * - Decodes and emits DynamicTriggerSet logs for the simulation timeline.
+ *
+ * NOTE: The regime series in simulation fixtures represents hindsight labelling
+ * for historical demonstration and testing, not a live AI/risk engine forecast.
+ *
  * Separate from the production engine sentinel; the engine never touches forks.
  */
 
-import { decodeEventLog, encodeFunctionData, getAddress, type Address, type Hex, type Log } from "viem";
+import {
+  concat,
+  decodeEventLog,
+  encodeFunctionData,
+  getAddress,
+  keccak256,
+  pad,
+  toHex,
+  zeroAddress,
+  type Address,
+  type Hex,
+  type Log,
+} from "viem";
 import { guardianAaveV4Abi, guardianAbi, guardianMorphoAbi } from "./abis.ts";
+import { calculateDefaultBand, calculateDynamicTrigger } from "./dynamic-trigger.ts";
 import type { ForkClient } from "./fork-client.ts";
+import type { ScenarioRegime } from "./scenario.ts";
 
 /** anvil default account #1; impersonated, so its key is irrelevant. */
 export const SIM_KEEPER: Address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 
+/** anvil default account #1 acts as the simulation risk agent. */
+export const SIM_RISK_AGENT: Address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+
 export interface SimEvent {
-  type: "protected" | "layer" | "fee";
+  type: "protected" | "layer" | "fee" | "dynamic_trigger";
   user: Address;
   txHash: Hex;
   blockNumber: number;
@@ -24,6 +51,9 @@ export interface SimEvent {
   hfAfter?: string;
   waived?: string;
   positionKey?: string;
+  triggerHF?: string;
+  validUntil?: number;
+  agent?: Address;
 }
 
 export function aavePositionKey(chainId: number, guardian: Address, debtAsset: Address): string {
@@ -34,6 +64,209 @@ export function morphoPositionKey(chainId: number, guardian: Address, marketId: 
   return `morpho-blue:${chainId}:${guardian.toLowerCase()}:${marketId.toLowerCase()}`;
 }
 
+export function v2PositionKey(chainId: number, guardian: Address): string {
+  return `aave-v2:${chainId}:${guardian.toLowerCase()}`;
+}
+
+export interface CachedBand {
+  minTriggerHF: bigint;
+  maxTriggerHF: bigint;
+  riskAgent: Address;
+  dynamicTriggerHF: bigint;
+  validUntil: number;
+}
+
+const bandCache = new Map<string, CachedBand>();
+
+export function getBandCacheKey(positionKey: string, user: Address): string {
+  return `${user.toLowerCase()}:${positionKey.toLowerCase()}`;
+}
+
+export function setCachedBand(positionKey: string, user: Address, band: CachedBand): void {
+  bandCache.set(getBandCacheKey(positionKey, user), band);
+}
+
+export function getCachedBand(positionKey: string, user: Address): CachedBand | undefined {
+  return bandCache.get(getBandCacheKey(positionKey, user));
+}
+
+export function clearBandCache(): void {
+  bandCache.clear();
+}
+
+/** Storage slot for mapping(address user => mapping(address debtAsset => TriggerBand)) at slot 3 */
+export function getAaveV4TriggerBandSlot(user: Address, debtAsset: Address): `0x${string}` {
+  const slot3 = pad(toHex(3n), { size: 32 });
+  const paddedUser = pad(user, { size: 32 });
+  const inner = keccak256(concat([paddedUser, slot3]));
+  const paddedAsset = pad(debtAsset, { size: 32 });
+  return keccak256(concat([paddedAsset, inner]));
+}
+
+/** Storage slot for mapping(address user => mapping(bytes32 marketId => TriggerBand)) at slot 2 */
+export function getMorphoTriggerBandSlot(user: Address, marketId: Hex): `0x${string}` {
+  const slot2 = pad(toHex(2n), { size: 32 });
+  const paddedUser = pad(user, { size: 32 });
+  const inner = keccak256(concat([paddedUser, slot2]));
+  const paddedMarket = pad(marketId, { size: 32 });
+  return keccak256(concat([paddedMarket, inner]));
+}
+
+async function readBandAaveV4(
+  fork: ForkClient,
+  guardian: Address,
+  user: Address,
+  debtAsset: Address,
+  chainId: number,
+): Promise<CachedBand | null> {
+  const posKey = aavePositionKey(chainId, guardian, debtAsset);
+  // 1. Try reading via custom view if mocked in test
+  try {
+    const res = await fork.read<readonly [bigint, bigint, Address, bigint, bigint | number]>(
+      guardian,
+      guardianAaveV4Abi,
+      "triggerBandOf" as any,
+      [user, debtAsset],
+    );
+    if (res && res.length >= 3) {
+      const b: CachedBand = {
+        minTriggerHF: res[0],
+        maxTriggerHF: res[1],
+        riskAgent: getAddress(res[2]),
+        dynamicTriggerHF: res[3] ?? 0n,
+        validUntil: Number(res[4] ?? 0),
+      };
+      setCachedBand(posKey, user, b);
+      return b;
+    }
+  } catch {
+    // view function does not exist on contract, continue
+  }
+
+  // 2. Try reading from storage on real fork
+  if (typeof fork.rpc === "function") {
+    try {
+      const baseSlot = getAaveV4TriggerBandSlot(user, debtAsset);
+      const minHex = await fork.rpc<Hex>("eth_getStorageAt", [guardian, baseSlot, "latest"]);
+      const minTriggerHF = BigInt(minHex ?? "0x0");
+      if (minTriggerHF > 0n) {
+        const maxHex = await fork.rpc<Hex>("eth_getStorageAt", [guardian, toHex(BigInt(baseSlot) + 1n), "latest"]);
+        const agentHex = await fork.rpc<Hex>("eth_getStorageAt", [guardian, toHex(BigInt(baseSlot) + 2n), "latest"]);
+        const dynHex = await fork.rpc<Hex>("eth_getStorageAt", [guardian, toHex(BigInt(baseSlot) + 3n), "latest"]);
+        const expHex = await fork.rpc<Hex>("eth_getStorageAt", [guardian, toHex(BigInt(baseSlot) + 4n), "latest"]);
+        const rawAgent = (agentHex ?? "0x").slice(-40);
+        const b: CachedBand = {
+          minTriggerHF,
+          maxTriggerHF: BigInt(maxHex ?? "0x0"),
+          riskAgent: getAddress("0x" + rawAgent.padStart(40, "0")),
+          dynamicTriggerHF: BigInt(dynHex ?? "0x0"),
+          validUntil: Number(BigInt(expHex ?? "0x0")),
+        };
+        setCachedBand(posKey, user, b);
+        return b;
+      }
+    } catch {
+      // storage read failed
+    }
+  }
+
+  // 3. Check memory cache
+  return getCachedBand(posKey, user) ?? null;
+}
+
+async function readBandMorpho(
+  fork: ForkClient,
+  guardian: Address,
+  user: Address,
+  marketId: Hex,
+  chainId: number,
+): Promise<CachedBand | null> {
+  const posKey = morphoPositionKey(chainId, guardian, marketId);
+  // 1. Try reading via custom view if mocked in test
+  try {
+    const res = await fork.read<readonly [bigint, bigint, Address, bigint, bigint | number]>(
+      guardian,
+      guardianMorphoAbi,
+      "triggerBandOf" as any,
+      [user, marketId],
+    );
+    if (res && res.length >= 3) {
+      const b: CachedBand = {
+        minTriggerHF: res[0],
+        maxTriggerHF: res[1],
+        riskAgent: getAddress(res[2]),
+        dynamicTriggerHF: res[3] ?? 0n,
+        validUntil: Number(res[4] ?? 0),
+      };
+      setCachedBand(posKey, user, b);
+      return b;
+    }
+  } catch {
+    // view function does not exist on contract, continue
+  }
+
+  // 2. Try reading from storage on real fork
+  if (typeof fork.rpc === "function") {
+    try {
+      const baseSlot = getMorphoTriggerBandSlot(user, marketId);
+      const minHex = await fork.rpc<Hex>("eth_getStorageAt", [guardian, baseSlot, "latest"]);
+      const minTriggerHF = BigInt(minHex ?? "0x0");
+      if (minTriggerHF > 0n) {
+        const maxHex = await fork.rpc<Hex>("eth_getStorageAt", [guardian, toHex(BigInt(baseSlot) + 1n), "latest"]);
+        const agentHex = await fork.rpc<Hex>("eth_getStorageAt", [guardian, toHex(BigInt(baseSlot) + 2n), "latest"]);
+        const dynHex = await fork.rpc<Hex>("eth_getStorageAt", [guardian, toHex(BigInt(baseSlot) + 3n), "latest"]);
+        const expHex = await fork.rpc<Hex>("eth_getStorageAt", [guardian, toHex(BigInt(baseSlot) + 4n), "latest"]);
+        const rawAgent = (agentHex ?? "0x").slice(-40);
+        const b: CachedBand = {
+          minTriggerHF,
+          maxTriggerHF: BigInt(maxHex ?? "0x0"),
+          riskAgent: getAddress("0x" + rawAgent.padStart(40, "0")),
+          dynamicTriggerHF: BigInt(dynHex ?? "0x0"),
+          validUntil: Number(BigInt(expHex ?? "0x0")),
+        };
+        setCachedBand(posKey, user, b);
+        return b;
+      }
+    } catch {
+      // storage read failed
+    }
+  }
+
+  // 3. Check memory cache
+  return getCachedBand(posKey, user) ?? null;
+}
+
+async function readBandV2V3(
+  fork: ForkClient,
+  guardian: Address,
+  user: Address,
+  chainId: number,
+): Promise<CachedBand | null> {
+  const posKey = v2PositionKey(chainId, guardian);
+  try {
+    const res = await fork.read<readonly [bigint, bigint, Address, bigint, bigint | number]>(
+      guardian,
+      guardianAbi,
+      "triggerBands",
+      [user],
+    );
+    if (res && res.length >= 3) {
+      const b: CachedBand = {
+        minTriggerHF: res[0],
+        maxTriggerHF: res[1],
+        riskAgent: getAddress(res[2]),
+        dynamicTriggerHF: res[3] ?? 0n,
+        validUntil: Number(res[4] ?? 0),
+      };
+      setCachedBand(posKey, user, b);
+      return b;
+    }
+  } catch {
+    // ignore
+  }
+  return getCachedBand(posKey, user) ?? null;
+}
+
 export interface DecodeLogsOptions {
   chainId?: number;
   protocol?: "aave-v3" | "morpho-blue";
@@ -41,7 +274,7 @@ export interface DecodeLogsOptions {
   marketId?: Hex;
 }
 
-/** Decodes Protected / LayerUsed / FeeCharged from Guardian logs; ignores everything else. */
+/** Decodes Protected / LayerUsed / FeeCharged / DynamicTriggerSet from Guardian logs. */
 export function decodeGuardianLogs(guardian: Address, logs: readonly Log[], opts?: DecodeLogsOptions): SimEvent[] {
   const out: SimEvent[] = [];
   const chainId = opts?.chainId ?? 4216199;
@@ -139,6 +372,16 @@ export function decodeGuardianLogs(guardian: Address, logs: readonly Log[], opts
         waived: ev.args.waived.toString(),
         ...(positionKey ? { positionKey } : {}),
       });
+    } else if (ev.eventName === "DynamicTriggerSet") {
+      out.push({
+        ...base,
+        type: "dynamic_trigger",
+        user: ev.args.user,
+        triggerHF: ev.args.triggerHF ? ev.args.triggerHF.toString() : undefined,
+        validUntil: ev.args.validUntil ? Number(ev.args.validUntil) : undefined,
+        agent: ev.args.agent ? getAddress(ev.args.agent) : undefined,
+        ...(positionKey ? { positionKey } : {}),
+      });
     }
   }
   return out;
@@ -148,6 +391,11 @@ export interface KeeperGuardians {
   guardian: Address;
   guardianAaveV4?: Address;
   guardianMorpho?: Address;
+}
+
+export interface KeeperOptions {
+  getRegime?: () => ScenarioRegime | undefined;
+  riskAgent?: Address;
 }
 
 export interface KeeperHandle {
@@ -172,6 +420,245 @@ export function clearKeeperChecked(url?: string): void {
 
 const PAGE = 100n;
 
+async function handleDynamicTriggerAaveV4(
+  fork: ForkClient,
+  guardian: Address,
+  user: Address,
+  debtAsset: Address,
+  regime: ScenarioRegime,
+  riskAgent: Address,
+  onEvents: (events: SimEvent[]) => void,
+  chainId: number,
+  onError: (e: unknown) => void,
+): Promise<void> {
+  try {
+    const policy = await fork.read<readonly [boolean, bigint, bigint, bigint]>(
+      guardian,
+      guardianAaveV4Abi,
+      "policyOf",
+      [user, debtAsset],
+    );
+    const [enabled, staticTriggerHF, targetHF] = policy;
+    if (!enabled) return;
+
+    let band = await readBandAaveV4(fork, guardian, user, debtAsset, chainId);
+
+    // If band is not set or riskAgent is zero, set default trigger band
+    if (!band || band.riskAgent.toLowerCase() === zeroAddress.toLowerCase()) {
+      const def = calculateDefaultBand({ triggerHF: staticTriggerHF, targetHF }, riskAgent);
+      await fork.sendAs(
+        user,
+        guardian,
+        encodeFunctionData({
+          abi: guardianAaveV4Abi,
+          functionName: "setTriggerBand",
+          args: [debtAsset, def.minTriggerHF, def.maxTriggerHF, riskAgent],
+        }),
+      );
+      band = {
+        minTriggerHF: def.minTriggerHF,
+        maxTriggerHF: def.maxTriggerHF,
+        riskAgent,
+        dynamicTriggerHF: 0n,
+        validUntil: 0,
+      };
+      setCachedBand(aavePositionKey(chainId, guardian, debtAsset), user, band);
+    }
+
+    if (band.riskAgent.toLowerCase() !== riskAgent.toLowerCase()) return;
+
+    const dynamicTriggerHF = calculateDynamicTrigger({
+      regime,
+      band,
+      staticTriggerHF,
+      targetHF,
+    });
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    // Skip if already at target and valid for at least 60s
+    if (band.dynamicTriggerHF === dynamicTriggerHF && band.validUntil > nowSec + 60) {
+      return;
+    }
+
+    const validUntil = BigInt(nowSec + 3600);
+    const receipt = await fork.sendAs(
+      riskAgent,
+      guardian,
+      encodeFunctionData({
+        abi: guardianAaveV4Abi,
+        functionName: "setDynamicTrigger",
+        args: [user, debtAsset, dynamicTriggerHF, validUntil],
+      }),
+    );
+
+    band.dynamicTriggerHF = dynamicTriggerHF;
+    band.validUntil = Number(validUntil);
+    setCachedBand(aavePositionKey(chainId, guardian, debtAsset), user, band);
+
+    onEvents(decodeGuardianLogs(guardian, receipt.logs, { chainId, protocol: "aave-v3", debtAsset }));
+  } catch (err) {
+    onError(err);
+  }
+}
+
+async function handleDynamicTriggerMorpho(
+  fork: ForkClient,
+  guardian: Address,
+  user: Address,
+  marketId: Hex,
+  regime: ScenarioRegime,
+  riskAgent: Address,
+  onEvents: (events: SimEvent[]) => void,
+  chainId: number,
+  onError: (e: unknown) => void,
+): Promise<void> {
+  try {
+    const policy = await fork.read<readonly [boolean, bigint, bigint, bigint]>(
+      guardian,
+      guardianMorphoAbi,
+      "policyOf",
+      [user, marketId],
+    );
+    const [enabled, staticTriggerHF, targetHF] = policy;
+    if (!enabled) return;
+
+    let band = await readBandMorpho(fork, guardian, user, marketId, chainId);
+
+    // If band is not set or riskAgent is zero, set default trigger band
+    if (!band || band.riskAgent.toLowerCase() === zeroAddress.toLowerCase()) {
+      const def = calculateDefaultBand({ triggerHF: staticTriggerHF, targetHF }, riskAgent);
+      await fork.sendAs(
+        user,
+        guardian,
+        encodeFunctionData({
+          abi: guardianMorphoAbi,
+          functionName: "setTriggerBand",
+          args: [marketId, def.minTriggerHF, def.maxTriggerHF, riskAgent],
+        }),
+      );
+      band = {
+        minTriggerHF: def.minTriggerHF,
+        maxTriggerHF: def.maxTriggerHF,
+        riskAgent,
+        dynamicTriggerHF: 0n,
+        validUntil: 0,
+      };
+      setCachedBand(morphoPositionKey(chainId, guardian, marketId), user, band);
+    }
+
+    if (band.riskAgent.toLowerCase() !== riskAgent.toLowerCase()) return;
+
+    const dynamicTriggerHF = calculateDynamicTrigger({
+      regime,
+      band,
+      staticTriggerHF,
+      targetHF,
+    });
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (band.dynamicTriggerHF === dynamicTriggerHF && band.validUntil > nowSec + 60) {
+      return;
+    }
+
+    const validUntil = BigInt(nowSec + 3600);
+    const receipt = await fork.sendAs(
+      riskAgent,
+      guardian,
+      encodeFunctionData({
+        abi: guardianMorphoAbi,
+        functionName: "setDynamicTrigger",
+        args: [user, marketId, dynamicTriggerHF, validUntil],
+      }),
+    );
+
+    band.dynamicTriggerHF = dynamicTriggerHF;
+    band.validUntil = Number(validUntil);
+    setCachedBand(morphoPositionKey(chainId, guardian, marketId), user, band);
+
+    onEvents(decodeGuardianLogs(guardian, receipt.logs, { chainId, protocol: "morpho-blue", marketId }));
+  } catch (err) {
+    onError(err);
+  }
+}
+
+async function handleDynamicTriggerV2V3(
+  fork: ForkClient,
+  guardian: Address,
+  user: Address,
+  regime: ScenarioRegime,
+  riskAgent: Address,
+  onEvents: (events: SimEvent[]) => void,
+  chainId: number,
+  onError: (e: unknown) => void,
+): Promise<void> {
+  try {
+    const policy = await fork.read<readonly [boolean, bigint, bigint, bigint]>(
+      guardian,
+      guardianAbi,
+      "policyOf",
+      [user],
+    );
+    const [enabled, staticTriggerHF, targetHF] = policy;
+    if (!enabled) return;
+
+    let band = await readBandV2V3(fork, guardian, user, chainId);
+
+    if (!band || band.riskAgent.toLowerCase() === zeroAddress.toLowerCase()) {
+      const def = calculateDefaultBand({ triggerHF: staticTriggerHF, targetHF }, riskAgent);
+      await fork.sendAs(
+        user,
+        guardian,
+        encodeFunctionData({
+          abi: guardianAbi,
+          functionName: "setTriggerBand",
+          args: [def.minTriggerHF, def.maxTriggerHF, riskAgent],
+        }),
+      );
+      band = {
+        minTriggerHF: def.minTriggerHF,
+        maxTriggerHF: def.maxTriggerHF,
+        riskAgent,
+        dynamicTriggerHF: 0n,
+        validUntil: 0,
+      };
+      setCachedBand(v2PositionKey(chainId, guardian), user, band);
+    }
+
+    if (band.riskAgent.toLowerCase() !== riskAgent.toLowerCase()) return;
+
+    const dynamicTriggerHF = calculateDynamicTrigger({
+      regime,
+      band,
+      staticTriggerHF,
+      targetHF,
+    });
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (band.dynamicTriggerHF === dynamicTriggerHF && band.validUntil > nowSec + 60) {
+      return;
+    }
+
+    const validUntil = BigInt(nowSec + 3600);
+    const receipt = await fork.sendAs(
+      riskAgent,
+      guardian,
+      encodeFunctionData({
+        abi: guardianAbi,
+        functionName: "setDynamicTrigger",
+        args: [user, dynamicTriggerHF, validUntil],
+      }),
+    );
+
+    band.dynamicTriggerHF = dynamicTriggerHF;
+    band.validUntil = Number(validUntil);
+    setCachedBand(v2PositionKey(chainId, guardian), user, band);
+
+    onEvents(decodeGuardianLogs(guardian, receipt.logs, { chainId, protocol: "aave-v3" }));
+  } catch (err) {
+    onError(err);
+  }
+}
+
 export function startKeeper(
   fork: ForkClient,
   guardianInput: Address | KeeperGuardians,
@@ -179,9 +666,11 @@ export function startKeeper(
   intervalMs: number,
   onError: (e: unknown) => void,
   onCheck?: (timestamp: number) => void,
+  options?: KeeperOptions,
 ): KeeperHandle {
   const g: KeeperGuardians = typeof guardianInput === "string" ? { guardian: guardianInput } : guardianInput;
   const chainId = (fork as { chainId?: number }).chainId ?? 4216199;
+  const riskAgent = options?.riskAgent ?? SIM_RISK_AGENT;
 
   let busy = false;
   let stopped = false;
@@ -190,12 +679,20 @@ export function startKeeper(
     if (busy || stopped) return;
     busy = true;
     try {
+      const regime = options?.getRegime?.();
+
       // 1. V2/V3 guardian
       for (let offset = 0n; ; offset += PAGE) {
         if (stopped) return;
         const users = await fork.read<readonly Address[]>(g.guardian, guardianAbi, "usersPage", [offset, PAGE]);
         for (const user of users) {
           if (stopped) return;
+
+          // Sim keeper acts as risk agent: update dynamic trigger based on scenario regime
+          if (regime) {
+            await handleDynamicTriggerV2V3(fork, g.guardian, user, regime, riskAgent, onEvents, chainId, onError);
+          }
+
           const needs = await fork.read<boolean>(g.guardian, guardianAbi, "needsProtection", [user]);
           if (!needs) continue;
           try {
@@ -254,6 +751,22 @@ export function startKeeper(
             for (const debtAsset of priorityAssets) {
               if (stopped) return;
               if (!debtAsset) continue;
+
+              // Sim keeper acts as risk agent: update dynamic trigger based on scenario regime
+              if (regime) {
+                await handleDynamicTriggerAaveV4(
+                  fork,
+                  guardianAaveV4,
+                  user,
+                  debtAsset,
+                  regime,
+                  riskAgent,
+                  onEvents,
+                  chainId,
+                  onError,
+                );
+              }
+
               const needs = await fork.read<boolean>(
                 guardianAaveV4,
                 guardianAaveV4Abi,
@@ -303,6 +816,22 @@ export function startKeeper(
             const user = users[i];
             const marketId = marketIds[i];
             if (!user || !marketId) continue;
+
+            // Sim keeper acts as risk agent: update dynamic trigger based on scenario regime
+            if (regime) {
+              await handleDynamicTriggerMorpho(
+                fork,
+                guardianMorpho,
+                user,
+                marketId,
+                regime,
+                riskAgent,
+                onEvents,
+                chainId,
+                onError,
+              );
+            }
+
             const needs = await fork.read<boolean>(
               guardianMorpho,
               guardianMorphoAbi,

@@ -4,7 +4,7 @@ import { decodeFunctionData, encodeAbiParameters, encodeEventTopics, parseAbi, t
 import { guardianAaveV4Abi, guardianAbi, guardianMorphoAbi } from "../src/abis.ts";
 import { guessConstructorArgs, parseDeploymentOutput, SIM_DEPLOYER } from "../src/deploy.ts";
 import { forkContracts, MORPHO_BLUE_ARBITRUM_ONE } from "../src/forks.ts";
-import { decodeGuardianLogs, getKeeperCheckedAt, SIM_KEEPER, startKeeper } from "../src/keeper.ts";
+import { decodeGuardianLogs, getKeeperCheckedAt, SIM_KEEPER, SIM_RISK_AGENT, startKeeper } from "../src/keeper.ts";
 import { toFeedAnswer } from "../src/oracle.ts";
 import { GUARDIAN } from "./helpers.ts";
 
@@ -89,6 +89,7 @@ describe("forkContracts", () => {
     assert.deepEqual(c, {
       guardian: GUARDIAN,
       simPriceFeed: "0x2222222222222222222222222222222222222222",
+      riskAgent: SIM_RISK_AGENT,
       pool: reg.pool,
       weth: reg.weth,
       usdc: reg.usdc,
