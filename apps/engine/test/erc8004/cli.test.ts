@@ -21,17 +21,28 @@ describe("CLI tahansoe agent identity", () => {
 
   it("prepare-register dry-run prints target contract, calldata and does not submit tx", async () => {
     let output = "";
-    const code = await agentCommand(["identity", "prepare-register", "--json"], {
-      stdout: (m) => {
-        output += m + "\n";
+    const code = await agentCommand(
+      ["identity", "prepare-register", "--uri", "https://example.org/.well-known/agent-registration.json", "--json"],
+      {
+        stdout: (m) => {
+          output += m + "\n";
+        },
       },
-    });
+    );
 
     assert.equal(code, EXIT_OK);
     const parsed = JSON.parse(output);
     assert.equal(parsed.subcommand, "prepare-register");
     assert.equal(parsed.to, ARBITRUM_SEPOLIA.erc8004?.identity);
     assert.ok(parsed.data.startsWith("0xf2c298be")); // register(string)
+  });
+
+  it("prepare-register requires --uri instead of inventing a URL", async () => {
+    const code = await agentCommand(["identity", "prepare-register", "--json"], {
+      stdout: () => {},
+      stderr: () => {},
+    });
+    assert.notEqual(code, EXIT_OK);
   });
 
   it("prepare-feedback dry-run prints target contract, calldata and parameters", async () => {

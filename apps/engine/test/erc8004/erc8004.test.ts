@@ -18,7 +18,7 @@ import {
 
 describe("ERC-8004 ABI encode/decode round-trips", () => {
   it("register(string agentURI) encodes and decodes accurately", () => {
-    const uri = "https://tahansoe.xyz/.well-known/agent-registration.json";
+    const uri = "https://example.org/.well-known/agent-registration.json";
     const tx = prepareRegister({
       agentURI: uri,
       chainConfig: ARBITRUM_SEPOLIA,
@@ -67,8 +67,8 @@ describe("ERC-8004 ABI encode/decode round-trips", () => {
       value: 100n,
       valueDecimals: 0,
       tag2: "settlement",
-      endpoint: "https://tahansoe.xyz",
-      feedbackURI: "https://tahansoe.xyz/logs/run-1.json",
+      endpoint: "https://example.org",
+      feedbackURI: "https://example.org/logs/run-1.json",
     };
 
     const call = buildFeedback(outcome, ARBITRUM_SEPOLIA);
@@ -90,15 +90,15 @@ describe("ERC-8004 ABI encode/decode round-trips", () => {
     assert.equal(decoded.args[2], 0); // valueDecimals
     assert.equal(decoded.args[3], "preempt"); // tag1
     assert.equal(decoded.args[4], "settlement"); // tag2
-    assert.equal(decoded.args[5], "https://tahansoe.xyz"); // endpoint
-    assert.equal(decoded.args[6], "https://tahansoe.xyz/logs/run-1.json"); // feedbackURI
+    assert.equal(decoded.args[5], "https://example.org"); // endpoint
+    assert.equal(decoded.args[6], "https://example.org/logs/run-1.json"); // feedbackURI
     assert.equal(decoded.args[7], call.feedbackHash); // feedbackHash
   });
 });
 
 describe("ERC-8004 Agent Registration File", () => {
   it("builds the registration file with correct spec shape and supported guardians", () => {
-    const file = buildRegistrationFile({ chainConfig: ARBITRUM_SEPOLIA });
+    const file = buildRegistrationFile({ chainConfig: ARBITRUM_SEPOLIA, webUrl: "https://example.org" });
 
     assert.equal(file.type, "https://eips.ethereum.org/EIPS/eip-8004#registration-v1");
     assert.equal(file.name, "Tahansoe Protection Agent");
@@ -106,14 +106,13 @@ describe("ERC-8004 Agent Registration File", () => {
     assert.equal(file.active, true);
     assert.equal(file.x402Support, false);
     assert.deepEqual(file.supportedTrust, ["reputation"]);
-    assert.equal(file.strategyVersion, "pp-2026.11.1");
+    assert.equal(file.strategyVersion, "pp-2026.10.0");
+    assert.equal(file.image, undefined, "no invented image URL");
 
-    // Services
-    assert.equal(file.services.length, 2);
+    // Services: scorecard only when explicitly provided
+    assert.equal(file.services.length, 1);
     assert.equal(file.services[0]?.name, "web");
-    assert.equal(file.services[0]?.endpoint, "https://tahansoe.xyz");
-    assert.equal(file.services[1]?.name, "scorecard");
-    assert.equal(file.services[1]?.endpoint, "https://tahansoe.xyz/scorecard");
+    assert.equal(file.services[0]?.endpoint, "https://example.org");
 
     // Guardians from chain registry
     assert.ok(file.supportedGuardians.length >= 2);
@@ -125,15 +124,20 @@ describe("ERC-8004 Agent Registration File", () => {
     const file = buildRegistrationFile({
       name: "Custom Agent",
       strategyVersion: "custom-v2",
-      webUrl: "https://custom.tahansoe.xyz",
-      scorecardUrl: "https://custom.tahansoe.xyz/score",
+      webUrl: "https://custom.example.org",
+      scorecardUrl: "https://custom.example.org/score",
       chainConfig: ARBITRUM_ONE,
     });
 
     assert.equal(file.name, "Custom Agent");
     assert.equal(file.strategyVersion, "custom-v2");
-    assert.equal(file.services[0]?.endpoint, "https://custom.tahansoe.xyz");
-    assert.equal(file.services[1]?.endpoint, "https://custom.tahansoe.xyz/score");
+    assert.equal(file.services[0]?.endpoint, "https://custom.example.org");
+    assert.equal(file.services[1]?.endpoint, "https://custom.example.org/score");
+  });
+
+  it("refuses to build without an https webUrl (no invented defaults on-chain)", () => {
+    assert.throws(() => buildRegistrationFile({ chainConfig: ARBITRUM_SEPOLIA, webUrl: "" }));
+    assert.throws(() => buildRegistrationFile({ chainConfig: ARBITRUM_SEPOLIA, webUrl: "http://example.org" }));
   });
 });
 

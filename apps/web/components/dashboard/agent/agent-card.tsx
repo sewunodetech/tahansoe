@@ -35,8 +35,8 @@ export function AgentCard({ agentId = 1n, className }: AgentCardProps) {
   const agentName = metadata?.name ?? "Tahansoe Protection Agent";
   const agentDesc =
     metadata?.description ??
-    "Autonomous non-custodial risk agent protecting on-chain borrow positions from liquidation.";
-  const strategyVersion = metadata?.strategyVersion ?? "pp-2026.11.1";
+    "Non-custodial liquidation-protection agent. It acts only within mandates you approve and can revoke.";
+  const strategyVersion = metadata?.strategyVersion ?? "—";
 
   if (loading) {
     return (
@@ -80,7 +80,7 @@ export function AgentCard({ agentId = 1n, className }: AgentCardProps) {
             </Badge>
           </div>
           <CardDescription className="text-xs text-[var(--text-tertiary)]">
-            Autonomous agent identity on {LIVE_CHAIN_CONFIG.name}
+            ERC-8004 agent identity on {LIVE_CHAIN_CONFIG.name}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 pt-1">

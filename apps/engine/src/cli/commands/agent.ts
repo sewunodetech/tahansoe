@@ -194,10 +194,11 @@ export async function agentCommand(
     }
 
     case "prepare-register": {
-      const uriArg = asString(parsed.values.uri);
-      const agentURI =
-        uriArg ||
-        "https://tahansoe.xyz/.well-known/agent-registration.json";
+      const agentURI = asString(parsed.values.uri);
+      if (!agentURI) {
+        stderr("prepare-register: --uri <https URL of the hosted registration file> is required");
+        return EXIT_ERROR;
+      }
 
       const tx = prepareRegister({ agentURI, chainConfig });
 

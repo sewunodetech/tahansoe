@@ -30,28 +30,30 @@ export interface BuildRegistrationFileParams {
   description?: string;
   image?: string;
   strategyVersion?: string;
-  webUrl?: string;
+  /** URL publik web Tahansoe. Wajib: data registrasi tercatat permanen on-chain, jadi tanpa default. */
+  webUrl: string;
+  /** Opsional; hanya dicantumkan bila halaman scorecard publik benar-benar ada. */
   scorecardUrl?: string;
   chainConfig?: ChainConfig;
 }
 
 export const DEFAULT_AGENT_NAME = "Tahansoe Protection Agent";
 export const DEFAULT_AGENT_DESCRIPTION =
-  "Autonomous non-custodial risk agent protecting on-chain borrow positions from liquidation";
-export const DEFAULT_STRATEGY_VERSION = "pp-2026.11.1";
-export const DEFAULT_WEB_URL = "https://tahansoe.xyz";
-export const DEFAULT_SCORECARD_URL = "https://tahansoe.xyz/scorecard";
-export const DEFAULT_AGENT_IMAGE = "https://tahansoe.xyz/brand/agent-avatar.png";
+  "Non-custodial liquidation-protection agent for on-chain borrow positions. It acts only within mandates each user approves and can revoke (ADR 0016).";
+/** Versi seed strategy library (spec m4-protection-strategy-agent §3.4). */
+export const DEFAULT_STRATEGY_VERSION = "pp-2026.10.0";
 
 /**
  * Builds the ERC-8004 Agent Registration File (spec m4 §3.7, ADR 0017).
  */
 export function buildRegistrationFile(
-  params: BuildRegistrationFileParams = {}
+  params: BuildRegistrationFileParams
 ): AgentRegistrationFile {
   const chain = params.chainConfig ?? ARBITRUM_SEPOLIA;
-  const webUrl = params.webUrl ?? DEFAULT_WEB_URL;
-  const scorecardUrl = params.scorecardUrl ?? DEFAULT_SCORECARD_URL;
+  const webUrl = params.webUrl?.trim();
+  if (!webUrl || !webUrl.startsWith("https://")) {
+    throw new Error("buildRegistrationFile: webUrl (https) wajib diisi; tidak ada URL default");
+  }
 
   // Extract supported guardians from chain configuration
   const supportedGuardians: SupportedGuardianInfo[] = [];
@@ -75,18 +77,10 @@ export function buildRegistrationFile(
     type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
     name: params.name ?? DEFAULT_AGENT_NAME,
     description: params.description ?? DEFAULT_AGENT_DESCRIPTION,
-    image: params.image ?? DEFAULT_AGENT_IMAGE,
+    ...(params.image ? { image: params.image } : {}),
     services: [
-      {
-        name: "web",
-        endpoint: webUrl,
-        version: "1.0.0",
-      },
-      {
-        name: "scorecard",
-        endpoint: scorecardUrl,
-        version: "1.0.0",
-      },
+      { name: "web", endpoint: webUrl, version: "1.0.0" },
+      ...(params.scorecardUrl ? [{ name: "scorecard", endpoint: params.scorecardUrl, version: "1.0.0" }] : []),
     ],
     x402Support: false,
     active: true,
